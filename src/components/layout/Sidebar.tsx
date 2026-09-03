@@ -19,6 +19,7 @@ import {
   Settings,
   BookOpen,
   Sparkles,
+  FileSpreadsheet,
   X
 } from 'lucide-react';
 
@@ -91,6 +92,12 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       href: '/analytics',
       icon: BarChart3,
       roles: ['owner'],
+    },
+    {
+      title: 'Импорт Excel',
+      href: '/settings/import',
+      icon: FileSpreadsheet,
+      roles: ['owner', 'admin'],
     },
     {
       title: 'Настройки',
