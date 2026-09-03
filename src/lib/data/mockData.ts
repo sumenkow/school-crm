@@ -558,3 +558,202 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
 ];
 
+export interface FullLessonData {
+  id: string;
+  groupId: string;
+  groupName: string;
+  courseName: string;
+  teacherId: string;
+  teacherName: string;
+  date: string; // YYYY-MM-DD
+  dateFormatted: string; // e.g. 03 сен 2026
+  dayOfWeek: number; // 0 = Mon, 6 = Sun
+  startTime: string;
+  endTime: string;
+  room: string;
+  topic: string;
+  homework?: string;
+  onlineMeetingUrl?: string;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+  students: Array<{
+    id: string;
+    name: string;
+    attendanceStatus: 'present' | 'absent' | 'rescheduled' | 'cancelled' | 'not_marked';
+    notes?: string;
+  }>;
+}
+
+export const INITIAL_LESSONS: FullLessonData[] = [
+  {
+    id: 'l1',
+    groupId: '1',
+    groupName: 'English B1 Teens (Пн/Чт 18:45)',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    date: '2026-09-01',
+    dateFormatted: '01 сен 2026',
+    dayOfWeek: 0,
+    startTime: '18:45',
+    endTime: '20:15',
+    room: 'Аудитория 204',
+    topic: 'Unit 1: Present Perfect vs Past Simple in conversation',
+    homework: 'Workbook p. 12-14, эссе о любимом путешествии (100 слов)',
+    onlineMeetingUrl: 'https://meet.google.com/abc-defg-hij',
+    status: 'completed',
+    students: [
+      { id: '1', name: 'Иван Смирнов', attendanceStatus: 'present' },
+      { id: '4', name: 'Сергей Попов', attendanceStatus: 'present' },
+      { id: 's5', name: 'Алина Белова', attendanceStatus: 'present' },
+      { id: 's6', name: 'Максим Захаров', attendanceStatus: 'absent', notes: 'Предупредили о визите к врачу' },
+      { id: 's7', name: 'Полина Григорьева', attendanceStatus: 'present' },
+      { id: 's8', name: 'Егор Романов', attendanceStatus: 'present' },
+      { id: 's9', name: 'София Федорова', attendanceStatus: 'present' },
+    ],
+  },
+  {
+    id: 'l2',
+    groupId: '2',
+    groupName: 'Kids English A1 (Вт/Пт 15:00)',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    date: '2026-09-01',
+    dateFormatted: '01 сен 2026',
+    dayOfWeek: 1,
+    startTime: '15:00',
+    endTime: '16:30',
+    room: 'Аудитория 102',
+    topic: 'Colors, Fruits & Magic Animals songs',
+    homework: 'Раскрасить карточки со с. 8',
+    status: 'completed',
+    students: [
+      { id: '3', name: 'Анна Васильева', attendanceStatus: 'present' },
+      { id: 's10', name: 'Тимофей Орлов', attendanceStatus: 'present' },
+      { id: 's11', name: 'Василиса Козлова', attendanceStatus: 'present' },
+      { id: 's12', name: 'Матвей Новиков', attendanceStatus: 'present' },
+      { id: 's13', name: 'Ксения Лебедева', attendanceStatus: 'present' },
+      { id: 's14', name: 'Лев Семенов', attendanceStatus: 'present' },
+    ],
+  },
+  {
+    id: 'l3',
+    groupId: '3',
+    groupName: 'Robotics Junior (Ср/Сб 15:00)',
+    courseName: 'Робототехника',
+    teacherId: 't2',
+    teacherName: 'Денис Смирнов',
+    date: '2026-09-02',
+    dateFormatted: '02 сен 2026',
+    dayOfWeek: 2,
+    startTime: '15:00',
+    endTime: '16:30',
+    room: 'IT Лаборатория',
+    topic: 'Основы Arduino: сборка первого механического манипулятора',
+    homework: 'Повторить схему подключения сервопривода',
+    status: 'completed',
+    students: [
+      { id: '2', name: 'Мария Кузнецова', attendanceStatus: 'present' },
+      { id: 's15', name: 'Арсений Павлов', attendanceStatus: 'present' },
+      { id: 's16', name: 'Глеб Воронов', attendanceStatus: 'present' },
+      { id: 's17', name: 'Кирилл Медведев', attendanceStatus: 'present' },
+    ],
+  },
+  {
+    id: 'l4',
+    groupId: '4',
+    groupName: 'Kids Math Safari (Чт 16:00)',
+    courseName: 'Математика',
+    teacherId: 't3',
+    teacherName: 'Ольга Соколова',
+    date: '2026-09-03',
+    dateFormatted: '03 сен 2026',
+    dayOfWeek: 3,
+    startTime: '16:00',
+    endTime: '17:00',
+    room: 'Аудитория 101',
+    topic: 'Логические переправы, весы и фальшивые монеты',
+    status: 'scheduled',
+    students: [
+      { id: '5', name: 'Екатерина Морозова', attendanceStatus: 'not_marked' },
+      { id: 's18', name: 'Артём Кузнецов', attendanceStatus: 'not_marked' },
+      { id: 's19', name: 'Дарья Виноградова', attendanceStatus: 'not_marked' },
+      { id: 's20', name: 'Ярослав Куликов', attendanceStatus: 'not_marked' },
+      { id: 's21', name: 'Вероника Потапова', attendanceStatus: 'not_marked' },
+    ],
+  },
+  {
+    id: 'l5',
+    groupId: '1',
+    groupName: 'English B1 Teens (Пн/Чт 18:45)',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    date: '2026-09-03',
+    dateFormatted: '03 сен 2026',
+    dayOfWeek: 3,
+    startTime: '18:45',
+    endTime: '20:15',
+    room: 'Аудитория 204',
+    topic: 'Modal verbs of deduction (must / might / can’t)',
+    onlineMeetingUrl: 'https://meet.google.com/xyz-uvwx-rst',
+    status: 'scheduled',
+    students: [
+      { id: '1', name: 'Иван Смирнов', attendanceStatus: 'not_marked' },
+      { id: '4', name: 'Сергей Попов', attendanceStatus: 'not_marked' },
+      { id: 's5', name: 'Алина Белова', attendanceStatus: 'not_marked' },
+      { id: 's6', name: 'Максим Захаров', attendanceStatus: 'not_marked' },
+      { id: 's7', name: 'Полина Григорьева', attendanceStatus: 'not_marked' },
+      { id: 's8', name: 'Егор Романов', attendanceStatus: 'not_marked' },
+      { id: 's9', name: 'София Федорова', attendanceStatus: 'not_marked' },
+    ],
+  },
+  {
+    id: 'l6',
+    groupId: '2',
+    groupName: 'Kids English A1 (Вт/Пт 15:00)',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    date: '2026-09-04',
+    dateFormatted: '04 сен 2026',
+    dayOfWeek: 4,
+    startTime: '15:00',
+    endTime: '16:30',
+    room: 'Аудитория 102',
+    topic: 'Numbers 1-20 & Interactive classroom games',
+    status: 'scheduled',
+    students: [
+      { id: '3', name: 'Анна Васильева', attendanceStatus: 'not_marked' },
+      { id: 's10', name: 'Тимофей Орлов', attendanceStatus: 'not_marked' },
+      { id: 's11', name: 'Василиса Козлова', attendanceStatus: 'not_marked' },
+      { id: 's12', name: 'Матвей Новиков', attendanceStatus: 'not_marked' },
+      { id: 's13', name: 'Ксения Лебедева', attendanceStatus: 'not_marked' },
+      { id: 's14', name: 'Лев Семенов', attendanceStatus: 'not_marked' },
+    ],
+  },
+  {
+    id: 'l7',
+    groupId: '3',
+    groupName: 'Robotics Junior (Ср/Сб 15:00)',
+    courseName: 'Робототехника',
+    teacherId: 't2',
+    teacherName: 'Денис Смирнов',
+    date: '2026-09-05',
+    dateFormatted: '05 сен 2026',
+    dayOfWeek: 5,
+    startTime: '11:00',
+    endTime: '12:30',
+    room: 'IT Лаборатория',
+    topic: 'Датчик линии и программирование движения робота',
+    status: 'scheduled',
+    students: [
+      { id: '2', name: 'Мария Кузнецова', attendanceStatus: 'not_marked' },
+      { id: 's15', name: 'Арсений Павлов', attendanceStatus: 'not_marked' },
+      { id: 's16', name: 'Глеб Воронов', attendanceStatus: 'not_marked' },
+      { id: 's17', name: 'Кирилл Медведев', attendanceStatus: 'not_marked' },
+    ],
+  },
+];
+
+
