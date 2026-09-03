@@ -1,96 +1,83 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { INITIAL_GROUPS, FullGroupData } from '@/lib/data/mockData';
+import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 
 export default function GroupsPage() {
+  const router = useRouter();
+  const [groups, setGroups] = useState<FullGroupData[]>(INITIAL_GROUPS);
   const [filterCourse, setFilterCourse] = useState('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const groups = [
-    {
-      id: '1',
-      name: 'English B1 Teens (Пн/Чт 18:45)',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      schedule: 'Пн, Чт • 18:45–20:15',
-      capacity: 8,
-      enrolled: 7, // 1 free spot
-      status: 'active',
-      room: 'Ауд. 204',
-      startDate: '01.09.2026',
-    },
-    {
-      id: '2',
-      name: 'Kids English A1 (Вт/Пт 15:00)',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      schedule: 'Вт, Пт • 15:00–16:30',
-      capacity: 6,
-      enrolled: 6, // 0 free spots (FULL)
-      status: 'active',
-      room: 'Ауд. 102',
-      startDate: '01.09.2026',
-    },
-    {
-      id: '3',
-      name: 'Robotics Junior (Ср/Сб 15:00)',
-      course: 'Робототехника',
-      teacher: 'Денис Смирнов',
-      schedule: 'Ср 15:00, Сб 11:00',
-      capacity: 8,
-      enrolled: 4, // 4 free spots (recruiting)
-      status: 'recruiting',
-      room: 'IT Лаб',
-      startDate: '10.09.2026',
-    },
-    {
-      id: '4',
-      name: 'Kids Math Safari (Чт 16:00)',
-      course: 'Математика',
-      teacher: 'Ольга Соколова',
-      schedule: 'Четверг • 16:00–17:00',
-      capacity: 6,
-      enrolled: 5, // 1 free spot
-      status: 'active',
-      room: 'Ауд. 101',
-      startDate: '01.09.2026',
-    },
-  ];
+  const handleGroupCreated = (newGroup: FullGroupData) => {
+    setGroups((prev) => [newGroup, ...prev]);
+  };
+
+  const filteredGroups = groups.filter((g) => {
+    return filterCourse === 'all' || g.courseName === filterCourse;
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Группы</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Группы школы</h1>
           <p className="text-sm text-slate-500">
-            Управление группами, составом учеников и автоматический расчет свободных мест
+            Управление группами, расписанием и автоматический расчет свободных мест (One Source of Truth)
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           + Создать группу
         </button>
       </div>
 
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs text-xs">
+        <Filter className="h-3.5 w-3.5 text-slate-400" />
+        <span className="text-slate-500 font-medium">Фильтр по курсу:</span>
+        <select
+          value={filterCourse}
+          onChange={(e) => setFilterCourse(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          <option value="all">Все курсы</option>
+          <option value="Английский язык">Английский язык</option>
+          <option value="Робототехника">Робототехника</option>
+          <option value="Математика">Математика</option>
+        </select>
+      </div>
+
       {/* Grid of groups */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
-        {groups.map((group) => {
-          const freeSpots = group.capacity - group.enrolled;
-          const occupancyPercent = Math.round((group.enrolled / group.capacity) * 100);
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {filteredGroups.map((group) => {
+          const enrolledCount = group.students.length;
+          const freeSpots = group.capacity - enrolledCount;
+          const occupancyPercent = Math.min(100, Math.round((enrolledCount / group.capacity) * 100));
 
           return (
             <div
               key={group.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+              onClick={() => router.push(`/groups/${group.id}`)}
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer"
             >
               <div>
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-xs font-semibold uppercase tracking-wider text-blue-600">
-                      {group.course}
+                      {group.courseName}
                     </span>
-                    <h3 className="mt-0.5 text-base font-bold text-slate-900">{group.name}</h3>
+                    <h3 className="mt-0.5 text-base font-bold text-slate-900 hover:text-blue-600 transition-colors">
+                      {group.name}
+                    </h3>
                   </div>
                   <span
                     className={cn(
@@ -109,7 +96,7 @@ export default function GroupsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <span>Преподаватель: <strong className="text-slate-800">{group.teacher}</strong> ({group.room})</span>
+                    <span>Преподаватель: <strong className="text-slate-800">{group.teacherName}</strong> ({group.room})</span>
                   </div>
                 </div>
 
@@ -117,7 +104,7 @@ export default function GroupsPage() {
                 <div className="mt-5 rounded-xl bg-slate-50 p-3 border border-slate-100">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-600 font-medium">
-                      Заполненность: <strong className="text-slate-900">{group.enrolled} из {group.capacity}</strong> учеников
+                      Заполненность: <strong className="text-slate-900">{enrolledCount} из {group.capacity}</strong> учеников
                     </span>
                     <span className={cn(
                       'font-bold text-[11px]',
@@ -140,14 +127,20 @@ export default function GroupsPage() {
 
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Старт: {group.startDate}</span>
-                <button className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700">
-                  Список учеников и журнал <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                <span className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700">
+                  Открыть карточку группы <ArrowRight className="h-3.5 w-3.5" />
+                </span>
               </div>
             </div>
           );
         })}
       </div>
+
+      <CreateGroupModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={handleGroupCreated}
+      />
     </div>
   );
 }

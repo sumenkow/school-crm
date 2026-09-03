@@ -340,3 +340,221 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
   },
 ];
+
+export interface FullGroupData {
+  id: string;
+  name: string;
+  courseId: string;
+  courseName: string;
+  teacherId: string;
+  teacherName: string;
+  schedule: string;
+  room: string;
+  capacity: number;
+  status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  students: Array<{
+    id: string;
+    name: string;
+    status: string;
+    attendanceRate: string;
+    parentPhone: string;
+    joinedAt: string;
+  }>;
+  recentLessons: Array<{
+    id: string;
+    date: string;
+    time: string;
+    topic: string;
+    status: string;
+    presentCount: number;
+  }>;
+}
+
+export interface FullTeacherData {
+  id: string;
+  name: string;
+  role: string;
+  phone: string;
+  telegram?: string;
+  email?: string;
+  bio?: string;
+  status: 'active' | 'archived';
+  weeklyHours: number;
+  lessonsPerWeek: number;
+  activeGroups: Array<{
+    id: string;
+    name: string;
+    courseName: string;
+    schedule: string;
+    studentsCount: number;
+  }>;
+  studentsCount: number;
+}
+
+export const INITIAL_COURSES = [
+  { id: 'c1', name: 'Английский язык', description: 'Кембриджская программа (A1 - C1)', subject: 'Иностранные языки', isActive: true },
+  { id: 'c2', name: 'Робототехника и IT', description: 'Arduino, Python, конструирование', subject: 'Информатика и инженерия', isActive: true },
+  { id: 'c3', name: 'Олимпиадная математика', description: 'Логика, нестандартные задачи', subject: 'Точные науки', isActive: true },
+];
+
+export const INITIAL_TEACHERS: FullTeacherData[] = [
+  {
+    id: 't1',
+    name: 'Мария Иванова',
+    role: 'Ведущий преподаватель английского языка (CELTA)',
+    phone: '+7 (999) 777-11-22',
+    telegram: '@maria_english',
+    email: 'maria.ivanova@school.ru',
+    bio: 'Опыт преподавания более 8 лет. Специализируется на подготовке подростков к международным экзаменам.',
+    status: 'active',
+    weeklyHours: 16,
+    lessonsPerWeek: 8,
+    studentsCount: 28,
+    activeGroups: [
+      { id: '1', name: 'English B1 Teens (Пн/Чт 18:45)', courseName: 'Английский язык', schedule: 'Пн, Чт • 18:45–20:15', studentsCount: 7 },
+      { id: '2', name: 'Kids English A1 (Вт/Пт 15:00)', courseName: 'Английский язык', schedule: 'Вт, Пт • 15:00–16:30', studentsCount: 6 },
+    ],
+  },
+  {
+    id: 't2',
+    name: 'Денис Смирнов',
+    role: 'Преподаватель робототехники и IT',
+    phone: '+7 (999) 777-33-44',
+    telegram: '@denis_robotics',
+    email: 'denis.smirnov@school.ru',
+    bio: 'Инженер-робототехник, призер соревнований Eurobot.',
+    status: 'active',
+    weeklyHours: 8,
+    lessonsPerWeek: 4,
+    studentsCount: 14,
+    activeGroups: [
+      { id: '3', name: 'Robotics Junior (Ср/Сб 15:00)', courseName: 'Робототехника', schedule: 'Ср 15:00, Сб 11:00', studentsCount: 4 },
+    ],
+  },
+  {
+    id: 't3',
+    name: 'Ольга Соколова',
+    role: 'Преподаватель олимпиадной математики',
+    phone: '+7 (999) 777-55-66',
+    telegram: '@olga_math',
+    email: 'olga.sokolova@school.ru',
+    bio: 'Эксперт по подготовке к математическим олимпиадам начальной и средней школы.',
+    status: 'active',
+    weeklyHours: 12,
+    lessonsPerWeek: 6,
+    studentsCount: 18,
+    activeGroups: [
+      { id: '4', name: 'Kids Math Safari (Чт 16:00)', courseName: 'Математика', schedule: 'Четверг • 16:00–17:00', studentsCount: 5 },
+    ],
+  },
+];
+
+export const INITIAL_GROUPS: FullGroupData[] = [
+  {
+    id: '1',
+    name: 'English B1 Teens (Пн/Чт 18:45)',
+    courseId: 'c1',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    schedule: 'Пн, Чт • 18:45–20:15',
+    room: 'Аудитория 204',
+    capacity: 8,
+    status: 'active',
+    startDate: '01.09.2026',
+    notes: 'Основная группа подростков 13-15 лет.',
+    students: [
+      { id: '1', name: 'Иван Смирнов', status: 'active', attendanceRate: '94%', parentPhone: '+7 (999) 123-45-67', joinedAt: '01.09.2026' },
+      { id: '4', name: 'Сергей Попов', status: 'paused', attendanceRate: '82%', parentPhone: '+7 (999) 456-78-90', joinedAt: '01.09.2026' },
+      { id: 's5', name: 'Алина Белова', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 333-11-22', joinedAt: '01.09.2026' },
+      { id: 's6', name: 'Максим Захаров', status: 'active', attendanceRate: '88%', parentPhone: '+7 (999) 444-22-33', joinedAt: '01.09.2026' },
+      { id: 's7', name: 'Полина Григорьева', status: 'active', attendanceRate: '91%', parentPhone: '+7 (999) 555-33-44', joinedAt: '01.09.2026' },
+      { id: 's8', name: 'Егор Романов', status: 'active', attendanceRate: '85%', parentPhone: '+7 (999) 666-44-55', joinedAt: '01.09.2026' },
+      { id: 's9', name: 'София Федорова', status: 'active', attendanceRate: '95%', parentPhone: '+7 (999) 777-55-66', joinedAt: '01.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l1', date: '01.09.2026', time: '18:45 – 20:15', topic: 'Present Perfect vs Past Simple', status: 'completed', presentCount: 6 },
+      { id: 'l2', date: '28.08.2026', time: '18:45 – 20:15', topic: 'Phrasal verbs in context', status: 'completed', presentCount: 7 },
+      { id: 'l3', date: '04.09.2026', time: '18:45 – 20:15', topic: 'Future forms & conditionals', status: 'scheduled', presentCount: 0 },
+    ],
+  },
+  {
+    id: '2',
+    name: 'Kids English A1 (Вт/Пт 15:00)',
+    courseId: 'c1',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    schedule: 'Вт, Пт • 15:00–16:30',
+    room: 'Аудитория 102',
+    capacity: 6,
+    status: 'active',
+    startDate: '01.09.2026',
+    notes: 'Начальная группа для детей 6-8 лет. Группа полностью укомплектована.',
+    students: [
+      { id: '3', name: 'Анна Васильева', status: 'trial', attendanceRate: '0%', parentPhone: '+7 (999) 345-67-89', joinedAt: '01.09.2026' },
+      { id: 's10', name: 'Тимофей Орлов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 111-88-99', joinedAt: '01.09.2026' },
+      { id: 's11', name: 'Василиса Козлова', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 222-99-00', joinedAt: '01.09.2026' },
+      { id: 's12', name: 'Матвей Новиков', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 333-00-11', joinedAt: '01.09.2026' },
+      { id: 's13', name: 'Ксения Лебедева', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 444-11-22', joinedAt: '01.09.2026' },
+      { id: 's14', name: 'Лев Семенов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 555-22-33', joinedAt: '01.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l4', date: '01.09.2026', time: '15:00 – 16:30', topic: 'Colors & Magic Animals', status: 'completed', presentCount: 5 },
+      { id: 'l5', date: '05.09.2026', time: '15:00 – 16:30', topic: 'Numbers 1-20 & Games', status: 'scheduled', presentCount: 0 },
+    ],
+  },
+  {
+    id: '3',
+    name: 'Robotics Junior (Ср/Сб 15:00)',
+    courseId: 'c2',
+    courseName: 'Робототехника',
+    teacherId: 't2',
+    teacherName: 'Денис Смирнов',
+    schedule: 'Ср 15:00, Сб 11:00',
+    room: 'IT Лаборатория',
+    capacity: 8,
+    status: 'recruiting',
+    startDate: '10.09.2026',
+    notes: 'Идет активный набор. Свободно 4 места.',
+    students: [
+      { id: '2', name: 'Мария Кузнецова', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 234-56-78', joinedAt: '01.09.2026' },
+      { id: 's15', name: 'Арсений Павлов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 888-22-11', joinedAt: '01.09.2026' },
+      { id: 's16', name: 'Глеб Воронов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 999-33-22', joinedAt: '01.09.2026' },
+      { id: 's17', name: 'Кирилл Медведев', status: 'trial', attendanceRate: '100%', parentPhone: '+7 (999) 000-44-33', joinedAt: '02.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l6', date: '02.09.2026', time: '15:00 – 16:30', topic: 'Сборка манипулятора на Arduino', status: 'completed', presentCount: 4 },
+      { id: 'l7', date: '05.09.2026', time: '11:00 – 12:30', topic: 'Светодиодные датчики и сервоприводы', status: 'scheduled', presentCount: 0 },
+    ],
+  },
+  {
+    id: '4',
+    name: 'Kids Math Safari (Чт 16:00)',
+    courseId: 'c3',
+    courseName: 'Математика',
+    teacherId: 't3',
+    teacherName: 'Ольга Соколова',
+    schedule: 'Четверг • 16:00–17:00',
+    room: 'Аудитория 101',
+    capacity: 6,
+    status: 'active',
+    startDate: '01.09.2026',
+    notes: 'Олимпиадная математика для 3-4 классов.',
+    students: [
+      { id: '5', name: 'Екатерина Морозова', status: 'active', attendanceRate: '88%', parentPhone: '+7 (999) 567-89-01', joinedAt: '01.09.2026' },
+      { id: 's18', name: 'Артём Кузнецов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 234-56-78', joinedAt: '01.09.2026' },
+      { id: 's19', name: 'Дарья Виноградова', status: 'active', attendanceRate: '90%', parentPhone: '+7 (999) 123-77-88', joinedAt: '01.09.2026' },
+      { id: 's20', name: 'Ярослав Куликов', status: 'active', attendanceRate: '95%', parentPhone: '+7 (999) 234-88-99', joinedAt: '01.09.2026' },
+      { id: 's21', name: 'Вероника Потапова', status: 'active', attendanceRate: '80%', parentPhone: '+7 (999) 345-99-00', joinedAt: '01.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l8', date: '28.08.2026', time: '16:00 – 17:00', topic: 'Логические квадраты и шифры', status: 'completed', presentCount: 5 },
+      { id: 'l9', date: '04.09.2026', time: '16:00 – 17:00', topic: 'Графы и комбинаторика в играх', status: 'scheduled', presentCount: 0 },
+    ],
+  },
+];
+
