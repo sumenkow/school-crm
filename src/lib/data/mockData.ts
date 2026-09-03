@@ -952,5 +952,112 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
 ];
 
+export interface FullTaskData {
+  id: string;
+  title: string;
+  taskType: 'Retention' | 'CRM Сделка' | 'Финансы' | 'Продление' | 'Оргвопрос';
+  studentId?: string;
+  studentName?: string;
+  parentId?: string;
+  parentName?: string;
+  leadId?: string;
+  leadName?: string;
+  assignedTo: string;
+  dueDate: string;
+  dueDateFormatted: string;
+  isOverdue?: boolean;
+  status: 'open' | 'in_progress' | 'done' | 'cancelled';
+  priority: 'high' | 'medium' | 'low';
+  description?: string;
+  sourceInteractionId?: string;
+}
+
+export const INITIAL_TASKS: FullTaskData[] = [
+  {
+    id: 't1',
+    title: 'Позвонить маме Михаила (пропуск 2 занятий подряд)',
+    taskType: 'Retention',
+    studentId: '1',
+    studentName: 'Иван Смирнов',
+    parentId: 'p1',
+    parentName: 'Ольга Смирнова',
+    assignedTo: 'Елена Менеджер',
+    dueDate: '2026-09-03',
+    dueDateFormatted: 'Сегодня, 14:00',
+    status: 'open',
+    priority: 'high',
+    description: 'Ученик не был на уроках в понедельник и среду. Уточнить самочувствие и предложить онлайн-отработку.',
+  },
+  {
+    id: 't2',
+    title: 'Узнать решение после пробного урока и отправить договор (Алиса)',
+    taskType: 'CRM Сделка',
+    leadId: 'lead3',
+    leadName: 'Наталья Ковалева',
+    assignedTo: 'Елена Менеджер',
+    dueDate: '2026-09-03',
+    dueDateFormatted: 'Сегодня, 17:00',
+    status: 'open',
+    priority: 'high',
+    description: 'Пробный урок по английскому прошел успешно. Мама обещала дать ответ сегодня.',
+  },
+  {
+    id: 't3',
+    title: 'Проконтролировать погашение долга 8 400 ₽ за сентябрь',
+    taskType: 'Финансы',
+    studentId: '2',
+    studentName: 'Мария Кузнецова',
+    parentId: 'p3',
+    parentName: 'Дмитрий Кузнецов',
+    assignedTo: 'Елена Менеджер',
+    dueDate: '2026-09-02',
+    dueDateFormatted: 'Вчера (Просрочено)',
+    isOverdue: true,
+    status: 'open',
+    priority: 'high',
+    description: 'Отец обещал перевести оплату по СБП до среды. Напомнить в WhatsApp.',
+  },
+  {
+    id: 't4',
+    title: 'Предложить продление абонемента со скидкой 5% на октябрь',
+    taskType: 'Продление',
+    studentId: '1',
+    studentName: 'Иван Смирнов',
+    parentId: 'p1',
+    parentName: 'Ольга Смирнова',
+    assignedTo: 'Елена Менеджер',
+    dueDate: '2026-09-25',
+    dueDateFormatted: '25 сен 2026',
+    status: 'open',
+    priority: 'medium',
+    description: 'Абонемент заканчивается 30 сентября. Выставить счет заранее.',
+  },
+  {
+    id: 't5',
+    title: 'Подготовить раздаточные материалы для Kids English A1',
+    taskType: 'Оргвопрос',
+    assignedTo: 'Мария Иванова',
+    dueDate: '2026-09-01',
+    dueDateFormatted: '01 сен 2026',
+    status: 'done',
+    priority: 'medium',
+    description: 'Распечатать рабочие тетради и карточки для первоклассников.',
+  },
+  {
+    id: 't6',
+    title: 'Позвонить Артему (напомнить о пробном занятии в пятницу)',
+    taskType: 'CRM Сделка',
+    leadId: 'lead2',
+    leadName: 'Артем Павлов',
+    assignedTo: 'Елена Менеджер',
+    dueDate: '2026-09-04',
+    dueDateFormatted: 'Завтра, 16:00',
+    status: 'open',
+    priority: 'medium',
+    description: 'Отправить ссылку на онлайн-конференцию за 2 часа до начала.',
+  },
+];
+
+
 
 
