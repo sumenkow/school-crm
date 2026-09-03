@@ -1058,6 +1058,196 @@ export const INITIAL_TASKS: FullTaskData[] = [
   },
 ];
 
+export interface FullPaymentData {
+  id: string;
+  studentId: string;
+  studentName: string;
+  parentId?: string;
+  parentName?: string;
+  courseName: string;
+  groupName: string;
+  amount: number;
+  amountFormatted: string;
+  paymentDate: string;
+  periodLabel: string;
+  status: 'paid' | 'expected' | 'overdue' | 'refund';
+  paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'invoice';
+  recordedBy: string;
+  comment?: string;
+}
+
+export interface FullSubscriptionData {
+  id: string;
+  studentId: string;
+  studentName: string;
+  courseName: string;
+  groupName: string;
+  startDate: string;
+  endDate: string;
+  renewalDate: string;
+  price: number;
+  priceFormatted: string;
+  status: 'active' | 'frozen' | 'expired' | 'cancelled';
+  lessonsTotal: number;
+  lessonsAttended: number;
+  notes?: string;
+}
+
+export const INITIAL_PAYMENTS: FullPaymentData[] = [
+  {
+    id: 'pay1',
+    studentId: '1',
+    studentName: 'Иван Смирнов',
+    parentId: 'p1',
+    parentName: 'Ольга Смирнова',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    amount: 7600,
+    amountFormatted: '7 600 ₽',
+    paymentDate: '01.09.2026',
+    periodLabel: 'Сентябрь 2026',
+    status: 'paid',
+    paymentMethod: 'card',
+    recordedBy: 'Елена Менеджер',
+    comment: 'Оплата по эквайрингу (чек отправлен в Telegram)',
+  },
+  {
+    id: 'pay2',
+    studentId: '2',
+    studentName: 'Мария Кузнецова',
+    parentId: 'p3',
+    parentName: 'Дмитрий Кузнецов',
+    courseName: 'Робототехника',
+    groupName: 'Robotics Junior',
+    amount: 8400,
+    amountFormatted: '8 400 ₽',
+    paymentDate: '25.08.2026',
+    periodLabel: 'Сентябрь 2026',
+    status: 'overdue',
+    paymentMethod: 'bank_transfer',
+    recordedBy: 'Елена Менеджер',
+    comment: 'Отец обещал перевести по СБП до конца недели. Долг 8 400 ₽',
+  },
+  {
+    id: 'pay3',
+    studentId: '5',
+    studentName: 'Екатерина Морозова',
+    parentId: 'p4',
+    parentName: 'Игорь Морозов',
+    courseName: 'Математика',
+    groupName: 'Kids Math Safari',
+    amount: 6800,
+    amountFormatted: '6 800 ₽',
+    paymentDate: '02.09.2026',
+    periodLabel: 'Сентябрь 2026',
+    status: 'paid',
+    paymentMethod: 'invoice',
+    recordedBy: 'Александр Руководитель',
+    comment: 'Безналичный расчет по счету ООО',
+  },
+  {
+    id: 'pay4',
+    studentId: '3',
+    studentName: 'Анна Васильева',
+    parentId: 'p4',
+    parentName: 'Елена Васильева',
+    courseName: 'Английский язык',
+    groupName: 'Kids English A1',
+    amount: 7200,
+    amountFormatted: '7 200 ₽',
+    paymentDate: '05.09.2026',
+    periodLabel: 'Сентябрь 2026',
+    status: 'expected',
+    paymentMethod: 'card',
+    recordedBy: 'Елена Менеджер',
+    comment: 'Выставлена ссылка на оплату после пробного урока',
+  },
+  {
+    id: 'pay5',
+    studentId: '4',
+    studentName: 'Сергей Попов',
+    parentId: 'p1',
+    parentName: 'Татьяна Попова',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    amount: 7600,
+    amountFormatted: '7 600 ₽',
+    paymentDate: '15.08.2026',
+    periodLabel: 'Август 2026',
+    status: 'paid',
+    paymentMethod: 'card',
+    recordedBy: 'Елена Менеджер',
+  },
+];
+
+export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
+  {
+    id: 'sub1',
+    studentId: '1',
+    studentName: 'Иван Смирнов',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    startDate: '01.09.2026',
+    endDate: '30.09.2026',
+    renewalDate: '28.09.2026',
+    price: 7600,
+    priceFormatted: '7 600 ₽',
+    status: 'active',
+    lessonsTotal: 8,
+    lessonsAttended: 2,
+    notes: 'Стандартный месячный абонемент на 8 занятий',
+  },
+  {
+    id: 'sub2',
+    studentId: '2',
+    studentName: 'Мария Кузнецова',
+    courseName: 'Робототехника',
+    groupName: 'Robotics Junior',
+    startDate: '01.09.2026',
+    endDate: '30.09.2026',
+    renewalDate: '25.08.2026',
+    price: 8400,
+    priceFormatted: '8 400 ₽',
+    status: 'expired',
+    lessonsTotal: 8,
+    lessonsAttended: 1,
+    notes: 'Оплата просрочена, требуется продление',
+  },
+  {
+    id: 'sub3',
+    studentId: '4',
+    studentName: 'Сергей Попов',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    startDate: '15.08.2026',
+    endDate: '15.09.2026',
+    renewalDate: '10.09.2026',
+    price: 7600,
+    priceFormatted: '7 600 ₽',
+    status: 'frozen',
+    lessonsTotal: 8,
+    lessonsAttended: 5,
+    notes: 'Заморожен на 1 неделю по заявлению родителей',
+  },
+  {
+    id: 'sub4',
+    studentId: '5',
+    studentName: 'Екатерина Морозова',
+    courseName: 'Математика',
+    groupName: 'Kids Math Safari',
+    startDate: '01.09.2026',
+    endDate: '30.09.2026',
+    renewalDate: '05.10.2026',
+    price: 6800,
+    priceFormatted: '6 800 ₽',
+    status: 'active',
+    lessonsTotal: 4,
+    lessonsAttended: 1,
+    notes: 'Абонемент на 1 занятие в неделю (4 занятия в месяц)',
+  },
+];
+
+
 
 
 
