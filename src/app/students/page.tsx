@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 
 export default function StudentsPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const students = [
+  const [students, setStudents] = useState([
     {
       id: '1',
       name: 'Иван Смирнов',
@@ -44,7 +49,7 @@ export default function StudentsPage() {
       group: 'Kids English A1',
       course: 'Английский язык',
       teacher: 'Мария Иванова',
-      attendanceRate: '—',
+      attendanceRate: '0%',
       paymentStatus: 'expected',
       subscriptionEnd: '—',
     },
@@ -74,7 +79,11 @@ export default function StudentsPage() {
       paymentStatus: 'paid',
       subscriptionEnd: '05.10.2026',
     },
-  ];
+  ]);
+
+  const handleStudentCreated = (newStudent: any) => {
+    setStudents((prev) => [newStudent, ...prev]);
+  };
 
   const filteredStudents = students.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -91,11 +100,14 @@ export default function StudentsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Ученики</h1>
           <p className="text-sm text-slate-500">
-            Единая база учеников школы • Всего: 124 ученика (114 активных)
+            Единая база учеников школы • Всего: {students.length} (активных: {students.filter(s => s.status === 'active').length})
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors">
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+          >
             <Plus className="h-4 w-4" />
             + Новый ученик
           </button>
@@ -129,7 +141,6 @@ export default function StudentsPage() {
             <option value="active">Активные</option>
             <option value="trial">Пробные</option>
             <option value="paused">На паузе</option>
-            <option value="churned">Ушедшие</option>
           </select>
         </div>
       </div>
@@ -147,18 +158,24 @@ export default function StudentsPage() {
                 <th className="px-3 py-3.5">Преподаватель</th>
                 <th className="px-3 py-3.5 text-center">Посещаемость</th>
                 <th className="px-3 py-3.5">Оплата / Абонемент</th>
-                <th className="py-3.5 pl-3 pr-4 text-right">Действия</th>
+                <th className="py-3.5 pl-3 pr-4 text-right">Карточка</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredStudents.map((student) => (
-                <tr key={student.id} className="hover:bg-slate-50/70 transition-colors">
+                <tr
+                  key={student.id}
+                  onClick={() => router.push(`/students/${student.id}`)}
+                  className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                >
                   <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700 text-xs">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700 text-xs">
                         {student.name[0]}
                       </div>
-                      <span>{student.name}</span>
+                      <span className="hover:text-blue-600 font-bold text-slate-900 transition-colors">
+                        {student.name}
+                      </span>
                     </div>
                   </td>
                   <td className="px-3 py-3">
@@ -210,9 +227,9 @@ export default function StudentsPage() {
                     )}
                   </td>
                   <td className="py-3 pl-3 pr-4 text-right">
-                    <button className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
+                    <span className="inline-flex items-center text-xs font-semibold text-blue-600 group-hover:underline">
+                      Открыть <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -220,6 +237,13 @@ export default function StudentsPage() {
           </table>
         </div>
       </div>
+
+      {/* Create Student Modal */}
+      <CreateStudentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreated={handleStudentCreated}
+      />
     </div>
   );
 }

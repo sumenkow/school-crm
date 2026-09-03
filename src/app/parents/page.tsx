@@ -1,49 +1,56 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Plus, Phone, MessageSquare, Mail, Users, MoreHorizontal } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Plus, Phone, MessageSquare, Mail, Users, MoreHorizontal, ChevronRight } from 'lucide-react';
 
 export default function ParentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const parents = [
     {
-      id: '1',
+      id: 'p1',
       name: 'Ольга Смирнова',
       phone: '+7 (999) 123-45-67',
       telegram: '@olga_smirnova',
       whatsapp: '+79991234567',
       preferredChannel: 'Telegram',
-      children: [{ name: 'Иван Смирнов', group: 'English B1 Teens' }],
+      children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens' }],
       totalPaid: '38 400 ₽',
       balanceStatus: 'paid',
     },
     {
-      id: '2',
+      id: 'p3',
       name: 'Дмитрий Кузнецов',
       phone: '+7 (999) 234-56-78',
       telegram: '@dkuznetsov',
       whatsapp: '+79992345678',
       preferredChannel: 'WhatsApp',
       children: [
-        { name: 'Мария Кузнецова', group: 'Robotics Junior' },
-        { name: 'Артём Кузнецов', group: 'Kids Math Safari' }
+        { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior' },
+        { id: '5', name: 'Артём Кузнецов', group: 'Kids Math Safari' }
       ],
       totalPaid: '54 000 ₽',
       balanceStatus: 'debt',
     },
     {
-      id: '3',
+      id: 'p4',
       name: 'Елена Васильева',
       phone: '+7 (999) 345-67-89',
       telegram: '@elena_v',
       whatsapp: '+79993456789',
       preferredChannel: 'Phone',
-      children: [{ name: 'Анна Васильева', group: 'Kids English A1' }],
+      children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1' }],
       totalPaid: '0 ₽',
       balanceStatus: 'trial',
     },
   ];
+
+  const filteredParents = parents.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.phone.includes(searchTerm) ||
+    p.children.some((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="space-y-6">
@@ -74,7 +81,7 @@ export default function ParentsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {parents.map((p) => (
+        {filteredParents.map((p) => (
           <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
             <div>
               <div className="flex items-start justify-between">
@@ -94,10 +101,12 @@ export default function ParentsPage() {
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
                   <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium">{p.phone}</a>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="font-medium text-slate-700">{p.telegram}</span>
-                </div>
+                {p.telegram && (
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                    <span className="font-medium text-slate-700">{p.telegram}</span>
+                  </div>
+                )}
               </div>
 
               {/* Children */}
@@ -106,11 +115,15 @@ export default function ParentsPage() {
                   Дети ({p.children.length}):
                 </p>
                 <div className="space-y-1.5">
-                  {p.children.map((child, idx) => (
-                    <div key={idx} className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs">
+                  {p.children.map((child) => (
+                    <Link
+                      key={child.id}
+                      href={`/students/${child.id}`}
+                      className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                    >
                       <span className="font-semibold text-slate-800">{child.name}</span>
-                      <span className="text-[11px] text-slate-500">{child.group}</span>
-                    </div>
+                      <span className="text-[11px] text-slate-500">{child.group} →</span>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -118,9 +131,12 @@ export default function ParentsPage() {
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <span className="text-slate-500">Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong></span>
-              <button className="text-blue-600 font-semibold hover:underline">
-                Карточка семьи →
-              </button>
+              <Link
+                href={`/parents/${p.id}`}
+                className="inline-flex items-center gap-0.5 text-blue-600 font-bold hover:underline"
+              >
+                Карточка семьи <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
         ))}
