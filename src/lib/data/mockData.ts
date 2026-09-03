@@ -756,4 +756,201 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   },
 ];
 
+export interface FullLeadData {
+  id: string;
+  name: string;
+  contact: string;
+  telegram?: string;
+  studentName?: string;
+  studentAge?: string;
+  directionOrCourse: string;
+  level?: string;
+  source: string;
+  assignedTo: string;
+  status: 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost' | 'no_response';
+  trialDate?: string;
+  offerAmount?: string;
+  lossReason?: string;
+  nextAction?: string;
+  nextActionDate?: string;
+  comment?: string;
+  createdAt: string;
+  convertedStudentId?: string;
+  convertedParentId?: string;
+  interactions: TimelineInteraction[];
+}
+
+export const INITIAL_LEADS: FullLeadData[] = [
+  {
+    id: 'lead1',
+    name: 'Светлана Морозова',
+    contact: '+7 (999) 444-11-22',
+    telegram: '@sveta_morozova',
+    studentName: 'Михаил',
+    studentAge: '9 лет (3 класс)',
+    directionOrCourse: 'Робототехника',
+    level: 'Начинающий (с нуля)',
+    source: 'Instagram',
+    assignedTo: 'Елена Менеджер',
+    status: 'new',
+    nextAction: 'Позвонить для подбора времени пробного урока',
+    nextActionDate: 'Сегодня, 12:00',
+    comment: 'Интересуется занятиями по субботам в первой половине дня.',
+    createdAt: '2026-09-03T08:30:00Z',
+    interactions: [
+      {
+        id: 'int_l1',
+        occurredAt: 'Сегодня, 08:30',
+        channel: 'telegram',
+        type: 'initial_contact',
+        author: 'Сайт школы (бот)',
+        content: 'Оставлена заявка на курс робототехники через форму на сайте.',
+      },
+    ],
+  },
+  {
+    id: 'lead2',
+    name: 'Артем Павлов',
+    contact: '+7 (999) 555-22-33',
+    telegram: '@artem_pavlov',
+    studentName: 'Сам (Артем)',
+    studentAge: '16 лет (10 класс)',
+    directionOrCourse: 'Английский язык',
+    level: 'B1 Intermediate',
+    source: 'Сайт школы',
+    assignedTo: 'Елена Менеджер',
+    status: 'trial_scheduled',
+    trialDate: '04.09.2026 18:45',
+    offerAmount: '7 600 ₽ / мес',
+    nextAction: 'Отправить ссылку на онлайн-урок за 2 часа',
+    nextActionDate: '04.09.2026',
+    comment: 'Хочет сдать ЕГЭ на 85+ баллов.',
+    createdAt: '2026-09-01T14:00:00Z',
+    interactions: [
+      {
+        id: 'int_l2',
+        occurredAt: '01.09.2026, 14:30',
+        channel: 'phone',
+        type: 'initial_contact',
+        author: 'Елена Менеджер',
+        content: 'Созвонились с Артемом, определили цели обучения. Назначили пробный урок в группу B1 Teens.',
+        result: 'Пробное назначено на 04.09',
+        nextAction: 'Напомнить в день урока',
+      },
+    ],
+  },
+  {
+    id: 'lead3',
+    name: 'Наталья Ковалева',
+    contact: '+7 (999) 666-33-44',
+    telegram: '@natalia_k',
+    studentName: 'Алиса',
+    studentAge: '7 лет (1 класс)',
+    directionOrCourse: 'Английский язык',
+    level: 'A1 Starter',
+    source: 'Рекомендация друзей',
+    assignedTo: 'Елена Менеджер',
+    status: 'trial_held',
+    trialDate: '02.09.2026 15:00',
+    offerAmount: '7 200 ₽ / мес',
+    nextAction: 'Узнать решение мамы и выставить счет',
+    nextActionDate: 'Сегодня, 17:00',
+    comment: 'Урок прошел отлично, Алисе очень понравилась преподаватель Мария.',
+    createdAt: '2026-08-31T11:00:00Z',
+    interactions: [
+      {
+        id: 'int_l3_1',
+        occurredAt: '02.09.2026, 16:30',
+        channel: 'phone',
+        type: 'trial',
+        author: 'Мария Иванова (Преподаватель)',
+        content: 'Алиса активно участвовала в играх, схватывает быстро. Рекомендую в группу Kids A1.',
+        result: 'Успешный пробный урок',
+      },
+    ],
+  },
+  {
+    id: 'lead4',
+    name: 'Игорь Васильев',
+    contact: '+7 (999) 888-77-66',
+    studentName: 'Максим',
+    studentAge: '10 лет',
+    directionOrCourse: 'Олимпиадная математика',
+    level: 'Базовый',
+    source: 'Листовка у школы',
+    assignedTo: 'Елена Менеджер',
+    status: 'thinking',
+    offerAmount: '6 800 ₽ / мес',
+    nextAction: 'Позвонить, предложить скидку 10% на первый месяц',
+    nextActionDate: '04.09.2026',
+    comment: 'Сравнивают с онлайн-репетитором.',
+    createdAt: '2026-08-28T16:00:00Z',
+    interactions: [
+      {
+        id: 'int_l4',
+        occurredAt: '30.08.2026, 12:00',
+        channel: 'whatsapp',
+        type: 'follow_up',
+        author: 'Елена Менеджер',
+        content: 'Отправили презентацию курса и результаты наших учеников на олимпиадах.',
+        result: 'Отец ответил: "Думаем до пятницы"',
+      },
+    ],
+  },
+  {
+    id: 'lead5',
+    name: 'Виктория Соколова',
+    contact: '+7 (999) 777-88-99',
+    studentName: 'Даниил',
+    studentAge: '11 лет',
+    directionOrCourse: 'Математика',
+    source: 'Листовка',
+    assignedTo: 'Елена Менеджер',
+    status: 'paid',
+    offerAmount: '8 400 ₽',
+    nextAction: 'Зачислен в группу Math-2',
+    comment: 'Оплатили абонемент на сентябрь.',
+    createdAt: '2026-08-25T10:00:00Z',
+    convertedStudentId: '5',
+    convertedParentId: 'p4',
+    interactions: [
+      {
+        id: 'int_l5',
+        occurredAt: '27.08.2026, 15:00',
+        channel: 'telegram',
+        type: 'payment',
+        author: 'Елена Менеджер',
+        content: 'Оплата абонемента подтверждена. Создана карточка ученика и родителя.',
+        result: 'Успешная конверсия',
+      },
+    ],
+  },
+  {
+    id: 'lead6',
+    name: 'Константин Белов',
+    contact: '+7 (999) 111-00-22',
+    studentName: 'Яна',
+    studentAge: '8 лет',
+    directionOrCourse: 'Английский язык',
+    source: 'Яндекс.Карты',
+    assignedTo: 'Елена Менеджер',
+    status: 'lost',
+    lossReason: 'Не подошло вечернее время занятий (ищут утренние группы)',
+    comment: 'Отправили в архив, позвонить при открытии утренней группы.',
+    createdAt: '2026-08-20T12:00:00Z',
+    interactions: [
+      {
+        id: 'int_l6',
+        occurredAt: '21.08.2026, 14:00',
+        channel: 'phone',
+        type: 'follow_up',
+        author: 'Елена Менеджер',
+        content: 'Родители могут только до 12:00. У нас все группы после 15:00.',
+        result: 'Отказ по времени',
+      },
+    ],
+  },
+];
+
+
 
