@@ -101,7 +101,7 @@ export function CreateTaskModal({ isOpen, onClose, onCreated }: CreateTaskModalP
               <label className="text-xs font-medium text-slate-700">Тип задачи</label>
               <select
                 value={taskType}
-                onChange={(e) => setTaskType(e.target.value as any)}
+                onChange={(e) => setTaskType(e.target.value as FullTaskData['taskType'])}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
               >
                 <option value="CRM Сделка">CRM Сделка</option>
@@ -115,7 +115,7 @@ export function CreateTaskModal({ isOpen, onClose, onCreated }: CreateTaskModalP
               <label className="text-xs font-medium text-slate-700">Приоритет</label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as FullTaskData['priority'])}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
               >
                 <option value="high">Высокий (Срочно)</option>

@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
-import { INITIAL_COURSES, INITIAL_TEACHERS } from '@/lib/data/mockData';
+import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData } from '@/lib/data/mockData';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (newGroup: any) => void;
+  onCreated: (newGroup: FullGroupData) => void;
 }
 
 export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModalProps) {
@@ -41,7 +41,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       schedule,
       room,
       capacity: Number(capacity),
-      status: 'recruiting',
+      status: 'recruiting' as const,
       startDate,
       students: [],
       recentLessons: [],

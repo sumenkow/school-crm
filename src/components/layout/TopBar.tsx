@@ -1,112 +1,179 @@
 'use client';
 
-import React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { Menu, Search, Bell } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
-import { UserRole } from '@/types';
-import { Search, Menu, Bell, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import type { UserRole } from '@/types';
 
 interface TopBarProps {
-  onOpenMobile?: () => void;
+  onOpenMobile: () => void;
 }
 
+const roleConfig: Record<UserRole, { label: string; color: string }> = {
+  owner: { label: 'Владелец', color: 'var(--md-tertiary-container, #EEDCFF)' },
+  admin: { label: 'Админ', color: 'var(--md-secondary-container)' },
+  teacher: { label: 'Учитель', color: 'var(--md-primary-container)' },
+};
+
 export function TopBar({ onOpenMobile }: TopBarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const { role, setRole, userName } = useRole();
+  const [scrolled, setScrolled] = useState(false);
 
-  const roles: { key: UserRole; label: string; badge: string }[] = [
-    { key: 'owner', label: 'Owner', badge: 'Руководитель' },
-    { key: 'admin', label: 'Admin', badge: 'Администратор' },
-    { key: 'teacher', label: 'Teacher', badge: 'Преподаватель' },
-  ];
-
-  const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole);
-    if (newRole === 'teacher') {
-      router.push('/teacher');
-    } else {
-      if (pathname === '/teacher' || pathname === '/teacher/attendance') {
-        router.push('/dashboard');
-      }
-    }
-  };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/90 px-3 md:px-6 backdrop-blur-md">
-      <div className="flex items-center gap-2 md:gap-3">
-        {/* Mobile menu trigger */}
-        <button
-          type="button"
-          onClick={onOpenMobile}
-          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200 md:hidden touch-manipulation"
-          aria-label="Open navigation"
-        >
-          <Menu className="h-6 w-6" />
-        </button>
+    <header
+      className="sticky top-0 z-20 flex items-center"
+      style={{
+        height: '64px',
+        backgroundColor: 'var(--md-surface-container)',
+        boxShadow: scrolled ? 'var(--md-elevation-2)' : 'none',
+        transition: 'box-shadow 0.2s',
+        padding: '0 16px',
+        gap: '8px',
+      }}
+    >
+      {/* Mobile menu button */}
+      <button
+        onClick={onOpenMobile}
+        className="md:hidden flex items-center justify-center"
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--md-on-surface)',
+          cursor: 'pointer',
+        }}
+        aria-label="Открыть меню"
+      >
+        <Menu size={24} />
+      </button>
 
-        {/* Global Search Box (Cmd+K trigger) */}
-        <div className="relative hidden sm:block">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-slate-400" />
-          </div>
-          <input
-            type="text"
-            readOnly
-            placeholder="Поиск ученика, родителя, группы... (⌘K)"
-            className="h-9 w-52 md:w-80 rounded-lg border border-slate-200 bg-slate-50/70 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 transition-colors focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-            onClick={() => alert('Глобальный поиск Cmd+K будет подключен в следующих этапах.')}
-          />
-        </div>
+      {/* Search bar */}
+      <div
+        className="flex items-center gap-2 flex-1"
+        style={{
+          maxWidth: '360px',
+          height: '40px',
+          backgroundColor: 'var(--md-surface-container-highest)',
+          borderRadius: '9999px',
+          padding: '0 16px',
+          cursor: 'pointer',
+        }}
+        onClick={() => alert('Глобальный поиск Cmd+K будет подключен в следующих этапах.')}
+      >
+        <Search size={18} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
+        <span className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
+          Поиск...
+        </span>
       </div>
 
-      {/* Right actions: Role Switcher & User Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-4">
-        {/* Role Switcher Pills */}
-        <div className="flex items-center rounded-lg bg-slate-100 p-1 text-xs">
-          <span className="hidden lg:flex items-center gap-1 px-2 font-medium text-slate-500">
-            <Shield className="h-3 w-3" />
-            Роль:
-          </span>
-          {roles.map((r) => (
-            <button
-              key={r.key}
-              type="button"
-              onClick={() => handleRoleChange(r.key)}
-              className={cn(
-                'rounded-md px-2 sm:px-2.5 py-1 text-xs font-semibold transition-all touch-manipulation',
-                role === r.key
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 active:bg-slate-200'
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+      {/* Spacer */}
+      <div className="flex-1" />
 
-        {/* Notification bell */}
-        <button
-          type="button"
-          className="relative rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
-        </button>
-
-        {/* User Avatar */}
-        <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-slate-200">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 shrink-0">
-            {userName[0]}
-          </div>
-          <div className="hidden text-left md:block">
-            <p className="text-xs font-medium text-slate-800 leading-none">{userName}</p>
-            <p className="mt-1 text-[10px] text-slate-400 capitalize">{role}</p>
-          </div>
-        </div>
+      {/* MD3 Segmented Button — Role Switcher */}
+      <div
+        className="hidden sm:flex items-center"
+        style={{
+          border: '1px solid var(--md-outline)',
+          borderRadius: '9999px',
+          overflow: 'hidden',
+          height: '40px',
+        }}
+        role="group"
+        aria-label="Переключение роли"
+      >
+        {(['owner', 'admin', 'teacher'] as UserRole[]).map((r, idx) => (
+          <button
+            key={r}
+            onClick={() => setRole(r)}
+            style={{
+              padding: '0 16px',
+              height: '100%',
+              border: 'none',
+              borderLeft: idx > 0 ? '1px solid var(--md-outline)' : 'none',
+              backgroundColor: role === r ? 'var(--md-secondary-container)' : 'transparent',
+              color: role === r ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
+              fontWeight: role === r ? 700 : 400,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'background-color 0.15s, color 0.15s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {role === r && (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+            {roleConfig[r].label}
+          </button>
+        ))}
       </div>
+
+      {/* Notification bell */}
+      <button
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--md-on-surface-variant)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+        }}
+        aria-label="Уведомления"
+      >
+        <Bell size={22} />
+        {/* Notification badge */}
+        <span
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--md-error)',
+          }}
+        />
+      </button>
+
+      {/* User avatar */}
+      <button
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          border: 'none',
+          backgroundColor: 'var(--md-primary)',
+          color: 'var(--md-on-primary)',
+          fontWeight: 700,
+          fontSize: '16px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+        title={userName}
+        aria-label={`Пользователь: ${userName}`}
+      >
+        {userName.charAt(0)}
+      </button>
     </header>
   );
 }

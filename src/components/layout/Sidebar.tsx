@@ -4,226 +4,308 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRole } from '@/context/RoleContext';
-import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Calendar,
   Users,
-  UserCheck,
   GraduationCap,
-  Briefcase,
-  Contact2,
+  BookOpen,
+  UserCheck,
   CheckSquare,
   CreditCard,
   BarChart3,
-  Settings,
-  BookOpen,
-  Sparkles,
   FileSpreadsheet,
-  X
+  Settings,
+  MonitorPlay,
+  ClipboardList,
+  X,
+  School
 } from 'lucide-react';
 
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+}
+
+interface NavSection {
+  section?: string;
+  items: NavItem[];
+}
+
+const ownerNav: NavSection[] = [
+  {
+    items: [
+      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
+    ],
+  },
+  {
+    section: 'Ученики',
+    items: [
+      { label: 'Ученики', href: '/students', icon: <Users size={20} /> },
+      { label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
+      { label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
+    ],
+  },
+  {
+    section: 'Сотрудники',
+    items: [
+      { label: 'Преподаватели', href: '/teachers', icon: <UserCheck size={20} /> },
+    ],
+  },
+  {
+    section: 'Продажи',
+    items: [
+      { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
+      { label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
+    ],
+  },
+  {
+    section: 'Финансы и аналитика',
+    items: [
+      { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+      { label: 'Аналитика', href: '/analytics', icon: <BarChart3 size={20} /> },
+    ],
+  },
+  {
+    section: 'Администрирование',
+    items: [
+      { label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
+      { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
+    ],
+  },
+];
+
+const adminNav: NavSection[] = [
+  {
+    items: [
+      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
+    ],
+  },
+  {
+    section: 'Ученики',
+    items: [
+      { label: 'Ученики', href: '/students', icon: <Users size={20} /> },
+      { label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
+      { label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
+    ],
+  },
+  {
+    section: 'Сотрудники',
+    items: [
+      { label: 'Преподаватели', href: '/teachers', icon: <UserCheck size={20} /> },
+    ],
+  },
+  {
+    section: 'Продажи',
+    items: [
+      { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
+      { label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
+    ],
+  },
+  {
+    section: 'Финансы',
+    items: [
+      { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+    ],
+  },
+];
+
+const teacherNav: NavSection[] = [
+  {
+    items: [
+      { label: 'Мои занятия', href: '/teacher', icon: <MonitorPlay size={20} /> },
+      { label: 'Мои группы', href: '/groups', icon: <BookOpen size={20} /> },
+      { label: 'Журнал посещаемости', href: '/teacher/attendance', icon: <ClipboardList size={20} /> },
+    ],
+  },
+];
+
 interface SidebarProps {
-  mobileOpen?: boolean;
-  onCloseMobile?: () => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
 
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
-  const { role } = useRole();
+  const { role, userName } = useRole();
 
-  const allNavItems = [
-    {
-      title: 'Dashboard',
-      href: '/dashboard',
-      icon: LayoutDashboard,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Календарь',
-      href: '/calendar',
-      icon: Calendar,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Ученики',
-      href: '/students',
-      icon: Users,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Родители',
-      href: '/parents',
-      icon: Contact2,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Группы',
-      href: '/groups',
-      icon: GraduationCap,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Преподаватели',
-      href: '/teachers',
-      icon: Briefcase,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'CRM (Лиды)',
-      href: '/crm',
-      icon: UserCheck,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Задачи',
-      href: '/tasks',
-      icon: CheckSquare,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Оплаты',
-      href: '/finance',
-      icon: CreditCard,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Аналитика',
-      href: '/analytics',
-      icon: BarChart3,
-      roles: ['owner'],
-    },
-    {
-      title: 'Импорт Excel',
-      href: '/settings/import',
-      icon: FileSpreadsheet,
-      roles: ['owner', 'admin'],
-    },
-    {
-      title: 'Настройки',
-      href: '/settings',
-      icon: Settings,
-      roles: ['owner'],
-    },
-  ];
+  const navSections =
+    role === 'owner' ? ownerNav :
+    role === 'admin' ? adminNav :
+    teacherNav;
 
-  // Teacher navigation items (minimal, focused)
-  const teacherNavItems = [
-    {
-      title: 'Мои занятия',
-      href: '/teacher',
-      icon: Calendar,
-      roles: ['teacher'],
-    },
-    {
-      title: 'Мои группы',
-      href: '/groups',
-      icon: GraduationCap,
-      roles: ['teacher'],
-    },
-    {
-      title: 'Журнал посещаемости',
-      href: '/teacher/attendance',
-      icon: CheckSquare,
-      roles: ['teacher'],
-    },
-  ];
+  const roleLabel =
+    role === 'owner' ? 'Владелец' :
+    role === 'admin' ? 'Администратор' :
+    'Преподаватель';
 
-  const visibleItems = role === 'teacher' ? teacherNavItems : allNavItems.filter((item) => item.roles.includes(role));
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
+    return pathname.startsWith(href);
+  };
 
-  const roleLabel = {
-    owner: 'Руководитель',
-    admin: 'Администратор',
-    teacher: 'Преподаватель',
-  }[role];
+  const drawerContent = (
+    <div
+      className="flex flex-col h-full overflow-y-auto"
+      style={{
+        width: '256px',
+        backgroundColor: 'var(--md-surface-container-low)',
+        paddingTop: '8px',
+        paddingBottom: '16px',
+      }}
+    >
+      {/* Drawer Header */}
+      <div style={{ padding: '16px 16px 8px' }}>
+        <div className="flex items-center gap-3" style={{ marginBottom: '16px' }}>
+          <div
+            className="flex items-center justify-center flex-shrink-0"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--md-primary-container)',
+              color: 'var(--md-on-primary-container)',
+            }}
+          >
+            <School size={20} />
+          </div>
+          <div>
+            <p className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>School App</p>
+            <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Управление школой</p>
+          </div>
+          {/* Mobile close button */}
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden ml-auto flex items-center justify-center"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              color: 'var(--md-on-surface-variant)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-  const roleColor = {
-    owner: 'bg-purple-50 text-purple-700 border-purple-200',
-    admin: 'bg-blue-50 text-blue-700 border-blue-200',
-    teacher: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  }[role];
+        {/* User identity */}
+        <div
+          className="flex items-center gap-3"
+          style={{
+            padding: '12px',
+            borderRadius: '12px',
+            backgroundColor: 'var(--md-surface-container)',
+            marginBottom: '8px',
+          }}
+        >
+          <div
+            className="flex items-center justify-center flex-shrink-0 md-label-large"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--md-primary)',
+              color: 'var(--md-on-primary)',
+              fontWeight: 700,
+            }}
+          >
+            {userName.charAt(0)}
+          </div>
+          <div className="min-w-0">
+            <p className="md-label-large truncate" style={{ color: 'var(--md-on-surface)' }}>{userName.split(' ')[0]}</p>
+            <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>{roleLabel}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Sections */}
+      <nav style={{ flex: 1, padding: '0 12px' }}>
+        {navSections.map((section, sIdx) => (
+          <div key={sIdx}>
+            {/* Divider between sections */}
+            {sIdx > 0 && (
+              <div
+                style={{
+                  height: '1px',
+                  backgroundColor: 'var(--md-outline-variant)',
+                  margin: '8px 4px',
+                }}
+              />
+            )}
+
+            {/* Section label */}
+            {section.section && (
+              <p
+                className="md-label-medium"
+                style={{
+                  color: 'var(--md-on-surface-variant)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  padding: '12px 16px 4px',
+                }}
+              >
+                {section.section}
+              </p>
+            )}
+
+            {/* Nav items */}
+            {section.items.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onCloseMobile}
+                  className="flex items-center gap-3 relative"
+                  style={{
+                    height: '56px',
+                    padding: '0 16px',
+                    borderRadius: '9999px',
+                    marginBottom: '2px',
+                    backgroundColor: active ? 'var(--md-secondary-container)' : 'transparent',
+                    color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
+                    fontWeight: active ? 700 : 400,
+                    fontSize: '14px',
+                    textDecoration: 'none',
+                    transition: 'background-color 0.15s',
+                  }}
+                >
+                  <span style={{ flexShrink: 0, opacity: active ? 1 : 0.7 }}>
+                    {item.icon}
+                  </span>
+                  <span className="md-label-large truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+    </div>
+  );
 
   return (
     <>
-      {/* Mobile backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
-          onClick={onCloseMobile}
-        />
-      )}
+      {/* Desktop: permanent drawer */}
+      <div className="hidden md:block flex-shrink-0" style={{ width: '256px' }}>
+        {drawerContent}
+      </div>
 
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:static md:translate-x-0',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        )}
+      {/* Mobile: sliding modal drawer */}
+      <div
+        className="md:hidden fixed inset-y-0 left-0 z-40 transition-transform duration-300"
+        style={{
+          transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          boxShadow: mobileOpen ? 'var(--md-elevation-3)' : 'none',
+        }}
       >
-        {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
-          <Link href={role === 'teacher' ? '/teacher' : '/dashboard'} className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-sm">
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="font-semibold tracking-tight text-slate-900">School App</span>
-              <span className="ml-1 text-[10px] font-medium text-blue-600 uppercase tracking-wider">CRM</span>
-            </div>
-          </Link>
-          {onCloseMobile && (
-            <button
-              onClick={onCloseMobile}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 md:hidden"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-
-        {/* Current Role Badge */}
-        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">Текущий режим:</span>
-            <span className={cn('rounded-full px-2.5 py-0.5 font-semibold text-[11px] border', roleColor)}>
-              {roleLabel}
-            </span>
-          </div>
-        </div>
-
-        {/* Navigation links */}
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {visibleItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && item.href !== '/teacher' && pathname.startsWith(item.href));
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onCloseMobile}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 font-semibold shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                )}
-              >
-                <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-blue-600' : 'text-slate-400')} />
-                <span>{item.title}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Footer info */}
-        <div className="border-t border-slate-100 p-4 text-xs text-slate-400">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>One Source of Truth</span>
-          </div>
-          <p className="mt-1 text-[11px] text-slate-400">v0.1.0 • Foundation MVP</p>
-        </div>
-      </aside>
+        {drawerContent}
+      </div>
     </>
   );
 }

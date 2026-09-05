@@ -167,7 +167,7 @@ export default function FinancePage() {
               <span className="text-slate-400">Статус:</span>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'paid' | 'expected' | 'overdue')}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none"
               >
                 <option value="all">Все</option>

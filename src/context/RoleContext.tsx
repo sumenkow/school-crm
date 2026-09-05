@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { UserRole } from '@/types';
 
 interface RoleContextType {
@@ -11,28 +11,27 @@ interface RoleContextType {
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
+function getUserName(r: UserRole): string {
+  if (r === 'owner') return 'Александр Руководитель';
+  if (r === 'admin') return 'Елена Менеджер';
+  return 'Мария Преподаватель';
+}
+
+function getInitialRole(): UserRole {
+  if (typeof window === 'undefined') return 'owner';
+  const saved = localStorage.getItem('school_app_role') as UserRole;
+  if (saved === 'owner' || saved === 'admin' || saved === 'teacher') return saved;
+  return 'owner';
+}
+
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>('owner');
-  const [userName, setUserName] = useState<string>('Александр Руководитель');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('school_app_role') as UserRole;
-    if (saved && (saved === 'owner' || saved === 'admin' || saved === 'teacher')) {
-      setRoleState(saved);
-      updateUserName(saved);
-    }
-  }, []);
-
-  const updateUserName = (r: UserRole) => {
-    if (r === 'owner') setUserName('Александр Руководитель');
-    else if (r === 'admin') setUserName('Елена Менеджер');
-    else setUserName('Мария Преподаватель');
-  };
+  const [role, setRoleState] = useState<UserRole>(getInitialRole);
+  const [userName, setUserName] = useState<string>(() => getUserName(getInitialRole()));
 
   const setRole = (newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem('school_app_role', newRole);
-    updateUserName(newRole);
+    setUserName(getUserName(newRole));
   };
 
   return (

@@ -108,7 +108,7 @@ export default function TasksPage() {
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key as any)}
+                onClick={() => setStatusFilter(tab.key as 'all' | 'open' | 'done')}
                 className={cn(
                   'rounded-lg px-3 py-1.5 transition-all',
                   statusFilter === tab.key
@@ -127,7 +127,7 @@ export default function TasksPage() {
               <span>Приоритет:</span>
               <select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value as any)}
+                onChange={(e) => setPriorityFilter(e.target.value as 'all' | 'high' | 'medium' | 'low')}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-800 focus:outline-none"
               >
                 <option value="all">Все</option>

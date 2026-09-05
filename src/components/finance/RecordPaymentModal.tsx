@@ -119,7 +119,7 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
               <label className="text-xs font-medium text-slate-700">Способ оплаты</label>
               <select
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as any)}
+                onChange={(e) => setPaymentMethod(e.target.value as 'card' | 'bank_transfer' | 'cash' | 'invoice')}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
               >
                 <option value="card">Банковская карта</option>
@@ -132,7 +132,7 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
               <label className="text-xs font-medium text-slate-700">Статус платежа</label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => setStatus(e.target.value as 'paid' | 'expected' | 'overdue')}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
               >
                 <option value="paid">Оплачено (Деньги поступили)</option>

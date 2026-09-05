@@ -1,26 +1,467 @@
 @import "tailwindcss";
 
+/* =========================================================
+   MATERIAL DESIGN 3 — DESIGN TOKENS
+   Primary: Blue #1565C0 (синий деловой)
+   ========================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* === MD3 COLOR TOKENS === */
+
+  /* Primary */
+  --md-primary: #1565C0;
+  --md-on-primary: #FFFFFF;
+  --md-primary-container: #D3E4FF;
+  --md-on-primary-container: #001C3B;
+  --md-primary-hover: #1251A0;
+
+  /* Secondary */
+  --md-secondary: #535F70;
+  --md-on-secondary: #FFFFFF;
+  --md-secondary-container: #D7E3F7;
+  --md-on-secondary-container: #101C2B;
+
+  /* Tertiary */
+  --md-tertiary: #6B538C;
+  --md-on-tertiary: #FFFFFF;
+  --md-tertiary-container: #EEDCFF;
+  --md-on-tertiary-container: #250F43;
+
+  /* Error */
+  --md-error: #B3261E;
+  --md-on-error: #FFFFFF;
+  --md-error-container: #F9DEDC;
+  --md-on-error-container: #410E0B;
+
+  /* Warning (custom) */
+  --md-warning: #E65100;
+  --md-warning-container: #FFEDD8;
+  --md-on-warning-container: #4A1800;
+
+  /* Success (custom) */
+  --md-success: #1B5E20;
+  --md-success-container: #C8E6C9;
+  --md-on-success-container: #003907;
+
+  /* Surface & Background */
+  --md-background: #F8FAFE;
+  --md-on-background: #191C20;
+  --md-surface: #F8FAFE;
+  --md-on-surface: #191C20;
+  --md-surface-variant: #DDE3EA;
+  --md-on-surface-variant: #41484F;
+  --md-surface-container-lowest: #FFFFFF;
+  --md-surface-container-low: #F2F4F9;
+  --md-surface-container: #ECEEF3;
+  --md-surface-container-high: #E6E8ED;
+  --md-surface-container-highest: #E0E2E8;
+
+  /* Outline */
+  --md-outline: #72787F;
+  --md-outline-variant: #C1C7CE;
+
+  /* Inverse */
+  --md-inverse-surface: #2E3135;
+  --md-inverse-on-surface: #EFF1F6;
+  --md-inverse-primary: #A4C8FF;
+
+  /* === MD3 ELEVATION (shadow overlays) === */
+  --md-elevation-0: none;
+  --md-elevation-1: 0px 1px 2px rgba(0,0,0,0.3), 0px 1px 3px 1px rgba(0,0,0,0.15);
+  --md-elevation-2: 0px 1px 2px rgba(0,0,0,0.3), 0px 2px 6px 2px rgba(0,0,0,0.15);
+  --md-elevation-3: 0px 4px 8px 3px rgba(0,0,0,0.15), 0px 1px 3px rgba(0,0,0,0.3);
+  --md-elevation-4: 0px 6px 10px 4px rgba(0,0,0,0.15), 0px 2px 3px rgba(0,0,0,0.3);
+  --md-elevation-5: 0px 8px 12px 6px rgba(0,0,0,0.15), 0px 4px 4px rgba(0,0,0,0.3);
+
+  /* Surface tint with primary color (MD3 elevation tint) */
+  --md-surface-tint-1: rgba(21, 101, 192, 0.05);
+  --md-surface-tint-2: rgba(21, 101, 192, 0.08);
+  --md-surface-tint-3: rgba(21, 101, 192, 0.11);
+  --md-surface-tint-4: rgba(21, 101, 192, 0.12);
+
+  /* === MD3 SHAPE === */
+  --md-shape-none: 0px;
+  --md-shape-xs-sm: 4px;
+  --md-shape-sm: 8px;
+  --md-shape-md: 12px;
+  --md-shape-lg: 16px;
+  --md-shape-xl: 28px;
+  --md-shape-full: 9999px;
+
+  /* === MD3 TYPOGRAPHY SIZES === */
+  --md-display-large: 57px;
+  --md-display-medium: 45px;
+  --md-display-small: 36px;
+  --md-headline-large: 32px;
+  --md-headline-medium: 28px;
+  --md-headline-small: 24px;
+  --md-title-large: 22px;
+  --md-title-medium: 16px;
+  --md-title-small: 14px;
+  --md-body-large: 16px;
+  --md-body-medium: 14px;
+  --md-body-small: 12px;
+  --md-label-large: 14px;
+  --md-label-medium: 12px;
+  --md-label-small: 11px;
+
+  /* State layer opacities */
+  --md-state-hover-opacity: 0.08;
+  --md-state-focus-opacity: 0.12;
+  --md-state-pressed-opacity: 0.12;
+  --md-state-dragged-opacity: 0.16;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* =========================================================
+   BASE STYLES
+   ========================================================= */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--md-background);
+  color: var(--md-on-background);
+  font-family: var(--font-roboto), 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* =========================================================
+   MD3 TYPOGRAPHY UTILITIES
+   ========================================================= */
+
+.md-display-large {
+  font-size: 57px;
+  font-weight: 400;
+  line-height: 64px;
+  letter-spacing: -0.25px;
+}
+.md-display-medium {
+  font-size: 45px;
+  font-weight: 400;
+  line-height: 52px;
+  letter-spacing: 0;
+}
+.md-display-small {
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 44px;
+  letter-spacing: 0;
+}
+.md-headline-large {
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 40px;
+  letter-spacing: 0;
+}
+.md-headline-medium {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 36px;
+  letter-spacing: 0;
+}
+.md-headline-small {
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 32px;
+  letter-spacing: 0;
+}
+.md-title-large {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 28px;
+  letter-spacing: 0;
+}
+.md-title-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: 0.15px;
+}
+.md-title-small {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+}
+.md-body-large {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0.5px;
+}
+.md-body-medium {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+}
+.md-body-small {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+.md-label-large {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+}
+.md-label-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.5px;
+}
+.md-label-small {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   MD3 COMPONENT UTILITIES
+   ========================================================= */
+
+/* --- Buttons --- */
+.md-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--md-shape-full);
+  font-size: var(--md-label-large);
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  padding: 10px 24px;
+  border: none;
+  cursor: pointer;
+  transition: box-shadow 0.2s, background-color 0.15s;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.md-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.md-btn:hover::before { opacity: var(--md-state-hover-opacity); }
+.md-btn:focus-visible::before { opacity: var(--md-state-focus-opacity); }
+.md-btn:active::before { opacity: var(--md-state-pressed-opacity); }
+
+/* Filled Button */
+.md-btn-filled {
+  background-color: var(--md-primary);
+  color: var(--md-on-primary);
+  box-shadow: var(--md-elevation-0);
+}
+.md-btn-filled:hover { box-shadow: var(--md-elevation-1); }
+
+/* Tonal Button */
+.md-btn-tonal {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  box-shadow: var(--md-elevation-0);
+}
+.md-btn-tonal:hover { box-shadow: var(--md-elevation-1); }
+
+/* Outlined Button */
+.md-btn-outlined {
+  background-color: transparent;
+  color: var(--md-primary);
+  border: 1px solid var(--md-outline);
+  box-shadow: var(--md-elevation-0);
+}
+
+/* Text Button */
+.md-btn-text {
+  background-color: transparent;
+  color: var(--md-primary);
+  padding: 10px 12px;
+}
+
+/* Error Filled Button */
+.md-btn-error {
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+/* Small button variant */
+.md-btn-sm {
+  padding: 6px 16px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* --- Cards --- */
+.md-card-elevated {
+  background-color: var(--md-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+  border-radius: var(--md-shape-md);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.md-card-elevated:hover { box-shadow: var(--md-elevation-2); }
+
+.md-card-filled {
+  background-color: var(--md-surface-container-highest);
+  border-radius: var(--md-shape-md);
+}
+
+.md-card-outlined {
+  background-color: var(--md-surface);
+  border: 1px solid var(--md-outline-variant);
+  border-radius: var(--md-shape-md);
+}
+
+/* --- Chips --- */
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--md-shape-sm);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, box-shadow 0.15s;
+  border: 1px solid var(--md-outline-variant);
+  background-color: var(--md-surface);
+  color: var(--md-on-surface-variant);
+}
+.md-chip:hover {
+  background-color: var(--md-surface-container-low);
+  box-shadow: var(--md-elevation-1);
+}
+.md-chip-selected {
+  background-color: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border-color: transparent;
+}
+
+/* --- Text Fields (outlined) --- */
+.md-field {
+  position: relative;
+}
+.md-input {
+  width: 100%;
+  height: 56px;
+  padding: 16px;
+  border: 1px solid var(--md-outline);
+  border-radius: var(--md-shape-xs-sm);
+  background-color: transparent;
+  font-size: 16px;
+  color: var(--md-on-surface);
+  outline: none;
+  transition: border-color 0.15s, border-width 0.15s;
+}
+.md-input:focus {
+  border: 2px solid var(--md-primary);
+}
+.md-input-sm {
+  height: 40px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.md-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2372787F' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* --- Navigation Drawer Active Indicator --- */
+.md-nav-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--md-shape-full);
+  background-color: var(--md-secondary-container);
+  z-index: 0;
+}
+
+/* --- Divider --- */
+.md-divider {
+  height: 1px;
+  background-color: var(--md-outline-variant);
+  margin: 0;
+}
+
+/* --- Badge --- */
+.md-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: var(--md-shape-full);
+  font-size: 11px;
+  font-weight: 700;
+  background-color: var(--md-error);
+  color: var(--md-on-error);
+}
+
+/* --- Progress Indicator --- */
+.md-progress {
+  height: 4px;
+  border-radius: var(--md-shape-full);
+  background-color: var(--md-secondary-container);
+  overflow: hidden;
+}
+.md-progress-bar {
+  height: 100%;
+  border-radius: var(--md-shape-full);
+  background-color: var(--md-primary);
+  transition: width 0.4s ease;
+}
+
+/* --- Status Badges (semantic colors) --- */
+.md-status-success {
+  background-color: var(--md-success-container);
+  color: var(--md-on-success-container);
+}
+.md-status-error {
+  background-color: var(--md-error-container);
+  color: var(--md-on-error-container);
+}
+.md-status-warning {
+  background-color: var(--md-warning-container);
+  color: var(--md-on-warning-container);
+}
+.md-status-info {
+  background-color: var(--md-primary-container);
+  color: var(--md-on-primary-container);
+}
+.md-status-neutral {
+  background-color: var(--md-surface-container-high);
+  color: var(--md-on-surface-variant);
+}
+
+/* --- Scrollbar styling --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--md-outline-variant);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--md-outline); }
+
+/* --- Focus ring --- */
+:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
 }

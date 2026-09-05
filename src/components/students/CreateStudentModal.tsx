@@ -4,10 +4,26 @@ import React, { useState } from 'react';
 import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+export interface NewStudentData {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+  parent: string;
+  parentPhone: string;
+  group: string;
+  course: string;
+  teacher: string;
+  attendanceRate: string;
+  paymentStatus: string;
+  subscriptionEnd: string;
+}
+
 interface CreateStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (newStudent: any) => void;
+  onCreated: (newStudent: NewStudentData) => void;
 }
 
 export function CreateStudentModal({ isOpen, onClose, onCreated }: CreateStudentModalProps) {
@@ -42,6 +58,8 @@ export function CreateStudentModal({ isOpen, onClose, onCreated }: CreateStudent
     const createdStudent = {
       id: `std_${Date.now()}`,
       name: `${firstName} ${lastName}`,
+      firstName,
+      lastName,
       status,
       parent: parentFirstName ? `${parentFirstName} ${parentLastName} (${relationshipType})` : 'Контакт не указан',
       parentPhone: parentPhone || '—',

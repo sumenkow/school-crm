@@ -253,7 +253,7 @@ export default function LeadDetailsPage() {
               <span>Канал связи:</span>
               <select
                 value={newChannel}
-                onChange={(e) => setNewChannel(e.target.value as any)}
+                onChange={(e) => setNewChannel(e.target.value as 'telegram' | 'whatsapp' | 'phone' | 'call')}
                 className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-800"
               >
                 <option value="telegram">Telegram</option>

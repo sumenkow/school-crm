@@ -133,7 +133,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
             <label className="text-xs font-medium text-slate-700">Статус абонемента</label>
             <select
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
+              onChange={(e) => setStatus(e.target.value as 'active' | 'frozen' | 'expired')}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
             >
               <option value="active">Активен (Действует)</option>

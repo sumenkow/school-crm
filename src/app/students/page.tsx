@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
+import type { NewStudentData } from '@/components/students/CreateStudentModal';
 
 export default function StudentsPage() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function StudentsPage() {
     },
   ]);
 
-  const handleStudentCreated = (newStudent: any) => {
+  const handleStudentCreated = (newStudent: NewStudentData) => {
     setStudents((prev) => [newStudent, ...prev]);
   };
 

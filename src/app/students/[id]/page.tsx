@@ -190,7 +190,7 @@ export default function StudentDetailsPage() {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => setActiveTab(tab.key as 'profile' | 'education' | 'attendance' | 'finance' | 'timeline' | 'tasks')}
             className={cn(
               'pb-3 px-3 border-b-2 whitespace-nowrap transition-all',
               activeTab === tab.key
@@ -487,7 +487,7 @@ export default function StudentDetailsPage() {
                 <span>Канал:</span>
                 <select
                   value={newChannel}
-                  onChange={(e) => setNewChannel(e.target.value as any)}
+                  onChange={(e) => setNewChannel(e.target.value as 'telegram' | 'whatsapp' | 'phone' | 'call')}
                   className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800"
                 >
                   <option value="telegram">Telegram</option>
