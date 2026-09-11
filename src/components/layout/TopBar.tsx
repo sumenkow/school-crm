@@ -17,7 +17,7 @@ const roleConfig: Record<UserRole, { label: string }> = {
 };
 
 export function TopBar({ onOpenMobile }: TopBarProps) {
-  const { role, setRole, userName, userEmail, isOwner } = useRole();
+  const { role, userName, userEmail } = useRole();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -93,26 +93,6 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Role badge */}
-      <span
-        className="hidden sm:inline-flex items-center md-label-medium"
-        style={{
-          padding: '6px 14px',
-          borderRadius: '9999px',
-          backgroundColor:
-            role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
-            role === 'admin' ? 'var(--md-secondary-container)' :
-            'var(--md-primary-container)',
-          color:
-            role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
-            role === 'admin' ? 'var(--md-on-secondary-container)' :
-            'var(--md-on-primary-container)',
-          fontWeight: 600,
-        }}
-      >
-        {roleConfig[role].label}
-      </span>
-
       {/* Notification bell */}
       <button
         style={{
@@ -160,6 +140,26 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             style={{ color: 'var(--md-on-surface)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
           >
             {displayName.split(' ')[0]}
+          </span>
+          <span
+            className="hidden sm:inline-flex items-center md-label-small"
+            style={{
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              backgroundColor:
+                role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
+                role === 'admin' ? 'var(--md-secondary-container)' :
+                'var(--md-primary-container)',
+              color:
+                role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
+                role === 'admin' ? 'var(--md-on-secondary-container)' :
+                'var(--md-on-primary-container)',
+              fontWeight: 600,
+              fontSize: '11px',
+              lineHeight: '16px',
+            }}
+          >
+            {roleConfig[role].label}
           </span>
           <ChevronDown size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         </button>

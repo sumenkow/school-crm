@@ -134,17 +134,12 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
-  const { role, userName } = useRole();
+  const { role } = useRole();
 
   const navSections =
     role === 'owner' ? ownerNav :
     role === 'admin' ? adminNav :
     teacherNav;
-
-  const roleLabel =
-    role === 'owner' ? 'Владелец' :
-    role === 'admin' ? 'Администратор' :
-    'Преподаватель';
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
@@ -162,8 +157,8 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       }}
     >
       {/* Drawer Header */}
-      <div style={{ padding: '16px 16px 8px' }}>
-        <div className="flex items-center gap-3" style={{ marginBottom: '16px' }}>
+      <div style={{ padding: '16px 16px 12px' }}>
+        <div className="flex items-center gap-3">
           <div
             className="flex items-center justify-center flex-shrink-0"
             style={{
@@ -196,35 +191,6 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           >
             <X size={20} />
           </button>
-        </div>
-
-        {/* User identity */}
-        <div
-          className="flex items-center gap-3"
-          style={{
-            padding: '12px',
-            borderRadius: '12px',
-            backgroundColor: 'var(--md-surface-container)',
-            marginBottom: '8px',
-          }}
-        >
-          <div
-            className="flex items-center justify-center flex-shrink-0 md-label-large"
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--md-primary)',
-              color: 'var(--md-on-primary)',
-              fontWeight: 700,
-            }}
-          >
-            {userName.charAt(0)}
-          </div>
-          <div className="min-w-0">
-            <p className="md-label-large truncate" style={{ color: 'var(--md-on-surface)' }}>{userName.split(' ')[0]}</p>
-            <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>{roleLabel}</p>
-          </div>
         </div>
       </div>
 
