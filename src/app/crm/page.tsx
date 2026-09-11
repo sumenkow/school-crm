@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -15,9 +15,11 @@ import {
   LayoutGrid,
   List,
   ChevronRight,
+  ChevronLeft,
   UserCheck,
   Copy,
-  ExternalLink
+  ExternalLink,
+  Columns
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
@@ -30,10 +32,18 @@ export default function CrmPage() {
   const toast = useToast();
   const { userName } = useRole();
   const [leads, setLeads] = useState<FullLeadData[]>(INITIAL_LEADS);
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const kanbanRef = useRef<HTMLDivElement>(null);
+
+  const scrollKanban = (direction: 'left' | 'right') => {
+    if (kanbanRef.current) {
+      const scrollAmount = direction === 'left' ? -350 : 350;
+      kanbanRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Regulated 8 statuses from Section 12
   const columns = [
@@ -164,156 +174,166 @@ export default function CrmPage() {
 
           <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
             <button
+              onClick={() => setViewMode('grid')}
+              title="Уместить все 8 этапов на одном листе (сетка 4х2, прокрутка вниз)"
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
+                viewMode === 'grid' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <LayoutGrid className="h-3.5 w-3.5 text-purple-600" />
+              <span>Сетка (На одном листе)</span>
+            </button>
+            <button
               onClick={() => setViewMode('kanban')}
+              title="Классическая широкая доска с горизонтальной прокруткой"
               className={cn(
                 'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
                 viewMode === 'kanban' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              Воронка
+              <Columns className="h-3.5 w-3.5 text-blue-600" />
+              <span>Доска (Горизонтально)</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
+              title="Табличный вид"
               className={cn(
                 'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
                 viewMode === 'table' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <List className="h-3.5 w-3.5" />
-              Список
+              <span>Таблица</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* VIEW 1: KANBAN BOARD */}
-      {viewMode === 'kanban' && (
-        <div className="flex gap-4 overflow-x-auto pb-6">
+      {/* VIEW 1: GRID MODE (ALL ON ONE SHEET / SCREEN, SCROLLS DOWN) */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {columns.map((col) => {
             const colLeads = filteredLeads.filter((l) => l.status === col.key);
 
             return (
               <div
                 key={col.key}
-                className="flex w-72 shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-100/70 p-3 shadow-xs"
+                className="flex flex-col rounded-2xl border border-slate-200 bg-slate-100/70 p-3 shadow-xs min-h-[220px]"
               >
                 {/* Column Header */}
-                <div className="flex items-center justify-between px-1 pb-3">
-                  <span className="text-xs font-bold text-slate-800">{col.label}</span>
-                  <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold shadow-xs', col.badgeColor)}>
+                <div className="flex items-center justify-between px-1 pb-2.5 border-b border-slate-200/80 mb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-800">{col.label}</span>
+                  </div>
+                  <span className={cn('flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full text-[11px] font-bold shadow-xs', col.badgeColor)}>
                     {colLeads.length}
                   </span>
                 </div>
 
                 {/* Cards in column */}
-                <div className="space-y-3 flex-1">
+                <div className="space-y-2.5 flex-1">
                   {colLeads.length === 0 ? (
-                    <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-400">
+                    <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-400">
                       Нет лидов
                     </div>
                   ) : (
                     colLeads.map((lead) => (
-                      <div
+                      <LeadCard
                         key={lead.id}
-                        onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                        className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:shadow-md transition-all cursor-pointer text-left"
-                      >
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-bold text-slate-900 text-sm hover:text-purple-600 transition-colors">
-                            {lead.name}
-                          </h4>
-                          <span className="text-[10px] text-slate-400">{lead.source}</span>
-                        </div>
-                        <p className="text-xs font-semibold text-purple-700 mt-0.5">{lead.directionOrCourse}</p>
-                        <p className="text-[11px] text-slate-500">Ученик: {lead.studentName}</p>
-
-                        <div className="mt-2.5 space-y-1 text-[11px] text-slate-600 border-t border-slate-100 pt-2">
-                          <div className="flex items-center justify-between gap-1 text-slate-700">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                              <span className="truncate">{lead.contact}</span>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(lead.contact);
-                                  toast.success(`Номер скопирован: ${lead.contact}`);
-                                }}
-                                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                                title="Скопировать телефон"
-                              >
-                                <Copy size={12} />
-                              </button>
-                              <a
-                                href={`https://wa.me/${lead.contact.replace(/\D/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors text-[10px]"
-                                title="Написать в WhatsApp"
-                              >
-                                WA
-                              </a>
-                              <a
-                                href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
-                                className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-                                title="Позвонить"
-                              >
-                                <Phone size={12} />
-                              </a>
-                            </div>
-                          </div>
-                          {lead.trialDate && (
-                            <div className="flex items-center gap-1.5 text-purple-700 font-medium">
-                              <Calendar className="h-3 w-3 text-purple-500" />
-                              <span>Пробное: {lead.trialDate}</span>
-                            </div>
-                          )}
-                          {lead.offerAmount && (
-                            <div className="flex items-center gap-1.5 text-emerald-700 font-bold">
-                              <DollarSign className="h-3 w-3 text-emerald-500" />
-                              <span>{lead.offerAmount}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Next Action Box */}
-                        {lead.nextAction && (
-                          <div className="mt-2.5 rounded-lg bg-amber-50/80 p-2 border border-amber-200/60 text-[11px]">
-                            <p className="text-amber-900 font-medium leading-tight">
-                              → {lead.nextAction}
-                            </p>
-                            {lead.nextActionDate && (
-                              <p className="text-amber-700 text-[10px] mt-0.5 font-semibold">
-                                Срок: {lead.nextActionDate}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Stage Selector on Card */}
-                        <div
-                          className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <span className="text-slate-400 font-medium">Этап:</span>
-                          <select
-                            value={lead.status}
-                            onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
-                            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                          >
-                            {columns.map((c) => (
-                              <option key={c.key} value={c.key}>{c.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                        lead={lead}
+                        columns={columns}
+                        onQuickStatusChange={handleQuickStatusChange}
+                        onOpen={() => router.push(`/crm/leads/${lead.id}`)}
+                        onCopyPhone={() => {
+                          navigator.clipboard.writeText(lead.contact);
+                          toast.success(`Номер скопирован: ${lead.contact}`);
+                        }}
+                      />
                     ))
                   )}
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* VIEW 2: KANBAN BOARD (HORIZONTAL WITH PROMINENT CONTROLS & SCROLLBAR) */}
+      {viewMode === 'kanban' && (
+        <div className="space-y-3">
+          {/* Scroll Navigation Controls */}
+          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span>Горизонтальная воронка (8 этапов)</span>
+              <span className="text-slate-400">• Используйте стрелки или Shift + колесико</span>
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => scrollKanban('left')}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-xs transition-colors"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Влево
+              </button>
+              <button
+                onClick={() => scrollKanban('right')}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-xs transition-colors"
+              >
+                Вправо <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            ref={kanbanRef}
+            className="flex gap-4 overflow-x-auto pb-4 scroll-smooth"
+            style={{
+              scrollbarWidth: 'auto',
+              scrollbarColor: '#94a3b8 #e2e8f0',
+            }}
+          >
+            {columns.map((col) => {
+              const colLeads = filteredLeads.filter((l) => l.status === col.key);
+
+              return (
+                <div
+                  key={col.key}
+                  className="flex w-72 shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-100/70 p-3 shadow-xs"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between px-1 pb-3">
+                    <span className="text-xs font-bold text-slate-800">{col.label}</span>
+                    <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold shadow-xs', col.badgeColor)}>
+                      {colLeads.length}
+                    </span>
+                  </div>
+
+                  {/* Cards in column */}
+                  <div className="space-y-3 flex-1">
+                    {colLeads.length === 0 ? (
+                      <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-400">
+                        Нет лидов
+                      </div>
+                    ) : (
+                      colLeads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          columns={columns}
+                          onQuickStatusChange={handleQuickStatusChange}
+                          onOpen={() => router.push(`/crm/leads/${lead.id}`)}
+                          onCopyPhone={() => {
+                            navigator.clipboard.writeText(lead.contact);
+                            toast.success(`Номер скопирован: ${lead.contact}`);
+                          }}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -392,3 +412,113 @@ export default function CrmPage() {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-component: LeadCard
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface LeadCardProps {
+  lead: FullLeadData;
+  columns: readonly { readonly key: string; readonly label: string; readonly badgeColor: string }[];
+  onQuickStatusChange: (leadId: string, newStatus: FullLeadData['status']) => void;
+  onOpen: () => void;
+  onCopyPhone: () => void;
+}
+
+function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: LeadCardProps) {
+  return (
+    <div
+      onClick={onOpen}
+      className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between"
+    >
+      <div>
+        <div className="flex items-start justify-between gap-1">
+          <h4 className="font-bold text-slate-900 text-xs sm:text-sm hover:text-purple-600 transition-colors line-clamp-1">
+            {lead.name}
+          </h4>
+          <span className="text-[10px] text-slate-400 flex-shrink-0">{lead.source}</span>
+        </div>
+        <p className="text-[11px] font-semibold text-purple-700 mt-0.5 truncate">{lead.directionOrCourse}</p>
+        <p className="text-[10px] text-slate-500 truncate">Ученик: {lead.studentName}</p>
+
+        <div className="mt-2 space-y-1 text-[11px] text-slate-600 border-t border-slate-100 pt-1.5">
+          <div className="flex items-center justify-between gap-1 text-slate-700">
+            <div className="flex items-center gap-1 min-w-0">
+              <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+              <span className="truncate text-[10px]">{lead.contact}</span>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={onCopyPhone}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                title="Скопировать телефон"
+              >
+                <Copy size={11} />
+              </button>
+              <a
+                href={`https://wa.me/${lead.contact.replace(/\D/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors text-[9px]"
+                title="Написать в WhatsApp"
+              >
+                WA
+              </a>
+              <a
+                href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
+                className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                title="Позвонить"
+              >
+                <Phone size={11} />
+              </a>
+            </div>
+          </div>
+          {lead.trialDate && (
+            <div className="flex items-center gap-1 text-purple-700 font-medium text-[10px]">
+              <Calendar className="h-2.5 w-2.5 text-purple-500" />
+              <span>Пробное: {lead.trialDate}</span>
+            </div>
+          )}
+          {lead.offerAmount && (
+            <div className="flex items-center gap-1 text-emerald-700 font-bold text-[10px]">
+              <DollarSign className="h-2.5 w-2.5 text-emerald-500" />
+              <span>{lead.offerAmount}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Next Action Box */}
+        {lead.nextAction && (
+          <div className="mt-2 rounded-lg bg-amber-50/80 p-1.5 border border-amber-200/60 text-[10px]">
+            <p className="text-amber-900 font-medium leading-tight">
+              → {lead.nextAction}
+            </p>
+            {lead.nextActionDate && (
+              <p className="text-amber-700 text-[9px] mt-0.5 font-semibold">
+                Срок: {lead.nextActionDate}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stage Selector on Card */}
+      <div
+        className="mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-slate-400 font-medium">Этап:</span>
+        <select
+          value={lead.status}
+          onChange={(e) => onQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
+          className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400 max-w-[140px]"
+        >
+          {columns.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+

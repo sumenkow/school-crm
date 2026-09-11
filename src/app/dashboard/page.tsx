@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   CreditCard,
@@ -21,7 +22,14 @@ import {
   BarChart3,
   PhoneCall,
   Video,
-  FileText
+  FileText,
+  X,
+  ChevronRight,
+  Phone,
+  ExternalLink,
+  Printer,
+  Send,
+  MessageSquare
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
@@ -92,106 +100,206 @@ function KpiCard({
 // SMART ACTION HUB (Оперативные задачи дня: долги, горячие лиды, пробные)
 // ─────────────────────────────────────────────────────────────────────────────
 function SmartActionHub() {
+  const router = useRouter();
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+
+  const tasks = [
+    {
+      id: 'task_debt_1',
+      type: 'debt',
+      badge: 'Долг по оплате',
+      badgeColor: 'bg-rose-50 text-rose-700 border border-rose-200',
+      title: 'Мария Кузнецова (Robotics)',
+      deadline: '25.08.2026',
+      subtitle: 'Отец: Дмитрий (+7 999 234-56-78)',
+      highlight: 'Долг: 8 400 ₽',
+      phone: '+79992345678',
+      waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
+      profileUrl: '/students/2',
+      actionLabel: 'Открыть карточку ученика',
+      description: 'Истек срок действия абонемента на курс Robotics Junior. Занятия посещаются регулярно, требуется согласовать оплату нового периода.',
+    },
+    {
+      id: 'task_lead_1',
+      type: 'lead',
+      badge: 'Новый лид (> 2ч)',
+      badgeColor: 'bg-amber-50 text-amber-700 border border-amber-200',
+      title: 'Смирнова Ольга',
+      deadline: 'Сегодня, до 15:00',
+      subtitle: 'Ребенок: Анна (Kids English A1)',
+      highlight: 'Ждет звонка для записи на пробное',
+      phone: '+79991234567',
+      profileUrl: '/crm/leads/lead1',
+      actionLabel: 'Открыть карточку лида в CRM',
+      description: 'Заявка с сайта школы на курс английского для начинающих. Нужен звонок-квалификация и подбор слота на пробное занятие.',
+    },
+    {
+      id: 'task_trials_1',
+      type: 'trial',
+      badge: 'Пробные уроки',
+      badgeColor: 'bg-purple-50 text-purple-700 border border-purple-200',
+      title: '2 пробных занятия сегодня',
+      deadline: 'Сегодня (15:00 и 18:45)',
+      subtitle: '15:00 Робототехника • 18:45 Английский',
+      highlight: 'Денис С., Мария И.',
+      profileUrl: '/calendar',
+      actionLabel: 'Открыть в расписании школы',
+      description: 'Сегодня проводятся 2 пробных занятия с новыми учениками. Преподаватели предупреждены, материалы подготовлены.',
+    },
+  ];
+
   return (
-    <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
-            ⚡
+    <>
+      <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
+              ⚡
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Требует внимания сегодня (Оперативный хаб)
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Срочные задачи менеджера для сохранения выручки и предотвращения оттока
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Требует внимания сегодня (Оперативный хаб)
-            </h3>
-            <p className="text-[11px] text-slate-500">
-              Срочные задачи менеджера для сохранения выручки и предотвращения оттока
-            </p>
-          </div>
+          <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+            3 срочных действия
+          </span>
         </div>
-        <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-          3 срочных действия
-        </span>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              onClick={() => setSelectedTask(task)}
+              className="group rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className={cn('font-bold px-2 py-0.5 rounded-full', task.badgeColor)}>
+                    {task.badge}
+                  </span>
+                  <span className="text-slate-400 text-[10px]">{task.deadline}</span>
+                </div>
+                <p className="font-bold text-slate-900 text-xs mt-2 group-hover:text-blue-600 transition-colors">
+                  {task.title}
+                </p>
+                <p className="text-[11px] text-slate-500">{task.subtitle}</p>
+                <p className={cn('text-xs font-bold mt-1', task.type === 'debt' ? 'text-rose-700' : task.type === 'lead' ? 'text-purple-700' : 'text-slate-700')}>
+                  {task.highlight}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+                {task.waUrl && (
+                  <a
+                    href={task.waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                )}
+                {task.phone && (
+                  <a
+                    href={`tel:${task.phone}`}
+                    className="flex-1 text-center py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 text-[10px] transition-colors"
+                  >
+                    Позвонить
+                  </a>
+                )}
+                <button
+                  onClick={() => setSelectedTask(task)}
+                  className="flex-1 text-center py-1 rounded-lg bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 text-[10px] transition-colors"
+                >
+                  Карточка →
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-        {/* Task 1: Overdue Payment */}
-        <div className="rounded-xl border border-rose-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">Долг по оплате</span>
-              <span className="text-slate-400">Срок: 25.08</span>
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className={cn('font-bold px-2 py-0.5 rounded-full text-xs', selectedTask.badgeColor)}>
+                  {selectedTask.badge}
+                </span>
+              </div>
+              <button onClick={() => setSelectedTask(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <p className="font-bold text-slate-900 text-xs mt-2">Мария Кузнецова (Robotics)</p>
-            <p className="text-[11px] text-slate-500">Отец: Дмитрий (+7 999 234-56-78)</p>
-            <p className="text-xs font-extrabold text-rose-700 mt-1">Долг: 8 400 ₽</p>
-          </div>
-          <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100">
-            <a
-              href="https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе."
-              target="_blank"
-              rel="noreferrer"
-              className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
-            >
-              WhatsApp
-            </a>
-            <a
-              href="tel:+79992345678"
-              className="flex-1 text-center py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 text-[10px] transition-colors"
-            >
-              Позвонить
-            </a>
-          </div>
-        </div>
 
-        {/* Task 2: Hot Lead */}
-        <div className="rounded-xl border border-amber-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Новый лид (&gt; 2ч)</span>
-              <span className="text-slate-400">Сайт</span>
-            </div>
-            <p className="font-bold text-slate-900 text-xs mt-2">Смирнова Ольга</p>
-            <p className="text-[11px] text-slate-500">Ребенок: Анна (Kids English A1)</p>
-            <p className="text-xs font-semibold text-purple-700 mt-1">Ждет звонка для записи</p>
-          </div>
-          <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100">
-            <a
-              href="tel:+79991234567"
-              className="flex-1 text-center py-1 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 text-[10px] transition-colors"
-            >
-              Позвонить
-            </a>
-            <Link
-              href="/crm"
-              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 text-[10px]"
-            >
-              В воронку
-            </Link>
-          </div>
-        </div>
+            <div className="mt-4 space-y-3 text-xs">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">{selectedTask.title}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{selectedTask.subtitle}</p>
+              </div>
 
-        {/* Task 3: Trial Lessons */}
-        <div className="rounded-xl border border-purple-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Пробные уроки</span>
-              <span className="text-slate-400">Сегодня</span>
+              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Срок / Дедлайн:</span>
+                  <span className="font-semibold text-slate-800">{selectedTask.deadline}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Статус:</span>
+                  <span className="font-bold text-amber-700">Требует действия</span>
+                </div>
+                <p className="text-slate-700 border-t border-slate-200 pt-2 text-xs leading-relaxed">
+                  {selectedTask.description}
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                {selectedTask.phone && (
+                  <a
+                    href={`tel:${selectedTask.phone}`}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    Позвонить
+                  </a>
+                )}
+                {selectedTask.waUrl && (
+                  <a
+                    href={selectedTask.waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    const url = selectedTask.profileUrl;
+                    setSelectedTask(null);
+                    router.push(url);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {selectedTask.actionLabel}
+                </button>
+              </div>
             </div>
-            <p className="font-bold text-slate-900 text-xs mt-2">2 пробных занятия</p>
-            <p className="text-[11px] text-slate-500">15:00 Робототехника • 18:45 Английский</p>
-            <p className="text-xs text-slate-600 mt-1">Денис С., Мария И.</p>
-          </div>
-          <div className="mt-3 pt-2 border-t border-slate-100">
-            <Link
-              href="/calendar"
-              className="w-full block text-center py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 text-[10px] transition-colors"
-            >
-              Открыть в календаре →
-            </Link>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -199,6 +307,8 @@ function SmartActionHub() {
 // 1. OWNER DASHBOARD (Финансовая аналитика, масштабирование, управление командой)
 // ─────────────────────────────────────────────────────────────────────────────
 function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
+  const router = useRouter();
+  const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
   return (
@@ -390,27 +500,32 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              { student: 'Артем Смирнов', course: 'Английский (Kids)', amount: '9 600 ₽', date: 'Сегодня', status: 'Оплачен' },
-              { student: 'София Лебедева', course: 'Робототехника', amount: '12 000 ₽', date: 'Вчера', status: 'Оплачен' },
-              { student: 'Максим Кузнецов', course: 'Математика ОГЭ', amount: '8 800 ₽', date: '10 сен', status: 'Оплачен' },
-              { student: 'Дарья Попова', course: 'Программирование', amount: '10 500 ₽', date: '9 сен', status: 'Оплачен' },
+              { id: 'p101', student: 'Артем Смирнов', studentId: '1', course: 'Английский (Kids)', amount: '9 600 ₽', date: 'Сегодня', status: 'Оплачен', method: 'Банковская карта', recordedBy: 'Администратор' },
+              { id: 'p102', student: 'София Лебедева', studentId: '2', course: 'Робототехника', amount: '12 000 ₽', date: 'Вчера', status: 'Оплачен', method: 'СБП', recordedBy: 'Администратор' },
+              { id: 'p103', student: 'Максим Кузнецов', studentId: '3', course: 'Математика ОГЭ', amount: '8 800 ₽', date: '10 сен', status: 'Оплачен', method: 'Карта', recordedBy: 'Администратор' },
+              { id: 'p104', student: 'Дарья Попова', studentId: '4', course: 'Программирование', amount: '10 500 ₽', date: '9 сен', status: 'Оплачен', method: 'Счет (ООО)', recordedBy: 'Бухгалтерия' },
             ].map((p, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between"
+                onClick={() => setSelectedPayment(p)}
+                className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
                 style={{
                   padding: '12px 14px',
                   backgroundColor: 'var(--md-surface-container-low)',
                   borderRadius: '12px',
                 }}
+                title="Нажмите для просмотра квитанции платежа"
               >
                 <div>
-                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{p.student}</p>
+                  <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>{p.student}</p>
                   <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{p.course} • {p.date}</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <p className="md-label-large" style={{ color: 'var(--md-success)', fontWeight: 700 }}>+{p.amount}</p>
-                  <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>{p.status}</span>
+                  <span className="md-label-small flex items-center justify-end gap-1" style={{ color: 'var(--md-on-surface-variant)' }}>
+                    <span>{p.status}</span>
+                    <ChevronRight className="h-3 w-3 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                  </span>
                 </div>
               </div>
             ))}
@@ -429,25 +544,27 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              { name: 'Мария Иванова', role: 'Преподаватель Английского', groups: '3 группы • 18 учеников', load: '92%' },
-              { name: 'Дмитрий Соколов', role: 'Преподаватель Робототехники', groups: '2 группы • 14 учеников', load: '85%' },
-              { name: 'Елена Васильева', role: 'Преподаватель Математики', groups: '2 группы • 11 учеников', load: '78%' },
-              { name: 'Анна Менеджер', role: 'Администратор школы', groups: 'Куратор оплат и лидов', load: 'Активна' },
+              { name: 'Мария Иванова', role: 'Преподаватель Английского', groups: '3 группы • 18 учеников', load: '92%', href: '/teachers/t1' },
+              { name: 'Дмитрий Соколов', role: 'Преподаватель Робототехники', groups: '2 группы • 14 учеников', load: '85%', href: '/teachers/t2' },
+              { name: 'Елена Васильева', role: 'Преподаватель Математики', groups: '2 группы • 11 учеников', load: '78%', href: '/teachers/t3' },
+              { name: 'Анна Менеджер', role: 'Администратор школы', groups: 'Куратор оплат и лидов', load: 'Активна', href: '/settings/team' },
             ].map((t, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between"
+                onClick={() => router.push(t.href)}
+                className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
                 style={{
                   padding: '12px 14px',
                   backgroundColor: 'var(--md-surface-container-low)',
                   borderRadius: '12px',
                 }}
+                title="Нажмите, чтобы открыть карточку сотрудника"
               >
                 <div>
-                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{t.name}</p>
+                  <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>{t.name}</p>
                   <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{t.role} • {t.groups}</p>
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                   <span
                     className="md-label-small"
                     style={{
@@ -459,12 +576,90 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                   >
                     {t.load}
                   </span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Payment Details Modal */}
+      {selectedPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <CreditCard className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">Квитанция платежа</h3>
+              </div>
+              <button onClick={() => setSelectedPayment(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3.5 text-xs">
+              <div className="rounded-xl bg-emerald-50/60 p-4 border border-emerald-200/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] text-emerald-800 font-semibold uppercase tracking-wider">Поступившая сумма</span>
+                  <p className="text-2xl font-bold text-emerald-950 mt-0.5">{selectedPayment.amount}</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                  {selectedPayment.status}
+                </span>
+              </div>
+
+              <div className="space-y-2 rounded-xl bg-slate-50 p-3.5 border border-slate-200/80">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ученик:</span>
+                  <strong className="text-slate-900">{selectedPayment.student}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Курс обучения:</span>
+                  <span className="text-slate-800 font-medium">{selectedPayment.course}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Дата внесения:</span>
+                  <span className="text-slate-800">{selectedPayment.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Способ оплаты:</span>
+                  <span className="text-slate-800">{selectedPayment.method}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Принял оплату:</span>
+                  <span className="text-slate-800">{selectedPayment.recordedBy}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    const sid = selectedPayment.studentId || '1';
+                    setSelectedPayment(null);
+                    router.push(`/students/${sid}`);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Карточка ученика
+                </button>
+                <button
+                  onClick={() => {
+                    alert('Печатная форма квитанции сформирована');
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Printer className="h-3.5 w-3.5 text-slate-500" />
+                  Печать
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

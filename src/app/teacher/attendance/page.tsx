@@ -13,15 +13,26 @@ import {
   Download,
   Filter,
   Check,
-  Sparkles
+  Sparkles,
+  MessageSquarePlus,
+  Send,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_GROUPS } from '@/lib/data/mockData';
+import { INITIAL_GROUPS, INITIAL_STUDENTS, TeacherComment } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
 
 export default function TeacherAttendanceJournalPage() {
   const toast = useToast();
+  const { userName } = useRole();
   const [selectedGroupId, setSelectedGroupId] = useState('1');
+
+  // Teacher comment modal state
+  const [commentModalStudent, setCommentModalStudent] = useState<{ id: string; name: string } | null>(null);
+  const [commentCategory, setCommentCategory] = useState<'progress' | 'homework' | 'behavior' | 'general'>('progress');
+  const [commentTopic, setCommentTopic] = useState('');
+  const [commentContent, setCommentContent] = useState('');
 
   const group = INITIAL_GROUPS.find((g) => g.id === selectedGroupId) || INITIAL_GROUPS[0];
 
@@ -139,6 +150,39 @@ export default function TeacherAttendanceJournalPage() {
     });
   };
 
+  const handleSaveComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentModalStudent || !commentContent.trim()) return;
+
+    const now = new Date();
+    const dateFormatted = `${now.toLocaleDateString('ru-RU')}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const newComment: TeacherComment = {
+      id: `tc_${Date.now()}`,
+      studentId: commentModalStudent.id,
+      author: userName || 'Мария Иванова (Преподаватель)',
+      date: dateFormatted,
+      groupName: group.name,
+      lessonTopic: commentTopic.trim() || `Урок ${lessonDates[activeLessonIdx].date}`,
+      category: commentCategory,
+      content: commentContent.trim(),
+    };
+
+    // Find student in INITIAL_STUDENTS and append
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === commentModalStudent.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx].teacherComments = [
+        newComment,
+        ...(INITIAL_STUDENTS[idx].teacherComments || []),
+      ];
+    }
+
+    toast.success(`Комментарий сохранен в карточку ученика «${commentModalStudent.name}»!`);
+    setCommentModalStudent(null);
+    setCommentContent('');
+    setCommentTopic('');
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
       {/* Breadcrumb */}
@@ -237,15 +281,30 @@ export default function TeacherAttendanceJournalPage() {
               {matrix.map((row, rIdx) => (
                 <tr key={row.studentId} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 sticky left-0 bg-white z-10 border-r border-slate-100">
-                    <div className="flex items-center justify-between pr-2">
-                      <Link href={`/students/${row.studentId}`} className="hover:text-blue-600">
+                    <div className="flex items-center justify-between pr-2 gap-2">
+                      <Link href={`/students/${row.studentId}`} className="hover:text-blue-600 truncate">
                         {row.studentName}
                       </Link>
-                      {row.consecutiveAbsences >= 2 && (
-                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-bold text-rose-700">
-                          {row.consecutiveAbsences} проп.
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {row.consecutiveAbsences >= 2 && (
+                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[9px] font-bold text-rose-700">
+                            {row.consecutiveAbsences} проп.
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCommentModalStudent({ id: row.studentId, name: row.studentName });
+                            setCommentTopic(`Урок ${lessonDates[activeLessonIdx].date} • ${group.name}`);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
+                          title="Оставить комментарий преподавателя в карточку ученика"
+                        >
+                          <MessageSquarePlus size={11} />
+                          Отзыв
+                        </button>
+                      </div>
                     </div>
                   </td>
 
@@ -314,6 +373,100 @@ export default function TeacherAttendanceJournalPage() {
           <span className="text-[11px] text-slate-400">💡 Кликните по ячейке для быстрой смены статуса</span>
         </div>
       </div>
+
+      {/* MODAL: КОММЕНТАРИЙ ПРЕПОДАВАТЕЛЯ В КАРТОЧКУ УЧЕНИКА */}
+      {commentModalStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                  <MessageSquarePlus size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Комментарий преподавателя в карточку ученика
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Ученик: <strong>{commentModalStudent.name}</strong> • Группа: {group.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCommentModalStudent(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveComment} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="text-slate-600 font-medium block mb-1">Категория отзыва:</label>
+                  <select
+                    value={commentCategory}
+                    onChange={(e) => setCommentCategory(e.target.value as any)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  >
+                    <option value="progress">🌟 Успеваемость и прогресс</option>
+                    <option value="homework">📚 Домашнее задание</option>
+                    <option value="behavior">⚡ Поведение и дисциплина</option>
+                    <option value="general">💬 Общий комментарий</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-600 font-medium block mb-1">Урок / тема:</label>
+                  <input
+                    type="text"
+                    value={commentTopic}
+                    onChange={(e) => setCommentTopic(e.target.value)}
+                    placeholder="Тема занятия..."
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-600 font-medium block mb-1 text-xs">
+                  Текст комментария преподавателя:
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
+                  placeholder="Как ученик проявил себя на уроке? Замечания по домашней работе, успехи или рекомендации..."
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-[11px] text-slate-400">
+                  Сохранится в таймлайн ученика
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCommentModalStudent(null)}
+                    className="px-3.5 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
+                  >
+                    <Send size={13} />
+                    Сохранить в карточку
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

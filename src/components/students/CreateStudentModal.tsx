@@ -18,6 +18,7 @@ export interface NewStudentData {
   attendanceRate: string;
   paymentStatus: string;
   subscriptionEnd: string;
+  notes?: string;
 }
 
 interface CreateStudentModalProps {
@@ -55,7 +56,7 @@ export function CreateStudentModal({ isOpen, onClose, onCreated }: CreateStudent
       return;
     }
 
-    const createdStudent = {
+    const createdStudent: NewStudentData = {
       id: `std_${Date.now()}`,
       name: `${firstName} ${lastName}`,
       firstName,
@@ -69,6 +70,7 @@ export function CreateStudentModal({ isOpen, onClose, onCreated }: CreateStudent
       attendanceRate: '100%',
       paymentStatus: 'paid',
       subscriptionEnd: '30.09.2026',
+      notes: notes.trim() || undefined,
     };
 
     onCreated(createdStudent);
@@ -310,6 +312,31 @@ export function CreateStudentModal({ isOpen, onClose, onCreated }: CreateStudent
                 </p>
               </div>
             )}
+          </div>
+
+          {/* SECTION 4: ЗАМЕТКИ И ОСОБЕННОСТИ УЧЕНИКА */}
+          <div className="space-y-3 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                4. Заметки и особенности ученика
+              </h3>
+              <span className="text-[11px] text-slate-400">Необязательно</span>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-700">
+                Индивидуальные особенности, характер, пожелания родителей, аллергии
+              </label>
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Например: аллергия на орехи; стесняется у доски; просили сажать ближе; интерес к IT и робототехнике..."
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                Заметка сразу отобразится в карточке ученика в разделе «Заметки и особенности ученика» и будет видна преподавателям и администраторам.
+              </p>
+            </div>
           </div>
 
           {/* Modal Footer */}

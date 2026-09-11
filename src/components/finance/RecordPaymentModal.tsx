@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CreditCard, DollarSign, Calendar, Check, User } from 'lucide-react';
+import { X, CreditCard, DollarSign, Calendar, Check, User, Bell, Send, MessageSquare, ShieldCheck } from 'lucide-react';
 import { FullPaymentData, INITIAL_STUDENTS } from '@/lib/data/mockData';
+import { useToast } from '@/context/ToastContext';
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface RecordPaymentModalProps {
 }
 
 export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymentModalProps) {
+  const { success } = useToast();
   const [studentId, setStudentId] = useState('1');
   const [amount, setAmount] = useState('7600');
   const [paymentDate, setPaymentDate] = useState('2026-09-03');
@@ -20,9 +22,16 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
   const [comment, setComment] = useState('');
   const [autoRenewSubscription, setAutoRenewSubscription] = useState(true);
 
+  // Notifications
+  const [notifyOwner, setNotifyOwner] = useState(true);
+  const [notifyParent, setNotifyParent] = useState(true);
+  const [parentChannel, setParentChannel] = useState<'whatsapp' | 'telegram' | 'sms' | 'email'>('telegram');
+
   if (!isOpen) return null;
 
   const selectedStudent = INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+  const parent = selectedStudent.parents[0];
+  const parentDisplayName = parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,8 +45,8 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
       id: `pay_${Date.now()}`,
       studentId: selectedStudent.id,
       studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-      parentId: selectedStudent.parents[0]?.id,
-      parentName: selectedStudent.parents[0] ? `${selectedStudent.parents[0].firstName} ${selectedStudent.parents[0].lastName}` : undefined,
+      parentId: parent?.id,
+      parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
       courseName: selectedStudent.groups[0]?.courseName || 'Английский язык',
       groupName: selectedStudent.groups[0]?.name || 'Основная группа',
       amount: numAmount,
@@ -51,6 +60,15 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
     };
 
     onRecorded(newPayment);
+
+    // Dynamic feedback about dispatched notifications
+    const notices: string[] = [];
+    if (notifyOwner) notices.push('владельцу (Telegram)');
+    if (notifyParent) notices.push(`родителям (${parentDisplayName} через ${parentChannel.toUpperCase()})`);
+
+    const noticeMsg = notices.length > 0 ? ` Уведомления отправлены: ${notices.join(' и ')}.` : '';
+    success(`Платёж ${newPayment.amountFormatted} зафиксирован!${noticeMsg}`);
+
     onClose();
   };
 
@@ -161,6 +179,76 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
               />
               <span>Автоматически продлить абонемент ученика на {periodLabel}</span>
             </label>
+          </div>
+
+          {/* Notifications Section */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-blue-600" />
+              <span className="text-xs font-bold text-slate-900">Уведомления о поступлении платежа</span>
+            </div>
+
+            {/* Notification 1: Owner */}
+            <div className="rounded-lg bg-white p-2.5 border border-slate-200/80 shadow-xs">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyOwner}
+                  onChange={(e) => setNotifyOwner(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-slate-800">Отправить статус владельцу школы</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Мгновенное финансовое push/Telegram оповещение о поступлении денег в кассу
+                  </p>
+                  {notifyOwner && (
+                    <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[10px] text-slate-600 font-mono">
+                      ✉️ Бот: «💰 Поступил платёж {Number(amount || 0).toLocaleString('ru-RU')} ₽ от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+
+            {/* Notification 2: Parents */}
+            <div className="rounded-lg bg-white p-2.5 border border-slate-200/80 shadow-xs">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={notifyParent}
+                  onChange={(e) => setNotifyParent(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <div className="text-xs flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800">
+                      Отправить квитанцию и статус родителю
+                    </span>
+                    {notifyParent && (
+                      <select
+                        value={parentChannel}
+                        onChange={(e) => setParentChannel(e.target.value as any)}
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700 focus:outline-none"
+                      >
+                        <option value="telegram">Telegram</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="sms">SMS</option>
+                        <option value="email">Email</option>
+                      </select>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Получатель: <strong className="text-slate-700">{parentDisplayName}</strong> ({parent?.phone || 'Телефон не указан'})
+                  </p>
+                  {notifyParent && (
+                    <div className="mt-1.5 rounded bg-emerald-50/70 border border-emerald-100 p-2 text-[10px] text-emerald-900 leading-snug">
+                      ✅ Чек: «Здравствуйте, {parent?.firstName || 'уважаемый родитель'}! Оплата обучения {selectedStudent.firstName} на сумму {Number(amount || 0).toLocaleString('ru-RU')} ₽ за {periodLabel} подтверждена. Абонемент активен. Спасибо!»
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
           </div>
 
           <div>

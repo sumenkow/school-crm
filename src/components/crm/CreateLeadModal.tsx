@@ -22,6 +22,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [nextAction, setNextAction] = useState('Первичный звонок / квалификация');
   const [nextActionDate, setNextActionDate] = useState('Сегодня, 14:00');
   const [comment, setComment] = useState('');
+  const [parentNotes, setParentNotes] = useState('');
+  const [studentNotes, setStudentNotes] = useState('');
 
   if (!isOpen) return null;
 
@@ -46,6 +48,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       nextAction,
       nextActionDate,
       comment,
+      parentNotes: parentNotes || undefined,
+      studentNotes: studentNotes || undefined,
       createdAt: new Date().toISOString(),
       interactions: [
         {
@@ -183,13 +187,35 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-700">Комментарий к заявке</label>
+            <label className="text-xs font-medium text-slate-700">Заметки и особенности ученика</label>
+            <textarea
+              rows={2}
+              value={studentNotes}
+              onChange={(e) => setStudentNotes(e.target.value)}
+              placeholder="Характер ребенка, уровень подготовки, интересы, особенности восприятия..."
+              className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-700">Заметки о родителе / контактном лице</label>
+            <textarea
+              rows={2}
+              value={parentNotes}
+              onChange={(e) => setParentNotes(e.target.value)}
+              placeholder="Особенности общения (например: писать в Telegram, звонить после 18:00, строгая мама)..."
+              className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-700">Общий комментарий к заявке</label>
             <textarea
               rows={2}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Пожелания по времени, уровень подготовки..."
-              className="mt-1 w-full rounded-lg border border-slate-200 p-3 text-xs focus:outline-none"
+              placeholder="Пожелания по времени, скидкам, источнику..."
+              className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
             />
           </div>
 

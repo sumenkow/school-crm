@@ -44,8 +44,55 @@ export default function LeadDetailsPage() {
   const [newNoteText, setNewNoteText] = useState('');
   const [newChannel, setNewChannel] = useState<'telegram' | 'whatsapp' | 'phone' | 'call'>('telegram');
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
-  const [newNextAction, setNewNextAction] = useState('');
+  const [selectedNextActionPreset, setSelectedNextActionPreset] = useState('');
+  const [customNextAction, setCustomNextAction] = useState('');
   const [conversionSuccess, setConversionSuccess] = useState(false);
+
+  const nextActionPresets = [
+    { key: 'first_call', label: '📞 Первичный звонок и выявление потребностей' },
+    { key: 'schedule_trial', label: '📅 Записать на бесплатный пробный урок' },
+    { key: 'remind_trial', label: '⏰ Напомнить о пробном уроке (за 24ч)' },
+    { key: 'feedback_trial', label: '💬 Узнать впечатления после пробного урока' },
+    { key: 'send_offer', label: '📄 Отправить предложение и расписание групп' },
+    { key: 'send_invoice', label: '💳 Выставить счет и реквизиты на оплату' },
+    { key: 'payment_control', label: '💰 Проконтролировать поступление оплаты' },
+    { key: 'clarify_decision', label: '❓ Уточнить итоговое решение семьи' },
+    { key: 'follow_up_later', label: '⏳ Повторный контакт через 3 дня (думают)' },
+    { key: 'custom', label: '✏️ Свой вариант (ввести вручную)...' },
+  ];
+
+  const setQuickDate = (hoursAhead: number, targetHour?: number) => {
+    const d = new Date();
+    if (targetHour !== undefined) {
+      d.setDate(d.getDate() + Math.max(1, Math.floor(hoursAhead / 24)));
+      d.setHours(targetHour, 0, 0, 0);
+    } else {
+      d.setHours(d.getHours() + hoursAhead);
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    setNewFollowUpDate(`${year}-${month}-${day}T${hours}:${minutes}`);
+  };
+
+  const formatFollowUpDateForDisplay = (val: string) => {
+    if (!val) return '';
+    if (!val.includes('T')) return val;
+    try {
+      const d = new Date(val);
+      return d.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return val;
+    }
+  };
 
   // Statuses list
   const statuses = [
@@ -115,6 +162,19 @@ export default function LeadDetailsPage() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+    // Determine next action text
+    let resolvedNextAction = '';
+    if (selectedNextActionPreset === 'custom') {
+      resolvedNextAction = customNextAction.trim();
+    } else if (selectedNextActionPreset) {
+      const found = nextActionPresets.find((p) => p.key === selectedNextActionPreset);
+      resolvedNextAction = found ? found.label.replace(/^[^a-zA-Zа-яА-ЯёЁ]+/, '') : selectedNextActionPreset;
+    } else {
+      resolvedNextAction = customNextAction.trim();
+    }
+
+    const resolvedDate = formatFollowUpDateForDisplay(newFollowUpDate);
+
     const newInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: lead.convertedStudentId,
@@ -124,8 +184,8 @@ export default function LeadDetailsPage() {
       author: userName || 'Администратор',
       content: newNoteText,
       result: 'Зафиксировано менеджером',
-      nextAction: newNextAction || undefined,
-      followUpDate: newFollowUpDate || undefined,
+      nextAction: resolvedNextAction || undefined,
+      followUpDate: resolvedDate || undefined,
     };
 
     const updatedInteractions = [newInteraction, ...lead.interactions];
@@ -133,8 +193,8 @@ export default function LeadDetailsPage() {
     setLead((prev) => ({
       ...prev,
       interactions: updatedInteractions,
-      nextAction: newNextAction || prev.nextAction,
-      nextActionDate: newFollowUpDate || prev.nextActionDate,
+      nextAction: resolvedNextAction || prev.nextAction,
+      nextActionDate: resolvedDate || prev.nextActionDate,
     }));
 
     const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
@@ -142,14 +202,15 @@ export default function LeadDetailsPage() {
       INITIAL_LEADS[idx] = {
         ...INITIAL_LEADS[idx],
         interactions: updatedInteractions,
-        nextAction: newNextAction || lead.nextAction,
-        nextActionDate: newFollowUpDate || lead.nextActionDate,
+        nextAction: resolvedNextAction || lead.nextAction,
+        nextActionDate: resolvedDate || lead.nextActionDate,
       };
     }
 
     toast.success('Заметка добавлена в историю общения');
     setNewNoteText('');
-    setNewNextAction('');
+    setSelectedNextActionPreset('');
+    setCustomNextAction('');
     setNewFollowUpDate('');
   };
 
@@ -299,6 +360,43 @@ export default function LeadDetailsPage() {
         )}
       </div>
 
+      {/* Notes & Characteristics (Student & Parent) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Student Notes */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>🎓 Заметки и особенности ученика ({lead.studentName || 'Ученик'})</span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+              {lead.studentNotes || 'Заметки об ученике не указаны при создании лида.'}
+            </p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            Переносится в карточку ученика при конвертации
+          </div>
+        </div>
+
+        {/* Parent Notes */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>👨‍👩‍👧 Заметки о родителе ({lead.name})</span>
+              </span>
+            </div>
+            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+              {lead.parentNotes || 'Особых комментариев по родителю нет.'}
+            </p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            Переносится в карточку семьи и реестр родителей
+          </div>
+        </div>
+      </div>
+
       {/* TIMELINE ВЗАИМОДЕЙСТВИЙ (Section 13) */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
         <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -310,14 +408,14 @@ export default function LeadDetailsPage() {
         </p>
 
         {/* Add note form */}
-        <form onSubmit={handleAddInteraction} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-            <div className="flex items-center gap-1.5">
-              <span>Канал связи:</span>
+        <form onSubmit={handleAddInteraction} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Канал связи:</span>
               <select
                 value={newChannel}
                 onChange={(e) => setNewChannel(e.target.value as 'telegram' | 'whatsapp' | 'phone' | 'call')}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-800"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none"
               >
                 <option value="telegram">Telegram</option>
                 <option value="whatsapp">WhatsApp</option>
@@ -326,15 +424,40 @@ export default function LeadDetailsPage() {
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span>Follow-up срок:</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 text-purple-600" />
+                Срок follow-up:
+              </span>
               <input
-                type="text"
+                type="datetime-local"
                 value={newFollowUpDate}
                 onChange={(e) => setNewFollowUpDate(e.target.value)}
-                placeholder="Завтра, 14:00"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400 font-medium"
               />
+              <div className="flex items-center gap-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(2)}
+                  className="rounded-md bg-purple-50 text-purple-700 px-1.5 py-0.5 hover:bg-purple-100 font-semibold transition-colors"
+                >
+                  +2ч
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(24, 12)}
+                  className="rounded-md bg-purple-50 text-purple-700 px-1.5 py-0.5 hover:bg-purple-100 font-semibold transition-colors"
+                >
+                  Завтра 12:00
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDate(72, 16)}
+                  className="rounded-md bg-purple-50 text-purple-700 px-1.5 py-0.5 hover:bg-purple-100 font-semibold transition-colors"
+                >
+                  Через 3 дня
+                </button>
+              </div>
             </div>
           </div>
 
@@ -342,19 +465,45 @@ export default function LeadDetailsPage() {
             rows={2}
             value={newNoteText}
             onChange={(e) => setNewNoteText(e.target.value)}
-            placeholder="О чем договорились? Результат разговора с родителем..."
-            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            placeholder="О чем договорились? Итоги звонка или сообщения родителю..."
+            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
           />
 
-          <input
-            type="text"
-            value={newNextAction}
-            onChange={(e) => setNewNextAction(e.target.value)}
-            placeholder="Следующее действие (например: отправить счет, узнать решение)..."
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none"
-          />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-700 whitespace-nowrap">
+                Следующее действие:
+              </span>
+              <select
+                value={selectedNextActionPreset}
+                onChange={(e) => setSelectedNextActionPreset(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-purple-400"
+              >
+                <option value="">-- Выберите следующее действие из регламента --</option>
+                {nextActionPresets.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex justify-end">
+            {selectedNextActionPreset === 'custom' && (
+              <input
+                type="text"
+                value={customNextAction}
+                onChange={(e) => setCustomNextAction(e.target.value)}
+                placeholder="Введите индивидуальное следующее действие..."
+                className="w-full rounded-lg border border-purple-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                autoFocus
+              />
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+            <span className="text-[11px] text-slate-400">
+              Действие зафиксируется в таймлайне и обновит статус карточки лида
+            </span>
             <button
               type="submit"
               className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"

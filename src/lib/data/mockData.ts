@@ -14,6 +14,17 @@ export interface TimelineInteraction {
   followUpDate?: string;
 }
 
+export interface TeacherComment {
+  id: string;
+  studentId: string;
+  author: string;
+  date: string;
+  groupName?: string;
+  lessonTopic?: string;
+  category: 'progress' | 'homework' | 'behavior' | 'general';
+  content: string;
+}
+
 export interface FullStudentData extends Student {
   parents: Array<Parent & { relationshipType: string; isPrimary: boolean }>;
   groups: Array<{
@@ -58,6 +69,7 @@ export interface FullStudentData extends Student {
   };
   interactions: TimelineInteraction[];
   tasks: Task[];
+  teacherComments?: TeacherComment[];
 }
 
 export const INITIAL_STUDENTS: FullStudentData[] = [
@@ -177,6 +189,28 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         dueDate: '25.09.2026',
         status: 'open',
         priority: 'medium',
+      },
+    ],
+    teacherComments: [
+      {
+        id: 'tc_1',
+        studentId: '1',
+        author: 'Мария Иванова (Преподаватель)',
+        date: '08.09.2026, 20:15',
+        groupName: 'English B1 Teens',
+        lessonTopic: 'Past Simple & Irregular Verbs',
+        category: 'progress',
+        content: 'Отлично справился с устным тестом на неправильные глаголы. Заметно выросла беглость речи, рекомендую больше читать художественную литературу на английском.',
+      },
+      {
+        id: 'tc_2',
+        studentId: '1',
+        author: 'Мария Иванова (Преподаватель)',
+        date: '04.09.2026, 19:40',
+        groupName: 'English B1 Teens',
+        lessonTopic: 'Reading & Discussion: Technology',
+        category: 'homework',
+        content: 'Домашнее эссе сдано вовремя, хорошая аргументация. Рекомендовано обратить внимание на предлоги времени (at/in/on).',
       },
     ],
   },
@@ -774,6 +808,8 @@ export interface FullLeadData {
   nextAction?: string;
   nextActionDate?: string;
   comment?: string;
+  studentNotes?: string;
+  parentNotes?: string;
   createdAt: string;
   convertedStudentId?: string;
   convertedParentId?: string;
@@ -796,6 +832,8 @@ export const INITIAL_LEADS: FullLeadData[] = [
     nextAction: 'Позвонить для подбора времени пробного урока',
     nextActionDate: 'Сегодня, 12:00',
     comment: 'Интересуется занятиями по субботам в первой половине дня.',
+    studentNotes: 'Увлекается Lego Technic, активный, любит практические задачи. Математику понимает хорошо.',
+    parentNotes: 'Мама Светлана. Предпочитает общение в Telegram, на звонки в рабочее время отвечает редко.',
     createdAt: '2026-09-03T08:30:00Z',
     interactions: [
       {

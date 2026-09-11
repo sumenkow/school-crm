@@ -8,17 +8,21 @@ interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (newTask: FullTaskData) => void;
+  defaultStudentId?: string;
+  defaultLeadId?: string;
 }
 
-export function CreateTaskModal({ isOpen, onClose, onCreated }: CreateTaskModalProps) {
+export function CreateTaskModal({ isOpen, onClose, onCreated, defaultStudentId, defaultLeadId }: CreateTaskModalProps) {
   const [title, setTitle] = useState('');
-  const [taskType, setTaskType] = useState<FullTaskData['taskType']>('CRM Сделка');
+  const [taskType, setTaskType] = useState<FullTaskData['taskType']>('Retention');
   const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
   const [priority, setPriority] = useState<FullTaskData['priority']>('medium');
-  const [dueDate, setDueDate] = useState('2026-09-04');
+  const [dueDate, setDueDate] = useState('2026-09-12');
   const [dueTime, setDueTime] = useState('15:00');
-  const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'none'>('student');
-  const [selectedEntityId, setSelectedEntityId] = useState('1');
+  const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'none'>(
+    defaultStudentId ? 'student' : defaultLeadId ? 'lead' : 'student'
+  );
+  const [selectedEntityId, setSelectedEntityId] = useState(defaultStudentId || defaultLeadId || '1');
   const [description, setDescription] = useState('');
 
   if (!isOpen) return null;

@@ -1,56 +1,161 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Phone, MessageSquare, Mail, Users, MoreHorizontal, ChevronRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  Search,
+  Plus,
+  Phone,
+  MessageSquare,
+  Users,
+  MoreHorizontal,
+  ChevronRight,
+  User,
+  Edit3,
+  UserPlus,
+  Trash2,
+  Send,
+  AlertTriangle,
+  X,
+} from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
+import { INITIAL_STUDENTS } from '@/lib/data/mockData';
+
+interface ParentRecord {
+  id: string;
+  name: string;
+  phone: string;
+  telegram?: string;
+  whatsapp?: string;
+  preferredChannel: string;
+  children: Array<{ id: string; name: string; group: string }>;
+  totalPaid: string;
+  balanceStatus: string;
+}
+
+const INITIAL_PARENTS: ParentRecord[] = [
+  {
+    id: 'p1',
+    name: 'Ольга Смирнова',
+    phone: '+7 (999) 123-45-67',
+    telegram: '@olga_smirnova',
+    whatsapp: '+79991234567',
+    preferredChannel: 'Telegram',
+    children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens' }],
+    totalPaid: '38 400 ₽',
+    balanceStatus: 'paid',
+  },
+  {
+    id: 'p3',
+    name: 'Дмитрий Кузнецов',
+    phone: '+7 (999) 234-56-78',
+    telegram: '@dkuznetsov',
+    whatsapp: '+79992345678',
+    preferredChannel: 'WhatsApp',
+    children: [
+      { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior' },
+      { id: '5', name: 'Артём Кузнецов', group: 'Kids Math Safari' }
+    ],
+    totalPaid: '54 000 ₽',
+    balanceStatus: 'debt',
+  },
+  {
+    id: 'p4',
+    name: 'Елена Васильева',
+    phone: '+7 (999) 345-67-89',
+    telegram: '@elena_v',
+    whatsapp: '+79993456789',
+    preferredChannel: 'Phone',
+    children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1' }],
+    totalPaid: '0 ₽',
+    balanceStatus: 'trial',
+  },
+];
 
 export default function ParentsPage() {
+  const router = useRouter();
+  const { success } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [parents, setParents] = useState<ParentRecord[]>(INITIAL_PARENTS);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  const parents = [
-    {
-      id: 'p1',
-      name: 'Ольга Смирнова',
-      phone: '+7 (999) 123-45-67',
-      telegram: '@olga_smirnova',
-      whatsapp: '+79991234567',
-      preferredChannel: 'Telegram',
-      children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens' }],
-      totalPaid: '38 400 ₽',
-      balanceStatus: 'paid',
-    },
-    {
-      id: 'p3',
-      name: 'Дмитрий Кузнецов',
-      phone: '+7 (999) 234-56-78',
-      telegram: '@dkuznetsov',
-      whatsapp: '+79992345678',
-      preferredChannel: 'WhatsApp',
-      children: [
-        { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior' },
-        { id: '5', name: 'Артём Кузнецов', group: 'Kids Math Safari' }
-      ],
-      totalPaid: '54 000 ₽',
-      balanceStatus: 'debt',
-    },
-    {
-      id: 'p4',
-      name: 'Елена Васильева',
-      phone: '+7 (999) 345-67-89',
-      telegram: '@elena_v',
-      whatsapp: '+79993456789',
-      preferredChannel: 'Phone',
-      children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1' }],
-      totalPaid: '0 ₽',
-      balanceStatus: 'trial',
-    },
-  ];
+  // Modals state
+  const [editingParent, setEditingParent] = useState<ParentRecord | null>(null);
+  const [deletingParent, setDeletingParent] = useState<ParentRecord | null>(null);
+  const [linkingChildParent, setLinkingChildParent] = useState<ParentRecord | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Close active dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.parent-actions-menu-wrapper')) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const filteredParents = parents.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phone.includes(searchTerm) ||
     p.children.some((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleDeleteParent = () => {
+    if (!deletingParent) return;
+    setParents((prev) => prev.filter((p) => p.id !== deletingParent.id));
+    success(`Родитель ${deletingParent.name} успешно удален из базы`);
+    setDeletingParent(null);
+  };
+
+  const handleSaveEditParent = (updated: ParentRecord) => {
+    setParents((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    success(`Данные контакта ${updated.name} обновлены`);
+    setEditingParent(null);
+  };
+
+  const handleLinkChild = (childId: string) => {
+    if (!linkingChildParent) return;
+    const student = INITIAL_STUDENTS.find((s) => s.id === childId);
+    if (!student) return;
+
+    const newChild = {
+      id: student.id,
+      name: student.name,
+      group: student.groupName || 'Без группы',
+    };
+
+    setParents((prev) =>
+      prev.map((p) => {
+        if (p.id === linkingChildParent.id) {
+          return {
+            ...p,
+            children: [...p.children, newChild],
+          };
+        }
+        return p;
+      })
+    );
+
+    success(`Ученик ${student.name} успешно привязан к ${linkingChildParent.name}`);
+    setLinkingChildParent(null);
+  };
+
+  const handleCreateParent = (newParent: Omit<ParentRecord, 'id' | 'children' | 'totalPaid' | 'balanceStatus'>) => {
+    const created: ParentRecord = {
+      ...newParent,
+      id: `p_${Date.now()}`,
+      children: [],
+      totalPaid: '0 ₽',
+      balanceStatus: 'trial',
+    };
+    setParents((prev) => [created, ...prev]);
+    success(`Контакт ${created.name} добавлен в базу`);
+    setIsCreateModalOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -61,7 +166,10 @@ export default function ParentsPage() {
             Реестр контактных лиц и законных представителей • Единый профиль семьи
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           + Новый контакт
         </button>
@@ -82,24 +190,119 @@ export default function ParentsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredParents.map((p) => (
-          <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+          <div
+            key={p.id}
+            className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+          >
             <div>
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">{p.name}</h3>
+                  <h3
+                    onClick={() => router.push(`/parents/${p.id}`)}
+                    className="font-bold text-slate-900 text-base cursor-pointer hover:text-blue-600 transition-colors"
+                  >
+                    {p.name}
+                  </h3>
                   <span className="inline-block mt-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
                     Канал: {p.preferredChannel}
                   </span>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600">
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
+
+                {/* 3 Dots Overflow Action Menu */}
+                <div className="parent-actions-menu-wrapper relative">
+                  <button
+                    onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    title="Действия с родителем"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {activeMenuId === p.id && (
+                    <div className="absolute right-0 top-9 z-30 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                      <button
+                        onClick={() => {
+                          setActiveMenuId(null);
+                          router.push(`/parents/${p.id}`);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <User className="h-3.5 w-3.5 text-blue-600" />
+                        <span>Открыть профиль семьи</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveMenuId(null);
+                          setEditingParent(p);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <Edit3 className="h-3.5 w-3.5 text-amber-600" />
+                        <span>Редактировать контакт</span>
+                      </button>
+
+                      {p.whatsapp && (
+                        <a
+                          href={`https://wa.me/${p.whatsapp.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setActiveMenuId(null)}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Написать в WhatsApp</span>
+                        </a>
+                      )}
+
+                      {p.telegram && (
+                        <a
+                          href={`https://t.me/${p.telegram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => setActiveMenuId(null)}
+                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
+                        >
+                          <Send className="h-3.5 w-3.5 text-blue-500" />
+                          <span>Написать в Telegram</span>
+                        </a>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setActiveMenuId(null);
+                          setLinkingChildParent(p);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                      >
+                        <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>Привязать ребенка</span>
+                      </button>
+
+                      <div className="my-1 border-t border-slate-100" />
+
+                      <button
+                        onClick={() => {
+                          setActiveMenuId(null);
+                          setDeletingParent(p);
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                        <span>Удалить родителя</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-4 space-y-2 text-xs text-slate-600">
                 <div className="flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium">{p.phone}</a>
+                  <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium">
+                    {p.phone}
+                  </a>
                 </div>
                 {p.telegram && (
                   <div className="flex items-center gap-2">
@@ -111,26 +314,40 @@ export default function ParentsPage() {
 
               {/* Children */}
               <div className="mt-4 border-t border-slate-100 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                  Дети ({p.children.length}):
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    Дети ({p.children.length}):
+                  </p>
+                  <button
+                    onClick={() => setLinkingChildParent(p)}
+                    className="text-[10px] font-semibold text-blue-600 hover:underline"
+                  >
+                    + Привязать
+                  </button>
+                </div>
                 <div className="space-y-1.5">
-                  {p.children.map((child) => (
-                    <Link
-                      key={child.id}
-                      href={`/students/${child.id}`}
-                      className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
-                    >
-                      <span className="font-semibold text-slate-800">{child.name}</span>
-                      <span className="text-[11px] text-slate-500">{child.group} →</span>
-                    </Link>
-                  ))}
+                  {p.children.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 italic">Нет привязанных учеников</p>
+                  ) : (
+                    p.children.map((child) => (
+                      <Link
+                        key={child.id}
+                        href={`/students/${child.id}`}
+                        className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                      >
+                        <span className="font-semibold text-slate-800">{child.name}</span>
+                        <span className="text-[11px] text-slate-500">{child.group} →</span>
+                      </Link>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500">Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong></span>
+              <span className="text-slate-500">
+                Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
+              </span>
               <Link
                 href={`/parents/${p.id}`}
                 className="inline-flex items-center gap-0.5 text-blue-600 font-bold hover:underline"
@@ -140,6 +357,419 @@ export default function ParentsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* 1. Modal: Edit Parent */}
+      {editingParent && (
+        <EditParentModal
+          parent={editingParent}
+          onClose={() => setEditingParent(null)}
+          onSave={handleSaveEditParent}
+        />
+      )}
+
+      {/* 2. Modal: Delete Parent Confirmation */}
+      {deletingParent && (
+        <DeleteConfirmModal
+          parent={deletingParent}
+          onClose={() => setDeletingParent(null)}
+          onConfirm={handleDeleteParent}
+        />
+      )}
+
+      {/* 3. Modal: Link Child */}
+      {linkingChildParent && (
+        <LinkChildModal
+          parent={linkingChildParent}
+          onClose={() => setLinkingChildParent(null)}
+          onLink={handleLinkChild}
+        />
+      )}
+
+      {/* 4. Modal: Create Parent */}
+      {isCreateModalOpen && (
+        <CreateParentModal
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={handleCreateParent}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Sub-components: Modals
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EditParentModal({
+  parent,
+  onClose,
+  onSave,
+}: {
+  parent: ParentRecord;
+  onClose: () => void;
+  onSave: (updated: ParentRecord) => void;
+}) {
+  const [name, setName] = useState(parent.name);
+  const [phone, setPhone] = useState(parent.phone);
+  const [telegram, setTelegram] = useState(parent.telegram || '');
+  const [whatsapp, setWhatsapp] = useState(parent.whatsapp || '');
+  const [preferredChannel, setPreferredChannel] = useState(parent.preferredChannel);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...parent,
+      name,
+      phone,
+      telegram: telegram || undefined,
+      whatsapp: whatsapp || undefined,
+      preferredChannel,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <Edit3 className="h-4 w-4" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Редактирование контакта</h3>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 text-xs">
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">ФИО представителя *</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">Телефон *</label>
+            <input
+              type="text"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Telegram</label>
+              <input
+                type="text"
+                placeholder="@username"
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">WhatsApp</label>
+              <input
+                type="text"
+                placeholder="+79991234567"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">Предпочтительный канал связи</label>
+            <select
+              value={preferredChannel}
+              onChange={(e) => setPreferredChannel(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="Telegram">Telegram</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Phone">Телефонный звонок</option>
+              <option value="Email">Email</option>
+            </select>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors"
+            >
+              Сохранить изменения
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({
+  parent,
+  onClose,
+  onConfirm,
+}: {
+  parent: ParentRecord;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center gap-3 text-rose-600 mb-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50">
+            <AlertTriangle className="h-5 w-5 text-rose-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Удалить контакт родителя?</h3>
+            <p className="text-xs text-slate-500">Действие нельзя будет отменить</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 my-3 text-xs space-y-1.5">
+          <p className="font-bold text-slate-800">{parent.name}</p>
+          <p className="text-slate-600">Телефон: {parent.phone}</p>
+          {parent.children.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-200 text-rose-700 font-medium">
+              ⚠️ К родителю привязано детей: <strong>{parent.children.length}</strong> (
+              {parent.children.map((c) => c.name).join(', ')}). После удаления ученики останутся без привязанного законного представителя.
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onConfirm}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 transition-colors shadow-xs"
+          >
+            Да, удалить родителя
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LinkChildModal({
+  parent,
+  onClose,
+  onLink,
+}: {
+  parent: ParentRecord;
+  onClose: () => void;
+  onLink: (childId: string) => void;
+}) {
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(
+    INITIAL_STUDENTS.filter((s) => !parent.children.some((c) => c.id === s.id))[0]?.id || ''
+  );
+
+  const availableStudents = INITIAL_STUDENTS.filter(
+    (s) => !parent.children.some((c) => c.id === s.id)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <UserPlus className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Привязать ребенка</h3>
+              <p className="text-xs text-slate-500">Родитель: {parent.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3 text-xs">
+          {availableStudents.length === 0 ? (
+            <p className="text-slate-500 py-4 text-center">Все ученики уже привязаны к этому родителю.</p>
+          ) : (
+            <div>
+              <label className="mb-1.5 block font-semibold text-slate-700">Выберите ученика из базы:</label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              >
+                {availableStudents.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.groupName || 'Без группы'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              disabled={!selectedStudentId || availableStudents.length === 0}
+              onClick={() => onLink(selectedStudentId)}
+              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              Привязать
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreateParentModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (parent: Omit<ParentRecord, 'id' | 'children' | 'totalPaid' | 'balanceStatus'>) => void;
+}) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('+7 ');
+  const [telegram, setTelegram] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [preferredChannel, setPreferredChannel] = useState('Telegram');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onCreate({
+      name,
+      phone,
+      telegram: telegram || undefined,
+      whatsapp: whatsapp || undefined,
+      preferredChannel,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <Plus className="h-4 w-4" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Новый контакт родителя</h3>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5 text-xs">
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">ФИО представителя *</label>
+            <input
+              type="text"
+              required
+              placeholder="Например: Смирнов Алексей Павлович"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">Телефон *</label>
+            <input
+              type="text"
+              required
+              placeholder="+7 (999) 000-00-00"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">Telegram</label>
+              <input
+                type="text"
+                placeholder="@username"
+                value={telegram}
+                onChange={(e) => setTelegram(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block font-semibold text-slate-700">WhatsApp</label>
+              <input
+                type="text"
+                placeholder="+79991234567"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block font-semibold text-slate-700">Предпочтительный канал связи</label>
+            <select
+              value={preferredChannel}
+              onChange={(e) => setPreferredChannel(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="Telegram">Telegram</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Phone">Телефонный звонок</option>
+              <option value="Email">Email</option>
+            </select>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors"
+            >
+              Создать контакт
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

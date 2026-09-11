@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
 import {
   ArrowLeft,
   Calendar,
@@ -22,25 +22,131 @@ import {
   CheckSquare,
   Sparkles,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  FileText,
+  Check,
+  MessageSquarePlus,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import type { Task } from '@/types';
+import type { FullTaskData } from '@/lib/data/mockData';
 
 export default function StudentDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
+  const { userName } = useRole();
   const studentId = params.id as string;
 
   const [student, setStudent] = useState<FullStudentData>(() => {
     return INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
   });
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'finance' | 'timeline' | 'tasks'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>('profile');
+
+  // Task creation modal state
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+
+  // Notes editing state
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState(student.notes || '');
+
+  // Teacher comment state
+  const [newTeacherCommentText, setNewTeacherCommentText] = useState('');
+  const [newTeacherCommentCategory, setNewTeacherCommentCategory] = useState<'progress' | 'homework' | 'behavior' | 'general'>('progress');
+  const [newTeacherCommentGroup, setNewTeacherCommentGroup] = useState(student.groups[0]?.name || 'Основная группа');
+  const [newTeacherCommentTopic, setNewTeacherCommentTopic] = useState('');
 
   // New interaction form state
   const [newNoteText, setNewNoteText] = useState('');
   const [newChannel, setNewChannel] = useState<'telegram' | 'whatsapp' | 'phone' | 'call'>('telegram');
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
+
+  const handleTaskCreated = (newTask: FullTaskData) => {
+    const taskItem: Task = {
+      id: newTask.id,
+      title: newTask.title,
+      taskType: newTask.taskType,
+      studentId: student.id,
+      assignedTo: newTask.assignedTo,
+      dueDate: newTask.dueDateFormatted || newTask.dueDate,
+      status: 'open',
+      priority: newTask.priority,
+    };
+
+    setStudent((prev) => ({
+      ...prev,
+      tasks: [taskItem, ...prev.tasks],
+    }));
+
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = {
+        ...INITIAL_STUDENTS[idx],
+        tasks: [taskItem, ...(INITIAL_STUDENTS[idx].tasks || [])],
+      };
+    }
+
+    toast.success(`Задача «${newTask.title}» успешно создана для ученика!`);
+    setIsCreateTaskModalOpen(false);
+  };
+
+  const handleSaveNotes = () => {
+    const updatedNotes = editedNotes.trim();
+    setStudent((prev) => ({ ...prev, notes: updatedNotes }));
+
+    // Sync with in-memory INITIAL_STUDENTS
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = { ...INITIAL_STUDENTS[idx], notes: updatedNotes };
+    }
+
+    setIsEditingNotes(false);
+    toast.success('Заметки и особенности ученика сохранены!');
+  };
+
+  const handleAddTeacherComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeacherCommentText.trim()) return;
+
+    const now = new Date();
+    const dateFormatted = `${now.toLocaleDateString('ru-RU')}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const newComment: TeacherComment = {
+      id: `tc_${Date.now()}`,
+      studentId: student.id,
+      author: userName || 'Преподаватель',
+      date: dateFormatted,
+      groupName: newTeacherCommentGroup,
+      lessonTopic: newTeacherCommentTopic.trim() || undefined,
+      category: newTeacherCommentCategory,
+      content: newTeacherCommentText.trim(),
+    };
+
+    const updatedComments = [newComment, ...(student.teacherComments || [])];
+
+    setStudent((prev) => ({
+      ...prev,
+      teacherComments: updatedComments,
+    }));
+
+    // Sync with in-memory INITIAL_STUDENTS
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = {
+        ...INITIAL_STUDENTS[idx],
+        teacherComments: updatedComments,
+      };
+    }
+
+    setNewTeacherCommentText('');
+    setNewTeacherCommentTopic('');
+    toast.success('Комментарий преподавателя добавлен в карточку ученика!');
+  };
 
   const handleAddInteraction = (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +247,13 @@ export default function StudentDetailsPage() {
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-purple-600" />
+              Создать задачу
+            </button>
+            <button
               onClick={() => setActiveTab('timeline')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
@@ -184,13 +297,14 @@ export default function StudentDetailsPage() {
           { key: 'profile', label: 'Профиль и Семья' },
           { key: 'education', label: 'Обучение и Группы' },
           { key: 'attendance', label: `Посещаемость (${student.attendanceStats.attendanceRate})` },
+          { key: 'teacher_comments', label: `Комментарии учителя (${(student.teacherComments || []).length})` },
           { key: 'finance', label: 'Финансы и Абонементы' },
           { key: 'timeline', label: `Timeline (${student.interactions.length})` },
           { key: 'tasks', label: `Задачи (${student.tasks.filter((t) => t.status === 'open').length})` },
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as 'profile' | 'education' | 'attendance' | 'finance' | 'timeline' | 'tasks')}
+            onClick={() => setActiveTab(tab.key as any)}
             className={cn(
               'pb-3 px-3 border-b-2 whitespace-nowrap transition-all',
               activeTab === tab.key
@@ -208,11 +322,101 @@ export default function StudentDetailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Main Info */}
           <div className="md:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-              <h3 className="text-sm font-bold text-slate-900 mb-3">Заметки и особенности ученика</h3>
-              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                {student.notes || 'Заметок пока нет.'}
-              </p>
+            {/* Editable Notes & Characteristics */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  Заметки и особенности ученика
+                </h3>
+                {!isEditingNotes ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditedNotes(student.notes || '');
+                      setIsEditingNotes(true);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    <Edit size={13} />
+                    Редактировать
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingNotes(false)}
+                      className="px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveNotes}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors"
+                    >
+                      <Check size={13} />
+                      Сохранить
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!isEditingNotes ? (
+                <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100 whitespace-pre-line">
+                  {student.notes || 'Заметок об особенностях ученика пока нет. Нажмите «Редактировать», чтобы указать аллергии, особенности характера или рекомендации.'}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    rows={4}
+                    value={editedNotes}
+                    onChange={(e) => setEditedNotes(e.target.value)}
+                    placeholder="Индивидуальные особенности, характер, пожелания родителей, аллергии..."
+                    className="w-full rounded-xl border border-blue-300 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    💡 Изменения сразу сохранятся в профиле ученика и будут видны учителям и администраторам.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Teaser for Teacher Comments on Profile tab */}
+            <div className="rounded-2xl border border-purple-200/80 bg-gradient-to-r from-purple-50/50 via-white to-purple-50/30 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquarePlus className="h-4 w-4 text-purple-600" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Комментарии учителя ({(student.teacherComments || []).length})
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('teacher_comments')}
+                  className="text-xs font-bold text-purple-700 hover:underline"
+                >
+                  Все комментарии учителя →
+                </button>
+              </div>
+
+              {(student.teacherComments || []).length === 0 ? (
+                <p className="text-xs text-slate-500 bg-white p-3 rounded-xl border border-purple-100">
+                  Преподаватели пока не оставляли комментариев. Комментарии можно оставлять в журнале посещаемости или во вкладке «Комментарии учителя».
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(student.teacherComments || []).slice(0, 2).map((tc) => (
+                    <div key={tc.id} className="rounded-xl border border-purple-100 bg-white p-3 text-xs space-y-1 shadow-2xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">{tc.author}</span>
+                        <span className="text-[11px] text-slate-400">{tc.date}</span>
+                      </div>
+                      <p className="text-slate-700 leading-relaxed line-clamp-2">{tc.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Parents List (One or Multiple Parents) */}
@@ -402,6 +606,149 @@ export default function StudentDetailsPage() {
         </div>
       )}
 
+      {/* TAB: КОММЕНТАРИИ УЧИТЕЛЯ (ТАЙМЛАЙН) */}
+      {activeTab === 'teacher_comments' && (
+        <div className="space-y-6">
+          {/* Header & Add Comment Form */}
+          <div className="rounded-2xl border border-purple-200/80 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <MessageSquarePlus className="h-4 w-4 text-purple-600" />
+                  Комментарии и отзывы преподавателей
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Таймлайн заметок преподавателя: успеваемость, поведение, выполнение ДЗ и рекомендации к ученику
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Add Teacher Comment Form */}
+            <form onSubmit={handleAddTeacherComment} className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="text-slate-600 font-medium block mb-1">Группа / занятие:</label>
+                  <select
+                    value={newTeacherCommentGroup}
+                    onChange={(e) => setNewTeacherCommentGroup(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  >
+                    {student.groups.map((g) => (
+                      <option key={g.id} value={g.name}>{g.name} ({g.courseName})</option>
+                    ))}
+                    <option value="Индивидуальное занятие">Индивидуальное занятие</option>
+                    <option value="Общий комментарий">Общий комментарий</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-600 font-medium block mb-1">Категория отзыва:</label>
+                  <select
+                    value={newTeacherCommentCategory}
+                    onChange={(e) => setNewTeacherCommentCategory(e.target.value as any)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  >
+                    <option value="progress">🌟 Успеваемость и прогресс</option>
+                    <option value="homework">📚 Домашнее задание</option>
+                    <option value="behavior">⚡ Поведение и дисциплина</option>
+                    <option value="general">💬 Общий комментарий</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-600 font-medium block mb-1">Тема урока (необязательно):</label>
+                  <input
+                    type="text"
+                    value={newTeacherCommentTopic}
+                    onChange={(e) => setNewTeacherCommentTopic(e.target.value)}
+                    placeholder="Например: Past Simple vs Present Perfect"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  />
+                </div>
+              </div>
+
+              <textarea
+                rows={3}
+                value={newTeacherCommentText}
+                onChange={(e) => setNewTeacherCommentText(e.target.value)}
+                placeholder="Напишите комментарий об ученике (активность на уроке, пробелы, рекомендации)..."
+                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
+              />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                <span className="text-[11px] text-slate-500">
+                  Автор отзыва: <strong>{userName || 'Преподаватель'}</strong>
+                </span>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Добавить в таймлайн ученика
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Teacher Comments Timeline */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Хронология комментариев преподавателей ({student.teacherComments?.length || 0})
+            </h4>
+
+            {(!student.teacherComments || student.teacherComments.length === 0) ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
+                Комментариев преподавателя пока нет. Вы можете оставить первый комментарий через форму выше или при заполнении журнала посещаемости.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {student.teacherComments.map((tc) => {
+                  const categoryBadge = {
+                    progress: { label: 'Успеваемость и прогресс', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+                    homework: { label: 'Домашнее задание', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+                    behavior: { label: 'Поведение', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+                    general: { label: 'Общий отзыв', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+                  }[tc.category] || { label: 'Отзыв', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+
+                  return (
+                    <div
+                      key={tc.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-4 text-xs shadow-xs space-y-2.5 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm">{tc.author}</span>
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold border', categoryBadge.color)}>
+                            {categoryBadge.label}
+                          </span>
+                          {tc.groupName && (
+                            <span className="rounded-md bg-purple-50 text-purple-700 px-2 py-0.5 text-[10px] font-semibold border border-purple-100">
+                              {tc.groupName}
+                            </span>
+                          )}
+                          {tc.lessonTopic && (
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              Тема: {tc.lessonTopic}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-400 shrink-0 font-medium">
+                          {tc.date}
+                        </span>
+                      </div>
+
+                      <p className="text-slate-800 leading-relaxed text-xs whitespace-pre-line">
+                        {tc.content}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* TAB 4: ФИНАНСЫ И АБОНЕМЕНТЫ */}
       {activeTab === 'finance' && (
         <div className="space-y-6">
@@ -569,7 +916,11 @@ export default function StudentDetailsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">Задачи по ученику и семье</h3>
-            <button className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700">
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
               <Plus className="h-3.5 w-3.5" />
               Новая задача
             </button>
@@ -609,6 +960,14 @@ export default function StudentDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* CREATE TASK MODAL DIALOG */}
+      <CreateTaskModal
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        onCreated={handleTaskCreated}
+        defaultStudentId={student.id}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MapPin, Video, Check } from 'lucide-react';
 import { INITIAL_GROUPS, FullLessonData } from '@/lib/data/mockData';
 
@@ -8,13 +8,20 @@ interface ScheduleLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
   onScheduled: (newLesson: FullLessonData) => void;
+  initialDate?: string;
 }
 
-export function ScheduleLessonModal({ isOpen, onClose, onScheduled }: ScheduleLessonModalProps) {
+export function ScheduleLessonModal({ isOpen, onClose, onScheduled, initialDate }: ScheduleLessonModalProps) {
   const [groupId, setGroupId] = useState('1');
-  const [date, setDate] = useState('2026-09-04');
+  const [date, setDate] = useState(initialDate || '2026-09-04');
   const [startTime, setStartTime] = useState('18:45');
   const [endTime, setEndTime] = useState('20:15');
+
+  useEffect(() => {
+    if (initialDate) {
+      setDate(initialDate);
+    }
+  }, [initialDate]);
   const [room, setRoom] = useState('Аудитория 204');
   const [topic, setTopic] = useState('');
   const [isOnline, setIsOnline] = useState(false);

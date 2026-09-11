@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { useToast } from '@/context/ToastContext';
+import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 
 export default function StudentsPage() {
   const router = useRouter();
@@ -86,6 +87,63 @@ export default function StudentsPage() {
 
   const handleStudentCreated = (newStudent: NewStudentData) => {
     setStudents((prev) => [newStudent, ...prev]);
+
+    // Also push to in-memory INITIAL_STUDENTS so opening /students/[id] will load full data with notes
+    const fullStudent: FullStudentData = {
+      id: newStudent.id,
+      firstName: newStudent.firstName,
+      lastName: newStudent.lastName,
+      status: newStudent.status as any,
+      notes: newStudent.notes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      parents: [
+        {
+          id: `p_${Date.now()}`,
+          firstName: newStudent.parent.split(' ')[0] || 'Родитель',
+          lastName: newStudent.parent.split(' ')[1] || '',
+          phone: newStudent.parentPhone || '',
+          preferredChannel: 'telegram',
+          relationshipType: 'Родитель',
+          isPrimary: true,
+        },
+      ],
+      groups: [
+        {
+          id: `g_${Date.now()}`,
+          name: newStudent.group,
+          courseName: newStudent.course,
+          teacherName: newStudent.teacher,
+          schedule: 'Пн, Чт 18:45',
+          status: 'active',
+          joinedAt: new Date().toLocaleDateString('ru-RU'),
+        },
+      ],
+      attendanceStats: {
+        totalLessons: 0,
+        presentCount: 0,
+        absentCount: 0,
+        rescheduledCount: 0,
+        attendanceRate: '100%',
+        history: [],
+      },
+      finance: {
+        activeSubscription: {
+          period: '01.09.2026 – 30.09.2026',
+          price: '7 600 ₽',
+          status: 'active',
+          lessonsAttended: '0 из 8 занятий',
+          renewalDate: '30.09.2026',
+        },
+        payments: [],
+      },
+      interactions: [],
+      tasks: [],
+      teacherComments: [],
+    };
+
+    INITIAL_STUDENTS.unshift(fullStudent);
+    toast.success(`Ученик ${newStudent.name} успешно добавлен в базу!`);
   };
 
   const filteredStudents = students.filter((s) => {
