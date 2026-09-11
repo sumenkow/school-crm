@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   UserPlus,
   Trash2,
@@ -8,13 +9,13 @@ import {
   Check,
   Shield,
   GraduationCap,
-  Key,
   RefreshCw,
   Eye,
   EyeOff,
   AlertCircle,
   CheckCircle2,
-  Users2
+  Users2,
+  Plus
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
@@ -49,8 +50,9 @@ const ROLES_INFO = {
   },
 };
 
-export default function TeamManagementPage() {
+function TeamContent() {
   const { isOwner, role: currentRole } = useRole();
+  const searchParams = useSearchParams();
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,24 @@ export default function TeamManagementPage() {
       res += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setPassword(res);
+    return res;
   };
+
+  // Open modal with pre-selected role
+  const openCreateModalForRole = useCallback((targetRole: 'admin' | 'teacher') => {
+    setRole(targetRole);
+    generatePassword();
+    setCreateError('');
+    setShowCreateModal(true);
+  }, []);
+
+  // Check URL query params for ?role=teacher or ?role=admin
+  useEffect(() => {
+    const roleParam = searchParams.get('role');
+    if (roleParam === 'teacher' || roleParam === 'admin') {
+      openCreateModalForRole(roleParam);
+    }
+  }, [searchParams, openCreateModalForRole]);
 
   const loadTeam = useCallback(async () => {
     setLoading(true);
@@ -202,28 +221,36 @@ export default function TeamManagementPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-      {/* Header */}
+      {/* Header with Quick Role-Specific Create Buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
             Команда и учетные записи
           </h1>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Создавайте доступы для администраторов и учителей с разграничением прав
+            Создавайте учетные записи с разграничением прав для преподавателей и администраторов
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            generatePassword();
-            setShowCreateModal(true);
-          }}
-          className="md-btn md-btn-filled"
-          style={{ gap: '8px', alignSelf: 'flex-start' }}
-        >
-          <UserPlus size={18} />
-          Создать учетную запись
-        </button>
+        {/* Buttons with pre-assigned roles */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => openCreateModalForRole('teacher')}
+            className="md-btn md-btn-filled"
+            style={{ gap: '8px' }}
+          >
+            <GraduationCap size={18} />
+            + Добавить преподавателя
+          </button>
+          <button
+            onClick={() => openCreateModalForRole('admin')}
+            className="md-btn md-btn-tonal"
+            style={{ gap: '8px' }}
+          >
+            <Shield size={18} />
+            + Добавить администратора
+          </button>
+        </div>
       </div>
 
       {/* Success banner */}
@@ -244,41 +271,141 @@ export default function TeamManagementPage() {
         </div>
       )}
 
-      {/* Roles comparison card */}
+      {/* Roles comparison cards WITH DIRECT ACTION BUTTONS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(['owner', 'admin', 'teacher'] as const).map((rKey) => {
-          const info = ROLES_INFO[rKey];
-          return (
-            <div
-              key={rKey}
-              className="md-card-outlined"
+        {/* Teacher Card */}
+        <div
+          className="md-card-outlined flex flex-col justify-between"
+          style={{
+            padding: '18px',
+            gap: '12px',
+            borderColor: 'var(--md-primary)',
+            backgroundColor: 'var(--md-surface-container-low)',
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+              <span
+                className="md-label-medium"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: ROLES_INFO.teacher.bg,
+                  color: ROLES_INFO.teacher.color,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <GraduationCap size={14} />
+                Преподаватель
+              </span>
+            </div>
+            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+              {ROLES_INFO.teacher.desc}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openCreateModalForRole('teacher')}
+            className="md-btn md-btn-filled md-btn-sm"
+            style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
+          >
+            <Plus size={14} />
+            Создать аккаунт учителя
+          </button>
+        </div>
+
+        {/* Admin Card */}
+        <div
+          className="md-card-outlined flex flex-col justify-between"
+          style={{
+            padding: '18px',
+            gap: '12px',
+            borderColor: 'var(--md-outline)',
+            backgroundColor: 'var(--md-surface-container-low)',
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+              <span
+                className="md-label-medium"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: ROLES_INFO.admin.bg,
+                  color: ROLES_INFO.admin.color,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <Shield size={14} />
+                Администратор
+              </span>
+            </div>
+            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+              {ROLES_INFO.admin.desc}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openCreateModalForRole('admin')}
+            className="md-btn md-btn-tonal md-btn-sm"
+            style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
+          >
+            <Plus size={14} />
+            Создать аккаунт администратора
+          </button>
+        </div>
+
+        {/* Owner Card */}
+        <div
+          className="md-card-outlined flex flex-col justify-between"
+          style={{
+            padding: '18px',
+            gap: '12px',
+            backgroundColor: 'var(--md-surface-container-low)',
+          }}
+        >
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
+              <span
+                className="md-label-medium"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: ROLES_INFO.owner.bg,
+                  color: ROLES_INFO.owner.color,
+                  fontWeight: 600,
+                }}
+              >
+                Владелец школы
+              </span>
+            </div>
+            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+              {ROLES_INFO.owner.desc}
+            </p>
+          </div>
+          <div style={{ paddingTop: '8px' }}>
+            <span
+              className="md-label-small"
               style={{
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
+                display: 'inline-block',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--md-surface-container-high)',
+                color: 'var(--md-on-surface-variant)',
+                width: '100%',
+                textAlign: 'center',
               }}
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className="md-label-medium"
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    backgroundColor: info.bg,
-                    color: info.color,
-                    fontWeight: 600,
-                  }}
-                >
-                  {info.label}
-                </span>
-              </div>
-              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                {info.desc}
-              </p>
-            </div>
-          );
-        })}
+              Ваша текущая роль
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Team table / list */}
@@ -423,7 +550,7 @@ export default function TeamManagementPage() {
         )}
       </div>
 
-      {/* Modal: Create User Account */}
+      {/* Modal: Create User Account with pre-selected role */}
       {showCreateModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -446,21 +573,23 @@ export default function TeamManagementPage() {
                     width: '40px',
                     height: '40px',
                     borderRadius: '12px',
-                    backgroundColor: 'var(--md-primary-container)',
-                    color: 'var(--md-on-primary-container)',
+                    backgroundColor: role === 'teacher' ? 'var(--md-primary-container)' : 'var(--md-secondary-container)',
+                    color: role === 'teacher' ? 'var(--md-on-primary-container)' : 'var(--md-on-secondary-container)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <UserPlus size={20} />
+                  {role === 'teacher' ? <GraduationCap size={20} /> : <Shield size={20} />}
                 </div>
                 <div>
                   <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                    Новая учетная запись
+                    Новый {role === 'teacher' ? 'преподаватель' : 'администратор'}
                   </h2>
                   <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    Создайте логин и пароль для учителя или администратора
+                    {role === 'teacher'
+                      ? 'Доступ к занятиям, группам и журналу посещаемости'
+                      : 'Доступ к ученикам, лидам, финансам и задачам'}
                   </p>
                 </div>
               </div>
@@ -474,6 +603,52 @@ export default function TeamManagementPage() {
             </div>
 
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Role selection tabs in modal */}
+              <div>
+                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '8px' }}>
+                  Назначенная роль:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('teacher')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      border: `2px solid ${role === 'teacher' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
+                      backgroundColor: role === 'teacher' ? 'var(--md-primary-container)' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <GraduationCap size={18} style={{ color: role === 'teacher' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
+                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватель</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRole('admin')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      border: `2px solid ${role === 'admin' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
+                      backgroundColor: role === 'admin' ? 'var(--md-primary-container)' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <Shield size={18} style={{ color: role === 'admin' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
+                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администратор</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Full Name */}
               <div>
@@ -520,70 +695,6 @@ export default function TeamManagementPage() {
                   className="md-input"
                   style={{ width: '100%' }}
                 />
-              </div>
-
-              {/* Role selection */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '8px' }}>
-                  Роль и уровень доступа *
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      padding: '12px',
-                      borderRadius: '12px',
-                      border: `2px solid ${role === 'teacher' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                      backgroundColor: role === 'teacher' ? 'var(--md-primary-container)' : 'transparent',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="newRole"
-                      value="teacher"
-                      checked={role === 'teacher'}
-                      onChange={() => setRole('teacher')}
-                      style={{ marginTop: '2px', accentColor: 'var(--md-primary)' }}
-                    />
-                    <div>
-                      <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватель</p>
-                      <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '2px' }}>
-                        Свои группы, занятия и журнал
-                      </p>
-                    </div>
-                  </label>
-
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      padding: '12px',
-                      borderRadius: '12px',
-                      border: `2px solid ${role === 'admin' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                      backgroundColor: role === 'admin' ? 'var(--md-primary-container)' : 'transparent',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="newRole"
-                      value="admin"
-                      checked={role === 'admin'}
-                      onChange={() => setRole('admin')}
-                      style={{ marginTop: '2px', accentColor: 'var(--md-primary)' }}
-                    />
-                    <div>
-                      <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администратор</p>
-                      <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '2px' }}>
-                        Ученики, лиды, оплаты, задачи
-                      </p>
-                    </div>
-                  </label>
-                </div>
               </div>
 
               {/* Password with generator */}
@@ -670,7 +781,7 @@ export default function TeamManagementPage() {
                   disabled={createLoading}
                   className="md-btn md-btn-filled"
                 >
-                  {createLoading ? 'Создание...' : 'Создать учетную запись'}
+                  {createLoading ? 'Создание...' : `Создать ${role === 'teacher' ? 'учителя' : 'администратора'}`}
                 </button>
               </div>
             </form>
@@ -767,5 +878,13 @@ export default function TeamManagementPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TeamManagementPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}>
+      <TeamContent />
+    </Suspense>
   );
 }

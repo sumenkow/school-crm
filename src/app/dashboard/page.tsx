@@ -119,11 +119,15 @@ function OwnerDashboard() {
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/settings/team" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
-            <UserPlus size={16} />
-            + Сотрудник
+          <Link href="/settings/team?role=teacher" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
+            <GraduationCap size={16} />
+            + Преподаватель
           </Link>
-          <Link href="/crm" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
+          <Link href="/settings/team?role=admin" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
+            <Shield size={16} />
+            + Администратор
+          </Link>
+          <Link href="/crm" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
             <UserCheck size={16} />
             + Новый лид
           </Link>

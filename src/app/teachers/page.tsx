@@ -19,10 +19,14 @@ export default function TeachersPage() {
             Список педагогического состава, расписание занятий и текущая учебная нагрузка
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors">
-          <Plus className="h-4 w-4" />
+        <Link
+          href="/settings/team?role=teacher"
+          className="md-btn md-btn-filled md-btn-sm"
+          style={{ gap: '6px' }}
+        >
+          <Plus size={16} />
           + Добавить преподавателя
-        </button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
