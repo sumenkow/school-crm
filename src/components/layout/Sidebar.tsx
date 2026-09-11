@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
+  Users2,
   GraduationCap,
   BookOpen,
   UserCheck,
@@ -71,6 +72,7 @@ const ownerNav: NavSection[] = [
   {
     section: 'Администрирование',
     items: [
+      { label: 'Команда', href: '/settings/team', icon: <Users2 size={20} /> },
       { label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
       { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
     ],

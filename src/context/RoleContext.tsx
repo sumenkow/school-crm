@@ -1,41 +1,73 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
-import { UserRole } from '@/types';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { UserRole } from '@/types';
 
 interface RoleContextType {
   role: UserRole;
   setRole: (role: UserRole) => void;
   userName: string;
+  userEmail: string;
+  isOwner: boolean;
 }
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
-function getUserName(r: UserRole): string {
-  if (r === 'owner') return 'Александр Руководитель';
-  if (r === 'admin') return 'Елена Менеджер';
-  return 'Мария Преподаватель';
-}
-
-function getInitialRole(): UserRole {
-  if (typeof window === 'undefined') return 'owner';
-  const saved = localStorage.getItem('school_app_role') as UserRole;
-  if (saved === 'owner' || saved === 'admin' || saved === 'teacher') return saved;
-  return 'owner';
-}
-
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>(getInitialRole);
-  const [userName, setUserName] = useState<string>(() => getUserName(getInitialRole()));
+  const [role, setRoleState] = useState<UserRole>('teacher');
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [isOwner, setIsOwner] = useState(false);
 
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      setUserEmail(user.email ?? '');
+
+      // Try to get profile from DB
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        const dbRole = profile.role as UserRole;
+        setRoleState(dbRole);
+        setIsOwner(dbRole === 'owner');
+        setUserName(profile.full_name || user.email || '');
+      } else {
+        // Fallback: use user_metadata (set during invite)
+        const metaRole = (user.user_metadata?.role as UserRole) || 'teacher';
+        const metaName = user.user_metadata?.full_name || user.email || '';
+        setRoleState(metaRole);
+        setIsOwner(metaRole === 'owner');
+        setUserName(metaName);
+      }
+    }
+
+    loadUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      loadUser();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Owners can switch view role (to see CRM as admin/teacher)
   const setRole = (newRole: UserRole) => {
     setRoleState(newRole);
-    localStorage.setItem('school_app_role', newRole);
-    setUserName(getUserName(newRole));
   };
 
   return (
-    <RoleContext.Provider value={{ role, setRole, userName }}>
+    <RoleContext.Provider value={{ role, setRole, userName, userEmail, isOwner }}>
       {children}
     </RoleContext.Provider>
   );

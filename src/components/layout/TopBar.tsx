@@ -1,29 +1,52 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Menu, Search, Bell } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Menu, Search, Bell, LogOut, ChevronDown, User } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 
 interface TopBarProps {
   onOpenMobile: () => void;
 }
 
-const roleConfig: Record<UserRole, { label: string; color: string }> = {
-  owner: { label: 'Владелец', color: 'var(--md-tertiary-container, #EEDCFF)' },
-  admin: { label: 'Админ', color: 'var(--md-secondary-container)' },
-  teacher: { label: 'Учитель', color: 'var(--md-primary-container)' },
+const roleConfig: Record<UserRole, { label: string }> = {
+  owner: { label: 'Владелец' },
+  admin: { label: 'Админ' },
+  teacher: { label: 'Учитель' },
 };
 
 export function TopBar({ onOpenMobile }: TopBarProps) {
-  const { role, setRole, userName } = useRole();
+  const { role, setRole, userName, userEmail, isOwner } = useRole();
   const [scrolled, setScrolled] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const displayName = userName || userEmail || '?';
+  const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
     <header
@@ -42,13 +65,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         onClick={onOpenMobile}
         className="md:hidden flex items-center justify-center"
         style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'transparent',
-          color: 'var(--md-on-surface)',
-          cursor: 'pointer',
+          width: '40px', height: '40px', borderRadius: '50%',
+          border: 'none', background: 'transparent',
+          color: 'var(--md-on-surface)', cursor: 'pointer',
         }}
         aria-label="Открыть меню"
       >
@@ -57,16 +76,13 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
       {/* Search bar */}
       <div
-        className="flex items-center gap-2 flex-1"
+        className="flex items-center gap-2"
         style={{
-          maxWidth: '360px',
-          height: '40px',
+          flex: '1 1 0', maxWidth: '360px', height: '40px',
           backgroundColor: 'var(--md-surface-container-highest)',
-          borderRadius: '9999px',
-          padding: '0 16px',
-          cursor: 'pointer',
+          borderRadius: '9999px', padding: '0 16px', cursor: 'pointer',
         }}
-        onClick={() => alert('Глобальный поиск Cmd+K будет подключен в следующих этапах.')}
+        onClick={() => alert('Глобальный поиск — будет подключён в следующих этапах.')}
       >
         <Search size={18} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         <span className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
@@ -77,103 +93,166 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* MD3 Segmented Button — Role Switcher */}
-      <div
-        className="hidden sm:flex items-center"
-        style={{
-          border: '1px solid var(--md-outline)',
-          borderRadius: '9999px',
-          overflow: 'hidden',
-          height: '40px',
-        }}
-        role="group"
-        aria-label="Переключение роли"
-      >
-        {(['owner', 'admin', 'teacher'] as UserRole[]).map((r, idx) => (
-          <button
-            key={r}
-            onClick={() => setRole(r)}
-            style={{
-              padding: '0 16px',
-              height: '100%',
-              border: 'none',
-              borderLeft: idx > 0 ? '1px solid var(--md-outline)' : 'none',
-              backgroundColor: role === r ? 'var(--md-secondary-container)' : 'transparent',
-              color: role === r ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
-              fontWeight: role === r ? 700 : 400,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'background-color 0.15s, color 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {role === r && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-            {roleConfig[r].label}
-          </button>
-        ))}
-      </div>
+      {/* Role Switcher — only for owner (view as other roles) */}
+      {isOwner && (
+        <div
+          className="hidden sm:flex items-center"
+          style={{
+            border: '1px solid var(--md-outline)',
+            borderRadius: '9999px',
+            overflow: 'hidden',
+            height: '40px',
+          }}
+          role="group"
+          aria-label="Режим просмотра"
+        >
+          {(['owner', 'admin', 'teacher'] as UserRole[]).map((r, idx) => (
+            <button
+              key={r}
+              onClick={() => setRole(r)}
+              style={{
+                padding: '0 14px',
+                height: '100%',
+                border: 'none',
+                borderLeft: idx > 0 ? '1px solid var(--md-outline)' : 'none',
+                backgroundColor: role === r ? 'var(--md-secondary-container)' : 'transparent',
+                color: role === r ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
+                fontWeight: role === r ? 700 : 400,
+                fontSize: '13px',
+                cursor: 'pointer',
+                transition: 'background-color 0.15s, color 0.15s',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {role === r && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+              {roleConfig[r].label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Notification bell */}
       <button
         style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'transparent',
-          color: 'var(--md-on-surface-variant)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: '40px', height: '40px', borderRadius: '50%',
+          border: 'none', background: 'transparent',
+          color: 'var(--md-on-surface-variant)', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           position: 'relative',
         }}
         aria-label="Уведомления"
       >
         <Bell size={22} />
-        {/* Notification badge */}
-        <span
-          style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--md-error)',
-          }}
-        />
+        <span style={{
+          position: 'absolute', top: '8px', right: '8px',
+          width: '8px', height: '8px', borderRadius: '50%',
+          backgroundColor: 'var(--md-error)',
+        }} />
       </button>
 
-      {/* User avatar */}
-      <button
-        style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          backgroundColor: 'var(--md-primary)',
-          color: 'var(--md-on-primary)',
-          fontWeight: 700,
-          fontSize: '16px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-        title={userName}
-        aria-label={`Пользователь: ${userName}`}
-      >
-        {userName.charAt(0)}
-      </button>
+      {/* User avatar + dropdown */}
+      <div ref={menuRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setUserMenuOpen(!userMenuOpen)}
+          style={{
+            height: '40px', borderRadius: '9999px',
+            border: '1px solid var(--md-outline-variant)',
+            backgroundColor: 'transparent',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '0 12px 0 4px',
+          }}
+          aria-label="Меню пользователя"
+        >
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            backgroundColor: 'var(--md-primary)', color: 'var(--md-on-primary)',
+            fontWeight: 700, fontSize: '14px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {avatarLetter}
+          </div>
+          <span
+            className="md-label-large hidden sm:block"
+            style={{ color: 'var(--md-on-surface)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {displayName.split(' ')[0]}
+          </span>
+          <ChevronDown size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
+        </button>
+
+        {/* Dropdown menu */}
+        {userMenuOpen && (
+          <div
+            style={{
+              position: 'absolute', right: 0, top: '48px',
+              backgroundColor: 'var(--md-surface-container-lowest)',
+              borderRadius: '12px',
+              boxShadow: 'var(--md-elevation-3)',
+              minWidth: '200px',
+              padding: '8px',
+              zIndex: 100,
+            }}
+          >
+            {/* User info */}
+            <div style={{
+              padding: '12px',
+              borderBottom: '1px solid var(--md-outline-variant)',
+              marginBottom: '4px',
+            }}>
+              <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{displayName}</p>
+              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{userEmail}</p>
+              <span
+                className="md-label-small"
+                style={{
+                  display: 'inline-block', marginTop: '4px',
+                  padding: '2px 8px', borderRadius: '9999px',
+                  backgroundColor: 'var(--md-secondary-container)',
+                  color: 'var(--md-on-secondary-container)',
+                }}
+              >
+                {roleConfig[role].label}
+              </span>
+            </div>
+
+            {/* Profile link */}
+            <button
+              style={{
+                width: '100%', padding: '10px 12px',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderRadius: '8px', color: 'var(--md-on-surface)',
+                fontSize: '14px', textAlign: 'left',
+              }}
+              onClick={() => setUserMenuOpen(false)}
+            >
+              <User size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
+              Профиль
+            </button>
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', padding: '10px 12px',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderRadius: '8px', color: 'var(--md-error)',
+                fontSize: '14px', textAlign: 'left',
+              }}
+            >
+              <LogOut size={18} />
+              Выйти
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
