@@ -25,11 +25,16 @@ import {
   BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 
 export default function LeadDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const leadId = params.id as string;
+
+  const { userName } = useRole();
+  const toast = useToast();
 
   const [lead, setLead] = useState<FullLeadData>(() => {
     return INITIAL_LEADS.find((l) => l.id === leadId) || INITIAL_LEADS[0];
@@ -55,36 +60,94 @@ export default function LeadDetailsPage() {
   ] as const;
 
   const handleStatusChange = (newStatus: FullLeadData['status']) => {
+    if (newStatus === lead.status) return;
+
+    const oldStatusObj = statuses.find((s) => s.key === lead.status);
+    const newStatusObj = statuses.find((s) => s.key === newStatus);
+
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const statusChangeInteraction: TimelineInteraction = {
+      id: `status_change_${Date.now()}`,
+      studentId: lead.convertedStudentId,
+      occurredAt: `${dateFormatted}, ${timeFormatted}`,
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор',
+      content: `Сменил(а) статус воронки: «${oldStatusObj?.label || lead.status}» → «${newStatusObj?.label || newStatus}»`,
+      result: `Этап воронки: ${newStatusObj?.label || newStatus}`,
+    };
+
+    const updatedInteractions = [statusChangeInteraction, ...lead.interactions];
+
     setLead((prev) => ({
       ...prev,
       status: newStatus,
+      interactions: updatedInteractions,
     }));
+
+    // Update in-memory INITIAL_LEADS so it persists across views
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = {
+        ...INITIAL_LEADS[idx],
+        status: newStatus,
+        interactions: updatedInteractions,
+      };
+    }
+
+    toast.success(`Статус изменен на «${newStatusObj?.label}» и зафиксирован в таймлайне`);
   };
 
   const handleAddInteraction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteText.trim()) return;
 
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
     const newInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: lead.convertedStudentId,
-      occurredAt: 'Только что',
+      occurredAt: `Сегодня, ${timeStr}`,
       channel: newChannel,
       type: 'follow_up',
-      author: 'Вы (Текущий менеджер)',
+      author: userName || 'Администратор',
       content: newNoteText,
-      result: 'Зафиксировано',
+      result: 'Зафиксировано менеджером',
       nextAction: newNextAction || undefined,
       followUpDate: newFollowUpDate || undefined,
     };
 
+    const updatedInteractions = [newInteraction, ...lead.interactions];
+
     setLead((prev) => ({
       ...prev,
-      interactions: [newInteraction, ...prev.interactions],
+      interactions: updatedInteractions,
       nextAction: newNextAction || prev.nextAction,
       nextActionDate: newFollowUpDate || prev.nextActionDate,
     }));
 
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = {
+        ...INITIAL_LEADS[idx],
+        interactions: updatedInteractions,
+        nextAction: newNextAction || lead.nextAction,
+        nextActionDate: newFollowUpDate || lead.nextActionDate,
+      };
+    }
+
+    toast.success('Заметка добавлена в историю общения');
     setNewNoteText('');
     setNewNextAction('');
     setNewFollowUpDate('');
@@ -304,21 +367,52 @@ export default function LeadDetailsPage() {
 
         {/* Timeline Records */}
         <div className="space-y-3 pt-2">
-          {lead.interactions.map((int) => (
-            <div key={int.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900">{int.author}</span>
-                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200 uppercase">
-                    {int.channel}
-                  </span>
+          {lead.interactions.map((int) => {
+            if (int.type === 'status_change') {
+              return (
+                <div
+                  key={int.id}
+                  className="rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 via-purple-50/40 to-indigo-50/90 p-3.5 text-xs shadow-2xs"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-2xs shrink-0">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{int.author}</span>
+                          <span className="rounded-full bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 text-[10px] uppercase tracking-wider">
+                            Смена этапа воронки
+                          </span>
+                        </div>
+                        <p className="text-slate-800 font-medium mt-0.5">{int.content}</p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] text-indigo-700/80 font-semibold whitespace-nowrap bg-white/90 px-2.5 py-1 rounded-md border border-indigo-100 self-start sm:self-auto">
+                      {int.occurredAt}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[11px] text-slate-400">{int.occurredAt}</span>
+              );
+            }
+
+            return (
+              <div key={int.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">{int.author}</span>
+                    <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200 uppercase">
+                      {int.channel}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400">{int.occurredAt}</span>
+                </div>
+                <p className="text-slate-700 pt-1 leading-relaxed">{int.content}</p>
+                {int.result && <p className="text-[11px] text-emerald-700 font-medium">✓ Результат: {int.result}</p>}
               </div>
-              <p className="text-slate-700 pt-1 leading-relaxed">{int.content}</p>
-              {int.result && <p className="text-[11px] text-emerald-700 font-medium">✓ Результат: {int.result}</p>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

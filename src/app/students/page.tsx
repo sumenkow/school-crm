@@ -3,13 +3,15 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight } from 'lucide-react';
+import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
+import { useToast } from '@/context/ToastContext';
 
 export default function StudentsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -195,7 +197,35 @@ export default function StudentsPage() {
                   </td>
                   <td className="px-3 py-3">
                     <p className="font-medium text-slate-800">{student.parent}</p>
-                    <p className="text-[11px] text-slate-500">{student.parentPhone}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-[11px] text-slate-500">{student.parentPhone}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(student.parentPhone);
+                          toast.success(`Номер скопирован: ${student.parentPhone}`);
+                        }}
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        title="Скопировать телефон"
+                      >
+                        <Copy size={12} />
+                      </button>
+                      <a
+                        href={`https://wa.me/${student.parentPhone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors text-[10px]"
+                        title="Написать в WhatsApp"
+                      >
+                        WA
+                      </a>
+                      <a
+                        href={`tel:${student.parentPhone.replace(/[^\d+]/g, '')}`}
+                        className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="Позвонить"
+                      >
+                        <Phone size={12} />
+                      </a>
+                    </div>
                   </td>
                   <td className="px-3 py-3">
                     <p className="font-medium text-slate-800">{student.group}</p>

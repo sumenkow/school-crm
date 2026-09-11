@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -20,9 +20,12 @@ import {
   AlertCircle,
   BarChart3,
   PhoneCall,
-  Video
+  Video,
+  FileText
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
+import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 
 // Helper: MD3 icon container
 function IconContainer({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
@@ -86,9 +89,116 @@ function KpiCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SMART ACTION HUB (Оперативные задачи дня: долги, горячие лиды, пробные)
+// ─────────────────────────────────────────────────────────────────────────────
+function SmartActionHub() {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
+            ⚡
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Требует внимания сегодня (Оперативный хаб)
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Срочные задачи менеджера для сохранения выручки и предотвращения оттока
+            </p>
+          </div>
+        </div>
+        <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+          3 срочных действия
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+        {/* Task 1: Overdue Payment */}
+        <div className="rounded-xl border border-rose-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">Долг по оплате</span>
+              <span className="text-slate-400">Срок: 25.08</span>
+            </div>
+            <p className="font-bold text-slate-900 text-xs mt-2">Мария Кузнецова (Robotics)</p>
+            <p className="text-[11px] text-slate-500">Отец: Дмитрий (+7 999 234-56-78)</p>
+            <p className="text-xs font-extrabold text-rose-700 mt-1">Долг: 8 400 ₽</p>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100">
+            <a
+              href="https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе."
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
+            >
+              WhatsApp
+            </a>
+            <a
+              href="tel:+79992345678"
+              className="flex-1 text-center py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 text-[10px] transition-colors"
+            >
+              Позвонить
+            </a>
+          </div>
+        </div>
+
+        {/* Task 2: Hot Lead */}
+        <div className="rounded-xl border border-amber-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Новый лид (&gt; 2ч)</span>
+              <span className="text-slate-400">Сайт</span>
+            </div>
+            <p className="font-bold text-slate-900 text-xs mt-2">Смирнова Ольга</p>
+            <p className="text-[11px] text-slate-500">Ребенок: Анна (Kids English A1)</p>
+            <p className="text-xs font-semibold text-purple-700 mt-1">Ждет звонка для записи</p>
+          </div>
+          <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100">
+            <a
+              href="tel:+79991234567"
+              className="flex-1 text-center py-1 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-700 text-[10px] transition-colors"
+            >
+              Позвонить
+            </a>
+            <Link
+              href="/crm"
+              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 text-[10px]"
+            >
+              В воронку
+            </Link>
+          </div>
+        </div>
+
+        {/* Task 3: Trial Lessons */}
+        <div className="rounded-xl border border-purple-200 bg-white p-3.5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">Пробные уроки</span>
+              <span className="text-slate-400">Сегодня</span>
+            </div>
+            <p className="font-bold text-slate-900 text-xs mt-2">2 пробных занятия</p>
+            <p className="text-[11px] text-slate-500">15:00 Робототехника • 18:45 Английский</p>
+            <p className="text-xs text-slate-600 mt-1">Денис С., Мария И.</p>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100">
+            <Link
+              href="/calendar"
+              className="w-full block text-center py-1 rounded-lg bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 text-[10px] transition-colors"
+            >
+              Открыть в календаре →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. OWNER DASHBOARD (Финансовая аналитика, масштабирование, управление командой)
 // ─────────────────────────────────────────────────────────────────────────────
-function OwnerDashboard() {
+function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
   return (
@@ -140,8 +250,19 @@ function OwnerDashboard() {
             <BarChart3 size={16} />
             Аналитика
           </Link>
+          <button
+            onClick={onOpenReport}
+            className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+            style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
+          >
+            <FileText size={16} />
+            Отчет за день
+          </button>
         </div>
       </div>
+
+      {/* SMART ACTION HUB */}
+      <SmartActionHub />
 
       {/* Attention / Urgent Risks Banner */}
       <div
@@ -351,7 +472,7 @@ function OwnerDashboard() {
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. ADMIN DASHBOARD (Оперативное управление: ученики, лиды, звонки, оплаты)
 // ─────────────────────────────────────────────────────────────────────────────
-function AdminDashboard() {
+function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -381,6 +502,14 @@ function AdminDashboard() {
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={onOpenReport}
+            className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+            style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
+          >
+            <FileText size={16} />
+            Отчет за день
+          </button>
           <Link href="/crm" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
             <UserCheck size={16} />
             + Новый лид
@@ -399,6 +528,9 @@ function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* SMART ACTION HUB */}
+      <SmartActionHub />
 
       {/* Admin KPI metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -808,14 +940,22 @@ function TeacherDashboard() {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { role } = useRole();
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  if (role === 'teacher') {
-    return <TeacherDashboard />;
-  }
+  return (
+    <>
+      {role === 'teacher' ? (
+        <TeacherDashboard />
+      ) : role === 'admin' ? (
+        <AdminDashboard onOpenReport={() => setReportModalOpen(true)} />
+      ) : (
+        <OwnerDashboard onOpenReport={() => setReportModalOpen(true)} />
+      )}
 
-  if (role === 'admin') {
-    return <AdminDashboard />;
-  }
-
-  return <OwnerDashboard />;
+      <DailyReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+      />
+    </>
+  );
 }

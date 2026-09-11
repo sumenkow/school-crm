@@ -5,6 +5,7 @@ import { Menu, Search, Bell, LogOut, ChevronDown, User } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
+import { CommandPalette } from '@/components/common/CommandPalette';
 
 interface TopBarProps {
   onOpenMobile: () => void;
@@ -20,7 +21,20 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const { role, userName, userEmail } = useRole();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Global Cmd+K / Ctrl+K listener
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 8);
@@ -74,19 +88,29 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         <Menu size={24} />
       </button>
 
-      {/* Search bar */}
+      {/* Search bar / Command Palette trigger */}
       <div
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 transition-colors hover:bg-black/5"
         style={{
           flex: '1 1 0', maxWidth: '360px', height: '40px',
           backgroundColor: 'var(--md-surface-container-highest)',
           borderRadius: '9999px', padding: '0 16px', cursor: 'pointer',
         }}
-        onClick={() => alert('Глобальный поиск — будет подключён в следующих этапах.')}
+        onClick={() => setPaletteOpen(true)}
       >
         <Search size={18} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
-        <span className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
-          Поиск...
+        <span className="md-body-medium flex-1 truncate" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
+          Быстрый поиск...
+        </span>
+        <span
+          className="hidden sm:inline-flex items-center text-[11px] font-mono font-medium rounded-md px-1.5 py-0.5"
+          style={{
+            backgroundColor: 'var(--md-surface)',
+            color: 'var(--md-on-surface-variant)',
+            border: '1px solid var(--md-outline-variant)'
+          }}
+        >
+          ⌘K
         </span>
       </div>
 
@@ -230,6 +254,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
           </div>
         )}
       </div>
+
+      {/* Global Command Palette */}
+      <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </header>
   );
 }

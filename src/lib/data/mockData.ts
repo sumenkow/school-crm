@@ -6,7 +6,7 @@ export interface TimelineInteraction {
   parentId?: string;
   occurredAt: string;
   channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other';
-  type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'other';
+  type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other';
   author: string;
   content: string;
   result?: string;

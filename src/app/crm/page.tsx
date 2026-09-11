@@ -15,14 +15,20 @@ import {
   LayoutGrid,
   List,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
+import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
+import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
 
 export default function CrmPage() {
   const router = useRouter();
+  const toast = useToast();
+  const { userName } = useRole();
   const [leads, setLeads] = useState<FullLeadData[]>(INITIAL_LEADS);
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +49,58 @@ export default function CrmPage() {
 
   const handleLeadCreated = (newLead: FullLeadData) => {
     setLeads((prev) => [newLead, ...prev]);
+  };
+
+  const handleQuickStatusChange = (leadId: string, newStatus: FullLeadData['status']) => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead || targetLead.status === newStatus) return;
+
+    const oldStatusObj = columns.find((c) => c.key === targetLead.status);
+    const newStatusObj = columns.find((c) => c.key === newStatus);
+
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const statusChangeInteraction: TimelineInteraction = {
+      id: `status_change_${Date.now()}`,
+      studentId: targetLead.convertedStudentId,
+      occurredAt: `${dateFormatted}, ${timeFormatted}`,
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор',
+      content: `Сменил(а) статус воронки: «${oldStatusObj?.label || targetLead.status}» → «${newStatusObj?.label || newStatus}»`,
+      result: `Этап воронки: ${newStatusObj?.label || newStatus}`,
+    };
+
+    const updatedInteractions = [statusChangeInteraction, ...(targetLead.interactions || [])];
+
+    setLeads((prev) =>
+      prev.map((l) =>
+        l.id === leadId
+          ? { ...l, status: newStatus, interactions: updatedInteractions }
+          : l
+      )
+    );
+
+    // Also update in-memory INITIAL_LEADS so it persists across views
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === leadId);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = {
+        ...INITIAL_LEADS[idx],
+        status: newStatus,
+        interactions: updatedInteractions,
+      };
+    }
+
+    toast.success(`Статус «${targetLead.name}» изменен на «${newStatusObj?.label}» и зафиксирован в таймлайне`);
   };
 
   const filteredLeads = leads.filter((lead) => {
@@ -171,9 +229,39 @@ export default function CrmPage() {
                         <p className="text-[11px] text-slate-500">Ученик: {lead.studentName}</p>
 
                         <div className="mt-2.5 space-y-1 text-[11px] text-slate-600 border-t border-slate-100 pt-2">
-                          <div className="flex items-center gap-1.5 text-slate-700">
-                            <Phone className="h-3 w-3 text-slate-400" />
-                            <span>{lead.contact}</span>
+                          <div className="flex items-center justify-between gap-1 text-slate-700">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Phone className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                              <span className="truncate">{lead.contact}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(lead.contact);
+                                  toast.success(`Номер скопирован: ${lead.contact}`);
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                title="Скопировать телефон"
+                              >
+                                <Copy size={12} />
+                              </button>
+                              <a
+                                href={`https://wa.me/${lead.contact.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors text-[10px]"
+                                title="Написать в WhatsApp"
+                              >
+                                WA
+                              </a>
+                              <a
+                                href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
+                                className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                                title="Позвонить"
+                              >
+                                <Phone size={12} />
+                              </a>
+                            </div>
                           </div>
                           {lead.trialDate && (
                             <div className="flex items-center gap-1.5 text-purple-700 font-medium">
@@ -202,6 +290,23 @@ export default function CrmPage() {
                             )}
                           </div>
                         )}
+
+                        {/* Stage Selector on Card */}
+                        <div
+                          className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <span className="text-slate-400 font-medium">Этап:</span>
+                          <select
+                            value={lead.status}
+                            onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
+                            className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                          >
+                            {columns.map((c) => (
+                              <option key={c.key} value={c.key}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     ))
                   )}
@@ -221,7 +326,7 @@ export default function CrmPage() {
                 <th className="py-3.5 pl-4 pr-3">Лид / Контакт</th>
                 <th className="px-3 py-3.5">Ученик</th>
                 <th className="px-3 py-3.5">Курс</th>
-                <th className="px-3 py-3.5">Статус</th>
+                <th className="px-3 py-3.5">Статус воронки</th>
                 <th className="px-3 py-3.5">Следующее действие</th>
                 <th className="px-3 py-3.5">Ответственный</th>
                 <th className="py-3.5 pl-3 pr-4 text-right">Карточка</th>
@@ -240,18 +345,26 @@ export default function CrmPage() {
                   </td>
                   <td className="px-3 py-3">{lead.studentName}</td>
                   <td className="px-3 py-3 font-medium text-purple-700">{lead.directionOrCourse}</td>
-                  <td className="px-3 py-3">
-                    <span className={cn(
-                      'rounded-full px-2 py-0.5 font-semibold text-[10px]',
-                      lead.status === 'paid' && 'bg-emerald-100 text-emerald-800',
-                      lead.status === 'trial_held' && 'bg-indigo-100 text-indigo-800',
-                      lead.status === 'trial_scheduled' && 'bg-purple-100 text-purple-800',
-                      lead.status === 'thinking' && 'bg-teal-100 text-teal-800',
-                      lead.status === 'new' && 'bg-blue-100 text-blue-800',
-                      lead.status === 'lost' && 'bg-rose-100 text-rose-800'
-                    )}>
-                      {columns.find((c) => c.key === lead.status)?.label}
-                    </span>
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
+                      className={cn(
+                        'rounded-lg px-2 py-1 font-semibold text-[11px] border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-400',
+                        lead.status === 'paid' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                        lead.status === 'trial_held' && 'bg-indigo-50 text-indigo-800 border-indigo-200',
+                        lead.status === 'trial_scheduled' && 'bg-purple-50 text-purple-800 border-purple-200',
+                        lead.status === 'thinking' && 'bg-teal-50 text-teal-800 border-teal-200',
+                        lead.status === 'new' && 'bg-blue-50 text-blue-800 border-blue-200',
+                        lead.status === 'lost' && 'bg-rose-50 text-rose-800 border-rose-200',
+                        lead.status === 'contacted' && 'bg-amber-50 text-amber-800 border-amber-200',
+                        lead.status === 'no_response' && 'bg-slate-100 text-slate-700 border-slate-300'
+                      )}
+                    >
+                      {columns.map((c) => (
+                        <option key={c.key} value={c.key}>{c.label}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-3 py-3">
                     <p className="font-medium text-slate-800">{lead.nextAction || '—'}</p>
