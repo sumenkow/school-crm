@@ -20,7 +20,8 @@ import {
   MonitorPlay,
   ClipboardList,
   X,
-  School
+  School,
+  Database
 } from 'lucide-react';
 
 interface NavItem {
@@ -74,6 +75,7 @@ const ownerNav: NavSection[] = [
     items: [
       { label: 'Команда', href: '/settings/team', icon: <Users2 size={20} /> },
       { label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
+      { label: 'Бэкап базы', href: '/settings/backup', icon: <Database size={20} /> },
       { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
     ],
   },

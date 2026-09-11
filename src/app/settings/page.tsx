@@ -45,6 +45,37 @@ export default function SettingsPage() {
         </Link>
       </div>
 
+      {/* BACKUP & DISASTER RECOVERY BANNER */}
+      <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 via-indigo-50/60 to-blue-50/80 p-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shrink-0 shadow-sm">
+            <Database className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                Безопасность данных
+              </span>
+              <span className="text-xs text-blue-800 font-semibold">Excel & Google Sheets</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 mt-0.5">
+              Резервное копирование базы данных
+            </h2>
+            <p className="text-xs text-slate-600 mt-1 max-w-xl">
+              Регулярный экспорт в человекочитаемом формате (Excel многостраничный файл и Google Таблицы раз в сутки). Гарантия сохранности данных при любых сбоях.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/settings/backup"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all shrink-0 active:scale-98"
+        >
+          Управление копиями
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center gap-3">

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
-import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData } from '@/lib/data/mockData';
+import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData, FullTeacherData } from '@/lib/data/mockData';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -13,11 +13,34 @@ interface CreateGroupModalProps {
 export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModalProps) {
   const [courseId, setCourseId] = useState('c1');
   const [name, setName] = useState('');
+  const [teachersList, setTeachersList] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [teacherId, setTeacherId] = useState('t1');
   const [capacity, setCapacity] = useState(8);
   const [schedule, setSchedule] = useState('Пн, Чт • 17:00–18:30');
   const [room, setRoom] = useState('Аудитория 204');
   const [startDate, setStartDate] = useState('2026-09-15');
+
+  useEffect(() => {
+    async function loadTeachers() {
+      try {
+        const res = await fetch('/api/teachers');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.teachers && Array.isArray(data.teachers) && data.teachers.length > 0) {
+            setTeachersList(data.teachers);
+            if (!teacherId || teacherId === 't1') {
+              setTeacherId(data.teachers[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load teachers list:', err);
+      }
+    }
+    if (isOpen) {
+      loadTeachers();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -29,7 +52,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     }
 
     const course = INITIAL_COURSES.find((c) => c.id === courseId);
-    const teacher = INITIAL_TEACHERS.find((t) => t.id === teacherId);
+    const teacher = teachersList.find((t) => t.id === teacherId) || INITIAL_TEACHERS.find((t) => t.id === teacherId);
 
     const newGroup = {
       id: `grp_${Date.now()}`,
@@ -103,7 +126,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                 onChange={(e) => setTeacherId(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                {INITIAL_TEACHERS.map((t) => (
+                {teachersList.map((t) => (
                   <option key={t.id} value={t.id}>{t.name} ({t.role.split(' ')[0]})</option>
                 ))}
               </select>
@@ -154,17 +177,17 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-blue-700"
             >
               <Check className="h-4 w-4" />
               Создать группу
