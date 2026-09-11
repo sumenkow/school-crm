@@ -5,7 +5,7 @@ import { UserPlus, Send, CheckCircle2, AlertCircle, Mail, User, Shield } from 'l
 import { useRole } from '@/context/RoleContext';
 import type { UserRole } from '@/types';
 
-const ROLES: { value: UserRole; label: string; description: string }[] = [
+const ROLES: { value: 'admin' | 'teacher'; label: string; description: string }[] = [
   { value: 'admin', label: 'Администратор', description: 'Управление учениками, лидами, финансами. Без аналитики и настроек.' },
   { value: 'teacher', label: 'Преподаватель', description: 'Свои занятия, группы, журнал посещаемости.' },
 ];
