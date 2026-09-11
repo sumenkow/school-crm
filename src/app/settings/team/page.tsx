@@ -232,7 +232,7 @@ function TeamContent() {
           </p>
         </div>
 
-        {/* Buttons with pre-assigned roles */}
+        {/* Buttons with pre-assigned roles and generic creation */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => openCreateModalForRole('teacher')}
@@ -240,7 +240,7 @@ function TeamContent() {
             style={{ gap: '8px' }}
           >
             <GraduationCap size={18} />
-            + Добавить преподавателя
+            + Преподаватель
           </button>
           <button
             onClick={() => openCreateModalForRole('admin')}
@@ -248,7 +248,18 @@ function TeamContent() {
             style={{ gap: '8px' }}
           >
             <Shield size={18} />
-            + Добавить администратора
+            + Администратор
+          </button>
+          <button
+            onClick={() => {
+              generatePassword();
+              setShowCreateModal(true);
+            }}
+            className="md-btn md-btn-outlined"
+            style={{ gap: '8px' }}
+          >
+            <UserPlus size={18} />
+            Создать учетную запись
           </button>
         </div>
       </div>

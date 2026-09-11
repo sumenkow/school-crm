@@ -7,6 +7,7 @@ import {
   CreditCard,
   UserCheck,
   GraduationCap,
+  Shield,
   AlertTriangle,
   ArrowUpRight,
   TrendingUp,
