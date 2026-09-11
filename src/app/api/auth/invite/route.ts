@@ -37,9 +37,10 @@ export async function POST(request: NextRequest) {
 
   // Send invite via Supabase Admin API
   const admin = createAdminClient();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { role, full_name },
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    redirectTo: `${siteUrl}/auth/callback`,
   });
 
   if (error) {
