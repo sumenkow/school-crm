@@ -93,48 +93,25 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Role Switcher — only for owner (view as other roles) */}
-      {isOwner && (
-        <div
-          className="hidden sm:flex items-center"
-          style={{
-            border: '1px solid var(--md-outline)',
-            borderRadius: '9999px',
-            overflow: 'hidden',
-            height: '40px',
-          }}
-          role="group"
-          aria-label="Режим просмотра"
-        >
-          {(['owner', 'admin', 'teacher'] as UserRole[]).map((r, idx) => (
-            <button
-              key={r}
-              onClick={() => setRole(r)}
-              style={{
-                padding: '0 14px',
-                height: '100%',
-                border: 'none',
-                borderLeft: idx > 0 ? '1px solid var(--md-outline)' : 'none',
-                backgroundColor: role === r ? 'var(--md-secondary-container)' : 'transparent',
-                color: role === r ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
-                fontWeight: role === r ? 700 : 400,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'background-color 0.15s, color 0.15s',
-                display: 'flex', alignItems: 'center', gap: '4px',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {role === r && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-              {roleConfig[r].label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Role badge */}
+      <span
+        className="hidden sm:inline-flex items-center md-label-medium"
+        style={{
+          padding: '6px 14px',
+          borderRadius: '9999px',
+          backgroundColor:
+            role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
+            role === 'admin' ? 'var(--md-secondary-container)' :
+            'var(--md-primary-container)',
+          color:
+            role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
+            role === 'admin' ? 'var(--md-on-secondary-container)' :
+            'var(--md-on-primary-container)',
+          fontWeight: 600,
+        }}
+      >
+        {roleConfig[role].label}
+      </span>
 
       {/* Notification bell */}
       <button

@@ -118,7 +118,9 @@ const adminNav: NavSection[] = [
 const teacherNav: NavSection[] = [
   {
     items: [
+      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
       { label: 'Мои занятия', href: '/teacher', icon: <MonitorPlay size={20} /> },
+      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
       { label: 'Мои группы', href: '/groups', icon: <BookOpen size={20} /> },
       { label: 'Журнал посещаемости', href: '/teacher/attendance', icon: <ClipboardList size={20} /> },
     ],
