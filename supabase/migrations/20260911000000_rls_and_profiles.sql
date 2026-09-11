@@ -84,23 +84,6 @@ CREATE POLICY "teacher_select_students" ON students FOR SELECT TO authenticated
 CREATE POLICY "teacher_select_courses" ON courses FOR SELECT TO authenticated
   USING (get_my_role() = 'teacher');
 
--- 6. Auto-create profile on first login (invite flow)
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, full_name, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE((NEW.raw_user_meta_data->>'role')::user_role, 'teacher')
-  )
-  ON CONFLICT (id) DO NOTHING;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
+-- 6. Note: Profiles are created explicitly by application API via service_role client.
+-- Triggers on auth.users are avoided to prevent deadlock with Supabase Auth GoTrue service.
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
