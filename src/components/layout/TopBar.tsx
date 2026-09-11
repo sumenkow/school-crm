@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Search, Bell, LogOut, ChevronDown, User } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronDown, User } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
@@ -116,25 +116,6 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
       {/* Spacer */}
       <div className="flex-1" />
-
-      {/* Notification bell */}
-      <button
-        style={{
-          width: '40px', height: '40px', borderRadius: '50%',
-          border: 'none', background: 'transparent',
-          color: 'var(--md-on-surface-variant)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          position: 'relative',
-        }}
-        aria-label="Уведомления"
-      >
-        <Bell size={22} />
-        <span style={{
-          position: 'absolute', top: '8px', right: '8px',
-          width: '8px', height: '8px', borderRadius: '50%',
-          backgroundColor: 'var(--md-error)',
-        }} />
-      </button>
 
       {/* User avatar + dropdown */}
       <div ref={menuRef} style={{ position: 'relative' }}>
