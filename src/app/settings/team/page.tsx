@@ -15,7 +15,12 @@ import {
   AlertCircle,
   CheckCircle2,
   Users2,
-  Plus
+  Edit3,
+  Key,
+  Phone,
+  Mail,
+  Calendar,
+  ChevronRight
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
@@ -59,7 +64,7 @@ function TeamContent() {
   const [error, setError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
-  // Modal / Form state
+  // Creation Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -79,6 +84,18 @@ function TeamContent() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Edit Employee Card state
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState<'admin' | 'teacher'>('teacher');
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editNewPassword, setEditNewPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editCopiedEmail, setEditCopiedEmail] = useState(false);
+
   // Generate strong random password
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -90,6 +107,15 @@ function TeamContent() {
     return res;
   };
 
+  const generateEditPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let res = '';
+    for (let i = 0; i < 10; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setEditNewPassword(res);
+  };
+
   // Open modal with pre-selected role
   const openCreateModalForRole = useCallback((targetRole: 'admin' | 'teacher') => {
     setRole(targetRole);
@@ -97,6 +123,18 @@ function TeamContent() {
     setCreateError('');
     setShowCreateModal(true);
   }, []);
+
+  // Open Edit Card
+  const openEditCard = (member: TeamMember) => {
+    setEditingMember(member);
+    setEditFullName(member.full_name || '');
+    setEditPhone(member.phone || '');
+    setEditRole(member.role === 'owner' ? 'admin' : member.role);
+    setEditIsActive(member.is_active !== false);
+    setEditNewPassword('');
+    setEditError('');
+    setShowEditPassword(false);
+  };
 
   // Check URL query params for ?role=teacher or ?role=admin
   useEffect(() => {
@@ -173,8 +211,45 @@ function TeamContent() {
     }
   };
 
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    setEditError('');
+    setEditLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingMember.id,
+          full_name: editFullName.trim(),
+          phone: editPhone.trim() || undefined,
+          role: editingMember.role === 'owner' ? 'owner' : editRole,
+          is_active: editIsActive,
+          new_password: editNewPassword.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setEditError(data.error || 'Ошибка сохранения изменений');
+      } else {
+        setActionSuccess(`Карточка сотрудника «${editFullName}» успешно обновлена!`);
+        setTimeout(() => setActionSuccess(''), 4000);
+        setEditingMember(null);
+        loadTeam();
+      }
+    } catch {
+      setEditError('Сетевая ошибка при сохранении');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Вы действительно хотите удалить учетную запись «${name}»? Доступ будет немедленно отозван.`)) {
+    if (!confirm(`Вы действительно хотите удалить учетную запись «${name}»? Доступ в систему будет полностью закрыт.`)) {
       return;
     }
 
@@ -186,8 +261,11 @@ function TeamContent() {
       if (!res.ok) {
         alert(data.error || 'Ошибка удаления');
       } else {
-        setActionSuccess(`Сотрудник ${name} удален`);
+        setActionSuccess(`Сотрудник «${name}» удален`);
         setTimeout(() => setActionSuccess(''), 4000);
+        if (editingMember?.id === id) {
+          setEditingMember(null);
+        }
         loadTeam();
       }
     } catch {
@@ -228,7 +306,7 @@ function TeamContent() {
             Команда и учетные записи
           </h1>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Создавайте учетные записи с разграничением прав для преподавателей и администраторов
+            Создавайте и редактируйте профили преподавателей и администраторов школы
           </p>
         </div>
 
@@ -323,7 +401,7 @@ function TeamContent() {
             className="md-btn md-btn-filled md-btn-sm"
             style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
           >
-            <Plus size={14} />
+            <GraduationCap size={14} />
             Создать аккаунт учителя
           </button>
         </div>
@@ -367,7 +445,7 @@ function TeamContent() {
             className="md-btn md-btn-tonal md-btn-sm"
             style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
           >
-            <Plus size={14} />
+            <Shield size={14} />
             Создать аккаунт администратора
           </button>
         </div>
@@ -419,7 +497,7 @@ function TeamContent() {
         </div>
       </div>
 
-      {/* Team table / list */}
+      {/* Team table / list with Clickable Rows */}
       <div className="md-card-elevated" style={{ padding: '0', overflow: 'hidden' }}>
         <div
           className="flex items-center justify-between"
@@ -433,6 +511,9 @@ function TeamContent() {
             <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
               Сотрудники ({members.length})
             </h2>
+            <span className="md-body-small hidden sm:inline" style={{ color: 'var(--md-on-surface-variant)', marginLeft: '8px' }}>
+              • Нажмите на сотрудника, чтобы открыть и отредактировать карточку
+            </span>
           </div>
           <button
             onClick={loadTeam}
@@ -465,8 +546,8 @@ function TeamContent() {
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Email (Логин)</th>
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Роль</th>
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Телефон</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Дата добавления</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'right' }} className="md-label-large">Действия</th>
+                  <th style={{ padding: '12px 20px' }} className="md-label-large">Статус</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'right' }} className="md-label-large">Карточка</th>
                 </tr>
               </thead>
               <tbody>
@@ -476,17 +557,21 @@ function TeamContent() {
                   return (
                     <tr
                       key={m.id}
+                      onClick={() => openEditCard(m)}
+                      title="Нажмите для редактирования карточки сотрудника"
                       style={{
                         borderBottom: '1px solid var(--md-outline-variant)',
-                        transition: 'background-color 0.1s',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s',
                       }}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
                     >
                       <td style={{ padding: '14px 20px' }}>
                         <div className="flex items-center gap-3">
                           <div
                             style={{
-                              width: '36px',
-                              height: '36px',
+                              width: '38px',
+                              height: '38px',
                               borderRadius: '50%',
                               backgroundColor: rInfo.bg,
                               color: rInfo.color,
@@ -494,7 +579,8 @@ function TeamContent() {
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontWeight: 700,
-                              fontSize: '14px',
+                              fontSize: '15px',
+                              flexShrink: 0,
                             }}
                           >
                             {(m.full_name || m.email).charAt(0).toUpperCase()}
@@ -503,6 +589,11 @@ function TeamContent() {
                             <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
                               {m.full_name || 'Без имени'}
                             </p>
+                            {isCurrent && (
+                              <span className="md-label-small" style={{ color: 'var(--md-primary)' }}>
+                                Вы (Владелец)
+                              </span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -536,21 +627,42 @@ function TeamContent() {
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
-                        <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                          {m.created_at ? new Date(m.created_at).toLocaleDateString('ru-RU') : '—'}
+                        <span
+                          className="md-label-small"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: m.is_active !== false ? 'var(--md-success-container)' : 'var(--md-error-container)',
+                            color: m.is_active !== false ? 'var(--md-on-success-container)' : 'var(--md-on-error-container)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: m.is_active !== false ? 'var(--md-success)' : 'var(--md-error)',
+                            }}
+                          />
+                          {m.is_active !== false ? 'Активен' : 'Заблокирован'}
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        {!isCurrent && (
-                          <button
-                            onClick={() => handleDelete(m.id, m.full_name || m.email)}
-                            title="Удалить сотрудника"
-                            className="md-btn md-btn-text md-btn-sm"
-                            style={{ color: 'var(--md-error)', padding: '6px' }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCard(m);
+                          }}
+                          className="md-btn md-btn-tonal md-btn-sm"
+                          style={{ gap: '4px', padding: '6px 12px' }}
+                        >
+                          <Edit3 size={14} />
+                          Карточка
+                        </button>
                       </td>
                     </tr>
                   );
@@ -561,7 +673,366 @@ function TeamContent() {
         )}
       </div>
 
-      {/* Modal: Create User Account with pre-selected role */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* MODAL: КАРТОЧКА СОТРУДНИКА (ПРОСМОТР И РЕДАКТИРОВАНИЕ)       */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {editingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        >
+          <div
+            className="w-full max-w-lg md-card-elevated"
+            style={{
+              padding: '28px',
+              backgroundColor: 'var(--md-surface-container-lowest)',
+              borderRadius: '24px',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+            }}
+          >
+            {/* Card Header with Avatar & Details */}
+            <div className="flex items-start justify-between" style={{ marginBottom: '20px' }}>
+              <div className="flex items-center gap-3">
+                <div
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '50%',
+                    backgroundColor: ROLES_INFO[editingMember.role]?.bg || 'var(--md-primary-container)',
+                    color: ROLES_INFO[editingMember.role]?.color || 'var(--md-on-primary-container)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '20px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {(editingMember.full_name || editingMember.email).charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
+                    Карточка сотрудника
+                  </h2>
+                  <div className="flex items-center gap-2" style={{ marginTop: '2px' }}>
+                    <span
+                      className="md-label-small"
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        backgroundColor: ROLES_INFO[editingMember.role]?.bg,
+                        color: ROLES_INFO[editingMember.role]?.color,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {ROLES_INFO[editingMember.role]?.label}
+                    </span>
+                    <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                      {editingMember.created_at ? `Зарегистрирован ${new Date(editingMember.created_at).toLocaleDateString('ru-RU')}` : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingMember(null)}
+                className="md-btn md-btn-text md-btn-sm"
+                style={{ padding: '6px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Email (Read-only Login with Copy button) */}
+              <div
+                style={{
+                  backgroundColor: 'var(--md-surface-container-low)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div>
+                  <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                    Email (Логин для входа)
+                  </span>
+                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)', marginTop: '2px' }}>
+                    {editingMember.email}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(editingMember.email);
+                    setEditCopiedEmail(true);
+                    setTimeout(() => setEditCopiedEmail(false), 2000);
+                  }}
+                  className="md-btn md-btn-outlined md-btn-sm"
+                  style={{ gap: '4px' }}
+                >
+                  {editCopiedEmail ? <Check size={14} /> : <Copy size={14} />}
+                  {editCopiedEmail ? 'Скопирован' : 'Копировать'}
+                </button>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+                  ФИО сотрудника *
+                </label>
+                <input
+                  type="text"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  required
+                  placeholder="Иванова Ольга Петровна"
+                  className="md-input"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+                  Телефон для связи
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="+7 (999) 000-00-00"
+                  className="md-input"
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Role selection (Owner role cannot be changed) */}
+              {editingMember.role !== 'owner' ? (
+                <div>
+                  <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '8px' }}>
+                    Роль и уровень доступа
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditRole('teacher')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: `2px solid ${editRole === 'teacher' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
+                        backgroundColor: editRole === 'teacher' ? 'var(--md-primary-container)' : 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <GraduationCap size={18} style={{ color: editRole === 'teacher' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
+                      <div>
+                        <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватель</p>
+                        <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>Занятия, группы, журнал</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditRole('admin')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: `2px solid ${editRole === 'admin' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
+                        backgroundColor: editRole === 'admin' ? 'var(--md-primary-container)' : 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <Shield size={18} style={{ color: editRole === 'admin' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
+                      <div>
+                        <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администратор</p>
+                        <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>Ученики, лиды, оплаты</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--md-tertiary-container, #EEDCFF)',
+                    color: 'var(--md-on-tertiary-container, #28123C)',
+                  }}
+                >
+                  <p className="md-label-medium">Роль: Владелец школы</p>
+                  <p className="md-body-small">Главный системный аккаунт. Роль владельца неизменна.</p>
+                </div>
+              )}
+
+              {/* Active status toggle */}
+              {editingMember.role !== 'owner' && (
+                <div className="flex items-center justify-between" style={{ padding: '8px 0' }}>
+                  <div>
+                    <label className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
+                      Статус учетной записи
+                    </label>
+                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                      {editIsActive ? 'Сотрудник имеет активный доступ к CRM' : 'Доступ к CRM временно заблокирован'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditIsActive(!editIsActive)}
+                    className={`md-btn md-btn-sm ${editIsActive ? 'md-btn-tonal' : 'md-btn-outlined'}`}
+                    style={{
+                      backgroundColor: editIsActive ? 'var(--md-success-container)' : undefined,
+                      color: editIsActive ? 'var(--md-on-success-container)' : 'var(--md-error)',
+                    }}
+                  >
+                    {editIsActive ? 'Активен' : 'Заблокирован'}
+                  </button>
+                </div>
+              )}
+
+              {/* Reset Password section */}
+              <div
+                style={{
+                  borderTop: '1px solid var(--md-outline-variant)',
+                  paddingTop: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
+                      Сменить пароль сотрудника
+                    </span>
+                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                      Оставьте пустым, если не хотите менять пароль
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateEditPassword}
+                    className="md-label-small"
+                    style={{
+                      color: 'var(--md-primary)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <RefreshCw size={12} />
+                    Сгенерировать
+                  </button>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showEditPassword ? 'text' : 'password'}
+                    value={editNewPassword}
+                    onChange={(e) => setEditNewPassword(e.target.value)}
+                    minLength={6}
+                    placeholder="Новый пароль (минимум 6 символов)"
+                    className="md-input"
+                    style={{ width: '100%', paddingRight: '44px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--md-on-surface-variant)',
+                    }}
+                  >
+                    {showEditPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {editError && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--md-error-container)',
+                    color: 'var(--md-on-error-container)',
+                    borderRadius: '12px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <AlertCircle size={16} />
+                  <span className="md-body-medium">{editError}</span>
+                </div>
+              )}
+
+              {/* Action Buttons: Delete (left), Cancel & Save (right) */}
+              <div
+                className="flex items-center justify-between gap-3"
+                style={{
+                  borderTop: '1px solid var(--md-outline-variant)',
+                  paddingTop: '16px',
+                  marginTop: '4px',
+                }}
+              >
+                {editingMember.role !== 'owner' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(editingMember.id, editingMember.full_name || editingMember.email)}
+                    className="md-btn md-btn-text md-btn-sm"
+                    style={{ color: 'var(--md-error)', gap: '6px' }}
+                  >
+                    <Trash2 size={16} />
+                    Удалить сотрудника
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMember(null)}
+                    className="md-btn md-btn-text"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    className="md-btn md-btn-filled"
+                  >
+                    {editLoading ? 'Сохранение...' : 'Сохранить изменения'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* MODAL: СОЗДАНИЕ НОВОГО СОТРУДНИКА                             */}
+      {/* ───────────────────────────────────────────────────────────── */}
       {showCreateModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -800,7 +1271,9 @@ function TeamContent() {
         </div>
       )}
 
-      {/* Success Modal with Credentials to Copy */}
+      {/* ───────────────────────────────────────────────────────────── */}
+      {/* MODAL: СКОПИРОВАТЬ ДАННЫЕ СОЗДАННОГО СОТРУДНИКА               */}
+      {/* ───────────────────────────────────────────────────────────── */}
       {createdUser && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"

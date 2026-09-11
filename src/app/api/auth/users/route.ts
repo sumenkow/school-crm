@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import type { UserRole } from '@/types';
 
 // Helper: ensure caller is an authenticated owner
 async function verifyOwner() {
@@ -115,7 +114,7 @@ export async function POST(request: NextRequest) {
       console.error('Profile upsert warning:', profileError);
     }
 
-    // 3. If teacher, also create record in teachers table so they appear in teachers list
+    // 3. If teacher, also create record in teachers table
     if (role === 'teacher') {
       const nameParts = full_name.trim().split(/\s+/);
       const firstName = nameParts[0] || full_name;
@@ -149,6 +148,108 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH /api/auth/users — update employee profile & password
+export async function PATCH(request: NextRequest) {
+  const check = await verifyOwner();
+  if ('error' in check) {
+    return NextResponse.json({ error: check.error }, { status: check.status });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, full_name, phone, role, is_active, new_password } = body as {
+      id: string;
+      full_name: string;
+      phone?: string;
+      role?: 'admin' | 'teacher';
+      is_active?: boolean;
+      new_password?: string;
+    };
+
+    if (!id || !full_name) {
+      return NextResponse.json({ error: 'Укажите ID и имя сотрудника' }, { status: 400 });
+    }
+
+    const admin = createAdminClient();
+
+    // Check existing target profile
+    const { data: targetProfile, error: fetchError } = await admin
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !targetProfile) {
+      return NextResponse.json({ error: 'Сотрудник не найден' }, { status: 404 });
+    }
+
+    // Owner role cannot be changed
+    const effectiveRole = targetProfile.role === 'owner' ? 'owner' : (role || targetProfile.role);
+
+    // 1. If new password provided, update via Supabase Admin API
+    if (new_password && new_password.trim().length > 0) {
+      if (new_password.trim().length < 6) {
+        return NextResponse.json({ error: 'Новый пароль должен содержать не менее 6 символов' }, { status: 400 });
+      }
+
+      const { error: pwdError } = await admin.auth.admin.updateUserById(id, {
+        password: new_password.trim(),
+        user_metadata: { role: effectiveRole, full_name: full_name.trim() },
+      });
+
+      if (pwdError) {
+        return NextResponse.json({ error: pwdError.message }, { status: 400 });
+      }
+    } else {
+      // Keep user_metadata synchronized
+      await admin.auth.admin.updateUserById(id, {
+        user_metadata: { role: effectiveRole, full_name: full_name.trim() },
+      });
+    }
+
+    // 2. Update profiles table
+    const { data: updatedProfile, error: updateError } = await admin
+      .from('profiles')
+      .update({
+        full_name: full_name.trim(),
+        phone: phone ? phone.trim() : null,
+        role: effectiveRole,
+        is_active: typeof is_active === 'boolean' ? is_active : targetProfile.is_active,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    // 3. Keep teachers table synchronized
+    if (effectiveRole === 'teacher') {
+      const nameParts = full_name.trim().split(/\s+/);
+      const firstName = nameParts[0] || full_name;
+      const lastName = nameParts.slice(1).join(' ') || '—';
+
+      await admin
+        .from('teachers')
+        .upsert({
+          user_id: id,
+          first_name: firstName,
+          last_name: lastName,
+          email: targetProfile.email,
+          phone: phone ? phone.trim() : null,
+          status: is_active === false ? 'inactive' : 'active',
+        }, { onConflict: 'user_id' });
+    }
+
+    return NextResponse.json({ success: true, user: updatedProfile });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
 // DELETE /api/auth/users — delete user account
 export async function DELETE(request: NextRequest) {
   const check = await verifyOwner();
@@ -176,7 +277,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: deleteAuthError.message }, { status: 400 });
     }
 
-    // 2. Also ensure profile is removed
+    // 2. Also ensure profile and teacher records are removed
     await admin.from('profiles').delete().eq('id', targetUserId);
     await admin.from('teachers').delete().eq('user_id', targetUserId);
 
