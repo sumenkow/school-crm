@@ -28,6 +28,7 @@ export default function TasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'my'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<FullTaskData | null>(null);
+  const [selectedTask, setSelectedTask] = useState<FullTaskData | null>(null);
 
   const handleTaskCreated = (newTask: FullTaskData) => {
     setTasks((prev) => [newTask, ...prev]);
@@ -40,6 +41,11 @@ export default function TasksPage() {
         const newStatus = t.status === 'done' ? 'open' : 'done';
         return { ...t, status: newStatus };
       })
+    );
+    setSelectedTask((prev) =>
+      prev && prev.id === taskId
+        ? { ...prev, status: prev.status === 'done' ? 'open' : 'done' }
+        : prev
     );
   };
 
@@ -165,8 +171,9 @@ export default function TasksPage() {
               return (
                 <div
                   key={task.id}
+                  onClick={() => setSelectedTask(task)}
                   className={cn(
-                    'p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/80 transition-colors',
+                    'p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/90 transition-all cursor-pointer select-none group',
                     isDone && 'bg-slate-50/40 opacity-70'
                   )}
                 >
@@ -174,7 +181,10 @@ export default function TasksPage() {
                     {/* Toggle Button */}
                     <button
                       type="button"
-                      onClick={() => handleToggleStatus(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(task.id);
+                      }}
                       className="mt-0.5 shrink-0 text-slate-400 hover:text-blue-600 transition-colors"
                       title={isDone ? 'Вернуть в работу' : 'Отметить выполненной'}
                     >
@@ -186,12 +196,12 @@ export default function TasksPage() {
                     </button>
 
                     <div className="space-y-1">
-                      <h3 className={cn('text-sm font-bold text-slate-900', isDone && 'line-through text-slate-400')}>
+                      <h3 className={cn('text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors', isDone && 'line-through text-slate-400')}>
                         {task.title}
                       </h3>
 
                       {task.description && (
-                        <p className="text-xs text-slate-600">{task.description}</p>
+                        <p className="text-xs text-slate-600 line-clamp-2">{task.description}</p>
                       )}
 
                       {/* Linked entities badges */}
@@ -203,6 +213,7 @@ export default function TasksPage() {
                         {task.studentName && (
                           <Link
                             href={`/students/${task.studentId || '1'}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:underline"
                           >
                             Ученик: {task.studentName}
@@ -212,6 +223,7 @@ export default function TasksPage() {
                         {task.leadName && (
                           <Link
                             href={`/crm/leads/${task.leadId || 'lead1'}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 font-semibold text-purple-600 hover:underline"
                           >
                             Лид: {task.leadName}
@@ -287,6 +299,20 @@ export default function TasksPage() {
           onSave={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
             setEditingTask(null);
+          }}
+        />
+      )}
+
+      {/* Task Details Modal (Opens on clicking a task in the list) */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onToggleStatus={handleToggleStatus}
+          onEdit={(taskToEdit) => {
+            setSelectedTask(null);
+            setEditingTask(taskToEdit);
           }}
         />
       )}
@@ -435,6 +461,156 @@ function EditTaskModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function TaskDetailsModal({
+  task,
+  isOpen,
+  onClose,
+  onToggleStatus,
+  onEdit,
+}: {
+  task: FullTaskData;
+  isOpen: boolean;
+  onClose: () => void;
+  onToggleStatus: (taskId: string) => void;
+  onEdit: (task: FullTaskData) => void;
+}) {
+  if (!isOpen) return null;
+
+  const isDone = task.status === 'done';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150 space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 font-bold text-[10px] text-slate-700 uppercase tracking-wider">
+              {task.taskType}
+            </span>
+            <span
+              className={cn(
+                'rounded-full px-2.5 py-0.5 text-[10px] font-bold',
+                task.priority === 'high' && 'bg-rose-100 text-rose-800',
+                task.priority === 'medium' && 'bg-amber-100 text-amber-800',
+                task.priority === 'low' && 'bg-slate-100 text-slate-700'
+              )}
+            >
+              {task.priority === 'high' && 'Срочно'}
+              {task.priority === 'medium' && 'Средний приоритет'}
+              {task.priority === 'low' && 'Низкий приоритет'}
+            </span>
+            <span
+              className={cn(
+                'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                isDone
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-blue-50 text-blue-700 border-blue-200'
+              )}
+            >
+              {isDone ? 'Выполнено' : task.status === 'in_progress' ? 'В работе' : 'К выполнению'}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Title & Description */}
+        <div>
+          <h3 className={cn('text-base font-bold text-slate-900', isDone && 'line-through text-slate-400')}>
+            {task.title}
+          </h3>
+          {task.description && (
+            <p className="mt-2 text-xs text-slate-600 leading-relaxed rounded-xl bg-slate-50 p-3 border border-slate-100">
+              {task.description}
+            </p>
+          )}
+        </div>
+
+        {/* Details Grid */}
+        <div className="space-y-2 rounded-xl bg-slate-50/70 p-3.5 border border-slate-100 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Срок выполнения:</span>
+            <span className={cn('font-bold', task.isOverdue && !isDone ? 'text-rose-600' : 'text-slate-800')}>
+              {task.dueDateFormatted} {task.isOverdue && !isDone && '(Просрочено)'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Ответственный сотрудник:</span>
+            <span className="font-semibold text-slate-800">{task.assignedTo}</span>
+          </div>
+          {task.studentName && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Ученик:</span>
+              <Link
+                href={`/students/${task.studentId || '1'}`}
+                className="font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
+              >
+                {task.studentName} →
+              </Link>
+            </div>
+          )}
+          {task.parentName && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Родитель / Контакт:</span>
+              <span className="font-semibold text-slate-800">{task.parentName}</span>
+            </div>
+          )}
+          {task.leadName && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">Лид (Сделка CRM):</span>
+              <Link
+                href={`/crm/leads/${task.leadId || 'lead1'}`}
+                className="font-bold text-purple-600 hover:underline inline-flex items-center gap-1"
+              >
+                {task.leadName} →
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => onToggleStatus(task.id)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-xs',
+              isDone
+                ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            )}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {isDone ? 'Вернуть в работу' : 'Отметить как выполненную'}
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onEdit(task)}
+              className="inline-flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              Изменить
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
