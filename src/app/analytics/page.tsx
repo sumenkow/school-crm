@@ -19,11 +19,14 @@ import {
   Sparkles,
   GraduationCap,
   ChevronRight,
+  LayoutGrid,
+  Table,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
+  const [teacherViewMode, setTeacherViewMode] = useState<'chart' | 'table' | 'cards'>('chart');
 
   // Funnel steps
   const funnelSteps = [
@@ -420,256 +423,303 @@ export default function AnalyticsPage() {
               Сгенерированный доход, учебная выработка и финансовая эффективность педагогического состава
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Суммарно:</span>
-            <span className="text-sm font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-xl">
-              {currentTeacherData.total}
-            </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
+              <button
+                onClick={() => setTeacherViewMode('chart')}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all',
+                  teacherViewMode === 'chart'
+                    ? 'bg-white shadow-xs text-indigo-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <PieChart className="h-3.5 w-3.5" />
+                Диаграмма
+              </button>
+              <button
+                onClick={() => setTeacherViewMode('table')}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all',
+                  teacherViewMode === 'table'
+                    ? 'bg-white shadow-xs text-indigo-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <Table className="h-3.5 w-3.5" />
+                Таблица
+              </button>
+              <button
+                onClick={() => setTeacherViewMode('cards')}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all',
+                  teacherViewMode === 'cards'
+                    ? 'bg-white shadow-xs text-indigo-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Карточки
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-500">Суммарно:</span>
+              <span className="text-sm font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-xl">
+                {currentTeacherData.total}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* PIE / DONUT CHART BLOCK («Пирог» распределения выручки) */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-slate-200/60 pb-3">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <PieChart className="h-4 w-4 text-indigo-600" />
-              Круговая диаграмма распределения выручки («пирог»)
-            </h3>
-            <span className="text-[11px] text-slate-500">
-              Наведите курсор на сектор или преподавателя для детализации
-            </span>
-          </div>
+        {/* 1. PIE / DONUT CHART VIEW */}
+        {teacherViewMode === 'chart' && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 space-y-4 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-slate-200/60 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <PieChart className="h-4 w-4 text-indigo-600" />
+                Круговая диаграмма распределения выручки («пирог»)
+              </h3>
+              <span className="text-[11px] text-slate-500">
+                Наведите курсор на сектор или преподавателя для детализации
+              </span>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-            {/* Donut Graphic */}
-            <div className="md:col-span-5 flex items-center justify-center py-2">
-              <div className="relative w-52 h-52 flex items-center justify-center">
-                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
-                  {/* Background Track */}
-                  <circle
-                    cx="100"
-                    cy="100"
-                    r="70"
-                    fill="none"
-                    stroke="#e2e8f0"
-                    strokeWidth="24"
-                  />
-                  {pieSlices.map((slice) => {
-                    const isHovered = hoveredTeacherId === slice.id;
-                    return (
-                      <circle
-                        key={slice.id}
-                        cx="100"
-                        cy="100"
-                        r="70"
-                        fill="none"
-                        stroke={slice.pieColor}
-                        strokeWidth={isHovered ? 28 : 22}
-                        strokeDasharray={slice.strokeDasharray}
-                        strokeDashoffset={slice.strokeDashoffset}
-                        className="transition-all duration-200 cursor-pointer"
-                        onMouseEnter={() => setHoveredTeacherId(slice.id)}
-                        onMouseLeave={() => setHoveredTeacherId(null)}
-                      />
-                    );
-                  })}
-                </svg>
-
-                {/* Center Label inside Donut */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
-                  {hoveredTeacherId ? (
-                    (() => {
-                      const hTeacher = currentTeacherData.teachers.find(t => t.id === hoveredTeacherId);
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {/* Donut Graphic */}
+              <div className="md:col-span-5 flex items-center justify-center py-2">
+                <div className="relative flex items-center justify-center">
+                  <svg className="h-56 w-56 transform -rotate-90" viewBox="0 0 200 200">
+                    <circle
+                      cx="100"
+                      cy="100"
+                      r="70"
+                      fill="none"
+                      stroke="#e2e8f0"
+                      strokeWidth="24"
+                    />
+                    {pieSlices.map((slice) => {
+                      const isHovered = hoveredTeacherId === slice.id;
                       return (
-                        <>
-                          <span className="text-[11px] font-bold text-slate-600 line-clamp-1">{hTeacher?.name}</span>
-                          <span className="text-lg font-black text-slate-950 mt-0.5">{hTeacher?.revenue}</span>
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full mt-1">
-                            {hTeacher?.share}% от школы
-                          </span>
-                        </>
+                        <circle
+                          key={slice.id}
+                          cx="100"
+                          cy="100"
+                          r="70"
+                          fill="none"
+                          stroke={slice.pieColor}
+                          strokeWidth={isHovered ? 28 : 22}
+                          strokeDasharray={slice.strokeDasharray}
+                          strokeDashoffset={slice.strokeDashoffset}
+                          className="transition-all duration-200 cursor-pointer"
+                          onMouseEnter={() => setHoveredTeacherId(slice.id)}
+                          onMouseLeave={() => setHoveredTeacherId(null)}
+                        />
                       );
-                    })()
-                  ) : (
-                    <>
-                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Выручка</span>
-                      <span className="text-lg font-black text-slate-900 mt-0.5">{currentTeacherData.total}</span>
-                      <span className="text-[10px] font-medium text-slate-500 mt-0.5">3 преподавателя</span>
-                    </>
-                  )}
+                    })}
+                  </svg>
+
+                  {/* Center Label inside Donut */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                    {hoveredTeacherId ? (
+                      (() => {
+                        const hTeacher = currentTeacherData.teachers.find(t => t.id === hoveredTeacherId);
+                        return (
+                          <>
+                            <span className="text-[11px] font-bold text-slate-600 line-clamp-1">{hTeacher?.name}</span>
+                            <span className="text-lg font-black text-slate-950 mt-0.5">{hTeacher?.revenue}</span>
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full mt-1">
+                              {hTeacher?.share}% от школы
+                            </span>
+                          </>
+                        );
+                      })()
+                    ) : (
+                      <>
+                        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Выручка</span>
+                        <span className="text-lg font-black text-slate-900 mt-0.5">{currentTeacherData.total}</span>
+                        <span className="text-[10px] font-medium text-slate-500 mt-0.5">3 преподавателя</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Interactive Legend with Bars */}
-            <div className="md:col-span-7 space-y-2.5">
-              {currentTeacherData.teachers.map((t) => {
-                const isHovered = hoveredTeacherId === t.id;
-                const dotColor = t.id === 't1' ? '#2563eb' : t.id === 't2' ? '#4f46e5' : '#0d9488';
-                return (
-                  <div
-                    key={t.id}
-                    onMouseEnter={() => setHoveredTeacherId(t.id)}
-                    onMouseLeave={() => setHoveredTeacherId(null)}
-                    className={cn(
-                      'p-3 rounded-xl border transition-all cursor-pointer',
-                      isHovered
-                        ? 'border-indigo-400 bg-white shadow-xs'
-                        : 'border-slate-200/80 bg-white hover:border-slate-300'
-                    )}
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 rounded-full shrink-0"
-                          style={{ backgroundColor: dotColor }}
+              {/* Interactive Legend with Bars */}
+              <div className="md:col-span-7 space-y-2.5">
+                {currentTeacherData.teachers.map((t) => {
+                  const isHovered = hoveredTeacherId === t.id;
+                  const dotColor = t.id === 't1' ? '#2563eb' : t.id === 't2' ? '#4f46e5' : '#0d9488';
+                  return (
+                    <div
+                      key={t.id}
+                      onMouseEnter={() => setHoveredTeacherId(t.id)}
+                      onMouseLeave={() => setHoveredTeacherId(null)}
+                      className={cn(
+                        'p-3 rounded-xl border transition-all cursor-pointer',
+                        isHovered
+                          ? 'border-indigo-400 bg-white shadow-xs'
+                          : 'border-slate-200/80 bg-white hover:border-slate-300'
+                      )}
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-3 w-3 rounded-full shrink-0"
+                            style={{ backgroundColor: dotColor }}
+                          />
+                          <span className="font-bold text-slate-900">{t.name}</span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-500 text-[11px]">{t.subject}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-950 text-xs sm:text-sm">{t.revenue}</span>
+                          <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md text-[11px]">
+                            {t.share}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>{t.students} учеников в группах</span>
+                        <span>{t.lessons} уроков ({t.hours} ч.)</span>
+                        <span>Ср. чек: <b>{t.avgPerStudent}</b></span>
+                      </div>
+
+                      <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mt-2">
+                        <div
+                          className={cn('h-full rounded-full transition-all duration-300', t.color)}
+                          style={{ width: `${t.share}%` }}
                         />
-                        <span className="font-bold text-slate-900">{t.name}</span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-slate-500 text-[11px]">{t.subject}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-950 text-xs sm:text-sm">{t.revenue}</span>
-                        <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md text-[11px]">
-                          {t.share}%
-                        </span>
                       </div>
                     </div>
-
-                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>{t.students} учеников в группах</span>
-                      <span>{t.lessons} уроков ({t.hours} ч.)</span>
-                      <span>Ср. чек: <b>{t.avgPerStudent}</b></span>
-                    </div>
-
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mt-2">
-                      <div
-                        className={cn('h-full rounded-full transition-all duration-300', t.color)}
-                        style={{ width: `${t.share}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 3 Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {currentTeacherData.teachers.map((teacher) => (
-            <div
-              key={teacher.id}
-              className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/50 p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn('h-10 w-10 rounded-xl bg-gradient-to-br text-white font-bold flex items-center justify-center text-sm shadow-xs', teacher.avatarColor)}>
-                      {teacher.name.split(' ').map(n => n[0]).join('')}
+        {/* 2. CARDS VIEW */}
+        {teacherViewMode === 'cards' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in duration-200">
+            {currentTeacherData.teachers.map((teacher) => (
+              <div
+                key={teacher.id}
+                className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/50 p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn('h-10 w-10 rounded-xl bg-gradient-to-br text-white font-bold flex items-center justify-center text-sm shadow-xs', teacher.avatarColor)}>
+                        {teacher.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-sm">{teacher.name}</h3>
+                        <p className="text-[11px] text-slate-500">{teacher.subject}</p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      {teacher.trend}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xl font-extrabold text-slate-900">{teacher.revenue}</span>
+                      <span className="text-xs font-bold text-indigo-600">{teacher.share}% выручки</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div className={cn('h-full rounded-full', teacher.color)} style={{ width: `${teacher.share}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2.5 text-center text-xs border border-slate-100">
+                    <div>
+                      <div className="text-[10px] text-slate-400">Учеников</div>
+                      <div className="font-bold text-slate-800">{teacher.students}</div>
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm">{teacher.name}</h3>
-                      <p className="text-[11px] text-slate-500">{teacher.subject}</p>
+                      <div className="text-[10px] text-slate-400">Занятий</div>
+                      <div className="font-bold text-slate-800">{teacher.lessons}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Ср. чек</div>
+                      <div className="font-bold text-slate-800">{teacher.avgPerStudent}</div>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                    {teacher.trend}
-                  </span>
                 </div>
 
-                <div className="mt-4 space-y-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xl font-extrabold text-slate-900">{teacher.revenue}</span>
-                    <span className="text-xs font-bold text-indigo-600">{teacher.share}% выручки</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                    <div className={cn('h-full rounded-full', teacher.color)} style={{ width: `${teacher.share}%` }} />
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2.5 text-center text-xs border border-slate-100">
-                  <div>
-                    <div className="text-[10px] text-slate-400">Учеников</div>
-                    <div className="font-bold text-slate-800">{teacher.students}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Занятий</div>
-                    <div className="font-bold text-slate-800">{teacher.lessons}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Ср. чек</div>
-                    <div className="font-bold text-slate-800">{teacher.avgPerStudent}</div>
-                  </div>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-[11px] text-slate-500">Нагрузка: <b>{teacher.hours} ч.</b></span>
+                  <Link
+                    href={`/teachers/${teacher.id}`}
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                  >
+                    Профиль <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-[11px] text-slate-500">Нагрузка: <b>{teacher.hours} ч.</b></span>
-                <Link
-                  href={`/teachers/${teacher.id}`}
-                  className="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
-                >
-                  Профиль <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Detailed Table */}
-        <div className="overflow-x-auto rounded-xl border border-slate-100">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-              <tr>
-                <th className="py-3 pl-4 pr-3">Преподаватель</th>
-                <th className="px-3 py-3">Предмет / Направление</th>
-                <th className="px-3 py-3 text-right">Выручка</th>
-                <th className="px-3 py-3 text-center">Доля</th>
-                <th className="px-3 py-3 text-center">Учеников</th>
-                <th className="px-3 py-3 text-center">Занятий</th>
-                <th className="px-3 py-3 text-right">Ср. доход на ученика</th>
-                <th className="px-3 py-3 text-center">Динамика</th>
-                <th className="py-3 pl-3 pr-4 text-right">Карточка</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {currentTeacherData.teachers.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3 pl-4 pr-3 font-bold text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <div className={cn('h-6 w-6 rounded-md bg-gradient-to-br text-white text-[10px] font-bold flex items-center justify-center', t.avatarColor)}>
-                        {t.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <span>{t.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 text-slate-600">{t.subject}</td>
-                  <td className="px-3 py-3 text-right font-extrabold text-slate-900">{t.revenue}</td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full text-[11px]">
-                      {t.share}%
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center font-semibold text-slate-800">{t.students} чел.</td>
-                  <td className="px-3 py-3 text-center font-medium text-slate-600">{t.lessons} ур.</td>
-                  <td className="px-3 py-3 text-right font-semibold text-slate-800">{t.avgPerStudent}</td>
-                  <td className="px-3 py-3 text-center">
-                    <span className="font-bold text-emerald-600 text-[11px]">{t.trend}</span>
-                  </td>
-                  <td className="py-3 pl-3 pr-4 text-right">
-                    <Link
-                      href={`/teachers/${t.id}`}
-                      className="inline-flex items-center gap-1 text-slate-500 hover:text-indigo-600 font-medium transition-colors"
-                    >
-                      Открыть →
-                    </Link>
-                  </td>
+        {/* 3. TABLE VIEW */}
+        {teacherViewMode === 'table' && (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 animate-in fade-in duration-200">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
+                <tr>
+                  <th className="py-3 pl-4 pr-3">Преподаватель</th>
+                  <th className="px-3 py-3">Предмет / Направление</th>
+                  <th className="px-3 py-3 text-right">Выручка</th>
+                  <th className="px-3 py-3 text-center">Доля</th>
+                  <th className="px-3 py-3 text-center">Учеников</th>
+                  <th className="px-3 py-3 text-center">Занятий</th>
+                  <th className="px-3 py-3 text-right">Ср. доход на ученика</th>
+                  <th className="px-3 py-3 text-center">Динамика</th>
+                  <th className="py-3 pl-3 pr-4 text-right">Карточка</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
+                {currentTeacherData.teachers.map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 pl-4 pr-3 font-bold text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <div className={cn('h-6 w-6 rounded-md bg-gradient-to-br text-white text-[10px] font-bold flex items-center justify-center', t.avatarColor)}>
+                          {t.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <span>{t.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-slate-600">{t.subject}</td>
+                    <td className="px-3 py-3 text-right font-extrabold text-slate-900">{t.revenue}</td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full text-[11px]">
+                        {t.share}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-center font-semibold text-slate-800">{t.students} чел.</td>
+                    <td className="px-3 py-3 text-center font-medium text-slate-600">{t.lessons} ур.</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-800">{t.avgPerStudent}</td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="font-bold text-emerald-600 text-[11px]">{t.trend}</span>
+                    </td>
+                    <td className="py-3 pl-3 pr-4 text-right">
+                      <Link
+                        href={`/teachers/${t.id}`}
+                        className="inline-flex items-center gap-1 text-slate-500 hover:text-indigo-600 font-medium transition-colors"
+                      >
+                        Открыть →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Section 4: КУРСЫ И АУДИТОРИИ (2 columns) */}
