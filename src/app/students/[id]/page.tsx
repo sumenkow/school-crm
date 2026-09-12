@@ -26,7 +26,9 @@ import {
   FileText,
   Check,
   MessageSquarePlus,
-  BookOpen
+  BookOpen,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -47,6 +49,61 @@ export default function StudentDetailsPage() {
   });
 
   const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>('profile');
+
+  // Selected parent and task for modal window
+  const [selectedParentForModal, setSelectedParentForModal] = useState<any | null>(null);
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
+
+  // Edit student modal state
+  const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [editStudentForm, setEditStudentForm] = useState({
+    firstName: student.firstName,
+    lastName: student.lastName,
+    birthDate: student.birthDate || '',
+    phone: student.phone || '',
+    telegram: student.telegram || '',
+    status: student.status,
+    notes: student.notes || '',
+  });
+
+  const handleOpenEditStudentModal = () => {
+    setEditStudentForm({
+      firstName: student.firstName,
+      lastName: student.lastName,
+      birthDate: student.birthDate || '',
+      phone: student.phone || '',
+      telegram: student.telegram || '',
+      status: student.status,
+      notes: student.notes || '',
+    });
+    setIsEditStudentModalOpen(true);
+  };
+
+  const handleSaveStudentEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated = {
+      ...student,
+      firstName: editStudentForm.firstName.trim() || student.firstName,
+      lastName: editStudentForm.lastName.trim() || student.lastName,
+      birthDate: editStudentForm.birthDate.trim() || undefined,
+      phone: editStudentForm.phone.trim() || undefined,
+      telegram: editStudentForm.telegram.trim() || undefined,
+      status: editStudentForm.status,
+      notes: editStudentForm.notes.trim() || undefined,
+    };
+    setStudent(updated);
+
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = {
+        ...INITIAL_STUDENTS[idx],
+        ...updated,
+      };
+    }
+
+    toast.success('Данные ученика успешно изменены!');
+    setIsEditStudentModalOpen(false);
+  };
 
   // Task creation modal state
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -247,6 +304,13 @@ export default function StudentDetailsPage() {
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={handleOpenEditStudentModal}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            >
+              <Edit className="h-3.5 w-3.5 text-blue-600" />
+              Изменить
+            </button>
+            <button
               onClick={() => setIsCreateTaskModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
@@ -284,9 +348,15 @@ export default function StudentDetailsPage() {
             <span className="text-slate-400">Абонемент до:</span>
             <p className="font-semibold text-blue-600 mt-0.5">{student.finance.activeSubscription?.renewalDate || '—'}</p>
           </div>
-          <div>
+          <div
+            onClick={() => student.parents[0] && setSelectedParentForModal(student.parents[0])}
+            className="cursor-pointer hover:bg-slate-50/80 p-1 rounded-lg transition-colors group"
+            title="Нажмите, чтобы открыть карточку родителя"
+          >
             <span className="text-slate-400">Основной контакт:</span>
-            <p className="font-semibold text-slate-900 mt-0.5">{student.parents[0]?.firstName} ({student.parents[0]?.relationshipType})</p>
+            <p className="font-semibold text-slate-900 group-hover:text-blue-600 mt-0.5 flex items-center gap-1">
+              {student.parents[0]?.firstName} ({student.parents[0]?.relationshipType}) ↗
+            </p>
           </div>
         </div>
       </div>
@@ -433,10 +503,16 @@ export default function StudentDetailsPage() {
 
               <div className="space-y-3">
                 {student.parents.map((parent) => (
-                  <div key={parent.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+                  <div
+                    key={parent.id}
+                    onClick={() => setSelectedParentForModal(parent)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 cursor-pointer hover:border-blue-400 hover:bg-white hover:shadow-sm transition-all group"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-sm">{parent.firstName} {parent.lastName}</span>
+                        <span className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                          {parent.firstName} {parent.lastName}
+                        </span>
                         <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                           {parent.relationshipType}
                         </span>
@@ -446,9 +522,9 @@ export default function StudentDetailsPage() {
                           </span>
                         )}
                       </div>
-                      <Link href={`/parents/${parent.id}`} className="text-xs text-blue-600 hover:underline font-medium">
-                        Профиль семьи →
-                      </Link>
+                      <span className="text-xs text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
+                        Открыть карточку <ChevronRight className="h-3 w-3" />
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">
@@ -928,11 +1004,19 @@ export default function StudentDetailsPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white shadow-xs divide-y divide-slate-100">
             {student.tasks.map((task) => (
-              <div key={task.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+              <div
+                key={task.id}
+                onClick={() => setSelectedTaskForModal(task)}
+                className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-start gap-3">
                   <button
-                    onClick={() => handleToggleTask(task.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleTask(task.id);
+                    }}
                     className="mt-0.5 text-slate-400 hover:text-blue-600"
+                    title={task.status === 'done' ? 'Отметить как невыполненную' : 'Отметить как выполненную'}
                   >
                     {task.status === 'done' ? (
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
@@ -941,7 +1025,7 @@ export default function StudentDetailsPage() {
                     )}
                   </button>
                   <div>
-                    <h4 className={cn('text-sm font-semibold', task.status === 'done' ? 'line-through text-slate-400' : 'text-slate-900')}>
+                    <h4 className={cn('text-sm font-semibold group-hover:text-blue-600 transition-colors', task.status === 'done' ? 'line-through text-slate-400' : 'text-slate-900')}>
                       {task.title}
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -949,12 +1033,15 @@ export default function StudentDetailsPage() {
                     </p>
                   </div>
                 </div>
-                <span className={cn(
-                  'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
-                  task.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-                )}>
-                  {task.priority === 'high' ? 'Срочно' : 'Средний'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
+                    task.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                  )}>
+                    {task.priority === 'high' ? 'Срочно' : 'Средний'}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                </div>
               </div>
             ))}
           </div>
@@ -968,6 +1055,313 @@ export default function StudentDetailsPage() {
         onCreated={handleTaskCreated}
         defaultStudentId={student.id}
       />
+
+      {/* EDIT STUDENT MODAL DIALOG */}
+      {isEditStudentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Edit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Изменение данных ученика</h3>
+                  <p className="text-xs text-slate-500">Редактирование профиля, контактов и статуса</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditStudentModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStudentEdit} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Имя</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.firstName}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, firstName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Фамилия</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.lastName}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, lastName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Статус обучения</label>
+                  <select
+                    value={editStudentForm.status}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, status: e.target.value as any })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
+                  >
+                    <option value="active">Активен</option>
+                    <option value="trial">Пробный</option>
+                    <option value="paused">На паузе</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Дата рождения</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.birthDate}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, birthDate: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="15.03.2012"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Телефон ученика</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.phone}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, phone: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="+7 (999) 000-00-00"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Telegram</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.telegram}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, telegram: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности ученика</label>
+                <textarea
+                  rows={3}
+                  value={editStudentForm.notes}
+                  onChange={(e) => setEditStudentForm({ ...editStudentForm, notes: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden resize-none"
+                  placeholder="Аллергии, особенности характера, рекомендации..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditStudentModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Сохранить изменения
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* PARENT DETAILS MODAL (Opens on clicking parent card) */}
+      {selectedParentForModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 font-bold text-base">
+                  {selectedParentForModal.firstName[0]}{selectedParentForModal.lastName ? selectedParentForModal.lastName[0] : ''}
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    {selectedParentForModal.firstName} {selectedParentForModal.lastName}
+                  </h3>
+                  <p className="text-xs text-slate-500">{selectedParentForModal.relationshipType || 'Родитель'} ученика {student.firstName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedParentForModal(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3.5 text-xs">
+              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Телефон:</span>
+                  <a href={`tel:${selectedParentForModal.phone}`} className="font-bold text-blue-600 hover:underline">
+                    {selectedParentForModal.phone || 'Не указан'}
+                  </a>
+                </div>
+                {selectedParentForModal.telegram && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Telegram:</span>
+                    <span className="font-medium text-blue-600">{selectedParentForModal.telegram}</span>
+                  </div>
+                )}
+                {selectedParentForModal.whatsapp && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">WhatsApp:</span>
+                    <span className="font-medium text-emerald-600">{selectedParentForModal.whatsapp}</span>
+                  </div>
+                )}
+                {selectedParentForModal.email && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Email:</span>
+                    <span className="font-medium text-slate-700">{selectedParentForModal.email}</span>
+                  </div>
+                )}
+                {selectedParentForModal.isPrimary && (
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                    <span className="text-slate-500">Статус контакта:</span>
+                    <span className="font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full text-[10px]">
+                      Основной плательщик
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {selectedParentForModal.notes && (
+                <div className="p-3 rounded-xl bg-amber-50/60 border border-amber-200/60 text-amber-900">
+                  <span className="font-bold text-[11px] block mb-0.5">Заметки о семье:</span>
+                  <p className="text-[11px]">{selectedParentForModal.notes}</p>
+                </div>
+              )}
+
+              {/* Quick contact actions */}
+              <div className="flex gap-2 pt-1">
+                {selectedParentForModal.phone && (
+                  <a
+                    href={`tel:${selectedParentForModal.phone}`}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+                  >
+                    <Phone className="h-3.5 w-3.5" />
+                    Позвонить
+                  </a>
+                )}
+                {selectedParentForModal.whatsapp && (
+                  <a
+                    href={`https://wa.me/${selectedParentForModal.whatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100">
+                <Link
+                  href={`/parents/${selectedParentForModal.id}`}
+                  onClick={() => setSelectedParentForModal(null)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Открыть полную карточку семьи →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TASK DETAILS MODAL (Opens on clicking task card) */}
+      {selectedTaskForModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold',
+                  selectedTaskForModal.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                )}>
+                  {selectedTaskForModal.priority === 'high' ? 'Срочная задача' : 'Обычная задача'}
+                </span>
+                <span className={cn(
+                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                  selectedTaskForModal.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                )}>
+                  {selectedTaskForModal.status === 'done' ? 'Выполнена' : 'В работе'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTaskForModal(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">{selectedTaskForModal.title}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Ученик: {student.firstName} {student.lastName}</p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Срок выполнения:</span>
+                  <span className="font-bold text-slate-800">{selectedTaskForModal.dueDate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Ответственный:</span>
+                  <span className="font-semibold text-slate-800">{selectedTaskForModal.assignedTo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Тип задачи:</span>
+                  <span className="font-medium text-slate-700">{selectedTaskForModal.taskType || 'Звонок / Согласование'}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleTask(selectedTaskForModal.id);
+                    setSelectedTaskForModal((prev) => prev ? { ...prev, status: prev.status === 'done' ? 'open' : 'done' } : null);
+                    toast.success('Статус задачи обновлен!');
+                  }}
+                  className={cn(
+                    'flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors',
+                    selectedTaskForModal.status === 'done'
+                      ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                  )}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {selectedTaskForModal.status === 'done' ? 'Вернуть в работу' : 'Отметить как выполненную'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -15,16 +15,21 @@ import {
   Plus,
   Send,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Edit,
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
 
 export default function ParentDetailsPage() {
   const params = useParams();
+  const { success } = useToast();
   const parentId = params.id as string;
 
-  // Let's find parent from mock students
-  const parent = {
+  // Parent state
+  const [parent, setParent] = useState({
     id: parentId,
     firstName: 'Ольга',
     lastName: 'Смирнова',
@@ -50,6 +55,49 @@ export default function ParentDetailsPage() {
       { id: 'pay1', studentName: 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
       { id: 'pay2', studentName: 'Иван Смирнов', date: '01.08.2026', amount: '7 600 ₽', period: 'Август 2026', status: 'paid' },
     ],
+  });
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: parent.firstName,
+    lastName: parent.lastName,
+    phone: parent.phone,
+    telegram: parent.telegram,
+    whatsapp: parent.whatsapp,
+    email: parent.email,
+    preferredChannel: parent.preferredChannel,
+    notes: parent.notes,
+  });
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      phone: parent.phone,
+      telegram: parent.telegram,
+      whatsapp: parent.whatsapp,
+      email: parent.email,
+      preferredChannel: parent.preferredChannel,
+      notes: parent.notes,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveParent = (e: React.FormEvent) => {
+    e.preventDefault();
+    setParent((prev) => ({
+      ...prev,
+      firstName: editForm.firstName.trim() || prev.firstName,
+      lastName: editForm.lastName.trim() || prev.lastName,
+      phone: editForm.phone.trim() || prev.phone,
+      telegram: editForm.telegram.trim() || prev.telegram,
+      whatsapp: editForm.whatsapp.trim() || prev.whatsapp,
+      email: editForm.email.trim() || prev.email,
+      preferredChannel: editForm.preferredChannel,
+      notes: editForm.notes.trim(),
+    }));
+    success('Данные родителя успешно обновлены!');
+    setIsEditModalOpen(false);
   };
 
   const [interactions, setInteractions] = useState([
@@ -144,6 +192,17 @@ export default function ParentDetailsPage() {
               </div>
             </div>
           </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={handleOpenEdit}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            >
+              <Edit className="h-3.5 w-3.5 text-blue-600" />
+              Изменить
+            </button>
+          </div>
         </div>
 
         {parent.notes && (
@@ -231,6 +290,145 @@ export default function ParentDetailsPage() {
           ))}
         </div>
       </div>
+
+      {/* EDIT PARENT MODAL */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Edit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Изменение данных родителя</h3>
+                  <p className="text-xs text-slate-500">Контакты, предпочтительные каналы и заметки</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveParent} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Имя</label>
+                  <input
+                    type="text"
+                    value={editForm.firstName}
+                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Фамилия</label>
+                  <input
+                    type="text"
+                    value={editForm.lastName}
+                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Телефон</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Основной канал связи</label>
+                  <select
+                    value={editForm.preferredChannel}
+                    onChange={(e) => setEditForm({ ...editForm, preferredChannel: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
+                  >
+                    <option value="Telegram">Telegram</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Телефон">Телефон</option>
+                    <option value="Email">Email</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Telegram</label>
+                  <input
+                    type="text"
+                    value={editForm.telegram}
+                    onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="@username"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={editForm.whatsapp}
+                    onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="+79991234567"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Электронная почта (Email)</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                  placeholder="name@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности взаимодействия</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden resize-none"
+                  placeholder="Удобное время для звонков, особенности..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Сохранить изменения
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

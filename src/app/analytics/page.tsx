@@ -217,6 +217,22 @@ export default function AnalyticsPage() {
 
   const currentTeacherData = teacherRevenueByRange[timeRange];
   const courses = coursesByRange[timeRange];
+  const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
+
+  // Calculate pie chart donut slices
+  let accumulatedPercent = 0;
+  const pieSlices = currentTeacherData.teachers.map((teacher) => {
+    const percent = teacher.share;
+    const strokeDasharray = `${(percent / 100) * 439.823} ${439.823}`;
+    const strokeDashoffset = -((accumulatedPercent / 100) * 439.823);
+    accumulatedPercent += percent;
+    return {
+      ...teacher,
+      strokeDasharray,
+      strokeDashoffset,
+      pieColor: teacher.id === 't1' ? '#2563eb' : teacher.id === 't2' ? '#4f46e5' : '#0d9488',
+    };
+  });
 
   // Rooms workload
   const rooms = [
@@ -409,6 +425,133 @@ export default function AnalyticsPage() {
             <span className="text-sm font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-xl">
               {currentTeacherData.total}
             </span>
+          </div>
+        </div>
+
+        {/* PIE / DONUT CHART BLOCK («Пирог» распределения выручки) */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-slate-200/60 pb-3">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <PieChart className="h-4 w-4 text-indigo-600" />
+              Круговая диаграмма распределения выручки («пирог»)
+            </h3>
+            <span className="text-[11px] text-slate-500">
+              Наведите курсор на сектор или преподавателя для детализации
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            {/* Donut Graphic */}
+            <div className="md:col-span-5 flex items-center justify-center py-2">
+              <div className="relative w-52 h-52 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 200 200">
+                  {/* Background Track */}
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="70"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    strokeWidth="24"
+                  />
+                  {pieSlices.map((slice) => {
+                    const isHovered = hoveredTeacherId === slice.id;
+                    return (
+                      <circle
+                        key={slice.id}
+                        cx="100"
+                        cy="100"
+                        r="70"
+                        fill="none"
+                        stroke={slice.pieColor}
+                        strokeWidth={isHovered ? 28 : 22}
+                        strokeDasharray={slice.strokeDasharray}
+                        strokeDashoffset={slice.strokeDashoffset}
+                        className="transition-all duration-200 cursor-pointer"
+                        onMouseEnter={() => setHoveredTeacherId(slice.id)}
+                        onMouseLeave={() => setHoveredTeacherId(null)}
+                      />
+                    );
+                  })}
+                </svg>
+
+                {/* Center Label inside Donut */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+                  {hoveredTeacherId ? (
+                    (() => {
+                      const hTeacher = currentTeacherData.teachers.find(t => t.id === hoveredTeacherId);
+                      return (
+                        <>
+                          <span className="text-[11px] font-bold text-slate-600 line-clamp-1">{hTeacher?.name}</span>
+                          <span className="text-lg font-black text-slate-950 mt-0.5">{hTeacher?.revenue}</span>
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full mt-1">
+                            {hTeacher?.share}% от школы
+                          </span>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Выручка</span>
+                      <span className="text-lg font-black text-slate-900 mt-0.5">{currentTeacherData.total}</span>
+                      <span className="text-[10px] font-medium text-slate-500 mt-0.5">3 преподавателя</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Legend with Bars */}
+            <div className="md:col-span-7 space-y-2.5">
+              {currentTeacherData.teachers.map((t) => {
+                const isHovered = hoveredTeacherId === t.id;
+                const dotColor = t.id === 't1' ? '#2563eb' : t.id === 't2' ? '#4f46e5' : '#0d9488';
+                return (
+                  <div
+                    key={t.id}
+                    onMouseEnter={() => setHoveredTeacherId(t.id)}
+                    onMouseLeave={() => setHoveredTeacherId(null)}
+                    className={cn(
+                      'p-3 rounded-xl border transition-all cursor-pointer',
+                      isHovered
+                        ? 'border-indigo-400 bg-white shadow-xs'
+                        : 'border-slate-200/80 bg-white hover:border-slate-300'
+                    )}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-full shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
+                        <span className="font-bold text-slate-900">{t.name}</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-slate-500 text-[11px]">{t.subject}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-950 text-xs sm:text-sm">{t.revenue}</span>
+                        <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md text-[11px]">
+                          {t.share}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{t.students} учеников в группах</span>
+                      <span>{t.lessons} уроков ({t.hours} ч.)</span>
+                      <span>Ср. чек: <b>{t.avgPerStudent}</b></span>
+                    </div>
+
+                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mt-2">
+                      <div
+                        className={cn('h-full rounded-full transition-all duration-300', t.color)}
+                        style={{ width: `${t.share}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

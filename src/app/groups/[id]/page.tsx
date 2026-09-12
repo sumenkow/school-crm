@@ -16,17 +16,72 @@ import {
   AlertTriangle,
   ChevronRight,
   UserCheck,
-  MoreHorizontal
+  MoreHorizontal,
+  Edit,
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
 
 export default function GroupDetailsPage() {
   const params = useParams();
+  const { success } = useToast();
   const groupId = params.id as string;
 
   const [group, setGroup] = useState<FullGroupData>(() => {
     return INITIAL_GROUPS.find((g) => g.id === groupId) || INITIAL_GROUPS[0];
   });
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: group.name,
+    courseName: group.courseName,
+    teacherName: group.teacherName,
+    schedule: group.schedule,
+    room: group.room,
+    capacity: group.capacity,
+    status: group.status,
+    notes: group.notes || '',
+  });
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      name: group.name,
+      courseName: group.courseName,
+      teacherName: group.teacherName,
+      schedule: group.schedule,
+      room: group.room,
+      capacity: group.capacity,
+      status: group.status,
+      notes: group.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: FullGroupData = {
+      ...group,
+      name: editForm.name.trim() || group.name,
+      courseName: editForm.courseName.trim() || group.courseName,
+      teacherName: editForm.teacherName.trim() || group.teacherName,
+      schedule: editForm.schedule.trim() || group.schedule,
+      room: editForm.room.trim() || group.room,
+      capacity: Number(editForm.capacity) || group.capacity,
+      status: editForm.status as any,
+      notes: editForm.notes.trim() || undefined,
+    };
+    setGroup(updated);
+
+    const idx = INITIAL_GROUPS.findIndex((g) => g.id === group.id);
+    if (idx !== -1) {
+      INITIAL_GROUPS[idx] = updated;
+    }
+
+    success('Данные группы успешно обновлены!');
+    setIsEditModalOpen(false);
+  };
 
   const [activeTab, setActiveTab] = useState<'students' | 'lessons' | 'settings'>('students');
 
@@ -125,6 +180,14 @@ export default function GroupDetailsPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenEdit}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            >
+              <Edit className="h-3.5 w-3.5 text-blue-600" />
+              Изменить
+            </button>
             <Link
               href="/calendar"
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
@@ -322,6 +385,151 @@ export default function GroupDetailsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* EDIT GROUP MODAL */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <Edit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Изменение параметров группы</h3>
+                  <p className="text-xs text-slate-500">Название, курс, преподаватель, расписание и места</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGroup} className="mt-4 space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Название группы</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                  placeholder="English B1 Teens (Пн/Чт 18:45)"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Курс / Направление</label>
+                  <input
+                    type="text"
+                    value={editForm.courseName}
+                    onChange={(e) => setEditForm({ ...editForm, courseName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Английский язык"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Преподаватель</label>
+                  <input
+                    type="text"
+                    value={editForm.teacherName}
+                    onChange={(e) => setEditForm({ ...editForm, teacherName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Мария Иванова"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Расписание занятий</label>
+                  <input
+                    type="text"
+                    value={editForm.schedule}
+                    onChange={(e) => setEditForm({ ...editForm, schedule: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Пн, Чт • 18:45–20:15"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Аудитория</label>
+                  <input
+                    type="text"
+                    value={editForm.room}
+                    onChange={(e) => setEditForm({ ...editForm, room: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Аудитория 204"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Вместимость (макс. мест)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={editForm.capacity}
+                    onChange={(e) => setEditForm({ ...editForm, capacity: parseInt(e.target.value) || 8 })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Статус группы</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
+                  >
+                    <option value="active">Идут занятия (Активна)</option>
+                    <option value="recruiting">Идет набор</option>
+                    <option value="completed">Завершена</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности группы</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden resize-none"
+                  placeholder="Возраст, программа, учебные материалы..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Сохранить изменения
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

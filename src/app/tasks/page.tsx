@@ -13,7 +13,9 @@ import {
   Users,
   Search,
   ChevronRight,
-  ArrowRight
+  ArrowRight,
+  Edit3,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_TASKS, FullTaskData } from '@/lib/data/mockData';
@@ -25,6 +27,7 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'my'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<FullTaskData | null>(null);
 
   const handleTaskCreated = (newTask: FullTaskData) => {
     setTasks((prev) => [newTask, ...prev]);
@@ -249,6 +252,17 @@ export default function TasksPage() {
                       {task.priority === 'medium' && 'Средний'}
                       {task.priority === 'low' && 'Низкий'}
                     </span>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingTask(task);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 border border-blue-200 transition-colors"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      Изменить
+                    </button>
                   </div>
                 </div>
               );
@@ -263,6 +277,165 @@ export default function TasksPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleTaskCreated}
       />
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          isOpen={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          onSave={(updated) => {
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            setEditingTask(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditTaskModal({
+  task,
+  isOpen,
+  onClose,
+  onSave,
+}: {
+  task: FullTaskData;
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (task: FullTaskData) => void;
+}) {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || '');
+  const [priority, setPriority] = useState(task.priority);
+  const [assignedTo, setAssignedTo] = useState(task.assignedTo);
+  const [dueDateFormatted, setDueDateFormatted] = useState(task.dueDateFormatted);
+  const [status, setStatus] = useState(task.status);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      ...task,
+      title,
+      description,
+      priority,
+      assignedTo,
+      dueDateFormatted,
+      status,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Изменить задачу</h3>
+            <p className="text-xs text-slate-500">Редактирование параметров и статуса задачи</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Название задачи</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Описание / Комментарий</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Приоритет</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as any)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="high">Срочно (Высокий)</option>
+                <option value="medium">Обычный (Средний)</option>
+                <option value="low">Низкий</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Статус</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="open">К выполнению</option>
+                <option value="in_progress">В работе</option>
+                <option value="done">Выполнено</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Срок выполнения</label>
+              <input
+                type="text"
+                value={dueDateFormatted}
+                onChange={(e) => setDueDateFormatted(e.target.value)}
+                placeholder="Сегодня, 15:00"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Ответственный</label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="Елена Менеджер">Елена Менеджер</option>
+                <option value="Анна Админ">Анна Админ</option>
+                <option value="Алексей Преподаватель">Алексей Преподаватель</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
+              Сохранить изменения
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

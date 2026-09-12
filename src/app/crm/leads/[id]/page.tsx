@@ -22,7 +22,10 @@ import {
   ArrowRight,
   CheckSquare,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Edit,
+  Check,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
@@ -39,6 +42,62 @@ export default function LeadDetailsPage() {
   const [lead, setLead] = useState<FullLeadData>(() => {
     return INITIAL_LEADS.find((l) => l.id === leadId) || INITIAL_LEADS[0];
   });
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: lead.name,
+    contact: lead.contact,
+    telegram: lead.telegram || '',
+    studentName: lead.studentName || '',
+    studentAge: lead.studentAge || '',
+    directionOrCourse: lead.directionOrCourse || '',
+    source: lead.source,
+    assignedTo: lead.assignedTo,
+    parentNotes: lead.parentNotes || '',
+    studentNotes: lead.studentNotes || '',
+  });
+
+  const handleOpenEdit = () => {
+    setEditForm({
+      name: lead.name,
+      contact: lead.contact,
+      telegram: lead.telegram || '',
+      studentName: lead.studentName || '',
+      studentAge: lead.studentAge || '',
+      directionOrCourse: lead.directionOrCourse || '',
+      source: lead.source,
+      assignedTo: lead.assignedTo,
+      parentNotes: lead.parentNotes || '',
+      studentNotes: lead.studentNotes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveLead = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: FullLeadData = {
+      ...lead,
+      name: editForm.name.trim() || lead.name,
+      contact: editForm.contact.trim() || lead.contact,
+      telegram: editForm.telegram.trim() || undefined,
+      studentName: editForm.studentName.trim() || lead.studentName,
+      studentAge: editForm.studentAge.trim() || undefined,
+      directionOrCourse: editForm.directionOrCourse.trim() || lead.directionOrCourse,
+      source: editForm.source.trim() || lead.source,
+      assignedTo: editForm.assignedTo.trim() || lead.assignedTo,
+      parentNotes: editForm.parentNotes.trim() || undefined,
+      studentNotes: editForm.studentNotes.trim() || undefined,
+    };
+    setLead(updated);
+
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = updated;
+    }
+
+    toast.success('Данные лида успешно обновлены!');
+    setIsEditModalOpen(false);
+  };
 
   // Timeline note state
   const [newNoteText, setNewNoteText] = useState('');
@@ -280,8 +339,16 @@ export default function LeadDetailsPage() {
             </div>
           </div>
 
-          {/* Quick Convert Button */}
-          <div>
+          {/* Quick Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenEdit}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+            >
+              <Edit className="h-3.5 w-3.5 text-purple-600" />
+              Изменить
+            </button>
             {lead.status === 'paid' && lead.convertedStudentId ? (
               <Link
                 href={`/students/${lead.convertedStudentId}`}
@@ -294,7 +361,7 @@ export default function LeadDetailsPage() {
               <button
                 type="button"
                 onClick={handleConvertToStudent}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Конвертировать в ученика
@@ -564,6 +631,173 @@ export default function LeadDetailsPage() {
           })}
         </div>
       </div>
+
+      {/* EDIT LEAD MODAL */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <Edit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Изменение данных лида</h3>
+                  <p className="text-xs text-slate-500">Контакт, ребенок, курс и примечания</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLead} className="mt-4 space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Имя родителя / контакта</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Телефон контакта</label>
+                  <input
+                    type="text"
+                    value={editForm.contact}
+                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="+7 (999) 000-00-00"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Имя ребенка</label>
+                  <input
+                    type="text"
+                    value={editForm.studentName}
+                    onChange={(e) => setEditForm({ ...editForm, studentName: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="Анна"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Возраст ребенка</label>
+                  <input
+                    type="text"
+                    value={editForm.studentAge}
+                    onChange={(e) => setEditForm({ ...editForm, studentAge: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="10 лет"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Курс / Направление</label>
+                  <input
+                    type="text"
+                    value={editForm.directionOrCourse}
+                    onChange={(e) => setEditForm({ ...editForm, directionOrCourse: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="Английский язык"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Источник заявки</label>
+                  <select
+                    value={editForm.source}
+                    onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden bg-white"
+                  >
+                    <option value="Сайт">Сайт</option>
+                    <option value="Яндекс.Директ">Яндекс.Директ</option>
+                    <option value="ВКонтакте">ВКонтакте</option>
+                    <option value="Telegram">Telegram</option>
+                    <option value="Рекомендация">Рекомендация (Сарафанное радио)</option>
+                    <option value="Другое">Другое</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Telegram</label>
+                  <input
+                    type="text"
+                    value={editForm.telegram}
+                    onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="@username"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Ответственный менеджер</label>
+                  <input
+                    type="text"
+                    value={editForm.assignedTo}
+                    onChange={(e) => setEditForm({ ...editForm, assignedTo: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                    placeholder="Менеджер"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Комментарий / Заметки о родителе</label>
+                <textarea
+                  rows={2}
+                  value={editForm.parentNotes}
+                  onChange={(e) => setEditForm({ ...editForm, parentNotes: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden resize-none"
+                  placeholder="Особенности общения, удобное время для звонка..."
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Комментарий / Особенности ученика</label>
+                <textarea
+                  rows={2}
+                  value={editForm.studentNotes}
+                  onChange={(e) => setEditForm({ ...editForm, studentNotes: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden resize-none"
+                  placeholder="Уровень подготовки, интересы, особенности характера..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Сохранить изменения
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
