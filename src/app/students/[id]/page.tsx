@@ -670,10 +670,22 @@ export default function StudentDetailsPage() {
                   <span
                     className={cn(
                       'rounded-full px-2.5 py-1 font-bold text-[11px]',
-                      item.status === 'present' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      item.status === 'present'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : item.status === 'rescheduled'
+                        ? 'bg-purple-100 text-purple-800'
+                        : item.status === 'cancelled'
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'bg-rose-100 text-rose-800'
                     )}
                   >
-                    {item.status === 'present' ? 'Был' : 'Пропуск'}
+                    {item.status === 'present'
+                      ? 'Был'
+                      : item.status === 'rescheduled'
+                      ? 'Перенос'
+                      : item.status === 'cancelled'
+                      ? 'Отменено'
+                      : 'Пропуск'}
                   </span>
                 </div>
               ))}

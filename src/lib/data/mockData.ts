@@ -592,6 +592,28 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
 ];
 
+export interface LessonTimelineEvent {
+  id: string;
+  timestamp: string;
+  author: string;
+  role: string;
+  type: 'created' | 'status_change' | 'rescheduled' | 'completed' | 'attendance_marked' | 'cancelled';
+  comment: string;
+}
+
+export interface LessonRescheduleInfo {
+  previousDate: string;
+  previousTime: string;
+  newDate: string;
+  newTime: string;
+  room: string;
+  reason: string;
+  changedBy: string;
+  changedRole: string;
+  changedAt: string;
+  notifyParents?: boolean;
+}
+
 export interface FullLessonData {
   id: string;
   groupId: string;
@@ -609,10 +631,12 @@ export interface FullLessonData {
   homework?: string;
   onlineMeetingUrl?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+  rescheduleInfo?: LessonRescheduleInfo;
+  timelineEvents?: LessonTimelineEvent[];
   students: Array<{
     id: string;
     name: string;
-    attendanceStatus: 'present' | 'absent' | 'rescheduled' | 'cancelled' | 'not_marked';
+    attendanceStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
     notes?: string;
   }>;
 }
@@ -635,6 +659,32 @@ export const INITIAL_LESSONS: FullLessonData[] = [
     homework: 'Workbook p. 12-14, эссе о любимом путешествии (100 слов)',
     onlineMeetingUrl: 'https://meet.google.com/abc-defg-hij',
     status: 'completed',
+    timelineEvents: [
+      {
+        id: 'ev1',
+        timestamp: '01.09.2026, 17:30',
+        author: 'Анна Админ',
+        role: 'Администратор',
+        type: 'created',
+        comment: 'Урок внесен в общее расписание школы',
+      },
+      {
+        id: 'ev2',
+        timestamp: '01.09.2026, 20:20',
+        author: 'Мария Иванова',
+        role: 'Преподаватель',
+        type: 'attendance_marked',
+        comment: 'Отмечена посещаемость: 6 присутствуют, 1 отсутствует по болезни',
+      },
+      {
+        id: 'ev3',
+        timestamp: '01.09.2026, 20:25',
+        author: 'Мария Иванова',
+        role: 'Преподаватель',
+        type: 'completed',
+        comment: 'Урок завершен, выдано ДЗ: Workbook p. 12-14',
+      },
+    ],
     students: [
       { id: '1', name: 'Иван Смирнов', attendanceStatus: 'present' },
       { id: '4', name: 'Сергей Попов', attendanceStatus: 'present' },

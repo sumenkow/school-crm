@@ -134,7 +134,8 @@ export default function TeacherAttendanceJournalPage() {
       const current = records[dateIndex];
 
       let newStatus = 'present';
-      if (current === 'present') newStatus = 'absent';
+      if (current === 'present') newStatus = 'excused';
+      else if (current === 'excused') newStatus = 'absent';
       else if (current === 'absent') newStatus = 'rescheduled';
       else if (current === 'rescheduled') newStatus = 'pending';
       else newStatus = 'present';
@@ -142,7 +143,7 @@ export default function TeacherAttendanceJournalPage() {
       records[dateIndex] = newStatus;
       row.records = records;
 
-      if (newStatus === 'present') row.consecutiveAbsences = 0;
+      if (newStatus === 'present' || newStatus === 'excused') row.consecutiveAbsences = 0;
       else if (newStatus === 'absent') row.consecutiveAbsences += 1;
 
       next[rowIndex] = row;
@@ -318,17 +319,22 @@ export default function TeacherAttendanceJournalPage() {
                     >
                       <div className="flex items-center justify-center h-8 w-8 mx-auto">
                         {rec === 'present' && (
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs shadow-xs">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs shadow-xs" title="Присутствовал">
                             ✓
                           </span>
                         )}
+                        {rec === 'excused' && (
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 font-bold text-xs shadow-xs" title="Болел / Уважительная причина">
+                            Б
+                          </span>
+                        )}
                         {rec === 'absent' && (
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-800 font-bold text-xs shadow-xs">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-800 font-bold text-xs shadow-xs" title="Пропуск без причины">
                             ✗
                           </span>
                         )}
                         {rec === 'rescheduled' && (
-                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800 font-bold text-xs shadow-xs">
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-purple-100 text-purple-800 font-bold text-xs shadow-xs" title="Перенос / Отработка">
                             П
                           </span>
                         )}
@@ -355,22 +361,26 @@ export default function TeacherAttendanceJournalPage() {
 
         {/* Legend */}
         <div className="border-t border-slate-100 bg-slate-50 p-4 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-5">
             <span className="font-semibold text-slate-700">Обозначения:</span>
             <div className="flex items-center gap-1.5">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-100 font-bold text-emerald-800 text-[11px]">✓</span>
               <span>Присутствовал</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-rose-100 font-bold text-rose-800 text-[11px]">✗</span>
-              <span>Отсутствовал</span>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-amber-100 font-bold text-amber-800 text-[11px]">Б</span>
+              <span>Болел / Уважительная</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-amber-100 font-bold text-amber-800 text-[11px]">П</span>
-              <span>Перенос / Справка</span>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-rose-100 font-bold text-rose-800 text-[11px]">✗</span>
+              <span>Пропуск</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-purple-100 font-bold text-purple-800 text-[11px]">П</span>
+              <span>Перенос / Отработка</span>
             </div>
           </div>
-          <span className="text-[11px] text-slate-400">💡 Кликните по ячейке для быстрой смены статуса</span>
+          <span className="text-[11px] text-slate-400">💡 Кликните по ячейке для циклической смены статуса</span>
         </div>
       </div>
 

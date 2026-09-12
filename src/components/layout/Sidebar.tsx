@@ -21,7 +21,8 @@ import {
   ClipboardList,
   X,
   School,
-  Database
+  Database,
+  HelpCircle,
 } from 'lucide-react';
 
 interface NavItem {
@@ -79,6 +80,12 @@ const ownerNav: NavSection[] = [
       { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
     ],
   },
+  {
+    section: 'База знаний',
+    items: [
+      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
+    ],
+  },
 ];
 
 const adminNav: NavSection[] = [
@@ -115,6 +122,12 @@ const adminNav: NavSection[] = [
       { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
     ],
   },
+  {
+    section: 'База знаний',
+    items: [
+      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
+    ],
+  },
 ];
 
 const teacherNav: NavSection[] = [
@@ -125,6 +138,12 @@ const teacherNav: NavSection[] = [
       { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
       { label: 'Мои группы', href: '/groups', icon: <BookOpen size={20} /> },
       { label: 'Журнал посещаемости', href: '/teacher/attendance', icon: <ClipboardList size={20} /> },
+    ],
+  },
+  {
+    section: 'База знаний',
+    items: [
+      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
     ],
   },
 ];

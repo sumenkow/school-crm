@@ -194,16 +194,27 @@ export default function CalendarPage() {
                               'rounded-xl border p-2.5 text-xs transition-all hover:shadow-md cursor-pointer text-left',
                               lesson.status === 'completed'
                                 ? 'border-emerald-200 bg-emerald-50/60'
+                                : lesson.status === 'rescheduled'
+                                ? 'border-amber-300 bg-amber-50/70 hover:border-amber-400'
+                                : lesson.status === 'cancelled'
+                                ? 'border-rose-200 bg-rose-50/50 opacity-70'
                                 : 'border-blue-200 bg-blue-50/40 hover:border-blue-300'
                             )}
                           >
                             <div className="flex items-center justify-between font-bold text-slate-800 text-[11px]">
                               <span>{lesson.startTime} – {lesson.endTime}</span>
-                              {lesson.onlineMeetingUrl && (
-                                <span className="flex items-center gap-0.5 text-[10px] text-indigo-600 font-medium bg-indigo-50 px-1 py-0.5 rounded">
-                                  <Video className="h-2.5 w-2.5" /> Online
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {lesson.status === 'rescheduled' && (
+                                  <span className="rounded bg-amber-200/70 text-amber-900 px-1 py-0.2 text-[9px] font-bold">
+                                    Перенос
+                                  </span>
+                                )}
+                                {lesson.onlineMeetingUrl && (
+                                  <span className="flex items-center gap-0.5 text-[10px] text-indigo-600 font-medium bg-indigo-50 px-1 py-0.5 rounded">
+                                    <Video className="h-2.5 w-2.5" /> Online
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <p className="mt-1 font-bold text-slate-900 leading-snug">{lesson.groupName.split('(')[0]}</p>
                             <p className="mt-0.5 text-[11px] text-slate-500">{lesson.teacherName}</p>
@@ -302,9 +313,21 @@ export default function CalendarPage() {
                     <div className="text-right text-xs">
                       <span className={cn(
                         'rounded-full px-2.5 py-1 text-[10px] font-semibold',
-                        lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                        lesson.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : lesson.status === 'rescheduled'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : lesson.status === 'cancelled'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-blue-100 text-blue-800'
                       )}>
-                        {lesson.status === 'completed' ? 'Завершён' : 'Запланирован'}
+                        {lesson.status === 'completed'
+                          ? 'Завершён'
+                          : lesson.status === 'rescheduled'
+                          ? 'Перенесён'
+                          : lesson.status === 'cancelled'
+                          ? 'Отменён'
+                          : 'Запланирован'}
                       </span>
                       <p className="text-slate-400 text-[11px] mt-1">{lesson.students.length} учеников</p>
                     </div>
