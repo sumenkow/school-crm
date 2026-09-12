@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   BarChart3,
   TrendingUp,
@@ -15,7 +16,9 @@ import {
   BookOpen,
   MapPin,
   Clock,
-  Sparkles
+  Sparkles,
+  GraduationCap,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,12 +42,181 @@ export default function AnalyticsPage() {
     { cohort: 'Сентябрь 2026', startStudents: 42, m0: '100%', m1: '—', m2: '—', m3: '—' },
   ];
 
-  // Course performance
-  const courses = [
-    { name: 'Английский язык', students: 64, revenue: '486 400 ₽', share: 58, color: 'bg-blue-600' },
-    { name: 'Робототехника', students: 32, revenue: '268 800 ₽', share: 26, color: 'bg-indigo-600' },
-    { name: 'Олимпиадная математика', students: 28, revenue: '190 400 ₽', share: 16, color: 'bg-teal-600' },
-  ];
+  // Teacher revenue performance
+  const teacherRevenueByRange = {
+    month: {
+      total: '945 600 ₽',
+      teachers: [
+        {
+          id: 't1',
+          name: 'Мария Иванова',
+          subject: 'Английский язык',
+          role: 'Ведущий преподаватель',
+          avatarColor: 'from-blue-500 to-indigo-600',
+          students: 28,
+          hours: 32,
+          lessons: 16,
+          revenue: '486 400 ₽',
+          avgPerStudent: '17 370 ₽',
+          share: 51.4,
+          trend: '+8.4%',
+          color: 'bg-blue-600',
+        },
+        {
+          id: 't2',
+          name: 'Денис Смирнов',
+          subject: 'Робототехника и IT',
+          role: 'Преподаватель робототехники',
+          avatarColor: 'from-indigo-500 to-purple-600',
+          students: 14,
+          hours: 16,
+          lessons: 8,
+          revenue: '268 800 ₽',
+          avgPerStudent: '19 200 ₽',
+          share: 28.4,
+          trend: '+12.1%',
+          color: 'bg-indigo-600',
+        },
+        {
+          id: 't3',
+          name: 'Ольга Соколова',
+          subject: 'Олимпиадная математика',
+          role: 'Эксперт олимпиад',
+          avatarColor: 'from-teal-500 to-emerald-600',
+          students: 18,
+          hours: 24,
+          lessons: 12,
+          revenue: '190 400 ₽',
+          avgPerStudent: '10 580 ₽',
+          share: 20.2,
+          trend: '+4.5%',
+          color: 'bg-teal-600',
+        },
+      ],
+    },
+    quarter: {
+      total: '2 770 000 ₽',
+      teachers: [
+        {
+          id: 't1',
+          name: 'Мария Иванова',
+          subject: 'Английский язык',
+          role: 'Ведущий преподаватель',
+          avatarColor: 'from-blue-500 to-indigo-600',
+          students: 31,
+          hours: 96,
+          lessons: 48,
+          revenue: '1 420 000 ₽',
+          avgPerStudent: '45 800 ₽',
+          share: 51.3,
+          trend: '+10.2%',
+          color: 'bg-blue-600',
+        },
+        {
+          id: 't2',
+          name: 'Денис Смирнов',
+          subject: 'Робототехника и IT',
+          role: 'Преподаватель робототехники',
+          avatarColor: 'from-indigo-500 to-purple-600',
+          students: 16,
+          hours: 48,
+          lessons: 24,
+          revenue: '790 000 ₽',
+          avgPerStudent: '49 375 ₽',
+          share: 28.5,
+          trend: '+15.4%',
+          color: 'bg-indigo-600',
+        },
+        {
+          id: 't3',
+          name: 'Ольга Соколова',
+          subject: 'Олимпиадная математика',
+          role: 'Эксперт олимпиад',
+          avatarColor: 'from-teal-500 to-emerald-600',
+          students: 19,
+          hours: 72,
+          lessons: 36,
+          revenue: '560 000 ₽',
+          avgPerStudent: '29 470 ₽',
+          share: 20.2,
+          trend: '+6.8%',
+          color: 'bg-teal-600',
+        },
+      ],
+    },
+    year: {
+      total: '8 310 000 ₽',
+      teachers: [
+        {
+          id: 't1',
+          name: 'Мария Иванова',
+          subject: 'Английский язык',
+          role: 'Ведущий преподаватель',
+          avatarColor: 'from-blue-500 to-indigo-600',
+          students: 48,
+          hours: 288,
+          lessons: 144,
+          revenue: '4 250 000 ₽',
+          avgPerStudent: '88 540 ₽',
+          share: 51.1,
+          trend: '+14.0%',
+          color: 'bg-blue-600',
+        },
+        {
+          id: 't2',
+          name: 'Денис Смирнов',
+          subject: 'Робототехника и IT',
+          role: 'Преподаватель робототехники',
+          avatarColor: 'from-indigo-500 to-purple-600',
+          students: 26,
+          hours: 144,
+          lessons: 72,
+          revenue: '2 380 000 ₽',
+          avgPerStudent: '91 500 ₽',
+          share: 28.6,
+          trend: '+18.2%',
+          color: 'bg-indigo-600',
+        },
+        {
+          id: 't3',
+          name: 'Ольга Соколова',
+          subject: 'Олимпиадная математика',
+          role: 'Эксперт олимпиад',
+          avatarColor: 'from-teal-500 to-emerald-600',
+          students: 29,
+          hours: 216,
+          lessons: 108,
+          revenue: '1 680 000 ₽',
+          avgPerStudent: '57 930 ₽',
+          share: 20.3,
+          trend: '+9.1%',
+          color: 'bg-teal-600',
+        },
+      ],
+    },
+  };
+
+  // Course performance by range
+  const coursesByRange = {
+    month: [
+      { name: 'Английский язык', students: 64, revenue: '486 400 ₽', share: 51.4, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 32, revenue: '268 800 ₽', share: 28.4, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 28, revenue: '190 400 ₽', share: 20.2, color: 'bg-teal-600' },
+    ],
+    quarter: [
+      { name: 'Английский язык', students: 78, revenue: '1 420 000 ₽', share: 51.3, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 42, revenue: '790 000 ₽', share: 28.5, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 35, revenue: '560 000 ₽', share: 20.2, color: 'bg-teal-600' },
+    ],
+    year: [
+      { name: 'Английский язык', students: 120, revenue: '4 250 000 ₽', share: 51.1, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 65, revenue: '2 380 000 ₽', share: 28.6, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 54, revenue: '1 680 000 ₽', share: 20.3, color: 'bg-teal-600' },
+    ],
+  };
+
+  const currentTeacherData = teacherRevenueByRange[timeRange];
+  const courses = coursesByRange[timeRange];
 
   // Rooms workload
   const rooms = [
@@ -220,7 +392,144 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Section 3: КУРСЫ И АУДИТОРИИ (2 columns) */}
+      {/* Section 3: ВЫРУЧКА ПО ПРЕПОДАВАТЕЛЯМ */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-indigo-600" />
+              Выручка по отдельным преподавателям
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Сгенерированный доход, учебная выработка и финансовая эффективность педагогического состава
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500">Суммарно:</span>
+            <span className="text-sm font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-xl">
+              {currentTeacherData.total}
+            </span>
+          </div>
+        </div>
+
+        {/* 3 Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {currentTeacherData.teachers.map((teacher) => (
+            <div
+              key={teacher.id}
+              className="rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/50 p-4 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn('h-10 w-10 rounded-xl bg-gradient-to-br text-white font-bold flex items-center justify-center text-sm shadow-xs', teacher.avatarColor)}>
+                      {teacher.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm">{teacher.name}</h3>
+                      <p className="text-[11px] text-slate-500">{teacher.subject}</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    {teacher.trend}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xl font-extrabold text-slate-900">{teacher.revenue}</span>
+                    <span className="text-xs font-bold text-indigo-600">{teacher.share}% выручки</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div className={cn('h-full rounded-full', teacher.color)} style={{ width: `${teacher.share}%` }} />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2.5 text-center text-xs border border-slate-100">
+                  <div>
+                    <div className="text-[10px] text-slate-400">Учеников</div>
+                    <div className="font-bold text-slate-800">{teacher.students}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">Занятий</div>
+                    <div className="font-bold text-slate-800">{teacher.lessons}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">Ср. чек</div>
+                    <div className="font-bold text-slate-800">{teacher.avgPerStudent}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500">Нагрузка: <b>{teacher.hours} ч.</b></span>
+                <Link
+                  href={`/teachers/${teacher.id}`}
+                  className="font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                >
+                  Профиль <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Detailed Table */}
+        <div className="overflow-x-auto rounded-xl border border-slate-100">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
+              <tr>
+                <th className="py-3 pl-4 pr-3">Преподаватель</th>
+                <th className="px-3 py-3">Предмет / Направление</th>
+                <th className="px-3 py-3 text-right">Выручка</th>
+                <th className="px-3 py-3 text-center">Доля</th>
+                <th className="px-3 py-3 text-center">Учеников</th>
+                <th className="px-3 py-3 text-center">Занятий</th>
+                <th className="px-3 py-3 text-right">Ср. доход на ученика</th>
+                <th className="px-3 py-3 text-center">Динамика</th>
+                <th className="py-3 pl-3 pr-4 text-right">Карточка</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {currentTeacherData.teachers.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="py-3 pl-4 pr-3 font-bold text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <div className={cn('h-6 w-6 rounded-md bg-gradient-to-br text-white text-[10px] font-bold flex items-center justify-center', t.avatarColor)}>
+                        {t.name.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <span>{t.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-slate-600">{t.subject}</td>
+                  <td className="px-3 py-3 text-right font-extrabold text-slate-900">{t.revenue}</td>
+                  <td className="px-3 py-3 text-center">
+                    <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full text-[11px]">
+                      {t.share}%
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold text-slate-800">{t.students} чел.</td>
+                  <td className="px-3 py-3 text-center font-medium text-slate-600">{t.lessons} ур.</td>
+                  <td className="px-3 py-3 text-right font-semibold text-slate-800">{t.avgPerStudent}</td>
+                  <td className="px-3 py-3 text-center">
+                    <span className="font-bold text-emerald-600 text-[11px]">{t.trend}</span>
+                  </td>
+                  <td className="py-3 pl-3 pr-4 text-right">
+                    <Link
+                      href={`/teachers/${t.id}`}
+                      className="inline-flex items-center gap-1 text-slate-500 hover:text-indigo-600 font-medium transition-colors"
+                    >
+                      Открыть →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Section 4: КУРСЫ И АУДИТОРИИ (2 columns) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Доходы по направлениям */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">

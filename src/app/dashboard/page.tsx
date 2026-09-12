@@ -101,7 +101,6 @@ function KpiCard({
 // ─────────────────────────────────────────────────────────────────────────────
 function SmartActionHub() {
   const router = useRouter();
-  const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
   const tasks = [
     {
@@ -149,157 +148,81 @@ function SmartActionHub() {
   ];
 
   return (
-    <>
-      <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
-              ⚡
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Требует внимания сегодня (Оперативный хаб)
-              </h3>
-              <p className="text-[11px] text-slate-500">
-                Срочные задачи менеджера для сохранения выручки и предотвращения оттока
-              </p>
-            </div>
+    <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
+            ⚡
           </div>
-          <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-            3 срочных действия
-          </span>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Требуют внимания
+            </h3>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              onClick={() => setSelectedTask(task)}
-              className="group rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className={cn('font-bold px-2 py-0.5 rounded-full', task.badgeColor)}>
-                    {task.badge}
-                  </span>
-                  <span className="text-slate-400 text-[10px]">{task.deadline}</span>
-                </div>
-                <p className="font-bold text-slate-900 text-xs mt-2 group-hover:text-blue-600 transition-colors">
-                  {task.title}
-                </p>
-                <p className="text-[11px] text-slate-500">{task.subtitle}</p>
-                <p className={cn('text-xs font-bold mt-1', task.type === 'debt' ? 'text-rose-700' : task.type === 'lead' ? 'text-purple-700' : 'text-slate-700')}>
-                  {task.highlight}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
-                {task.waUrl && (
-                  <a
-                    href={task.waUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
-                  >
-                    WhatsApp
-                  </a>
-                )}
-                {task.phone && (
-                  <a
-                    href={`tel:${task.phone}`}
-                    className="flex-1 text-center py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 text-[10px] transition-colors"
-                  >
-                    Позвонить
-                  </a>
-                )}
-                <button
-                  onClick={() => setSelectedTask(task)}
-                  className="flex-1 text-center py-1 rounded-lg bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 text-[10px] transition-colors"
-                >
-                  Карточка →
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+          3 срочных действия
+        </span>
       </div>
 
-      {/* Task Details Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <span className={cn('font-bold px-2 py-0.5 rounded-full text-xs', selectedTask.badgeColor)}>
-                  {selectedTask.badge}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+        {tasks.map((task) => (
+          <div
+            key={task.id}
+            onClick={() => router.push(task.profileUrl)}
+            className="group rounded-xl border border-slate-200 bg-white p-3.5 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className={cn('font-bold px-2 py-0.5 rounded-full', task.badgeColor)}>
+                  {task.badge}
                 </span>
+                <span className="text-slate-400 text-[10px]">{task.deadline}</span>
               </div>
-              <button onClick={() => setSelectedTask(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-4 w-4" />
+              <p className="font-bold text-slate-900 text-xs mt-2 group-hover:text-blue-600 transition-colors">
+                {task.title}
+              </p>
+              <p className="text-[11px] text-slate-500">{task.subtitle}</p>
+              <p className={cn('text-xs font-bold mt-1', task.type === 'debt' ? 'text-rose-700' : task.type === 'lead' ? 'text-purple-700' : 'text-slate-700')}>
+                {task.highlight}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-slate-100">
+              {task.waUrl && (
+                <a
+                  href={task.waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
+                >
+                  WhatsApp
+                </a>
+              )}
+              {task.phone && (
+                <a
+                  href={`tel:${task.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-1 text-center py-1 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 text-[10px] transition-colors"
+                >
+                  Позвонить
+                </a>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(task.profileUrl);
+                }}
+                className="flex-1 text-center py-1 rounded-lg bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 text-[10px] transition-colors"
+              >
+                Карточка →
               </button>
             </div>
-
-            <div className="mt-4 space-y-3 text-xs">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">{selectedTask.title}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">{selectedTask.subtitle}</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200/80 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Срок / Дедлайн:</span>
-                  <span className="font-semibold text-slate-800">{selectedTask.deadline}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Статус:</span>
-                  <span className="font-bold text-amber-700">Требует действия</span>
-                </div>
-                <p className="text-slate-700 border-t border-slate-200 pt-2 text-xs leading-relaxed">
-                  {selectedTask.description}
-                </p>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                {selectedTask.phone && (
-                  <a
-                    href={`tel:${selectedTask.phone}`}
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
-                  >
-                    <Phone className="h-3.5 w-3.5" />
-                    Позвонить
-                  </a>
-                )}
-                {selectedTask.waUrl && (
-                  <a
-                    href={selectedTask.waUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    WhatsApp
-                  </a>
-                )}
-              </div>
-
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    const url = selectedTask.profileUrl;
-                    setSelectedTask(null);
-                    router.push(url);
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {selectedTask.actionLabel}
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
-      )}
-    </>
+        ))}
+      </div>
+    </div>
   );
 }
 
