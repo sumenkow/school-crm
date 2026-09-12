@@ -122,10 +122,13 @@ export default function ParentsPage() {
     const student = INITIAL_STUDENTS.find((s) => s.id === childId);
     if (!student) return;
 
+    const studentName = `${student.firstName} ${student.lastName}`;
+    const studentGroup = student.groups?.[0]?.name || 'Без группы';
+
     const newChild = {
       id: student.id,
-      name: student.name,
-      group: student.groupName || 'Без группы',
+      name: studentName,
+      group: studentGroup,
     };
 
     setParents((prev) =>
@@ -140,7 +143,7 @@ export default function ParentsPage() {
       })
     );
 
-    success(`Ученик ${student.name} успешно привязан к ${linkingChildParent.name}`);
+    success(`Ученик ${studentName} успешно привязан к ${linkingChildParent.name}`);
     setLinkingChildParent(null);
   };
 
@@ -624,7 +627,7 @@ function LinkChildModal({
               >
                 {availableStudents.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} ({s.groupName || 'Без группы'})
+                    {s.firstName} {s.lastName} ({s.groups?.[0]?.name || 'Без группы'})
                   </option>
                 ))}
               </select>

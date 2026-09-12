@@ -34,6 +34,7 @@ import {
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
+import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
 function IconContainer({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
