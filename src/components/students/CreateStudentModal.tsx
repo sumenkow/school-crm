@@ -140,60 +140,9 @@ export function CreateStudentModal({
       ? 'Робототехника'
       : 'Математика';
 
-    // 1. Create full student entity in INITIAL_STUDENTS
-    const newFullStudent: FullStudentData = {
-      id: newStudentId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      studentType: studentType,
-      birthDate: birthDate || '2014-01-01',
-      phone: phone.trim() || parentPhone.trim() || '—',
-      telegram: telegram.trim() || parentTelegram.trim() || undefined,
-      status: status as any,
-      notes: notes.trim() || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      parents: [
-        {
-          id: parentId,
-          firstName: parentFirstName.trim() || (studentType === 'adult_student' ? 'Контакт' : 'Родитель'),
-          lastName: parentLastName.trim() || lastName.trim(),
-          phone: parentPhone.trim() || '—',
-          telegram: parentTelegram.trim() || undefined,
-          whatsapp: preferredChannel === 'whatsapp' ? parentPhone.trim() : undefined,
-          preferredChannel: preferredChannel as any,
-          relationshipType: relationshipType || (studentType === 'adult_student' ? 'Экстренный контакт' : 'Мама'),
-          isPrimary: true,
-        },
-      ],
-      groups: [
-        {
-          id: group.includes('English') ? 'g1' : group.includes('Robotics') ? 'g2' : 'g3',
-          name: group,
-          courseName,
-          teacherName: group.includes('English') ? 'Мария Иванова' : 'Денис Смирнов',
-          schedule: group.includes('English') ? 'Пн, Чт • 18:45–20:15' : 'Ср 15:00, Сб 11:00',
-          status: 'active',
-          joinedAt: new Date().toLocaleDateString('ru-RU'),
-        },
-      ],
-      attendanceStats: {
-        totalLessons: 0,
-        presentCount: 0,
-        absentCount: 0,
-        rescheduledCount: 0,
-        attendanceRate: '100%',
-        history: [],
-      },
-      finance: {
-        payments: [
-          {
-            id: `pay_${Date.now()}`,
-            date: new Date().toLocaleDateString('ru-RU'),
-            amount: '7 600 ₽',
-            period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
-            method: 'Банковская карта',
+
     const parentFullName = `${parentFirstName.trim()} ${parentLastName.trim()}`.trim();
+
     const isAdult = studentType === 'adult_student';
 
     const creationInteraction: TimelineInteraction = {
