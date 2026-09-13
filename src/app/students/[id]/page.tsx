@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
-import { getCombinedStudentTimeline, saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
+import { getStudentById, saveStudentToStorage } from '@/lib/data/studentStorage';
 import {
   ArrowLeft,
   Calendar,
@@ -46,8 +47,30 @@ export default function StudentDetailsPage() {
   const studentId = params.id as string;
 
   const [student, setStudent] = useState<FullStudentData>(() => {
-    return INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+    return getStudentById(studentId) || INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
   });
+
+  // Re-sync on studentId or when storage updates
+  useEffect(() => {
+    const loaded = getStudentById(studentId);
+    if (loaded) {
+      setStudent(loaded);
+    }
+
+    const handleSync = (e: any) => {
+      if (e?.detail?.id === studentId) {
+        setStudent(e.detail);
+      } else {
+        const fresh = getStudentById(studentId);
+        if (fresh) setStudent(fresh);
+      }
+    };
+
+    window.addEventListener('crm-students-changed', handleSync);
+    return () => {
+      window.removeEventListener('crm-students-changed', handleSync);
+    };
+  }, [studentId]);
 
   const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>('profile');
 
@@ -91,7 +114,7 @@ export default function StudentDetailsPage() {
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор школы',
-      content: `Ученик достиг совершеннолетия и конвертирован в статус «🎓 Студент (18+)». Прямой контакт: ${directPhone}. Данные родителей (${parentsNames || 'нет'}) сохранены как семейные контакты.`,
+      content: `Ученик достиг совершеннолетия и конвертирован в статус «Студент (18+)». Прямой контакт: ${directPhone}. Данные родителей (${parentsNames || 'нет'}) сохранены как семейные контакты.`,
       result: 'Конвертация в совершеннолетнего студента завершена',
     };
 
@@ -109,12 +132,7 @@ export default function StudentDetailsPage() {
     };
 
     setStudent(updatedStudent);
-
-    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
-    if (idx !== -1) {
-      INITIAL_STUDENTS[idx] = updatedStudent;
-    }
-
+    saveStudentToStorage(updatedStudent);
     saveInteractionToStorage(conversionInteraction);
     setIsConvertAdultModalOpen(false);
     toast.success(`Ученик успешно конвертирован в статус «Студент (18+)» с сохранением данных родителей!`);
@@ -136,7 +154,7 @@ export default function StudentDetailsPage() {
 
   const handleSaveStudentEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = {
+    const updated: FullStudentData = {
       ...student,
       firstName: editStudentForm.firstName.trim() || student.firstName,
       lastName: editStudentForm.lastName.trim() || student.lastName,
@@ -148,14 +166,7 @@ export default function StudentDetailsPage() {
       notes: editStudentForm.notes.trim() || undefined,
     };
     setStudent(updated);
-
-    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
-    if (idx !== -1) {
-      INITIAL_STUDENTS[idx] = {
-        ...INITIAL_STUDENTS[idx],
-        ...updated,
-      };
-    }
+    saveStudentToStorage(updated);
 
     toast.success('Данные ученика успешно изменены!');
     setIsEditStudentModalOpen(false);
@@ -178,7 +189,7 @@ export default function StudentDetailsPage() {
   const [newNoteText, setNewNoteText] = useState('');
   const [newChannel, setNewChannel] = useState<'telegram' | 'whatsapp' | 'phone' | 'call'>('telegram');
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
-  const [interactionTarget, setInteractionTarget] = useState<'student' | 'parent'>('student');
+  const [interactionTarget, setInteractionTarget] = useState<string>('student');
 
   useEffect(() => {
     const parentIds = (student.parents || []).map((p) => p.id);
@@ -274,23 +285,24 @@ export default function StudentDetailsPage() {
     e.preventDefault();
     if (!newNoteText.trim()) return;
 
-    const primaryParent = student.parents[0];
-    const isParentTarget = interactionTarget === 'parent' && primaryParent;
-    const prefix = isParentTarget
-      ? `[Взаимодействие с родителем: ${primaryParent.firstName} ${primaryParent.lastName} (${primaryParent.relationshipType})] `
-      : `[Действие с учеником] `;
+    const isStudent = interactionTarget === 'student';
+    const targetParentId = !isStudent ? interactionTarget.replace('parent_', '') : null;
+    const targetParent = targetParentId ? student.parents.find((p) => p.id === targetParentId) || student.parents[0] : undefined;
 
     const newEntry: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
-      parentId: primaryParent?.id,
-      parentName: primaryParent ? `${primaryParent.firstName} ${primaryParent.lastName}` : undefined,
+      parentId: targetParent?.id,
+      parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
+      targetType: isStudent ? 'student' : 'parent',
+      targetName: isStudent ? `${student.firstName} ${student.lastName}` : (targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : 'Родитель'),
+      targetRole: isStudent ? 'Ученик' : (targetParent?.relationshipType ? `Родитель (${targetParent.relationshipType})` : 'Родитель'),
       occurredAt: 'Только что',
       channel: newChannel,
       type: 'follow_up',
       author: userName || 'Администратор школы',
-      content: `${prefix}${newNoteText.trim()}`,
+      content: newNoteText.trim(),
       result: 'Зафиксировано в истории',
       nextAction: newFollowUpDate ? `Связаться ${newFollowUpDate}` : undefined,
       followUpDate: newFollowUpDate || undefined,
@@ -313,7 +325,10 @@ export default function StudentDetailsPage() {
     // Persist to shared timeline storage
     saveInteractionToStorage(newEntry);
 
-    toast.success('Действие успешно добавлено и сохранено в карточку семьи!');
+    toast.success(isStudent
+      ? `Действие с учеником «${student.firstName} ${student.lastName}» сохранено!`
+      : `Действие с родителем «${targetParent?.firstName} ${targetParent?.lastName}» сохранено!`
+    );
     setNewNoteText('');
     setNewFollowUpDate('');
   };
@@ -379,8 +394,7 @@ export default function StudentDetailsPage() {
                     </>
                   ) : (
                     <>
-                      <span>🎒</span>
-                      Школьник
+                      <span>Школьник</span>
                     </>
                   )}
                 </span>
@@ -1060,13 +1074,13 @@ export default function StudentDetailsPage() {
                 <span>С кем действие:</span>
                 <select
                   value={interactionTarget}
-                  onChange={(e) => setInteractionTarget(e.target.value as 'student' | 'parent')}
+                  onChange={(e) => setInteractionTarget(e.target.value)}
                   className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800"
                 >
-                  <option value="student">С учеником ({student.firstName})</option>
+                  <option value="student">С учеником ({student.firstName} {student.lastName})</option>
                   {student.parents.map((p) => (
-                    <option key={p.id} value="parent">
-                      С родителем: {p.firstName} {p.lastName} ({p.relationshipType})
+                    <option key={p.id} value={`parent_${p.id}`}>
+                      С родителем: {p.firstName} {p.lastName} ({p.relationshipType || 'Родитель'})
                     </option>
                   ))}
                 </select>
@@ -1118,46 +1132,63 @@ export default function StudentDetailsPage() {
 
           {/* Timeline Feed */}
           <div className="space-y-4">
-            {student.interactions.map((int) => (
-              <div key={int.id} className="relative flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-slate-900 text-sm">{int.author}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 uppercase">
-                        {int.channel}
-                      </span>
-                      {int.content.includes('родителем') || int.parentName ? (
-                        <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
-                          {int.parentName ? `Родитель: ${int.parentName}` : 'Семья / Родитель'}
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
-                          Ученик
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-slate-400">{int.occurredAt}</span>
+            {getCombinedStudentTimeline(
+              student.id,
+              student.interactions,
+              (student.parents || []).map((p) => p.id)
+            ).map((int) => {
+              const target = getInteractionTargetInfo(int, student);
+              const isParentAction = target.role === 'parent';
+
+              return (
+                <div key={int.id} className="relative flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                      isParentAction ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                    )}
+                  >
+                    <MessageSquare className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-slate-700 pt-1 leading-relaxed">{int.content}</p>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-slate-900 text-sm">{int.author}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 uppercase">
+                          {int.channel}
+                        </span>
 
-                  {int.result && (
-                    <p className="text-[11px] text-emerald-700 font-medium pt-1">
-                      ✓ Результат: {int.result}
-                    </p>
-                  )}
-
-                  {int.nextAction && (
-                    <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900 border border-amber-200/60 font-medium">
-                      → Следующее действие: {int.nextAction}
+                        {isParentAction ? (
+                          <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-medium text-purple-800 border border-purple-200 flex items-center gap-1">
+                            <span className="font-bold">{target.roleLabel}:</span>
+                            <span>{target.name}</span>
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200 flex items-center gap-1">
+                            <span className="font-bold">Ученик:</span>
+                            <span>{target.name}</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-400">{int.occurredAt}</span>
                     </div>
-                  )}
+                    <p className="text-xs text-slate-700 pt-1 leading-relaxed">{int.content}</p>
+
+                    {int.result && (
+                      <p className="text-[11px] text-emerald-700 font-medium pt-1">
+                        Результат: {int.result}
+                      </p>
+                    )}
+
+                    {int.nextAction && (
+                      <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900 border border-amber-200/60 font-medium">
+                        → Следующее действие: {int.nextAction}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

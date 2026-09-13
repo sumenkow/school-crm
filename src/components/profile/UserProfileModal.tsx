@@ -62,7 +62,7 @@ const roleDescriptions: Record<UserRole, { title: string; subtitle: string; badg
     subtitle: 'Педагогическая деятельность и журнал посещаемости',
     badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     permissions: [
-      'Просмотр личного расписания занятий и аудиторий',
+      'Просмотр личного расписания занятий и онлайн-комнат',
       'Ведение электронного журнала посещаемости',
       'Добавление педагогических заметок об учениках',
       'Инициирование переноса уроков с фиксацией в таймлайне',
@@ -324,7 +324,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                             )}
                           >
-                            {r === 'owner' ? '👑 Владелец' : r === 'admin' ? '💼 Администратор' : '🎓 Преподаватель'}
+                            {r === 'owner' ? 'Владелец' : r === 'admin' ? 'Администратор' : 'Преподаватель'}
                           </button>
                         );
                       })}

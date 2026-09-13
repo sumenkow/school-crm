@@ -121,3 +121,79 @@ export function getCombinedParentTimeline(
 
   return Array.from(map.values());
 }
+
+export interface InteractionTargetInfo {
+  name: string;
+  role: 'student' | 'parent';
+  roleLabel: string;
+}
+
+/**
+ * Determines whether an interaction was performed with the student or with a parent,
+ * returning the exact Full Name and formatted status badge ("Ученик" or "Родитель").
+ */
+export function getInteractionTargetInfo(
+  int: TimelineInteraction,
+  contextStudent?: { firstName: string; lastName: string; parents?: Array<{ id: string; firstName: string; lastName: string; relationshipType?: string }> },
+  contextParent?: { firstName: string; lastName: string }
+): InteractionTargetInfo {
+  // 1. If targetType is explicitly 'parent'
+  if (int.targetType === 'parent') {
+    return {
+      name: int.targetName || int.parentName || (contextParent ? `${contextParent.firstName} ${contextParent.lastName}` : 'Родитель'),
+      role: 'parent',
+      roleLabel: int.targetRole || 'Родитель',
+    };
+  }
+
+  // 2. If targetType is explicitly 'student'
+  if (int.targetType === 'student') {
+    return {
+      name: int.targetName || int.studentName || (contextStudent ? `${contextStudent.firstName} ${contextStudent.lastName}` : 'Ученик'),
+      role: 'student',
+      roleLabel: 'Ученик',
+    };
+  }
+
+  // 3. Heuristic matching for older records or external additions:
+  const contentLower = (int.content || '').toLowerCase();
+  const isParentContent =
+    contentLower.includes('родителем') ||
+    contentLower.includes('маме') ||
+    contentLower.includes('папе') ||
+    contentLower.includes('мамы') ||
+    contentLower.includes('папы') ||
+    contentLower.includes('семьей') ||
+    contentLower.includes('родител');
+
+  if (isParentContent || (int.parentId && !int.studentId)) {
+    let pName = int.parentName || int.targetName;
+    let rel = int.targetRole || 'Родитель';
+
+    if (!pName && contextStudent?.parents) {
+      const match = contextStudent.parents.find((p) => p.id === int.parentId);
+      if (match) {
+        pName = `${match.firstName} ${match.lastName}`;
+        rel = match.relationshipType ? `Родитель (${match.relationshipType})` : 'Родитель';
+      }
+    }
+
+    if (!pName && contextParent) {
+      pName = `${contextParent.firstName} ${contextParent.lastName}`;
+    }
+
+    return {
+      name: pName || 'Родитель',
+      role: 'parent',
+      roleLabel: rel,
+    };
+  }
+
+  // Student default
+  const sName = int.studentName || int.targetName || (contextStudent ? `${contextStudent.firstName} ${contextStudent.lastName}` : 'Ученик');
+  return {
+    name: sName,
+    role: 'student',
+    roleLabel: 'Ученик',
+  };
+}

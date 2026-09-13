@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
-import { getCombinedParentTimeline, saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { useRole } from '@/context/RoleContext';
 import {
   ArrowLeft,
@@ -295,11 +295,14 @@ export default function ParentDetailsPage() {
       parentName: `${parent.firstName} ${parent.lastName}`,
       studentId: targetChild?.id,
       studentName: targetChild?.name,
+      targetType: 'parent',
+      targetName: `${parent.firstName} ${parent.lastName}`,
+      targetRole: 'Родитель',
       occurredAt: 'Только что',
       channel: 'telegram',
       type: 'follow_up',
       author: userName || 'Администратор школы',
-      content: `[Взаимодействие с родителем: ${parent.firstName} ${parent.lastName}] ${newNote.trim()}`,
+      content: newNote.trim(),
       result: 'Зафиксировано в карточке семьи',
     };
 
@@ -518,22 +521,36 @@ export default function ParentDetailsPage() {
         </form>
 
         <div className="space-y-3 pt-2">
-          {interactions.map((int) => (
-            <div key={int.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-900">{int.author}</span>
-                  <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200 uppercase">
-                    {int.channel}
-                  </span>
-                  <span className="text-slate-400">по поводу: <strong>{int.studentName}</strong></span>
+          {interactions.map((int) => {
+            const target = getInteractionTargetInfo(int, undefined, parent);
+            const isParentAction = target.role === 'parent';
+
+            return (
+              <div key={int.id} className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900">{int.author}</span>
+                    <span className="rounded bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-600 border border-slate-200 uppercase">
+                      {int.channel}
+                    </span>
+
+                    {isParentAction ? (
+                      <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                        Родитель: {target.name}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
+                        Ученик: {target.name}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-400">{int.occurredAt}</span>
                 </div>
-                <span className="text-[11px] text-slate-400">{int.occurredAt}</span>
+                <p className="text-slate-700 pt-1 leading-relaxed">{int.content}</p>
+                {int.result && <p className="text-[11px] text-emerald-700 font-medium">Результат: {int.result}</p>}
               </div>
-              <p className="text-slate-700 pt-1">{int.content}</p>
-              {int.result && <p className="text-[11px] text-emerald-700 font-medium">✓ {int.result}</p>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

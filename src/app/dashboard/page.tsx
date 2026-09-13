@@ -43,7 +43,7 @@ import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
-import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -163,7 +163,7 @@ function SmartActionHub() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white font-bold text-xs">
-            ⚡
+            <AlertCircle size={14} />
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">
@@ -525,6 +525,51 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
         </div>
       </div>
 
+      {/* Admin Performance (для руководителя-владельца) */}
+      <div
+        className="md-card-elevated flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(142, 36, 170, 0.05) 100%)',
+          border: '1px solid rgba(21, 101, 192, 0.15)',
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-center rounded-xl font-bold text-white shadow-xs"
+            style={{
+              width: '42px',
+              height: '42px',
+              background: 'linear-gradient(135deg, #1565C0 0%, #7B1FA2 100%)',
+            }}
+          >
+            94%
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                Эффективность работы администратора
+              </span>
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                Стандарты соблюдены
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">
+              44/48 задач выполнено в срок • 0 пропущенных задач • 420 000 ₽ проведенных оплат • CSAT 4.95 / 5.0
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/analytics"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs border border-blue-100 hover:bg-blue-50 transition-colors"
+        >
+          <BarChart3 size={14} />
+          Отчет по эффективности
+          <ArrowRight size={13} />
+        </Link>
+      </div>
+
       {/* Payment Details Modal */}
       {selectedPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
@@ -627,7 +672,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 11:30',
       urgent: true,
       contacted: false,
-      leadId: '1',
+      leadId: 'lead1',
     },
     {
       id: 'ql-2',
@@ -639,7 +684,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 12:30',
       urgent: true,
       contacted: false,
-      leadId: '2',
+      leadId: 'lead2',
     },
     {
       id: 'ql-3',
@@ -651,7 +696,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 14:00',
       urgent: false,
       contacted: false,
-      leadId: '3',
+      leadId: 'lead3',
     },
     {
       id: 'ql-4',
@@ -663,9 +708,50 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 15:00',
       urgent: false,
       contacted: false,
-      leadId: '4',
+      leadId: 'lead4',
     },
   ]);
+
+  // Dynamically sync newly created leads from localStorage or INITIAL_LEADS
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        let allLeads: FullLeadData[] = INITIAL_LEADS;
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const parsedIds = new Set(parsed.map((l) => l.id));
+            allLeads = [...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))];
+          }
+        }
+
+        const newLeads = allLeads.filter((l) => l.status === 'new');
+        if (newLeads.length > 0) {
+          const dynamicItems = newLeads.map((l) => ({
+            id: `ql-dyn-${l.id}`,
+            name: `${l.name}${l.studentName ? ` (${l.studentName})` : ''}`,
+            course: l.directionOrCourse,
+            source: `${l.source} (новое)`,
+            phone: l.contact,
+            status: 'Требует 1-го звонка',
+            deadline: 'в течение 15 мин',
+            urgent: true,
+            contacted: false,
+            leadId: l.id,
+          }));
+
+          setLeadsList((prev) => {
+            const existingIds = new Set(prev.map((p) => p.leadId));
+            const toAdd = dynamicItems.filter((item) => !existingIds.has(item.leadId));
+            return [...toAdd, ...prev];
+          });
+        }
+      } catch (e) {
+        console.error('Failed to sync new leads into dashboard queue', e);
+      }
+    }
+  }, []);
 
   // 2. Trials queue data
   const [trialsList, setTrialsList] = useState([
@@ -676,7 +762,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       parent: 'Анна (мама)',
       phone: '+7 999 444-11-22',
       course: 'Робототехника (Пробное)',
-      room: 'Кабинет 2',
+      room: 'Онлайн (Zoom 2)',
       teacher: 'Дмитрий Смирнов',
       status: 'Подтверждено по SMS',
       attended: false,
@@ -688,7 +774,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       parent: 'Игорь (папа)',
       phone: '+7 903 555-66-77',
       course: 'Английский язык Kids (Пробное)',
-      room: 'Кабинет 1',
+      room: 'Онлайн (Zoom 1)',
       teacher: 'Мария Иванова',
       status: 'Ожидает звонка',
       attended: false,
@@ -700,7 +786,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       parent: 'Елена (мама)',
       phone: '+7 926 777-33-44',
       course: 'Scratch Программирование (Пробное)',
-      room: 'Лаборатория',
+      room: 'Онлайн (Виртуальная лаборатория)',
       teacher: 'Алексей Ковалев',
       status: 'Подтверждено',
       attended: false,
@@ -1178,10 +1264,10 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
               </span>
               <div>
                 <h2 className="text-base font-bold text-slate-900">
-                  {activeQueue === 'leads' && '⚡ Операционная очередь: Заявки на сегодня'}
-                  {activeQueue === 'trials' && '📅 Операционная очередь: Пробные уроки сегодня'}
-                  {activeQueue === 'payments' && '💳 Операционная очередь: Оплаты и касса за сегодня'}
-                  {activeQueue === 'tasks' && '🔥 Операционная очередь: Срочные задачи на смену'}
+                  {activeQueue === 'leads' && 'Операционная очередь: Заявки на сегодня'}
+                  {activeQueue === 'trials' && 'Операционная очередь: Пробные уроки сегодня'}
+                  {activeQueue === 'payments' && 'Операционная очередь: Оплаты и касса за сегодня'}
+                  {activeQueue === 'tasks' && 'Операционная очередь: Срочные задачи на смену'}
                 </h2>
                 <p className="text-xs text-slate-500">
                   {activeQueue === 'leads' && 'Обработка входящих лидов и назначение пробных занятий'}
@@ -1203,7 +1289,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     activeQueue === 'leads' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  ⚡ Заявки ({pendingLeadsCount})
+                  Заявки ({pendingLeadsCount})
                 </button>
                 <button
                   type="button"
@@ -1213,7 +1299,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     activeQueue === 'trials' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  📅 Пробные ({trialsList.length})
+                  Пробные ({trialsList.length})
                 </button>
                 <button
                   type="button"
@@ -1223,7 +1309,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     activeQueue === 'payments' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  💳 Оплаты ({paymentsList.length})
+                  Оплаты ({paymentsList.length})
                 </button>
                 <button
                   type="button"
@@ -1233,7 +1319,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     activeQueue === 'tasks' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  🔥 Задачи ({pendingTasksCount})
+                  Задачи ({pendingTasksCount})
                 </button>
               </div>
 
@@ -1307,7 +1393,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                         </span>
                         {lead.contacted ? (
                           <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
-                            ✓ Звонок совершен
+                            Звонок совершен
                           </span>
                         ) : (
                           <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold animate-pulse">
@@ -1352,7 +1438,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         )}
                       >
-                        {lead.contacted ? 'Отменить звонок' : '✓ Звонок совершен'}
+                        {lead.contacted ? 'Отменить звонок' : 'Звонок совершен'}
                       </button>
                       <Link
                         href={`/crm/leads/${lead.leadId}`}
@@ -1412,7 +1498,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-slate-100 text-slate-700'
                         )}>
-                          {trial.attended ? '✓ Явка подтверждена' : trial.status}
+                          {trial.attended ? 'Явка подтверждена' : trial.status}
                         </span>
                       </p>
                     </div>
@@ -1428,7 +1514,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                             : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
                         )}
                       >
-                        {trial.attended ? '✓ Пришел на урок' : 'Отметить явку'}
+                        {trial.attended ? 'Пришел на урок' : 'Отметить явку'}
                       </button>
                       <a
                         href={`https://wa.me/${trial.phone.replace(/[^0-9]/g, '')}`}
@@ -1630,51 +1716,6 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           )}
         </div>
       )}
-
-      {/* Admin Performance Mini Widget */}
-      <div
-        className="md-card-elevated flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-        style={{
-          padding: '16px 20px',
-          background: 'linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(142, 36, 170, 0.05) 100%)',
-          border: '1px solid rgba(21, 101, 192, 0.15)',
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex items-center justify-center rounded-xl font-bold text-white shadow-xs"
-            style={{
-              width: '42px',
-              height: '42px',
-              background: 'linear-gradient(135deg, #1565C0 0%, #7B1FA2 100%)',
-            }}
-          >
-            94%
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                Эффективность работы администратора
-              </span>
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                Премия 100%
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 mt-0.5">
-              44/48 задач выполнено в срок • 0 пропущенных задач • 420 000 ₽ проведенных оплат
-            </p>
-          </div>
-        </div>
-
-        <Link
-          href="/analytics"
-          className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs border border-blue-100 hover:bg-blue-50 transition-colors"
-        >
-          <BarChart3 size={14} />
-          Отчет по эффективности
-          <ArrowRight size={13} />
-        </Link>
-      </div>
 
       {/* Admin Action lists: Leads to call + Today's Lessons */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

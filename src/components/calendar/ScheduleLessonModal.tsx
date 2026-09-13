@@ -22,9 +22,9 @@ export function ScheduleLessonModal({ isOpen, onClose, onScheduled, initialDate 
       setDate(initialDate);
     }
   }, [initialDate]);
-  const [room, setRoom] = useState('Аудитория 204');
+  const [room, setRoom] = useState('Онлайн (Zoom 1)');
   const [topic, setTopic] = useState('');
-  const [isOnline, setIsOnline] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const [onlineUrl, setOnlineUrl] = useState('');
 
   if (!isOpen) return null;
@@ -142,12 +142,12 @@ export function ScheduleLessonModal({ isOpen, onClose, onScheduled, initialDate 
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-700">Аудитория</label>
+            <label className="text-xs font-medium text-slate-700">Формат / Онлайн-кабинет</label>
             <input
               type="text"
               value={room}
               onChange={(e) => setRoom(e.target.value)}
-              placeholder="Аудитория 204"
+              placeholder="Онлайн (Zoom / веб-класс)"
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>

@@ -128,7 +128,7 @@ export function RolesSecurityModal({ isOpen, onClose, permissions, onSave }: Rol
               <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-amber-900 text-sm">👑 Владелец школы (Owner)</span>
+                    <span className="font-bold text-amber-900 text-sm">Владелец школы (Owner)</span>
                     <span className="rounded bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2 py-0.5">
                       Superuser
                     </span>
@@ -143,7 +143,7 @@ export function RolesSecurityModal({ isOpen, onClose, permissions, onSave }: Rol
               <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm">🛡️ Администратор (Admin)</h3>
+                    <h3 className="font-bold text-slate-900 text-sm">Администратор (Admin)</h3>
                     <p className="text-[11px] text-slate-500">Управление расписанием, учениками, звонками и заявками</p>
                   </div>
                 </div>
@@ -207,7 +207,7 @@ export function RolesSecurityModal({ isOpen, onClose, permissions, onSave }: Rol
               <div className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm">🎓 Преподаватель (Teacher)</h3>
+                    <h3 className="font-bold text-slate-900 text-sm">Преподаватель (Teacher)</h3>
                     <p className="text-[11px] text-slate-500">Доступ к электронному журналу и карточкам своих групп</p>
                   </div>
                 </div>

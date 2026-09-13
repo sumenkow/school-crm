@@ -5,6 +5,7 @@ import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, B
 import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { saveStudentToStorage } from '@/lib/data/studentStorage';
 
 export interface NewStudentData {
   id: string;
@@ -215,6 +216,7 @@ export function CreateStudentModal({
     };
 
     INITIAL_STUDENTS.unshift(newFullStudent);
+    saveStudentToStorage(newFullStudent);
     saveInteractionToStorage(newFullStudent.interactions[0]);
 
     // Update group enrollment count in INITIAL_GROUPS if found

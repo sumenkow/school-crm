@@ -28,7 +28,8 @@ import {
   FileText,
   BadgePercent,
   Timer,
-  RefreshCw
+  RefreshCw,
+  Star,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
@@ -85,7 +86,7 @@ export interface AdminEfficiencyData {
 const ADMIN_PROFILES: Record<string, AdminEfficiencyData> = {
   'anna': {
     adminName: 'Анна Администратор',
-    avatar: '👩‍💼',
+    avatar: 'АА',
     role: 'Старший администратор смены',
     period: 'Сентябрь 2026',
     integralKpiScore: 94,
@@ -133,7 +134,7 @@ const ADMIN_PROFILES: Record<string, AdminEfficiencyData> = {
   },
   'elena': {
     adminName: 'Елена Менеджер',
-    avatar: '👱‍♀️',
+    avatar: 'ЕМ',
     role: 'Администратор дневной смены',
     period: 'Сентябрь 2026',
     integralKpiScore: 91,
@@ -251,8 +252,10 @@ export function AdminPerformanceReport() {
       {/* Header & Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{current.avatar}</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-800 font-bold text-xs">
+              {current.avatar}
+            </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Отчет по эффективности работы администратора
             </h1>
@@ -269,8 +272,8 @@ export function AdminPerformanceReport() {
             onChange={(e) => setSelectedAdminKey(e.target.value as any)}
             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 shadow-xs focus:border-blue-500 focus:outline-none"
           >
-            <option value="anna">👩‍💼 Анна Администратор (старший)</option>
-            <option value="elena">👱‍♀️ Елена Менеджер</option>
+            <option value="anna">Анна Администратор (старший)</option>
+            <option value="elena">Елена Менеджер</option>
           </select>
 
           {/* Time Range */}
@@ -385,7 +388,10 @@ export function AdminPerformanceReport() {
           </div>
           <div className="mt-2 flex items-center justify-between text-xs">
             <span className="text-slate-600">Оценка родителей (CSAT):</span>
-            <span className="font-bold text-amber-700">★ {current.funnelAndService.parentSatisfactionCsat} / 5.0</span>
+            <span className="font-bold text-amber-700 flex items-center gap-1">
+              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+              {current.funnelAndService.parentSatisfactionCsat} / 5.0
+            </span>
           </div>
         </div>
       </div>
@@ -601,8 +607,9 @@ export function AdminPerformanceReport() {
 
               <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
                 <span className="text-slate-300 block font-medium">Качество сервиса</span>
-                <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  ★ {current.funnelAndService.parentSatisfactionCsat} / 5.0
+                <span className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  {current.funnelAndService.parentSatisfactionCsat} / 5.0
                 </span>
                 <span className="text-slate-400 text-[11px]">Продление абонементов {current.funnelAndService.renewalRate}%</span>
               </div>

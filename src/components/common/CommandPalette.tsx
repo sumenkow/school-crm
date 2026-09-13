@@ -61,7 +61,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       id: 'nav-calendar',
       category: 'Навигация',
       title: 'Календарь и расписание',
-      subtitle: 'Сетка уроков, аудитории, занятость',
+      subtitle: 'Сетка уроков, онлайн-классы, занятость',
       icon: <Calendar size={18} />,
       action: () => router.push('/calendar'),
       keywords: 'расписание уроки занятия сетка',

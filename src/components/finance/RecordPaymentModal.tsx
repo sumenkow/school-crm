@@ -204,7 +204,7 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
                   </p>
                   {notifyOwner && (
                     <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[10px] text-slate-600 font-mono">
-                      ✉️ Бот: «💰 Поступил платёж {Number(amount || 0).toLocaleString('ru-RU')} ₽ от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
+                      Бот: «Поступил платёж {Number(amount || 0).toLocaleString('ru-RU')} ₽ от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
                     </div>
                   )}
                 </div>
@@ -243,7 +243,7 @@ export function RecordPaymentModal({ isOpen, onClose, onRecorded }: RecordPaymen
                   </p>
                   {notifyParent && (
                     <div className="mt-1.5 rounded bg-emerald-50/70 border border-emerald-100 p-2 text-[10px] text-emerald-900 leading-snug">
-                      ✅ Чек: «Здравствуйте, {parent?.firstName || 'уважаемый родитель'}! Оплата обучения {selectedStudent.firstName} на сумму {Number(amount || 0).toLocaleString('ru-RU')} ₽ за {periodLabel} подтверждена. Абонемент активен. Спасибо!»
+                      Чек: «Здравствуйте, {parent?.firstName || 'уважаемый родитель'}! Оплата обучения {selectedStudent.firstName} на сумму {Number(amount || 0).toLocaleString('ru-RU')} ₽ за {periodLabel} подтверждена. Абонемент активен. Спасибо!»
                     </div>
                   )}
                 </div>

@@ -133,7 +133,7 @@ export function LessonQuickViewModal({
             </div>
 
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
-              <span className="text-[11px] font-medium text-slate-500">Аудитория / Формат</span>
+              <span className="text-[11px] font-medium text-slate-500">Формат / Онлайн-класс</span>
               <div className="mt-1 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">{lesson.room}</span>
                 {lesson.groupId && (

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
+import { INITIAL_LEADS, FullLeadData, TimelineInteraction, splitFullName, buildFullName } from '@/lib/data/mockData';
 import {
   ArrowLeft,
   Calendar,
@@ -42,15 +42,36 @@ export default function LeadDetailsPage() {
   const toast = useToast();
 
   const [lead, setLead] = useState<FullLeadData>(() => {
-    return INITIAL_LEADS.find((l) => l.id === leadId) || INITIAL_LEADS[0];
+    const fromMem = INITIAL_LEADS.find((l) => l.id === leadId);
+    if (fromMem) return fromMem;
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const list: FullLeadData[] = JSON.parse(stored);
+          const found = list.find((l) => l.id === leadId);
+          if (found) return found;
+        }
+      }
+    } catch {}
+    return INITIAL_LEADS[0];
   });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Helper to resolve initial FIO fields
+  const parentFio = splitFullName(lead.name);
+  const studentFio = splitFullName(lead.studentName || '');
+
   const [editForm, setEditForm] = useState({
-    name: lead.name,
+    parentLastName: lead.parentLastName || parentFio.lastName,
+    parentFirstName: lead.parentFirstName || parentFio.firstName,
+    parentMiddleName: lead.parentMiddleName || parentFio.middleName,
+    studentLastName: lead.studentLastName || studentFio.lastName,
+    studentFirstName: lead.studentFirstName || studentFio.firstName,
+    studentMiddleName: lead.studentMiddleName || studentFio.middleName,
     contact: lead.contact,
     telegram: lead.telegram || '',
-    studentName: lead.studentName || '',
     studentAge: lead.studentAge || '',
     directionOrCourse: lead.directionOrCourse || '',
     source: lead.source,
@@ -60,11 +81,17 @@ export default function LeadDetailsPage() {
   });
 
   const handleOpenEdit = () => {
+    const pFio = splitFullName(lead.name);
+    const sFio = splitFullName(lead.studentName || '');
     setEditForm({
-      name: lead.name,
+      parentLastName: lead.parentLastName || pFio.lastName,
+      parentFirstName: lead.parentFirstName || pFio.firstName,
+      parentMiddleName: lead.parentMiddleName || pFio.middleName,
+      studentLastName: lead.studentLastName || sFio.lastName,
+      studentFirstName: lead.studentFirstName || sFio.firstName,
+      studentMiddleName: lead.studentMiddleName || sFio.middleName,
       contact: lead.contact,
       telegram: lead.telegram || '',
-      studentName: lead.studentName || '',
       studentAge: lead.studentAge || '',
       directionOrCourse: lead.directionOrCourse || '',
       source: lead.source,
@@ -77,12 +104,26 @@ export default function LeadDetailsPage() {
 
   const handleSaveLead = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const parentFullName = buildFullName(editForm.parentLastName, editForm.parentFirstName, editForm.parentMiddleName);
+    const studentFullName = buildFullName(editForm.studentLastName, editForm.studentFirstName, editForm.studentMiddleName);
+
+    const isAdult = lead.clientType === 'adult_student';
+    const effectiveName = isAdult ? (studentFullName || lead.name) : (parentFullName || lead.name);
+    const effectiveStudentName = studentFullName || editForm.studentFirstName.trim() || lead.studentName;
+
     const updated: FullLeadData = {
       ...lead,
-      name: editForm.name.trim() || lead.name,
+      name: effectiveName,
+      parentLastName: editForm.parentLastName.trim() || undefined,
+      parentFirstName: editForm.parentFirstName.trim() || undefined,
+      parentMiddleName: editForm.parentMiddleName.trim() || undefined,
+      studentLastName: editForm.studentLastName.trim() || undefined,
+      studentFirstName: editForm.studentFirstName.trim() || undefined,
+      studentMiddleName: editForm.studentMiddleName.trim() || undefined,
+      studentName: effectiveStudentName,
       contact: editForm.contact.trim() || lead.contact,
       telegram: editForm.telegram.trim() || undefined,
-      studentName: editForm.studentName.trim() || lead.studentName,
       studentAge: editForm.studentAge.trim() || undefined,
       directionOrCourse: editForm.directionOrCourse.trim() || lead.directionOrCourse,
       source: editForm.source.trim() || lead.source,
@@ -92,9 +133,27 @@ export default function LeadDetailsPage() {
     };
     setLead(updated);
 
+    // Update in-memory
     const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
     if (idx !== -1) {
       INITIAL_LEADS[idx] = updated;
+    }
+
+    // Persist to localStorage
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('crm_leads_v2');
+        let list: FullLeadData[] = stored ? JSON.parse(stored) : [...INITIAL_LEADS];
+        const idxStored = list.findIndex((l) => l.id === lead.id);
+        if (idxStored !== -1) {
+          list[idxStored] = updated;
+        } else {
+          list.unshift(updated);
+        }
+        localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+      }
+    } catch (err) {
+      console.error(err);
     }
 
     toast.success('Данные лида успешно обновлены!');
@@ -110,16 +169,16 @@ export default function LeadDetailsPage() {
   const [conversionSuccess, setConversionSuccess] = useState(false);
 
   const nextActionPresets = [
-    { key: 'first_call', label: '📞 Первичный звонок и выявление потребностей' },
-    { key: 'schedule_trial', label: '📅 Записать на бесплатный пробный урок' },
-    { key: 'remind_trial', label: '⏰ Напомнить о пробном уроке (за 24ч)' },
-    { key: 'feedback_trial', label: '💬 Узнать впечатления после пробного урока' },
-    { key: 'send_offer', label: '📄 Отправить предложение и расписание групп' },
-    { key: 'send_invoice', label: '💳 Выставить счет и реквизиты на оплату' },
-    { key: 'payment_control', label: '💰 Проконтролировать поступление оплаты' },
-    { key: 'clarify_decision', label: '❓ Уточнить итоговое решение семьи' },
-    { key: 'follow_up_later', label: '⏳ Повторный контакт через 3 дня (думают)' },
-    { key: 'custom', label: '✏️ Свой вариант (ввести вручную)...' },
+    { key: 'first_call', label: 'Первичный звонок и выявление потребностей' },
+    { key: 'schedule_trial', label: 'Записать на бесплатный пробный урок' },
+    { key: 'remind_trial', label: 'Напомнить о пробном уроке (за 24ч)' },
+    { key: 'feedback_trial', label: 'Узнать впечатления после пробного урока' },
+    { key: 'send_offer', label: 'Отправить предложение и расписание групп' },
+    { key: 'send_invoice', label: 'Выставить счет и реквизиты на оплату' },
+    { key: 'payment_control', label: 'Проконтролировать поступление оплаты' },
+    { key: 'clarify_decision', label: 'Уточнить итоговое решение семьи' },
+    { key: 'follow_up_later', label: 'Повторный контакт через 3 дня (думают)' },
+    { key: 'custom', label: 'Свой вариант (ввести вручную)...' },
   ];
 
   const setQuickDate = (hoursAhead: number, targetHour?: number) => {
@@ -522,7 +581,7 @@ export default function LeadDetailsPage() {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <span>🎓 Заметки и особенности ученика ({lead.studentName || 'Ученик'})</span>
+                <span>Заметки и особенности ученика ({lead.studentName || 'Ученик'})</span>
               </span>
             </div>
             <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -539,7 +598,7 @@ export default function LeadDetailsPage() {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <span>👨‍👩‍👧 Заметки о родителе ({lead.name})</span>
+                <span>Заметки о родителе ({lead.name})</span>
               </span>
             </div>
             <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -713,7 +772,7 @@ export default function LeadDetailsPage() {
                   <span className="text-[11px] text-slate-400">{int.occurredAt}</span>
                 </div>
                 <p className="text-slate-700 pt-1 leading-relaxed">{int.content}</p>
-                {int.result && <p className="text-[11px] text-emerald-700 font-medium">✓ Результат: {int.result}</p>}
+                {int.result && <p className="text-[11px] text-emerald-700 font-medium">Результат: {int.result}</p>}
               </div>
             );
           })}
@@ -744,19 +803,100 @@ export default function LeadDetailsPage() {
             </div>
 
             <form onSubmit={handleSaveLead} className="mt-4 space-y-3.5 text-xs">
+              {/* Parent FIO (3 blocks: Фамилия, Имя, Отчество) */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                  ФИО родителя / контакта (3 поля)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Фамилия</label>
+                    <input
+                      type="text"
+                      value={editForm.parentLastName}
+                      onChange={(e) => setEditForm({ ...editForm, parentLastName: e.target.value })}
+                      placeholder="Фамилия"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Имя *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.parentFirstName}
+                      onChange={(e) => setEditForm({ ...editForm, parentFirstName: e.target.value })}
+                      placeholder="Имя"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Отчество</label>
+                    <input
+                      type="text"
+                      value={editForm.parentMiddleName}
+                      onChange={(e) => setEditForm({ ...editForm, parentMiddleName: e.target.value })}
+                      placeholder="Отчество"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Student FIO (3 blocks: Фамилия, Имя, Отчество) */}
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                    ФИО ученика (3 поля)
+                  </span>
+                  {editForm.parentLastName && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, studentLastName: editForm.parentLastName })}
+                      className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold hover:underline"
+                    >
+                      Взять фамилию родителя
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Фамилия</label>
+                    <input
+                      type="text"
+                      value={editForm.studentLastName}
+                      onChange={(e) => setEditForm({ ...editForm, studentLastName: e.target.value })}
+                      placeholder="Фамилия"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Имя *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.studentFirstName}
+                      onChange={(e) => setEditForm({ ...editForm, studentFirstName: e.target.value })}
+                      placeholder="Имя"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">Отчество</label>
+                    <input
+                      type="text"
+                      value={editForm.studentMiddleName}
+                      onChange={(e) => setEditForm({ ...editForm, studentMiddleName: e.target.value })}
+                      placeholder="Отчество"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Имя родителя / контакта</label>
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Телефон контакта</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Телефон контакта *</label>
                   <input
                     type="text"
                     value={editForm.contact}
@@ -766,28 +906,14 @@ export default function LeadDetailsPage() {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Имя ребенка</label>
-                  <input
-                    type="text"
-                    value={editForm.studentName}
-                    onChange={(e) => setEditForm({ ...editForm, studentName: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                    placeholder="Анна"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Возраст ребенка</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Возраст / класс</label>
                   <input
                     type="text"
                     value={editForm.studentAge}
                     onChange={(e) => setEditForm({ ...editForm, studentAge: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                    placeholder="10 лет"
+                    placeholder="9 лет (3 класс)"
                   />
                 </div>
               </div>

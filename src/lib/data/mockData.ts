@@ -6,6 +6,9 @@ export interface TimelineInteraction {
   studentName?: string;
   parentId?: string;
   parentName?: string;
+  targetType?: 'student' | 'parent';
+  targetName?: string;
+  targetRole?: string;
   occurredAt: string;
   channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other';
   type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other';
@@ -79,6 +82,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     id: '1',
     firstName: 'Иван',
     lastName: 'Смирнов',
+    studentType: 'school_student',
     birthDate: '2012-05-14',
     phone: '+7 (999) 111-22-33',
     telegram: '@ivan_smirnov',
@@ -157,6 +161,13 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         channel: 'telegram',
         type: 'follow_up',
         author: 'Елена Менеджер',
+        studentId: '1',
+        studentName: 'Иван Смирнов',
+        parentId: 'p1',
+        parentName: 'Ольга Смирнова',
+        targetType: 'parent',
+        targetName: 'Ольга Смирнова',
+        targetRole: 'Родитель (Мама)',
         content: 'Уточнила у мамы Ольги получение домашнего задания. Все материалы скачали, вопросов нет.',
         result: 'Ученик готов к следующему уроку',
         nextAction: 'Контроль посещаемости в четверг',
@@ -168,6 +179,13 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         channel: 'telegram',
         type: 'payment',
         author: 'Елена Менеджер',
+        studentId: '1',
+        studentName: 'Иван Смирнов',
+        parentId: 'p1',
+        parentName: 'Ольга Смирнова',
+        targetType: 'parent',
+        targetName: 'Ольга Смирнова',
+        targetRole: 'Родитель (Мама)',
         content: 'Отправлен чек об оплате абонемента на сентябрь (7 600 ₽).',
         result: 'Оплата успешно зафиксирована',
       },
@@ -177,6 +195,11 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         channel: 'phone',
         type: 'trial',
         author: 'Мария Иванова',
+        studentId: '1',
+        studentName: 'Иван Смирнов',
+        targetType: 'student',
+        targetName: 'Иван Смирнов',
+        targetRole: 'Ученик',
         content: 'Провели тестирование уровня знаний перед стартом учебного года. Уверенный B1.',
         result: 'Зачислен в основную группу B1 Teens',
       },
@@ -220,6 +243,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     id: '2',
     firstName: 'Мария',
     lastName: 'Кузнецова',
+    studentType: 'school_student',
     birthDate: '2014-03-22',
     phone: '+7 (999) 222-33-44',
     status: 'active',
@@ -304,6 +328,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     id: '3',
     firstName: 'Анна',
     lastName: 'Васильева',
+    studentType: 'school_student',
     birthDate: '2018-09-10',
     status: 'trial',
     notes: 'Только начинает знакомство с языком в игровой форме.',
@@ -374,6 +399,220 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         priority: 'high',
       },
     ],
+  },
+  {
+    id: '4',
+    firstName: 'Сергей',
+    lastName: 'Попов',
+    studentType: 'school_student',
+    birthDate: '2012-07-19',
+    phone: '+7 (999) 456-78-90',
+    status: 'paused',
+    notes: '4 пропуска подряд, статус «На паузе», риск оттока. Требуется звонок родителю.',
+    createdAt: '2026-08-10T10:00:00Z',
+    updatedAt: '2026-09-03T12:00:00Z',
+    parents: [
+      {
+        id: 'p5',
+        firstName: 'Татьяна',
+        lastName: 'Попова',
+        phone: '+7 (999) 456-78-90',
+        telegram: '@tatiana_popova',
+        preferredChannel: 'phone',
+        notes: 'Мама Сергея. Обсуждали перерыв в занятиях из-за спортивных сборов.',
+        relationshipType: 'Мама',
+        isPrimary: true,
+      },
+    ],
+    groups: [
+      {
+        id: 'g1',
+        name: 'English B1 Teens',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Пн, Чт • 18:45–20:15',
+        status: 'paused',
+        joinedAt: '15.08.2026',
+      },
+    ],
+    attendanceStats: {
+      totalLessons: 12,
+      presentCount: 8,
+      absentCount: 4,
+      rescheduledCount: 0,
+      attendanceRate: '62%',
+      history: [],
+    },
+    finance: {
+      payments: [
+        { id: 'pay_p1', date: '15.08.2026', amount: '7 600 ₽', period: 'Август 2026', method: 'Банковская карта', status: 'paid' },
+      ],
+    },
+    interactions: [
+      {
+        id: 'int_p1',
+        occurredAt: '03.09.2026',
+        channel: 'phone',
+        type: 'follow_up',
+        author: 'Елена Менеджер',
+        content: 'Звонок маме по поводу 4 пропущенных уроков. Согласовали паузу до 15.10.',
+        result: 'Поставлен статус «На паузе»',
+      },
+    ],
+    tasks: [],
+  },
+  {
+    id: 's6',
+    firstName: 'Максим',
+    lastName: 'Захаров',
+    studentType: 'school_student',
+    birthDate: '2013-11-04',
+    phone: '+7 (916) 777-33-22',
+    status: 'active',
+    notes: '3 пропуска подряд, нет реакции на домашние задания, задолженность.',
+    createdAt: '2026-08-18T10:00:00Z',
+    updatedAt: '2026-09-04T12:00:00Z',
+    parents: [
+      {
+        id: 'p6',
+        firstName: 'Наталья',
+        lastName: 'Захарова',
+        phone: '+7 (916) 777-33-22',
+        telegram: '@natalia_zakh',
+        preferredChannel: 'telegram',
+        notes: 'Мама Максима',
+        relationshipType: 'Мама',
+        isPrimary: true,
+      },
+    ],
+    groups: [
+      {
+        id: 'g1',
+        name: 'English B1 Teens',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Пн, Чт • 18:45–20:15',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+    ],
+    attendanceStats: {
+      totalLessons: 10,
+      presentCount: 7,
+      absentCount: 3,
+      rescheduledCount: 0,
+      attendanceRate: '65%',
+      history: [],
+    },
+    finance: {
+      payments: [
+        { id: 'pay_z1', date: '20.08.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', method: 'Перевод по СБП', status: 'overdue' },
+      ],
+    },
+    interactions: [],
+    tasks: [],
+  },
+  {
+    id: '5',
+    firstName: 'Екатерина',
+    lastName: 'Морозова',
+    studentType: 'school_student',
+    birthDate: '2016-04-12',
+    phone: '+7 (999) 567-89-01',
+    status: 'active',
+    notes: 'Отличные успехи в олимпиадной математике, победа в городском туре.',
+    createdAt: '2026-08-25T10:00:00Z',
+    updatedAt: '2026-09-05T12:00:00Z',
+    parents: [
+      {
+        id: 'p7',
+        firstName: 'Игорь',
+        lastName: 'Морозов',
+        phone: '+7 (999) 567-89-01',
+        telegram: '@igor_morozov',
+        preferredChannel: 'whatsapp',
+        notes: 'Отец Екатерины',
+        relationshipType: 'Отец',
+        isPrimary: true,
+      },
+    ],
+    groups: [
+      {
+        id: 'g_math',
+        name: 'Kids Math Safari',
+        courseName: 'Математика',
+        teacherName: 'Ольга Соколова',
+        schedule: 'Ср 16:30, Сб 12:00',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+    ],
+    attendanceStats: {
+      totalLessons: 8,
+      presentCount: 7,
+      absentCount: 1,
+      rescheduledCount: 0,
+      attendanceRate: '88%',
+      history: [],
+    },
+    finance: {
+      payments: [
+        { id: 'pay_m1', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+      ],
+    },
+    interactions: [],
+    tasks: [],
+  },
+  {
+    id: 's7',
+    firstName: 'Дарья',
+    lastName: 'Соловьева',
+    studentType: 'adult_student',
+    birthDate: '2006-02-14',
+    phone: '+7 (926) 555-12-34',
+    telegram: '@daria_solovyeva',
+    status: 'active',
+    notes: 'Совершеннолетняя студентка (20 лет). Обучается самостоятельно на продвинутом курсе C1.',
+    createdAt: '2026-08-20T10:00:00Z',
+    updatedAt: '2026-09-05T12:00:00Z',
+    parents: [
+      {
+        id: 'p_sol',
+        firstName: 'Елена',
+        lastName: 'Соловьева',
+        phone: '+7 (926) 555-99-88',
+        preferredChannel: 'phone',
+        notes: 'Экстренный контакт',
+        relationshipType: 'Экстренный контакт',
+        isPrimary: false,
+      },
+    ],
+    groups: [
+      {
+        id: 'g_c1',
+        name: 'English C1 Advanced',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Вт, Пт • 20:00–21:30',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+    ],
+    attendanceStats: {
+      totalLessons: 12,
+      presentCount: 12,
+      absentCount: 0,
+      rescheduledCount: 0,
+      attendanceRate: '98%',
+      history: [],
+    },
+    finance: {
+      payments: [
+        { id: 'pay_sol1', date: '01.09.2026', amount: '8 800 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+      ],
+    },
+    interactions: [],
+    tasks: [],
   },
 ];
 
@@ -842,6 +1081,22 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   },
 ];
 
+export function splitFullName(fullName: string) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { lastName: '', firstName: '', middleName: '' };
+  if (parts.length === 1) return { lastName: '', firstName: parts[0], middleName: '' };
+  if (parts.length === 2) return { lastName: parts[0], firstName: parts[1], middleName: '' };
+  return {
+    lastName: parts[0],
+    firstName: parts[1],
+    middleName: parts.slice(2).join(' '),
+  };
+}
+
+export function buildFullName(lastName?: string, firstName?: string, middleName?: string) {
+  return [lastName?.trim(), firstName?.trim(), middleName?.trim()].filter(Boolean).join(' ');
+}
+
 export interface FullLeadData {
   id: string;
   name: string;
@@ -849,6 +1104,14 @@ export interface FullLeadData {
   telegram?: string;
   studentName?: string;
   studentAge?: string;
+  // Structured FIO fields for parent/primary contact
+  parentLastName?: string;
+  parentFirstName?: string;
+  parentMiddleName?: string;
+  // Structured FIO fields for student
+  studentLastName?: string;
+  studentFirstName?: string;
+  studentMiddleName?: string;
   directionOrCourse: string;
   level?: string;
   clientType?: 'school_student' | 'adult_student';
@@ -872,10 +1135,14 @@ export interface FullLeadData {
 export const INITIAL_LEADS: FullLeadData[] = [
   {
     id: 'lead1',
-    name: 'Светлана Морозова',
+    name: 'Морозова Светлана',
+    parentLastName: 'Морозова',
+    parentFirstName: 'Светлана',
     contact: '+7 (999) 444-11-22',
     telegram: '@sveta_morozova',
-    studentName: 'Михаил',
+    studentLastName: 'Морозов',
+    studentFirstName: 'Михаил',
+    studentName: 'Морозов Михаил',
     studentAge: '9 лет (3 класс)',
     directionOrCourse: 'Робототехника',
     level: 'Начинающий (с нуля)',
@@ -901,10 +1168,13 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead2',
-    name: 'Артем Павлов',
+    name: 'Павлов Артем',
+    clientType: 'adult_student',
+    studentLastName: 'Павлов',
+    studentFirstName: 'Артем',
     contact: '+7 (999) 555-22-33',
     telegram: '@artem_pavlov',
-    studentName: 'Сам (Артем)',
+    studentName: 'Павлов Артем',
     studentAge: '16 лет (10 класс)',
     directionOrCourse: 'Английский язык',
     level: 'B1 Intermediate',
@@ -932,10 +1202,14 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead3',
-    name: 'Наталья Ковалева',
+    name: 'Ковалева Наталья',
+    parentLastName: 'Ковалева',
+    parentFirstName: 'Наталья',
     contact: '+7 (999) 666-33-44',
     telegram: '@natalia_k',
-    studentName: 'Алиса',
+    studentLastName: 'Ковалева',
+    studentFirstName: 'Алиса',
+    studentName: 'Ковалева Алиса',
     studentAge: '7 лет (1 класс)',
     directionOrCourse: 'Английский язык',
     level: 'A1 Starter',
@@ -962,9 +1236,13 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead4',
-    name: 'Игорь Васильев',
+    name: 'Васильев Игорь',
+    parentLastName: 'Васильев',
+    parentFirstName: 'Игорь',
     contact: '+7 (999) 888-77-66',
-    studentName: 'Максим',
+    studentLastName: 'Васильев',
+    studentFirstName: 'Максим',
+    studentName: 'Васильев Максим',
     studentAge: '10 лет',
     directionOrCourse: 'Олимпиадная математика',
     level: 'Базовый',
@@ -990,9 +1268,13 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead5',
-    name: 'Виктория Соколова',
+    name: 'Соколова Виктория',
+    parentLastName: 'Соколова',
+    parentFirstName: 'Виктория',
     contact: '+7 (999) 777-88-99',
-    studentName: 'Даниил',
+    studentLastName: 'Соколов',
+    studentFirstName: 'Даниил',
+    studentName: 'Соколов Даниил',
     studentAge: '11 лет',
     directionOrCourse: 'Математика',
     source: 'Листовка',
@@ -1018,9 +1300,13 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead6',
-    name: 'Константин Белов',
+    name: 'Белов Константин',
+    parentLastName: 'Белов',
+    parentFirstName: 'Константин',
     contact: '+7 (999) 111-00-22',
-    studentName: 'Яна',
+    studentLastName: 'Белова',
+    studentFirstName: 'Яна',
+    studentName: 'Белова Яна',
     studentAge: '8 лет',
     directionOrCourse: 'Английский язык',
     source: 'Яндекс.Карты',
@@ -1043,10 +1329,14 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead7',
-    name: 'Екатерина Смирнова',
+    name: 'Смирнова Екатерина',
+    parentLastName: 'Смирнова',
+    parentFirstName: 'Екатерина',
     contact: '+7 (999) 222-33-44',
     telegram: '@ekaterina_sm',
-    studentName: 'Виктория',
+    studentLastName: 'Смирнова',
+    studentFirstName: 'Виктория',
+    studentName: 'Смирнова Виктория',
     studentAge: '8 лет (2 класс)',
     directionOrCourse: 'Английский язык',
     level: 'A1 Starter',
@@ -1061,10 +1351,14 @@ export const INITIAL_LEADS: FullLeadData[] = [
   },
   {
     id: 'lead8',
-    name: 'Алексей Кузнецов',
+    name: 'Кузнецов Алексей',
+    parentLastName: 'Кузнецов',
+    parentFirstName: 'Алексей',
     contact: '+7 (999) 333-44-55',
     telegram: '@alex_kuznetsov',
-    studentName: 'Максим',
+    studentLastName: 'Кузнецов',
+    studentFirstName: 'Максим',
+    studentName: 'Кузнецов Максим',
     studentAge: '11 лет (5 класс)',
     directionOrCourse: 'Робототехника',
     level: 'Начинающий',

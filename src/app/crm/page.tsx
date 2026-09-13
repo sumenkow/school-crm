@@ -38,6 +38,25 @@ export default function CrmPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const kanbanRef = useRef<HTMLDivElement>(null);
 
+  // Sync leads from localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const storedLeads: FullLeadData[] = JSON.parse(stored);
+          if (Array.isArray(storedLeads) && storedLeads.length > 0) {
+            const storedIds = new Set(storedLeads.map((l) => l.id));
+            const merged = [...storedLeads, ...INITIAL_LEADS.filter((l) => !storedIds.has(l.id))];
+            setLeads(merged);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse leads from localStorage', e);
+      }
+    }
+  }, []);
+
   const scrollKanban = (direction: 'left' | 'right') => {
     if (kanbanRef.current) {
       const scrollAmount = direction === 'left' ? -350 : 350;
@@ -58,7 +77,21 @@ export default function CrmPage() {
   ] as const;
 
   const handleLeadCreated = (newLead: FullLeadData) => {
-    setLeads((prev) => [newLead, ...prev]);
+    // Reset filters so the new lead is immediately visible in the "Новые" column
+    setSearchTerm('');
+    setDirectionFilter('all');
+    setLeads((prev) => {
+      const updated = [newLead, ...prev.filter((l) => l.id !== newLead.id)];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+        } catch (e) {
+          console.error('Failed to sync to localStorage', e);
+        }
+      }
+      return updated;
+    });
+    toast.success(`Лид «${newLead.name}» успешно создан и добавлен в список новых`);
   };
 
   const handleQuickStatusChange = (leadId: string, newStatus: FullLeadData['status']) => {
@@ -92,13 +125,21 @@ export default function CrmPage() {
 
     const updatedInteractions = [statusChangeInteraction, ...(targetLead.interactions || [])];
 
-    setLeads((prev) =>
-      prev.map((l) =>
+    setLeads((prev) => {
+      const updated = prev.map((l) =>
         l.id === leadId
           ? { ...l, status: newStatus, interactions: updatedInteractions }
           : l
-      )
-    );
+      );
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+        } catch (e) {
+          console.error('Failed to sync to localStorage', e);
+        }
+      }
+      return updated;
+    });
 
     // Also update in-memory INITIAL_LEADS so it persists across views
     const idx = INITIAL_LEADS.findIndex((l) => l.id === leadId);

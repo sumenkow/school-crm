@@ -9,6 +9,7 @@ import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 
 export interface StudentListItem {
   id: string;
@@ -28,6 +29,54 @@ export interface StudentListItem {
   subscriptionEnd: string;
 }
 
+export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
+  const primaryParent = s.parents?.[0];
+  const isAdult = s.studentType === 'adult_student';
+
+  let parentLabel = 'Родитель не указан';
+  if (isAdult) {
+    parentLabel = primaryParent && primaryParent.relationshipType !== 'Мама' && primaryParent.relationshipType !== 'Отец'
+      ? `${primaryParent.firstName} ${primaryParent.lastName} (${primaryParent.relationshipType})`
+      : 'Самостоятельно (18+)';
+  } else if (primaryParent) {
+    parentLabel = `${primaryParent.firstName} ${primaryParent.lastName} (${primaryParent.relationshipType || 'Родитель'})`;
+  }
+
+  const parentPhone = primaryParent?.phone || s.phone || '—';
+  const group = s.groups?.[0]?.name || 'Без группы';
+  const course = s.groups?.[0]?.courseName || 'Общий курс';
+  const teacher = s.groups?.[0]?.teacherName || 'Мария Иванова';
+  const attendanceRate = s.attendanceStats?.attendanceRate || '100%';
+  const absentLessons = s.attendanceStats?.absentCount ?? 0;
+  const isChurnRisk = absentLessons >= 3;
+  const churnRiskReason = isChurnRisk ? `${absentLessons} пропуска подряд, риск оттока` : undefined;
+  const paymentStatus = (s.finance?.payments?.[0]?.status as any) || 'paid';
+  const subscriptionEnd = s.finance?.activeSubscription?.renewalDate || '30.09.2026';
+
+  const validStatus: 'active' | 'trial' | 'paused' | 'archived' =
+    s.status === 'trial' || s.status === 'paused' || s.status === 'archived'
+      ? s.status
+      : 'active';
+
+  return {
+    id: s.id,
+    name: `${s.firstName} ${s.lastName}`,
+    status: validStatus,
+    studentType: s.studentType || 'school_student',
+    parent: parentLabel,
+    parentPhone,
+    group,
+    course,
+    teacher,
+    attendanceRate,
+    absentLessons,
+    isChurnRisk,
+    churnRiskReason,
+    paymentStatus: paymentStatus === 'overdue' ? 'overdue' : paymentStatus === 'expected' ? 'expected' : 'paid',
+    subscriptionEnd,
+  };
+}
+
 function StudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,184 +93,33 @@ function StudentsContent() {
     }
   }, [filterParam]);
 
-  const [students, setStudents] = useState<StudentListItem[]>([
-    {
-      id: '1',
-      name: 'Иван Смирнов',
-      status: 'active',
-      studentType: 'school_student',
-      parent: 'Ольга Смирнова (Мама)',
-      parentPhone: '+7 (999) 123-45-67',
-      group: 'English B1 Teens',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      attendanceRate: '94%',
-      absentLessons: 1,
-      paymentStatus: 'paid',
-      subscriptionEnd: '30.09.2026',
-    },
-    {
-      id: '2',
-      name: 'Мария Кузнецова',
-      status: 'active',
-      studentType: 'school_student',
-      parent: 'Дмитрий Кузнецов (Отец)',
-      parentPhone: '+7 (999) 234-56-78',
-      group: 'Robotics Junior',
-      course: 'Робототехника',
-      teacher: 'Денис Смирнов',
-      attendanceRate: '100%',
-      absentLessons: 0,
-      paymentStatus: 'overdue',
-      subscriptionEnd: '25.08.2026',
-    },
-    {
-      id: '3',
-      name: 'Анна Васильева',
-      status: 'trial',
-      studentType: 'school_student',
-      parent: 'Елена Васильева (Мама)',
-      parentPhone: '+7 (999) 345-67-89',
-      group: 'Kids English A1',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      attendanceRate: '0%',
-      absentLessons: 1,
-      paymentStatus: 'expected',
-      subscriptionEnd: '—',
-    },
-    {
-      id: '4',
-      name: 'Сергей Попов',
-      status: 'paused',
-      studentType: 'school_student',
-      parent: 'Татьяна Попова (Мама)',
-      parentPhone: '+7 (999) 456-78-90',
-      group: 'English B1 Teens',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      attendanceRate: '62%',
-      absentLessons: 4,
-      isChurnRisk: true,
-      churnRiskReason: '4 пропуска подряд, статус «На паузе», риск оттока',
-      paymentStatus: 'paid',
-      subscriptionEnd: '15.10.2026',
-    },
-    {
-      id: 's6',
-      name: 'Максим Захаров',
-      status: 'active',
-      studentType: 'school_student',
-      parent: 'Наталья Захарова (Мама)',
-      parentPhone: '+7 (916) 777-33-22',
-      group: 'English B1 Teens',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      attendanceRate: '65%',
-      absentLessons: 3,
-      isChurnRisk: true,
-      churnRiskReason: '3 пропуска подряд, нет реакции на домашние задания, задолженность',
-      paymentStatus: 'overdue',
-      subscriptionEnd: '20.09.2026',
-    },
-    {
-      id: '5',
-      name: 'Екатерина Морозова',
-      status: 'active',
-      studentType: 'school_student',
-      parent: 'Игорь Морозов (Отец)',
-      parentPhone: '+7 (999) 567-89-01',
-      group: 'Kids Math Safari',
-      course: 'Математика',
-      teacher: 'Ольга Соколова',
-      attendanceRate: '88%',
-      absentLessons: 1,
-      paymentStatus: 'paid',
-      subscriptionEnd: '05.10.2026',
-    },
-    {
-      id: 's7',
-      name: 'Дарья Соловьева',
-      status: 'active',
-      studentType: 'adult_student',
-      parent: '— (самостоятельно, 20 лет)',
-      parentPhone: '+7 (926) 555-12-34',
-      group: 'English C1 Advanced',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      attendanceRate: '98%',
-      absentLessons: 0,
-      paymentStatus: 'paid',
-      subscriptionEnd: '10.10.2026',
-    },
-  ]);
+  const [students, setStudents] = useState<StudentListItem[]>(() => {
+    return INITIAL_STUDENTS.map(mapFullStudentToListItem);
+  });
+
+  const refreshStudents = () => {
+    const list = getStoredStudents();
+    setStudents(list.map(mapFullStudentToListItem));
+  };
+
+  useEffect(() => {
+    refreshStudents();
+
+    const handleSync = () => {
+      refreshStudents();
+    };
+
+    window.addEventListener('crm-students-changed', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      window.removeEventListener('crm-students-changed', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   const handleStudentCreated = (newStudent: NewStudentData) => {
-    const studentItem: StudentListItem = {
-      ...newStudent,
-      status: (newStudent.status as 'active' | 'trial' | 'paused' | 'archived') || 'active',
-      paymentStatus: (newStudent.paymentStatus as 'paid' | 'expected' | 'overdue') || 'paid',
-      studentType: newStudent.studentType || 'school_student',
-      absentLessons: 0,
-      isChurnRisk: false,
-    };
-    setStudents((prev) => [studentItem, ...prev]);
-
-    // Also push to in-memory INITIAL_STUDENTS so opening /students/[id] will load full data with notes
-    const fullStudent: FullStudentData = {
-      id: newStudent.id,
-      firstName: newStudent.firstName,
-      lastName: newStudent.lastName,
-      status: newStudent.status as any,
-      notes: newStudent.notes,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      parents: [
-        {
-          id: `p_${Date.now()}`,
-          firstName: newStudent.parent.split(' ')[0] || 'Родитель',
-          lastName: newStudent.parent.split(' ')[1] || '',
-          phone: newStudent.parentPhone || '',
-          preferredChannel: 'telegram',
-          relationshipType: 'Родитель',
-          isPrimary: true,
-        },
-      ],
-      groups: [
-        {
-          id: `g_${Date.now()}`,
-          name: newStudent.group,
-          courseName: newStudent.course,
-          teacherName: newStudent.teacher,
-          schedule: 'Пн, Чт 18:45',
-          status: 'active',
-          joinedAt: new Date().toLocaleDateString('ru-RU'),
-        },
-      ],
-      attendanceStats: {
-        totalLessons: 0,
-        presentCount: 0,
-        absentCount: 0,
-        rescheduledCount: 0,
-        attendanceRate: '100%',
-        history: [],
-      },
-      finance: {
-        activeSubscription: {
-          period: '01.09.2026 – 30.09.2026',
-          price: '7 600 ₽',
-          status: 'active',
-          lessonsAttended: '0 из 8 занятий',
-          renewalDate: '30.09.2026',
-        },
-        payments: [],
-      },
-      interactions: [],
-      tasks: [],
-      teacherComments: [],
-    };
-
-    INITIAL_STUDENTS.unshift(fullStudent);
+    refreshStudents();
     toast.success(`Ученик ${newStudent.name} успешно добавлен в базу!`);
   };
 
@@ -295,12 +193,12 @@ function StudentsContent() {
             className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="all">Все ученики ({students.length})</option>
-            <option value="absences">⚠️ Риск оттока: 3+ пропуска ({churnRiskCount})</option>
+            <option value="absences">Риск оттока: 3+ пропуска ({churnRiskCount})</option>
             <option value="active">Активные</option>
             <option value="trial">Пробные</option>
             <option value="paused">На паузе</option>
-            <option value="school_student">🎒 Школьники (с родителями)</option>
-            <option value="adult_student">🎓 Студенты 18+ (самостоятельные)</option>
+            <option value="school_student">Школьники (с родителями)</option>
+            <option value="adult_student">Студенты 18+ (самостоятельные)</option>
           </select>
         </div>
       </div>
@@ -328,7 +226,7 @@ function StudentsContent() {
             }}
             className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-bold text-amber-900 hover:bg-amber-100 transition-colors shrink-0"
           >
-            Показать всех учеников ✕
+            Показать всех учеников
           </button>
         </div>
       )}
@@ -362,7 +260,7 @@ function StudentsContent() {
                         className={cn(
                           'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs',
                           student.studentType === 'adult_student'
-                            ? 'bg-indigo-100 text-indigo-700'
+                            ? 'bg-purple-100 text-purple-700'
                             : 'bg-blue-100 text-blue-700'
                         )}
                       >
@@ -373,7 +271,7 @@ function StudentsContent() {
                           {student.name}
                         </span>
                         <span className="text-[10px] text-slate-500 font-medium">
-                          {student.studentType === 'adult_student' ? '🎓 Студент (18+)' : '🎒 Школьник'}
+                          {student.studentType === 'adult_student' ? 'Студент (18+)' : 'Школьник'}
                         </span>
                       </div>
                     </div>

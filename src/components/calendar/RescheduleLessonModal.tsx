@@ -5,7 +5,7 @@ import {
   X,
   Calendar,
   Clock,
-  MapPin,
+  Video,
   AlertTriangle,
   Bell,
   ShieldCheck,
@@ -57,7 +57,7 @@ export function RescheduleLessonModal({
 
   const [newStartTime, setNewStartTime] = useState(lesson.startTime || '18:45');
   const [newEndTime, setNewEndTime] = useState(lesson.endTime || '20:15');
-  const [newRoom, setNewRoom] = useState(lesson.room || 'Аудитория 204');
+  const [newRoom, setNewRoom] = useState(lesson.room || 'Онлайн (Zoom)');
   const [selectedReason, setSelectedReason] = useState(PRESET_REASONS[0]);
   const [customComment, setCustomComment] = useState('');
   const [notifyParents, setNotifyParents] = useState(true);
@@ -143,7 +143,7 @@ export function RescheduleLessonModal({
               {lesson.dateFormatted} ({lesson.startTime} – {lesson.endTime})
             </span>
             <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5 text-slate-400" />
+              <Video className="h-3.5 w-3.5 text-blue-500" />
               {lesson.room}
             </span>
             <span>Преподаватель: <b>{lesson.teacherName}</b></span>
@@ -195,7 +195,7 @@ export function RescheduleLessonModal({
 
             {/* Room selection */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-700">Аудитория / Локация</label>
+              <label className="text-[11px] font-semibold text-slate-700">Формат / Онлайн-комната</label>
               <select
                 value={newRoom}
                 onChange={(e) => setNewRoom(e.target.value)}
