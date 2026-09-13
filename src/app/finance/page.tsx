@@ -62,6 +62,8 @@ function FinanceContent() {
   }, [filterParam]);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<string | undefined>();
+  const [selectedParentForPayment, setSelectedParentForPayment] = useState<string | undefined>();
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   const handlePaymentRecorded = (newPayment: FullPaymentData) => {
@@ -401,6 +403,19 @@ function FinanceContent() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStudentForPayment(p.studentId);
+                        setSelectedParentForPayment(p.parentId);
+                        setIsPaymentModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                      title="Внести оплату и погасить задолженность"
+                    >
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Погасить долг
+                    </button>
                     <a
                       href="https://t.me/"
                       target="_blank"
@@ -428,7 +443,13 @@ function FinanceContent() {
       {/* Modals */}
       <RecordPaymentModal
         isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          setSelectedStudentForPayment(undefined);
+          setSelectedParentForPayment(undefined);
+        }}
+        initialStudentId={selectedStudentForPayment}
+        initialParentId={selectedParentForPayment}
         onRecorded={handlePaymentRecorded}
       />
 

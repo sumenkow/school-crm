@@ -114,22 +114,60 @@ function KpiCard({
 function SmartActionHub() {
   const router = useRouter();
 
+  const [payments, setPayments] = useState<FullPaymentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
+
+  useEffect(() => {
+    const sync = () => {
+      setPayments(getStoredPayments());
+    };
+    sync();
+    window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
+  const overdueList = payments.filter((p) => p.status === 'overdue');
+  const firstOverdue = overdueList[0];
+
+  const debtTask = firstOverdue
+    ? {
+        id: 'task_debt_1',
+        type: 'debt',
+        badge: 'Долг по оплате',
+        badgeColor: 'bg-rose-50 text-rose-700 border border-rose-200',
+        title: `${firstOverdue.studentName} (${firstOverdue.courseName || firstOverdue.groupName || 'Курс'})`,
+        deadline: firstOverdue.paymentDate || 'Срочно',
+        subtitle: firstOverdue.parentName ? `Родитель: ${firstOverdue.parentName}` : 'Счет на оплату',
+        highlight: `Долг: ${firstOverdue.amountFormatted || `${firstOverdue.amount.toLocaleString('ru-RU')} ₽`}`,
+        phone: '+79992345678',
+        waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
+        profileUrl: `/students/${firstOverdue.studentId}`,
+        actionLabel: 'Открыть карточку ученика',
+        description: 'Истек срок действия абонемента. Занятия посещаются регулярно, требуется согласовать оплату нового периода.',
+      }
+    : {
+        id: 'task_debt_1',
+        type: 'debt',
+        badge: 'Все оплачено',
+        badgeColor: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        title: 'Задолженностей нет',
+        deadline: 'Порядок',
+        subtitle: 'Все текущие счета оплачены',
+        highlight: '0 ₽ долгов',
+        phone: '',
+        waUrl: '',
+        profileUrl: '/finance?filter=overdue',
+        actionLabel: 'В раздел финансов',
+        description: 'У всех учащихся на текущий момент отсутствуют просроченные платежи.',
+      };
+
   const tasks = [
-    {
-      id: 'task_debt_1',
-      type: 'debt',
-      badge: 'Долг по оплате',
-      badgeColor: 'bg-rose-50 text-rose-700 border border-rose-200',
-      title: 'Мария Кузнецова (Robotics)',
-      deadline: '25.08.2026',
-      subtitle: 'Отец: Дмитрий (+7 999 234-56-78)',
-      highlight: 'Долг: 8 400 ₽',
-      phone: '+79992345678',
-      waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
-      profileUrl: '/students/2',
-      actionLabel: 'Открыть карточку ученика',
-      description: 'Истек срок действия абонемента на курс Robotics Junior. Занятия посещаются регулярно, требуется согласовать оплату нового периода.',
-    },
+    debtTask,
     {
       id: 'task_lead_1',
       type: 'lead',
@@ -159,6 +197,8 @@ function SmartActionHub() {
     },
   ];
 
+  const urgentActionsCount = (firstOverdue ? 1 : 0) + 2;
+
   return (
     <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
       <div className="flex items-center justify-between">
@@ -173,7 +213,7 @@ function SmartActionHub() {
           </div>
         </div>
         <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
-          3 срочных действия
+          {urgentActionsCount} {urgentActionsCount === 1 ? 'срочное действие' : 'срочных действия'}
         </span>
       </div>
 
@@ -268,6 +308,32 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const totalOverdueAmount = overduePayments.reduce((sum: number, p: FullPaymentData) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
   const overdueStudentsCount = new Set(overduePayments.map((p: FullPaymentData) => p.studentId)).size;
 
+  // Dynamic actual revenue (Фактическая выручка)
+  const baseMonthlyRevenue = 480000;
+  const initialPaidBaseline = 14400; // sum of initial mock paid records
+  const dynamicPaidTotal = allPayments
+    .filter((p) => p.status === 'paid' && p.amount > 0)
+    .reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
+  const additionalRevenue = Math.max(0, dynamicPaidTotal - initialPaidBaseline);
+  const actualRevenue = baseMonthlyRevenue + additionalRevenue;
+  const monthlyPlan = 600000;
+  const planPercent = Math.min(100, Math.round((actualRevenue / monthlyPlan) * 100));
+
+  const recentPaidList = allPayments
+    .filter((p) => p.status === 'paid' && p.amount > 0)
+    .slice(0, 4)
+    .map((p) => ({
+      id: p.id,
+      student: p.studentName,
+      studentId: p.studentId,
+      course: p.courseName || p.groupName || 'Курс школы',
+      amount: p.amountFormatted,
+      date: p.paymentDate,
+      status: 'Оплачен',
+      method: p.paymentMethod === 'card' ? 'Банковская карта' : p.paymentMethod === 'bank_transfer' ? 'СБП' : p.paymentMethod === 'cash' ? 'Наличные' : 'Счет',
+      recordedBy: p.recordedBy || 'Администратор',
+    }));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -359,9 +425,13 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           <Link href="/finance?filter=overdue" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
             <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Просрочено оплат</p>
             <p className="md-title-medium" style={{ color: 'var(--md-error)', marginTop: '2px' }}>
-              {overdueStudentsCount} ученика • {totalOverdueAmount.toLocaleString('ru-RU')} ₽
+              {overdueStudentsCount === 0
+                ? 'Нет долгов'
+                : `${overdueStudentsCount} ${overdueStudentsCount === 1 ? 'ученик' : overdueStudentsCount < 5 ? 'ученика' : 'учеников'} • ${totalOverdueAmount.toLocaleString('ru-RU')} ₽`}
             </p>
-            <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>Напомнить →</span>
+            <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>
+              {overdueStudentsCount === 0 ? 'Все счета оплачены ✓' : 'Напомнить →'}
+            </span>
           </Link>
           <Link href="/crm?filter=thinking" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
             <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Зависли после пробного</p>
@@ -384,18 +454,18 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Выручка"
+          title="Фактическая выручка"
           href="/finance"
           linkLabel="Платежи"
           icon={<CreditCard size={22} />}
           bg="var(--md-secondary-container)"
           iconColor="var(--md-primary)"
-          value="480 000 ₽"
-          subtext="+14% к прошлому месяцу"
+          value={`${actualRevenue.toLocaleString('ru-RU')} ₽`}
+          subtext={`+${Math.round((additionalRevenue / baseMonthlyRevenue) * 100 + 14)}% к прошлому месяцу`}
           rows={[
             { label: 'План на месяц', value: '600 000 ₽' },
-            { label: 'Выполнение плана', value: '80%', color: 'var(--md-success)' },
-            { label: 'Средний чек', value: '9 600 ₽' },
+            { label: 'Выполнение плана', value: `${planPercent}%`, color: 'var(--md-success)' },
+            { label: 'Касса (поступления)', value: `${dynamicPaidTotal.toLocaleString('ru-RU')} ₽` },
           ]}
         />
         <KpiCard

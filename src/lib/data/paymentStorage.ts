@@ -74,3 +74,54 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
     }
   }
 }
+
+/**
+ * Automatically settles overdue payment records for a student when a payment is made.
+ * Updates the payment status from 'overdue' to 'paid', reducing the school's total overdue debt
+ * so that only remaining debts from other clients are counted.
+ */
+export function settleOverduePayments(
+  studentId: string,
+  amountPaid?: number,
+  parentId?: string
+): { settledCount: number; settledAmount: number } {
+  let settledCount = 0;
+  let settledAmount = 0;
+  const todayStr = new Date().toLocaleDateString('ru-RU');
+
+  if (typeof window !== 'undefined') {
+    try {
+      const all = getStoredPayments();
+      const updated = all.map((p) => {
+        const isMatch = p.status === 'overdue' && (p.studentId === studentId || (parentId && p.parentId === parentId));
+        if (isMatch) {
+          settledCount++;
+          settledAmount += typeof p.amount === 'number' ? p.amount : 0;
+          return {
+            ...p,
+            status: 'paid' as const,
+            paymentDate: todayStr,
+            comment: p.comment ? `${p.comment} (Погашено ${todayStr})` : `Задолженность погашена ${todayStr}`,
+          };
+        }
+        return p;
+      });
+
+      if (settledCount > 0) {
+        localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(updated));
+        for (const up of updated) {
+          const idx = INITIAL_PAYMENTS.findIndex((x) => x.id === up.id);
+          if (idx !== -1) {
+            INITIAL_PAYMENTS[idx] = up;
+          }
+        }
+        window.dispatchEvent(new CustomEvent('crm-payments-changed'));
+      }
+    } catch (err) {
+      console.error('Failed to settle overdue payments:', err);
+    }
+  }
+
+  return { settledCount, settledAmount };
+}
+

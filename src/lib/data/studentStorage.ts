@@ -221,11 +221,41 @@ export function deductLessonFromDeposit(
     comment: `Списано с баланса депозита за онлайн-занятие. Остаток: ${formattedBalance}`,
   });
 
-  return {
+    return {
     success: true,
     newBalance,
     message: `Списано ${formattedDeduct}. Остаток на депозите: ${formattedBalance}`,
     updatedStudent,
   };
 }
+
+/**
+ * Clears overdue payment statuses for a student in student storage.
+ */
+export function settleStudentOverdueDebts(studentId: string): void {
+  const student = getStudentById(studentId);
+  if (!student) return;
+
+  const currentPayments = student.finance?.payments || [];
+  let changed = false;
+  const updatedPayments = currentPayments.map((p) => {
+    if (p.status === 'overdue') {
+      changed = true;
+      return { ...p, status: 'paid' as const };
+    }
+    return p;
+  });
+
+  if (changed) {
+    const updatedStudent: FullStudentData = {
+      ...student,
+      finance: {
+        ...student.finance,
+        payments: updatedPayments,
+      },
+    };
+    saveStudentToStorage(updatedStudent);
+  }
+}
+
 
