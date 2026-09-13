@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, BookOpen, GraduationCap, School } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { saveStudentToStorage } from '@/lib/data/studentStorage';
 
@@ -201,6 +201,7 @@ export function CreateStudentModal({
               lastName: parentLastName.trim() || '',
               phone: parentPhone || '—',
               telegram: parentTelegram || undefined,
+              preferredChannel: (preferredChannel as any) || 'telegram',
               relationshipType: relationshipType || (isAdult ? 'Экстренный контакт' : 'Родитель'),
               isPrimary: true,
             },
