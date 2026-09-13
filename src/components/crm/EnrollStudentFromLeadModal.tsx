@@ -136,6 +136,7 @@ export function EnrollStudentFromLeadModal({
         ]
       },
       teacherComments: [],
+      tasks: [],
       interactions: [
         {
           id: `int_${Date.now()}`,

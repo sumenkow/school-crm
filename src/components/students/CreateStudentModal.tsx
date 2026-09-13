@@ -220,7 +220,14 @@ export function CreateStudentModal({
     // Update group enrollment count in INITIAL_GROUPS if found
     const targetGroup = INITIAL_GROUPS.find((g) => g.name === group || g.name.includes(group.split(' ')[0]));
     if (targetGroup && !targetGroup.students.some((s) => s.id === newStudentId)) {
-      targetGroup.students.push({ id: newStudentId, name: fullName });
+      targetGroup.students.push({
+        id: newStudentId,
+        name: fullName,
+        status: 'active',
+        attendanceRate: '100%',
+        parentPhone: parentPhone || '—',
+        joinedAt: new Date().toLocaleDateString('ru-RU'),
+      });
     }
 
     const createdStudent: NewStudentData = {
