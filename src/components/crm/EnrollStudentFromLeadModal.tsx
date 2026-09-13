@@ -75,29 +75,26 @@ export function EnrollStudentFromLeadModal({
     // 1. Create student in INITIAL_STUDENTS
     const newStudent: FullStudentData = {
       id: newStudentId,
-      school_id: 'sch1',
       firstName: studentFirstName.trim() || 'Ученик',
       lastName: studentLastName.trim() || 'Новый',
+      studentType: 'school_student',
       status: 'active',
       phone: lead.contact,
       telegram: lead.telegram,
       birthDate: '2014-05-15',
-      grade: studentAge,
-      avatar_url: undefined,
-      is_active: true,
-      created_at: new Date().toISOString(),
+      notes: studentAge ? `Возраст/класс: ${studentAge}` : undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       parents: [
         {
           id: newParentId,
-          school_id: 'sch1',
           firstName: parentFirstName.trim() || 'Родитель',
           lastName: parentLastName.trim() || studentLastName.trim(),
           phone: parentPhone,
           telegram: parentTelegram,
+          preferredChannel: 'telegram',
           relationshipType,
           isPrimary: true,
-          is_active: true,
-          created_at: new Date().toISOString()
         }
       ],
       groups: [
@@ -127,13 +124,14 @@ export function EnrollStudentFromLeadModal({
           lessonsAttended: '0/8',
           renewalDate: '01.10.2026'
         },
-        paymentHistory: [
+        payments: [
           {
             id: `pay_${Date.now()}`,
             date: new Date().toLocaleDateString('ru-RU'),
             amount: subscriptionPrice,
             period: subscriptionPeriod,
-            status: paymentStatus === 'paid' ? 'paid' : 'pending'
+            method: 'Банковская карта',
+            status: paymentStatus === 'paid' ? 'paid' : 'overdue'
           }
         ]
       },

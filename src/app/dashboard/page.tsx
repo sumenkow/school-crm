@@ -35,14 +35,15 @@ import {
   Flame,
   Check,
   Sparkles,
-  Edit3
+  Edit3,
+  ArrowRight
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
-import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -245,9 +246,9 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
   // Dynamic overdue stats matching INITIAL_PAYMENTS & actual client debts
-  const overduePayments = INITIAL_PAYMENTS.filter((p) => p.status === 'overdue');
-  const totalOverdueAmount = overduePayments.reduce((sum, p) => sum + p.amount, 0);
-  const overdueStudentsCount = new Set(overduePayments.map((p) => p.studentId)).size;
+  const overduePayments = INITIAL_PAYMENTS.filter((p: FullPaymentData) => p.status === 'overdue');
+  const totalOverdueAmount = overduePayments.reduce((sum: number, p: FullPaymentData) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
+  const overdueStudentsCount = new Set(overduePayments.map((p: FullPaymentData) => p.studentId)).size;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>

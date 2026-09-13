@@ -159,6 +159,7 @@ function StudentsContent() {
   const handleStudentCreated = (newStudent: NewStudentData) => {
     const studentItem: StudentListItem = {
       ...newStudent,
+      status: (newStudent.status as 'active' | 'trial' | 'paused' | 'archived') || 'active',
       studentType: newStudent.studentType || 'school_student',
       absentLessons: 0,
       isChurnRisk: false,

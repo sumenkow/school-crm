@@ -3,7 +3,9 @@ import { Student, Parent, StudentParentRelation, Group, Lesson, Attendance, Paym
 export interface TimelineInteraction {
   id: string;
   studentId?: string;
+  studentName?: string;
   parentId?: string;
+  parentName?: string;
   occurredAt: string;
   channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other';
   type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other';
