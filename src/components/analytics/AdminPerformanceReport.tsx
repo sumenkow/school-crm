@@ -75,12 +75,10 @@ export interface AdminEfficiencyData {
     parentSatisfactionCsat: number; // 4.95 / 5.0
     reviewsCount: number;
   };
-  bonusCalculation: {
-    baseSalary: number;
-    slaBonus: number;
-    revenueBonus: number;
-    conversionBonus: number;
-    totalEarned: number;
+  operationalSummary: {
+    standardsMet: boolean;
+    workSchedule: string;
+    recommendation: string;
   };
 }
 
@@ -127,12 +125,10 @@ const ADMIN_PROFILES: Record<string, AdminEfficiencyData> = {
       parentSatisfactionCsat: 4.95,
       reviewsCount: 38,
     },
-    bonusCalculation: {
-      baseSalary: 50000,
-      slaBonus: 10000,
-      revenueBonus: 15000,
-      conversionBonus: 10000,
-      totalEarned: 85000,
+    operationalSummary: {
+      standardsMet: true,
+      workSchedule: 'Сменный график 2/2 • Фиксированный оклад',
+      recommendation: 'Все ключевые регламенты школы соблюдаются в полном объеме. Высокая скорость первичного контакта и точность контроля оплат.',
     },
   },
   'elena': {
@@ -177,12 +173,10 @@ const ADMIN_PROFILES: Record<string, AdminEfficiencyData> = {
       parentSatisfactionCsat: 4.88,
       reviewsCount: 29,
     },
-    bonusCalculation: {
-      baseSalary: 45000,
-      slaBonus: 10000,
-      revenueBonus: 12000,
-      conversionBonus: 8000,
-      totalEarned: 75000,
+    operationalSummary: {
+      standardsMet: true,
+      workSchedule: 'Сменный график 2/2 • Фиксированный оклад',
+      recommendation: 'Стабильные показатели финансовой дисциплины и своевременного продления абонементов.',
     },
   },
 };
@@ -329,7 +323,7 @@ export function AdminPerformanceReport() {
             </span>
           </div>
           <p className="mt-2 text-xs text-slate-600">
-            Все 4 ключевых норматива выполнены. Премиальный фонд начислен в объеме 100%.
+            Все 4 ключевых норматива выполнены. Высокая операционная дисциплина и качество работы.
           </p>
         </div>
 
@@ -408,7 +402,7 @@ export function AdminPerformanceReport() {
           )}
         >
           <Award size={14} />
-          Сводная оценка и расчет бонуса
+          Сводная оценка эффективности (KPI)
         </button>
         <button
           onClick={() => setActiveSubTab('tasks')}
@@ -557,58 +551,66 @@ export function AdminPerformanceReport() {
             </div>
           </div>
 
-          {/* Bonus Calculation Card */}
-          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-900 to-indigo-950 p-6 text-white shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-blue-800/80 pb-4">
+          {/* Operational Standards Summary Card (Fixed salary evaluation without bonus linking) */}
+          <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
               <div>
-                <span className="rounded-md bg-blue-800/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-200">
-                  Мотивация и расчет бонусов
+                <span className="rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                  Аттестация и стандарты работы
                 </span>
                 <h3 className="text-xl font-bold mt-1">
-                  Итоговое начисление за {current.period}: {current.bonusCalculation.totalEarned.toLocaleString('ru-RU')} ₽
+                  Операционный статус: Все нормативы соблюдены ({current.integralKpiScore} / 100)
                 </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Формат работы: {current.operationalSummary.workSchedule}. Оценка эффективности проводится для контроля качества сервиса без привязки к переменной оплате.
+                </p>
               </div>
-              <div className="text-right">
-                <span className="text-xs text-blue-300 block">Статус KPI</span>
-                <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-sm">
+              <div className="sm:text-right">
+                <span className="text-xs text-slate-400 block">Результат проверки</span>
+                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold text-sm bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 mt-1">
                   <ShieldCheck size={16} />
-                  Премия 100% подтверждена
+                  Стандарты соблюдены
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4 text-xs">
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs">
-                <span className="text-blue-300 block">Оклад (базовая ставка)</span>
-                <span className="text-lg font-bold mt-1 block">
-                  {current.bonusCalculation.baseSalary.toLocaleString('ru-RU')} ₽
+              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
+                <span className="text-slate-300 block font-medium">Дисциплина задач</span>
+                <span className="text-lg font-bold text-emerald-400 mt-1 block">
+                  {current.tasks.onTimeRate}% в срок
                 </span>
-                <span className="text-blue-200 text-[11px]">Фиксированная часть</span>
+                <span className="text-slate-400 text-[11px]">0 просрочек, SLA 100%</span>
               </div>
 
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs">
-                <span className="text-blue-300 block">Бонус за SLA (0 просрочек)</span>
+              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
+                <span className="text-slate-300 block font-medium">Сбор оплат</span>
                 <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  +{current.bonusCalculation.slaBonus.toLocaleString('ru-RU')} ₽
+                  {current.payments.planProgress}% плана
                 </span>
-                <span className="text-blue-200 text-[11px]">SLA задач &gt; 90%</span>
+                <span className="text-slate-400 text-[11px]">{current.payments.collectedAmount.toLocaleString('ru-RU')} ₽ (0 долгов &gt;3 дн)</span>
               </div>
 
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs">
-                <span className="text-blue-300 block">Бонус за финплан (сбор оплат)</span>
+              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
+                <span className="text-slate-300 block font-medium">Скорость ответа</span>
                 <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  +{current.bonusCalculation.revenueBonus.toLocaleString('ru-RU')} ₽
+                  {current.tasks.avgReactionMinutes} мин
                 </span>
-                <span className="text-blue-200 text-[11px]">Выполнение плана &gt; 100%</span>
+                <span className="text-slate-400 text-[11px]">Норматив &lt; 15 мин (факт 96.4%)</span>
               </div>
 
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs">
-                <span className="text-blue-300 block">Бонус за конверсию в абонементы</span>
+              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
+                <span className="text-slate-300 block font-medium">Качество сервиса</span>
                 <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  +{current.bonusCalculation.conversionBonus.toLocaleString('ru-RU')} ₽
+                  ★ {current.funnelAndService.parentSatisfactionCsat} / 5.0
                 </span>
-                <span className="text-blue-200 text-[11px]">Конверсия {current.funnelAndService.trialToPaidConversion}% (&gt; 65%)</span>
+                <span className="text-slate-400 text-[11px]">Продление абонементов {current.funnelAndService.renewalRate}%</span>
               </div>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <span>{current.operationalSummary.recommendation}</span>
+              <span className="text-slate-400 shrink-0">Период оценки: {current.period}</span>
             </div>
           </div>
         </div>
