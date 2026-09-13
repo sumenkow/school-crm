@@ -35,6 +35,7 @@ export interface UrgentTaskItem {
   clientName?: string;
   phone?: string;
   category?: 'lead' | 'trial' | 'finance' | 'admin';
+  taskType?: 'Retention' | 'CRM Сделка' | 'Финансы' | 'Продление' | 'Оргвопрос';
   leadId?: string;
   studentId?: string;
   parentId?: string;
@@ -93,6 +94,7 @@ export function TaskDetailsCardModal({
   const toast = useToast();
 
   const [title, setTitle] = useState('');
+  const [taskType, setTaskType] = useState('CRM Сделка');
   const [detail, setDetail] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<'high' | 'medium' | 'normal'>('medium');
@@ -112,6 +114,16 @@ export function TaskDetailsCardModal({
   useEffect(() => {
     if (task) {
       setTitle(task.title);
+      setTaskType(
+        task.taskType ||
+          (task.category === 'lead'
+            ? 'CRM Сделка'
+            : task.category === 'trial'
+            ? 'Retention'
+            : task.category === 'finance'
+            ? 'Финансы'
+            : 'Оргвопрос')
+      );
       setDetail(task.detail);
       setDeadline(task.deadline);
       setPriority(task.priority);
@@ -138,6 +150,15 @@ export function TaskDetailsCardModal({
       return;
     }
 
+    const mappedCategory =
+      taskType === 'Retention'
+        ? 'trial'
+        : taskType === 'Финансы'
+        ? 'finance'
+        : taskType === 'CRM Сделка'
+        ? 'lead'
+        : 'admin';
+
     const updated: UrgentTaskItem = {
       ...task,
       title: title.trim(),
@@ -148,6 +169,8 @@ export function TaskDetailsCardModal({
       assignedTo,
       clientName: clientName.trim(),
       phone: phone.trim(),
+      taskType: taskType as any,
+      category: mappedCategory,
     };
 
     onSave(updated);
@@ -164,6 +187,7 @@ export function TaskDetailsCardModal({
         clientName: clientName.trim(),
         phone: phone.trim(),
         category: 'lead',
+        taskType: 'CRM Сделка',
       });
     }
 
@@ -171,6 +195,15 @@ export function TaskDetailsCardModal({
   };
 
   const handleCompleteAndNextStage = () => {
+    const mappedCategory =
+      taskType === 'Retention'
+        ? 'trial'
+        : taskType === 'Финансы'
+        ? 'finance'
+        : taskType === 'CRM Сделка'
+        ? 'lead'
+        : 'admin';
+
     // 1. Mark current completed
     const updated: UrgentTaskItem = {
       ...task,
@@ -182,6 +215,8 @@ export function TaskDetailsCardModal({
       assignedTo,
       clientName: clientName.trim(),
       phone: phone.trim(),
+      taskType: taskType as any,
+      category: mappedCategory,
     };
     onSave(updated);
 
@@ -326,6 +361,21 @@ export function TaskDetailsCardModal({
             </div>
 
             <div>
+              <label className="text-xs font-semibold text-slate-700">Тип задачи (Индикатор воронки)</label>
+              <select
+                value={taskType}
+                onChange={(e) => setTaskType(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="CRM Сделка">🎯 CRM Сделка</option>
+                <option value="Retention">🔄 Retention</option>
+                <option value="Финансы">💳 Финансы</option>
+                <option value="Продление">🔁 Продление</option>
+                <option value="Оргвопрос">📋 Оргвопрос</option>
+              </select>
+            </div>
+
+            <div>
               <label className="text-xs font-semibold text-slate-700">Клиент / Ученик (если есть)</label>
               <input
                 type="text"
@@ -342,7 +392,7 @@ export function TaskDetailsCardModal({
             <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-purple-900">
-                  {task.leadId ? 'Связанный лид:' : task.studentId ? 'Связанный ученик:' : 'Семья:'}
+                  {task.parentId ? 'Карточка родителя:' : task.leadId ? 'Связанный лид:' : 'Связанный ученик:'}
                 </span>
                 <span className="text-purple-700 font-medium">{clientName || 'Профиль в CRM'}</span>
               </div>
@@ -370,7 +420,7 @@ export function TaskDetailsCardModal({
                     href={`/parents/${task.parentId}`}
                     className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
                   >
-                    Семейный профиль
+                    Карточка родителя
                     <ExternalLink size={12} />
                   </Link>
                 )}

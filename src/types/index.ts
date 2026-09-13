@@ -26,6 +26,7 @@ export interface Student {
   phone?: string;
   telegram?: string;
   email?: string;
+  studentType?: 'school_student' | 'adult_student';
   status: StudentStatus;
   notes?: string;
   createdAt: string;

@@ -41,6 +41,8 @@ import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
+import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
+import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -242,6 +244,11 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
+  // Dynamic overdue stats matching INITIAL_PAYMENTS & actual client debts
+  const overduePayments = INITIAL_PAYMENTS.filter((p) => p.status === 'overdue');
+  const totalOverdueAmount = overduePayments.reduce((sum, p) => sum + p.amount, 0);
+  const overdueStudentsCount = new Set(overduePayments.map((p) => p.studentId)).size;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -332,7 +339,9 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/finance?filter=overdue" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
             <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Просрочено оплат</p>
-            <p className="md-title-medium" style={{ color: 'var(--md-error)', marginTop: '2px' }}>3 ученика • 42 000 ₽</p>
+            <p className="md-title-medium" style={{ color: 'var(--md-error)', marginTop: '2px' }}>
+              {overdueStudentsCount} ученика • {totalOverdueAmount.toLocaleString('ru-RU')} ₽
+            </p>
             <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>Напомнить →</span>
           </Link>
           <Link href="/crm?filter=thinking" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
@@ -833,6 +842,129 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       id: newId,
     };
     setUrgentTasks((prev) => [created, ...prev]);
+  };
+
+  // Today's lessons & selected lesson modal
+  const [selectedLessonForModal, setSelectedLessonForModal] = useState<FullLessonData | null>(null);
+  const [todayLessons, setTodayLessons] = useState<FullLessonData[]>(INITIAL_LESSONS.slice(0, 3));
+
+  // Contact today tasks
+  interface ContactTodayItem {
+    id: string;
+    name: string;
+    role: string;
+    action: string;
+    phone: string;
+    time: string;
+    urgent?: boolean;
+    parentId?: string;
+    studentId?: string;
+    studentName?: string;
+    leadId?: string;
+    taskType: 'Retention' | 'CRM Сделка' | 'Финансы' | 'Продление' | 'Оргвопрос';
+    priority: 'high' | 'medium' | 'normal';
+  }
+
+  const [contactTodayList, setContactTodayList] = useState<ContactTodayItem[]>([
+    {
+      id: 'ct-1',
+      name: 'Михаил Романов',
+      role: 'папа Егора',
+      action: 'Узнать решение после пробного урока',
+      phone: '+7 999 123-45-67',
+      time: 'до 14:00',
+      urgent: false,
+      parentId: 'p4',
+      studentId: 's8',
+      studentName: 'Егор Романов',
+      taskType: 'Retention',
+      priority: 'medium',
+    },
+    {
+      id: 'ct-2',
+      name: 'Ольга Смирнова',
+      role: 'мама Алисы',
+      action: 'Новая заявка с сайта на Робототехнику',
+      phone: '+7 916 555-44-33',
+      time: 'срочно',
+      urgent: true,
+      leadId: 'lead_1',
+      parentId: 'p1',
+      studentName: 'Алиса Смирнова',
+      taskType: 'CRM Сделка',
+      priority: 'high',
+    },
+    {
+      id: 'ct-3',
+      name: 'Сергей Кузнецов',
+      role: 'папа Матвея',
+      action: 'Напомнить о выставленном счете на продление',
+      phone: '+7 903 888-22-11',
+      time: 'до 18:00',
+      urgent: false,
+      parentId: 'p3',
+      studentId: 's12',
+      studentName: 'Матвей Новиков',
+      taskType: 'Финансы',
+      priority: 'medium',
+    },
+  ]);
+
+  const handleOpenContactTask = (item: ContactTodayItem) => {
+    setSelectedTaskForModal({
+      id: item.id,
+      title: item.action,
+      detail: `Контакт с родителем: ${item.name} (${item.role}). ${item.studentName ? `Ученик: ${item.studentName}. ` : ''}Задача: ${item.action}`,
+      deadline: item.time,
+      priority: item.priority,
+      completed: false,
+      assignedTo: 'Анна Администратор',
+      clientName: `${item.name} (${item.role})`,
+      phone: item.phone,
+      taskType: item.taskType,
+      category:
+        item.taskType === 'Retention'
+          ? 'trial'
+          : item.taskType === 'CRM Сделка'
+          ? 'lead'
+          : item.taskType === 'Финансы'
+          ? 'finance'
+          : 'admin',
+      leadId: item.leadId,
+      studentId: item.studentId,
+      parentId: item.parentId,
+    });
+  };
+
+  const handleUpdateLessonAttendance = (
+    lessonId: string,
+    studentId: string,
+    status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked'
+  ) => {
+    setTodayLessons((prev) =>
+      prev.map((l) => {
+        if (l.id !== lessonId) return l;
+        return {
+          ...l,
+          students: l.students.map((st) =>
+            st.id === studentId ? { ...st, attendanceStatus: status } : st
+          ),
+        };
+      })
+    );
+    if (selectedLessonForModal?.id === lessonId) {
+      setSelectedLessonForModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              students: prev.students.map((st) =>
+                st.id === studentId ? { ...st, attendanceStatus: status } : st
+              ),
+            }
+          : null
+      );
+    }
+    toast.success('Посещаемость занятия сохранена');
   };
 
   const pendingTasksCount = urgentTasks.filter((t) => !t.completed).length;
@@ -1498,6 +1630,51 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
         </div>
       )}
 
+      {/* Admin Performance Mini Widget */}
+      <div
+        className="md-card-elevated flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(142, 36, 170, 0.05) 100%)',
+          border: '1px solid rgba(21, 101, 192, 0.15)',
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-center rounded-xl font-bold text-white shadow-xs"
+            style={{
+              width: '42px',
+              height: '42px',
+              background: 'linear-gradient(135deg, #1565C0 0%, #7B1FA2 100%)',
+            }}
+          >
+            94%
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                Эффективность работы администратора
+              </span>
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                Премия 100%
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 mt-0.5">
+              44/48 задач выполнено в срок • 0 пропущенных задач • 420 000 ₽ проведенных оплат
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href="/analytics"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs border border-blue-100 hover:bg-blue-50 transition-colors"
+        >
+          <BarChart3 size={14} />
+          Отчет по эффективности
+          <ArrowRight size={13} />
+        </Link>
+      </div>
+
       {/* Admin Action lists: Leads to call + Today's Lessons */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Leads requiring contact */}
@@ -1506,7 +1683,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
             <div className="flex items-center gap-2">
               <PhoneCall size={18} style={{ color: 'var(--md-primary)' }} />
               <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                Связаться сегодня ({3})
+                Связаться сегодня ({contactTodayList.length})
               </h3>
             </div>
             <Link href="/crm" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
@@ -1515,42 +1692,75 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { name: 'Михаил (папа Егора)', action: 'Узнать решение после пробного урока', phone: '+7 999 123-45-67', time: 'до 14:00' },
-              { name: 'Ольга (мама Алисы)', action: 'Новая заявка с сайта на Робототехнику', phone: '+7 916 555-44-33', time: 'срочно' },
-              { name: 'Сергей (папа Матвея)', action: 'Напомнить о выставленном счете на продление', phone: '+7 903 888-22-11', time: 'до 18:00' },
-            ].map((lead, idx) => (
+            {contactTodayList.map((lead) => (
               <div
-                key={idx}
+                key={lead.id}
+                onClick={() => handleOpenContactTask(lead)}
+                role="button"
+                tabIndex={0}
+                className="group cursor-pointer transition-all hover:bg-white hover:shadow-xs"
                 style={{
                   padding: '14px',
                   backgroundColor: 'var(--md-surface-container-low)',
                   borderRadius: '12px',
+                  border: '1px solid rgba(0,0,0,0.04)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
                 <div>
-                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{lead.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>
+                      {lead.name} <span style={{ color: 'var(--md-on-surface-variant)', fontWeight: 400 }}>({lead.role})</span>
+                    </p>
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          lead.taskType === 'Retention' ? '#fef3c7' : lead.taskType === 'CRM Сделка' ? '#e0e7ff' : '#dcfce7',
+                        color:
+                          lead.taskType === 'Retention' ? '#92400e' : lead.taskType === 'CRM Сделка' ? '#3730a3' : '#166534',
+                      }}
+                    >
+                      {lead.taskType}
+                    </span>
+                  </div>
                   <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '2px' }}>
                     {lead.action}
                   </p>
-                  <span className="md-label-small" style={{ color: 'var(--md-primary)', marginTop: '4px', display: 'block' }}>
-                    {lead.phone}
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="md-label-small flex items-center gap-1" style={{ color: 'var(--md-primary)' }}>
+                      <Phone size={11} />
+                      {lead.phone}
+                    </span>
+                    {lead.parentId && (
+                      <Link
+                        href={`/parents/${lead.parentId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-0.5"
+                      >
+                        Карточка родителя →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span
+                    className="md-label-small"
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: lead.time === 'срочно' ? 'var(--md-error-container)' : 'var(--md-surface-container-high)',
+                      color: lead.time === 'срочно' ? 'var(--md-on-error-container)' : 'var(--md-on-surface)',
+                    }}
+                  >
+                    {lead.time}
+                  </span>
+                  <span className="text-[10px] text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                    Карточка задачи <ExternalLink size={10} />
                   </span>
                 </div>
-                <span
-                  className="md-label-small"
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '6px',
-                    backgroundColor: lead.time === 'срочно' ? 'var(--md-error-container)' : 'var(--md-surface-container-high)',
-                    color: lead.time === 'срочно' ? 'var(--md-on-error-container)' : 'var(--md-on-surface)',
-                  }}
-                >
-                  {lead.time}
-                </span>
               </div>
             ))}
           </div>
@@ -1562,7 +1772,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
             <div className="flex items-center gap-2">
               <Calendar size={18} style={{ color: 'var(--md-primary)' }} />
               <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                Расписание на сегодня
+                Расписание на сегодня ({todayLessons.length})
               </h3>
             </div>
             <Link href="/calendar" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
@@ -1571,34 +1781,53 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { time: '15:00 - 16:30', group: 'Английский Kids-1', teacher: 'Мария И.', room: 'Кабинет 3', students: '6/8 уч.' },
-              { time: '16:45 - 18:15', group: 'Робототехника Начало', teacher: 'Дмитрий С.', room: 'Лаборатория', students: '7/8 уч.' },
-              { time: '18:30 - 20:00', group: 'Математика ОГЭ', teacher: 'Елена В.', room: 'Кабинет 1', students: '5/6 уч.' },
-            ].map((lesson, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '12px 14px',
-                  backgroundColor: 'var(--md-surface-container-low)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{lesson.group}</p>
-                  <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    {lesson.teacher} • {lesson.room}
-                  </p>
+            {todayLessons.map((lesson) => {
+              const totalStudents = lesson.students?.length || 0;
+              const presentCount = lesson.students?.filter((s) => s.attendanceStatus === 'present').length || 0;
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={() => setSelectedLessonForModal(lesson)}
+                  role="button"
+                  tabIndex={0}
+                  className="group cursor-pointer transition-all hover:bg-white hover:shadow-xs"
+                  style={{
+                    padding: '12px 14px',
+                    backgroundColor: 'var(--md-surface-container-low)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>
+                        {lesson.groupName}
+                      </p>
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {lesson.courseName}
+                      </span>
+                    </div>
+                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '2px' }}>
+                      {lesson.teacherName} • {lesson.room}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span className="md-label-medium" style={{ color: 'var(--md-primary)', display: 'block' }}>
+                      {lesson.startTime} - {lesson.endTime}
+                    </span>
+                    <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                      {presentCount}/{totalStudents} уч.
+                    </span>
+                    <span className="text-[10px] text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1 mt-0.5">
+                      Карточка урока <ExternalLink size={10} />
+                    </span>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span className="md-label-medium" style={{ color: 'var(--md-primary)', display: 'block' }}>{lesson.time}</span>
-                  <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{lesson.students}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1615,6 +1844,14 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           );
         }}
         onCreateNextStage={handleCreateNextStageTask}
+      />
+
+      {/* Lesson Quick View & Attendance Card Modal */}
+      <LessonQuickViewModal
+        isOpen={!!selectedLessonForModal}
+        lesson={selectedLessonForModal}
+        onClose={() => setSelectedLessonForModal(null)}
+        onUpdateAttendance={handleUpdateLessonAttendance}
       />
     </div>
   );

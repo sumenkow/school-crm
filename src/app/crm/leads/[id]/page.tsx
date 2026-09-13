@@ -28,9 +28,9 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
-import { EnrollStudentFromLeadModal } from '@/components/crm/EnrollStudentFromLeadModal';
+import { useRole } from '@/context/RoleContext';
+import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 export default function LeadDetailsPage() {
@@ -278,19 +278,69 @@ export default function LeadDetailsPage() {
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
-  const handleConvertToStudent = () => {
-    setIsEnrollModalOpen(true);
+  const getInitialStudentData = (): CreateStudentInitialData => {
+    const isAdult = lead.clientType === 'adult_student';
+    let sFirst = '';
+    let sLast = '';
+    let pFirst = '';
+    let pLast = '';
+
+    if (isAdult) {
+      const rawStudent = (lead.name || lead.studentName || '').trim();
+      const sParts = rawStudent.split(' ');
+      sFirst = sParts[0] || '';
+      sLast = sParts.slice(1).join(' ');
+    } else {
+      const rawStudent = (lead.studentName || '').trim();
+      const sParts = rawStudent.split(' ');
+      sFirst = sParts[0] || '';
+      sLast = sParts.slice(1).join(' ');
+
+      const rawParent = (lead.name || '').trim();
+      const pParts = rawParent.split(' ');
+      pFirst = pParts[0] || '';
+      pLast = pParts.slice(1).join(' ');
+
+      if (!sLast && pLast) {
+        sLast = pLast;
+      }
+    }
+
+    let matchedGroup = 'English B1 Teens';
+    const dLower = (lead.directionOrCourse || '').toLowerCase();
+    if (dLower.includes('робот')) matchedGroup = 'Robotics Junior';
+    else if (dLower.includes('мат')) matchedGroup = 'Kids Math Safari';
+
+    return {
+      studentType: isAdult ? 'adult_student' : 'school_student',
+      firstName: sFirst,
+      lastName: sLast,
+      phone: lead.contact,
+      telegram: lead.telegram || '',
+      group: matchedGroup,
+      course: lead.directionOrCourse,
+      parentMode: 'new',
+      parentFirstName: pFirst,
+      parentLastName: pLast,
+      parentPhone: isAdult ? '' : lead.contact,
+      parentTelegram: isAdult ? '' : (lead.telegram || ''),
+      relationshipType: isAdult ? 'Экстренный контакт' : 'Мама',
+      preferredChannel: 'telegram',
+      notes: [lead.studentNotes, lead.parentNotes, lead.comment].filter(Boolean).join('\n\n'),
+      sourceLeadId: lead.id,
+      sourceLeadName: lead.name,
+    };
   };
 
-  const handleEnrolled = (result: { studentId: string; parentId: string; groupName: string }) => {
+  const handleStudentCreated = (newStudent: NewStudentData) => {
     const enrollmentInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
-      studentId: result.studentId,
+      studentId: newStudent.id,
       occurredAt: 'Только что',
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор',
-      content: `Успешное зачисление! Созданы профили ученика и родителя, зачислен в группу «${result.groupName}».`,
+      content: `Успешная конвертация в ученика! Создана карточка ученика «${newStudent.name}», семейный профиль, зачислен в группу «${newStudent.group}».`,
       result: 'Конверсия завершена',
     };
 
@@ -299,8 +349,7 @@ export default function LeadDetailsPage() {
     const updatedLead: FullLeadData = {
       ...lead,
       status: 'paid',
-      convertedStudentId: result.studentId,
-      convertedParentId: result.parentId,
+      convertedStudentId: newStudent.id,
       interactions: updatedInteractions,
     };
 
@@ -313,7 +362,7 @@ export default function LeadDetailsPage() {
 
     setIsEnrollModalOpen(false);
     setConversionSuccess(true);
-    toast.success(`Ученик успешно зачислен в группу «${result.groupName}»!`);
+    toast.success(`Лид успешно сконвертирован! Карточка ученика «${newStudent.name}» сохранена.`);
   };
 
   return (
@@ -398,11 +447,11 @@ export default function LeadDetailsPage() {
             ) : (
               <button
                 type="button"
-                onClick={handleConvertToStudent}
+                onClick={() => setIsEnrollModalOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Оформить зачисление
+                Конвертировать в ученика
               </button>
             )}
           </div>
@@ -838,12 +887,12 @@ export default function LeadDetailsPage() {
         </div>
       )}
 
-      {/* ENROLL STUDENT FROM LEAD MODAL */}
-      <EnrollStudentFromLeadModal
+      {/* CONVERT LEAD TO STUDENT MODAL (STUDENT CARD) */}
+      <CreateStudentModal
         isOpen={isEnrollModalOpen}
-        lead={lead}
         onClose={() => setIsEnrollModalOpen(false)}
-        onEnrolled={handleEnrolled}
+        initialData={getInitialStudentData()}
+        onCreated={handleStudentCreated}
       />
 
       {/* CREATE TASK MODAL (PRE-LINKED TO LEAD) */}

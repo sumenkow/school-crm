@@ -332,6 +332,7 @@ function EditTaskModal({
   onSave: (task: FullTaskData) => void;
 }) {
   const [title, setTitle] = useState(task.title);
+  const [taskType, setTaskType] = useState(task.taskType || 'CRM Сделка');
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState(task.priority);
   const [assignedTo, setAssignedTo] = useState(task.assignedTo);
@@ -345,6 +346,7 @@ function EditTaskModal({
     onSave({
       ...task,
       title,
+      taskType,
       description,
       priority,
       assignedTo,
@@ -443,6 +445,24 @@ function EditTaskModal({
                 <option value="Алексей Преподаватель">Алексей Преподаватель</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700">Тип задачи / Индикатор воронки</label>
+            <select
+              value={taskType}
+              onChange={(e) => setTaskType(e.target.value as any)}
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="CRM Сделка">CRM Сделка (Новые лиды, первичный контакт, запись на пробный)</option>
+              <option value="Retention">Retention (Удержание, пропуски, забота о клиенте)</option>
+              <option value="Финансы">Финансы (Оплата, контроль счетов и долгов)</option>
+              <option value="Продление">Продление (Продление абонементов на след. период)</option>
+              <option value="Оргвопрос">Оргвопрос (Материалы, расписание, администрирование)</option>
+            </select>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Этот индикатор определяет категорию задачи, правила воронки и фильтрацию в общем списке.
+            </p>
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-2 pt-3 border-t border-slate-100">

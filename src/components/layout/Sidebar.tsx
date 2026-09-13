@@ -105,9 +105,10 @@ const adminNav: NavSection[] = [
     ],
   },
   {
-    section: 'Финансы',
+    section: 'Финансы и аналитика',
     items: [
       { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+      { label: 'Аналитика', href: '/analytics', icon: <BarChart3 size={20} /> },
     ],
   },
   {

@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_STUDENTS } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
+import { getCombinedParentTimeline, saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { useRole } from '@/context/RoleContext';
 import {
   ArrowLeft,
   Phone,
@@ -29,34 +31,52 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 export default function ParentDetailsPage() {
   const params = useParams();
   const { success } = useToast();
+  const { userName } = useRole();
   const parentId = params.id as string;
+
+  // Find matching parent from INITIAL_STUDENTS
+  const matchedStudent = INITIAL_STUDENTS.find((s) => s.parents?.some((p) => p.id === parentId));
+  const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+
+  const linkedChildren = INITIAL_STUDENTS.filter((s) => s.parents?.some((p) => p.id === parentId)).map((s) => ({
+    id: s.id,
+    name: `${s.firstName} ${s.lastName}`,
+    age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+    group: s.groups[0]?.name || 'English B1 Teens',
+    course: s.groups[0]?.courseName || 'Английский язык',
+    teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+    status: s.status,
+    attendance: s.attendanceStats.attendanceRate,
+  }));
+
+  const initialChildren = linkedChildren.length > 0 ? linkedChildren : [
+    {
+      id: '1',
+      name: 'Иван Смирнов',
+      age: '14 лет',
+      group: 'English B1 Teens',
+      course: 'Английский язык',
+      teacher: 'Мария Иванова',
+      status: 'active',
+      attendance: '94%',
+    },
+  ];
 
   // Parent state
   const [parent, setParent] = useState({
     id: parentId,
-    firstName: 'Ольга',
-    lastName: 'Смирнова',
-    phone: '+7 (999) 123-45-67',
-    telegram: '@olga_smirnova',
-    whatsapp: '+79991234567',
-    email: 'olga.smirnova@example.com',
-    preferredChannel: 'Telegram',
-    notes: 'Предпочитает общение в Telegram после 18:00. Платит вовремя по карте.',
-    children: [
-      {
-        id: '1',
-        name: 'Иван Смирнов',
-        age: '14 лет',
-        group: 'English B1 Teens',
-        course: 'Английский язык',
-        teacher: 'Мария Иванова',
-        status: 'active',
-        attendance: '94%',
-      },
-    ],
+    firstName: matchedParent?.firstName || 'Ольга',
+    lastName: matchedParent?.lastName || 'Смирнова',
+    phone: matchedParent?.phone || '+7 (999) 123-45-67',
+    telegram: matchedParent?.telegram || '@olga_smirnova',
+    whatsapp: matchedParent?.whatsapp || '+79991234567',
+    email: matchedParent?.email || 'olga.smirnova@example.com',
+    preferredChannel: matchedParent?.preferredChannel || 'Telegram',
+    notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00. Платит вовремя по карте.',
+    children: initialChildren,
     payments: [
-      { id: 'pay1', studentName: 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
-      { id: 'pay2', studentName: 'Иван Смирнов', date: '01.08.2026', amount: '7 600 ₽', period: 'Август 2026', status: 'paid' },
+      { id: 'pay1', studentName: initialChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
+      { id: 'pay2', studentName: initialChildren[0]?.name || 'Иван Смирнов', date: '01.08.2026', amount: '7 600 ₽', period: 'Август 2026', status: 'paid' },
     ],
   });
 
@@ -64,8 +84,69 @@ export default function ParentDetailsPage() {
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
+  // Edit modal child management states
+  const [editChildren, setEditChildren] = useState(parent.children);
+  const [isAddingChildInEdit, setIsAddingChildInEdit] = useState(false);
+  const [addChildMode, setAddChildMode] = useState<'existing' | 'new'>('existing');
+  const [selectedExistingStudentId, setSelectedExistingStudentId] = useState('');
+  const [newChildNameInEdit, setNewChildNameInEdit] = useState('');
+  const [newChildGroupInEdit, setNewChildGroupInEdit] = useState('English B1 Teens');
+
+  const availableStudentsForFamily = INITIAL_STUDENTS.filter(
+    (st) => !editChildren.some((c) => c.id === st.id)
+  );
+
+  const handleAttachExistingChildInEdit = () => {
+    const st = INITIAL_STUDENTS.find((s) => s.id === selectedExistingStudentId);
+    if (!st) return;
+
+    setEditChildren((prev) => [
+      ...prev,
+      {
+        id: st.id,
+        name: `${st.firstName} ${st.lastName}`,
+        age: st.birthDate ? `${new Date().getFullYear() - parseInt(st.birthDate.split('-')[0])} лет` : '14 лет',
+        group: st.groups[0]?.name || 'Основная группа',
+        course: st.groups[0]?.courseName || 'Курс',
+        teacher: st.groups[0]?.teacherName || 'Преподаватель',
+        status: st.status,
+        attendance: st.attendanceStats.attendanceRate,
+      },
+    ]);
+
+    setSelectedExistingStudentId('');
+    setIsAddingChildInEdit(false);
+  };
+
+  const handleAddNewChildInEdit = () => {
+    if (!newChildNameInEdit.trim()) return;
+
+    const newChildId = `std_${Date.now()}`;
+    const course = newChildGroupInEdit.includes('English')
+      ? 'Английский язык'
+      : newChildGroupInEdit.includes('Robotics')
+      ? 'Робототехника'
+      : 'Математика';
+
+    setEditChildren((prev) => [
+      ...prev,
+      {
+        id: newChildId,
+        name: newChildNameInEdit.trim(),
+        age: '12 лет',
+        group: newChildGroupInEdit,
+        course,
+        teacher: 'Мария Иванова',
+        status: 'active',
+        attendance: '100%',
+      },
+    ]);
+
+    setNewChildNameInEdit('');
+    setIsAddingChildInEdit(false);
+  };
+
   const handleChildAdded = (newChild: AddedChildData) => {
-    // 1. Add child to parent's children list
     setParent((prev) => ({
       ...prev,
       children: [
@@ -96,22 +177,27 @@ export default function ParentDetailsPage() {
         : prev.payments,
     }));
 
-    // 2. Add event to family timeline
-    setInteractions((prev) => [
-      {
-        id: `int_${Date.now()}`,
-        occurredAt: 'Только что',
-        channel: 'telegram',
-        author: 'Администратор школы',
-        studentName: newChild.name,
-        content: `В семью зачислен ребенок: ${newChild.name} (${newChild.course}, группа «${newChild.group}», преподаватель ${newChild.teacher}). Тариф: ${newChild.subscriptionType} (${newChild.price}). Степень родства: ${newChild.relationshipType}.`,
-        result: newChild.paymentStatus === 'paid' ? 'Оплачено и зачислено' : 'Ожидается оплата',
-      },
-      ...prev,
-    ]);
+    // Add event to family timeline
+    const childInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: newChild.id,
+      studentName: newChild.name,
+      parentId: parent.id,
+      parentName: `${parent.firstName} ${parent.lastName}`,
+      occurredAt: 'Только что',
+      channel: 'telegram',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `В семью зачислен ребенок: ${newChild.name} (${newChild.course}, группа «${newChild.group}», преподаватель ${newChild.teacher}).`,
+      result: newChild.paymentStatus === 'paid' ? 'Оплачено и зачислено' : 'Ожидается оплата',
+    };
+
+    setInteractions((prev) => [childInteraction, ...prev]);
+    saveInteractionToStorage(childInteraction);
 
     success(`Ребенок ${newChild.name} успешно добавлен в семью!`);
   };
+
   const [editForm, setEditForm] = useState({
     firstName: parent.firstName,
     lastName: parent.lastName,
@@ -134,6 +220,8 @@ export default function ParentDetailsPage() {
       preferredChannel: parent.preferredChannel,
       notes: parent.notes,
     });
+    setEditChildren(parent.children);
+    setIsAddingChildInEdit(false);
     setIsEditModalOpen(true);
   };
 
@@ -149,31 +237,50 @@ export default function ParentDetailsPage() {
       email: editForm.email.trim() || prev.email,
       preferredChannel: editForm.preferredChannel,
       notes: editForm.notes.trim(),
+      children: editChildren,
     }));
-    success('Данные родителя успешно обновлены!');
+
+    // Update parent info in INITIAL_STUDENTS for all attached children
+    editChildren.forEach((ch) => {
+      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === ch.id);
+      if (idx !== -1) {
+        const student = INITIAL_STUDENTS[idx];
+        const hasParent = student.parents?.some((p) => p.id === parent.id);
+        if (!hasParent) {
+          student.parents = [
+            ...(student.parents || []),
+            {
+              id: parent.id,
+              firstName: editForm.firstName.trim() || parent.firstName,
+              lastName: editForm.lastName.trim() || parent.lastName,
+              phone: editForm.phone.trim() || parent.phone,
+              telegram: editForm.telegram.trim() || parent.telegram,
+              whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
+              preferredChannel: editForm.preferredChannel as any,
+              relationshipType: 'Родитель',
+              isPrimary: true,
+            },
+          ];
+        }
+      }
+    });
+
+    success('Данные родителя и состав семьи успешно сохранены!');
     setIsEditModalOpen(false);
   };
 
-  const [interactions, setInteractions] = useState([
-    {
-      id: 'int1',
-      occurredAt: 'Сегодня, 11:30',
-      channel: 'telegram',
-      author: 'Елена Менеджер',
-      studentName: 'Иван Смирнов',
-      content: 'Уточнила у мамы получение домашнего задания. Все скачали, вопросов нет.',
-      result: 'Ученик готов к четвергу',
-    },
-    {
-      id: 'int2',
-      occurredAt: '01.09.2026, 14:10',
-      channel: 'telegram',
-      author: 'Елена Менеджер',
-      studentName: 'Иван Смирнов',
-      content: 'Отправлен электронный чек об оплате абонемента на сентябрь (7 600 ₽).',
-      result: 'Успешно оплачено',
-    },
-  ]);
+  const [interactions, setInteractions] = useState<TimelineInteraction[]>(() => {
+    const childrenIds = initialChildren.map((c) => c.id);
+    return getCombinedParentTimeline(parentId, childrenIds);
+  });
+
+  useEffect(() => {
+    const childrenIds = parent.children.map((c) => c.id);
+    const combined = getCombinedParentTimeline(parentId, childrenIds, interactions);
+    if (combined.length !== interactions.length) {
+      setInteractions(combined);
+    }
+  }, [parentId, parent.children]);
 
   const [newNote, setNewNote] = useState('');
 
@@ -181,19 +288,36 @@ export default function ParentDetailsPage() {
     e.preventDefault();
     if (!newNote.trim()) return;
 
-    setInteractions((prev) => [
-      {
-        id: `int_${Date.now()}`,
-        occurredAt: 'Только что',
-        channel: 'telegram',
-        author: 'Вы (Текущий пользователь)',
-        studentName: 'Иван Смирнов',
-        content: newNote,
-        result: 'Зафиксировано в карточке семьи',
-      },
-      ...prev,
-    ]);
+    const targetChild = parent.children[0];
+    const newEntry: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      parentId: parent.id,
+      parentName: `${parent.firstName} ${parent.lastName}`,
+      studentId: targetChild?.id,
+      studentName: targetChild?.name,
+      occurredAt: 'Только что',
+      channel: 'telegram',
+      type: 'follow_up',
+      author: userName || 'Администратор школы',
+      content: `[Взаимодействие с родителем: ${parent.firstName} ${parent.lastName}] ${newNote.trim()}`,
+      result: 'Зафиксировано в карточке семьи',
+    };
 
+    setInteractions((prev) => [newEntry, ...prev]);
+
+    // Add to child in INITIAL_STUDENTS so it appears in the student's timeline!
+    if (targetChild?.id) {
+      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === targetChild.id);
+      if (idx !== -1) {
+        INITIAL_STUDENTS[idx] = {
+          ...INITIAL_STUDENTS[idx],
+          interactions: [newEntry, ...(INITIAL_STUDENTS[idx].interactions || [])],
+        };
+      }
+    }
+
+    saveInteractionToStorage(newEntry);
+    success('Действие сохранено в карточку семьи и синхронизировано с таймлайном ученика!');
     setNewNote('');
   };
 
@@ -523,12 +647,160 @@ export default function ParentDetailsPage() {
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности взаимодействия</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={editForm.notes}
                   onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden resize-none"
                   placeholder="Удобное время для звонков, особенности..."
                 />
+              </div>
+
+              {/* SECTION: ДЕТИ В СЕМЬЕ */}
+              <div className="border-t border-slate-100 pt-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-900 text-xs">
+                    Дети в семье ({editChildren.length})
+                  </label>
+                  {!isAddingChildInEdit && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingChildInEdit(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      <Plus className="h-3 w-3" />
+                      + Добавить ребенка
+                    </button>
+                  )}
+                </div>
+
+                {/* List of current children */}
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {editChildren.length === 0 ? (
+                    <p className="text-[11px] text-slate-400 py-1">К родителю пока не привязаны дети</p>
+                  ) : (
+                    editChildren.map((ch) => (
+                      <div
+                        key={ch.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200/70 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">
+                            {ch.name.charAt(0)}
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900">{ch.name}</span>
+                            <span className="text-[10px] text-slate-500 ml-1.5">{ch.group}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditChildren((prev) => prev.filter((c) => c.id !== ch.id))}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded"
+                          title="Открепить ребенка"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Inline Add Child Form */}
+                {isAddingChildInEdit && (
+                  <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-200 space-y-2 animate-in fade-in duration-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-blue-900">Добавление ребенка в семью</span>
+                      <div className="flex rounded-md bg-white p-0.5 border border-blue-200 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setAddChildMode('existing')}
+                          className={cn('px-2 py-0.5 rounded font-medium', addChildMode === 'existing' ? 'bg-blue-600 text-white font-bold' : 'text-slate-600')}
+                        >
+                          Из базы школы
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddChildMode('new')}
+                          className={cn('px-2 py-0.5 rounded font-medium', addChildMode === 'new' ? 'bg-blue-600 text-white font-bold' : 'text-slate-600')}
+                        >
+                          Новый ребенок
+                        </button>
+                      </div>
+                    </div>
+
+                    {addChildMode === 'existing' ? (
+                      <div className="space-y-2">
+                        <select
+                          value={selectedExistingStudentId}
+                          onChange={(e) => setSelectedExistingStudentId(e.target.value)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                        >
+                          <option value="">-- Выберите ученика из базы школы --</option>
+                          {availableStudentsForFamily.map((st) => (
+                            <option key={st.id} value={st.id}>
+                              {st.firstName} {st.lastName} ({st.groups[0]?.name || 'Без группы'})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingChildInEdit(false)}
+                            className="px-2 py-1 rounded text-[11px] text-slate-600 hover:bg-slate-100"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAttachExistingChildInEdit}
+                            disabled={!selectedExistingStudentId}
+                            className="px-2.5 py-1 rounded bg-blue-600 text-white font-semibold text-[11px] hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            Прикрепить
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Имя и фамилия ребенка"
+                            value={newChildNameInEdit}
+                            onChange={(e) => setNewChildNameInEdit(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                          />
+                          <select
+                            value={newChildGroupInEdit}
+                            onChange={(e) => setNewChildGroupInEdit(e.target.value)}
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
+                          >
+                            <option value="English B1 Teens">English B1 Teens</option>
+                            <option value="Robotics Junior">Robotics Junior</option>
+                            <option value="Kids Math Safari">Kids Math Safari</option>
+                          </select>
+                        </div>
+                        <div className="flex justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingChildInEdit(false)}
+                            className="px-2 py-1 rounded text-[11px] text-slate-600 hover:bg-slate-100"
+                          >
+                            Отмена
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddNewChildInEdit}
+                            disabled={!newChildNameInEdit.trim()}
+                            className="px-2.5 py-1 rounded bg-blue-600 text-white font-semibold text-[11px] hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            Добавить ребенка
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">

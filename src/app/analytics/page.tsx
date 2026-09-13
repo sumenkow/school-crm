@@ -39,6 +39,7 @@ import { INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { Shield } from 'lucide-react';
+import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceReport';
 
 type FunnelStageKey = 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'paid';
 
@@ -46,6 +47,7 @@ export default function AnalyticsPage() {
   const { role } = useRole();
   const router = useRouter();
   const toast = useToast();
+  const [analyticsTab, setAnalyticsTab] = useState<'school' | 'admins'>('school');
   const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
   const [teacherViewMode, setTeacherViewMode] = useState<'chart' | 'table' | 'cards'>('chart');
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<FunnelStageKey | 'all' | null>(null);
@@ -666,6 +668,14 @@ export default function AnalyticsPage() {
     );
   };
 
+  if (role === 'admin') {
+    return (
+      <div className="space-y-6 max-w-6xl mx-auto pb-16">
+        <AdminPerformanceReport />
+      </div>
+    );
+  }
+
   if (role !== 'owner') {
     return (
       <div className="flex flex-col gap-6 max-w-4xl mx-auto py-8">
@@ -676,7 +686,7 @@ export default function AnalyticsPage() {
           </div>
           <h2 className="text-lg font-bold text-slate-900">Доступ ограничен</h2>
           <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-            Раздел сквозной финансовой и маркетинговой аналитики доступен только в режиме Владельца школы.
+            Раздел сквозной финансовой и маркетинговой аналитики доступен в режиме Владельца школы и Администратора.
           </p>
           <div className="mt-6">
             <Link
@@ -693,14 +703,49 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Сквозная аналитика школы</h1>
-          <p className="text-sm text-slate-500">
-            Воронка продаж, когортное удержание (retention), доходы по направлениям и эффективность педагогов
-          </p>
-        </div>
+      {/* Role Navigation Tabs for Owner */}
+      <div className="flex border-b border-slate-200 gap-2">
+        <button
+          onClick={() => setAnalyticsTab('school')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2',
+            analyticsTab === 'school'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          )}
+        >
+          <BarChart3 size={15} />
+          Сквозная аналитика школы
+        </button>
+        <button
+          onClick={() => setAnalyticsTab('admins')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2',
+            analyticsTab === 'admins'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          )}
+        >
+          <Award size={15} />
+          Эффективность администраторов
+          <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 font-bold">
+            KPI 94%
+          </span>
+        </button>
+      </div>
+
+      {analyticsTab === 'admins' ? (
+        <AdminPerformanceReport />
+      ) : (
+        <>
+          {/* Header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Сквозная аналитика школы</h1>
+              <p className="text-sm text-slate-500">
+                Воронка продаж, когортное удержание (retention), доходы по направлениям и эффективность педагогов
+              </p>
+            </div>
 
         <div className="flex items-center gap-2">
           {/* Time range selector */}
@@ -1285,6 +1330,8 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

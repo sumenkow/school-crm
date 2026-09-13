@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
+import { getCombinedStudentTimeline, saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import {
   ArrowLeft,
   Calendar,
@@ -63,8 +64,61 @@ export default function StudentDetailsPage() {
     phone: student.phone || '',
     telegram: student.telegram || '',
     status: student.status,
+    studentType: student.studentType || 'school_student',
     notes: student.notes || '',
   });
+
+  // Adult Student Conversion Modal state
+  const [isConvertAdultModalOpen, setIsConvertAdultModalOpen] = useState(false);
+  const [studentDirectPhone, setStudentDirectPhone] = useState(student.phone || student.parents[0]?.phone || '');
+  const [studentDirectTelegram, setStudentDirectTelegram] = useState(student.telegram || '');
+  const [studentOccupation, setStudentOccupation] = useState('');
+
+  const handleConvertToAdult = (e: React.FormEvent) => {
+    e.preventDefault();
+    const directPhone = studentDirectPhone.trim() || student.phone || '—';
+    const directTg = studentDirectTelegram.trim() || student.telegram;
+
+    const parentsNames = student.parents.map((p) => `${p.firstName} ${p.lastName}`).join(', ');
+
+    const conversionInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: student.parents[0]?.id,
+      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `Ученик достиг совершеннолетия и конвертирован в статус «🎓 Студент (18+)». Прямой контакт: ${directPhone}. Данные родителей (${parentsNames || 'нет'}) сохранены как семейные контакты.`,
+      result: 'Конвертация в совершеннолетнего студента завершена',
+    };
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      studentType: 'adult_student',
+      phone: directPhone,
+      telegram: directTg || undefined,
+      notes: [
+        student.notes,
+        studentOccupation ? `Род занятий: ${studentOccupation}` : '',
+        `Конвертирован в студента (18+) ${new Date().toLocaleDateString('ru-RU')}. Данные родителей унаследованы.`
+      ].filter(Boolean).join('\n\n'),
+      interactions: [conversionInteraction, ...student.interactions],
+    };
+
+    setStudent(updatedStudent);
+
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = updatedStudent;
+    }
+
+    saveInteractionToStorage(conversionInteraction);
+    setIsConvertAdultModalOpen(false);
+    toast.success(`Ученик успешно конвертирован в статус «Студент (18+)» с сохранением данных родителей!`);
+  };
 
   const handleOpenEditStudentModal = () => {
     setEditStudentForm({
@@ -74,6 +128,7 @@ export default function StudentDetailsPage() {
       phone: student.phone || '',
       telegram: student.telegram || '',
       status: student.status,
+      studentType: student.studentType || 'school_student',
       notes: student.notes || '',
     });
     setIsEditStudentModalOpen(true);
@@ -89,6 +144,7 @@ export default function StudentDetailsPage() {
       phone: editStudentForm.phone.trim() || undefined,
       telegram: editStudentForm.telegram.trim() || undefined,
       status: editStudentForm.status,
+      studentType: editStudentForm.studentType as any,
       notes: editStudentForm.notes.trim() || undefined,
     };
     setStudent(updated);
@@ -122,6 +178,15 @@ export default function StudentDetailsPage() {
   const [newNoteText, setNewNoteText] = useState('');
   const [newChannel, setNewChannel] = useState<'telegram' | 'whatsapp' | 'phone' | 'call'>('telegram');
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
+  const [interactionTarget, setInteractionTarget] = useState<'student' | 'parent'>('student');
+
+  useEffect(() => {
+    const parentIds = (student.parents || []).map((p) => p.id);
+    const combined = getCombinedStudentTimeline(student.id, student.interactions, parentIds);
+    if (combined.length !== student.interactions.length) {
+      setStudent((prev) => ({ ...prev, interactions: combined }));
+    }
+  }, [student.id]);
 
   const handleTaskCreated = (newTask: FullTaskData) => {
     const taskItem: Task = {
@@ -209,14 +274,23 @@ export default function StudentDetailsPage() {
     e.preventDefault();
     if (!newNoteText.trim()) return;
 
+    const primaryParent = student.parents[0];
+    const isParentTarget = interactionTarget === 'parent' && primaryParent;
+    const prefix = isParentTarget
+      ? `[Взаимодействие с родителем: ${primaryParent.firstName} ${primaryParent.lastName} (${primaryParent.relationshipType})] `
+      : `[Действие с учеником] `;
+
     const newEntry: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: primaryParent?.id,
+      parentName: primaryParent ? `${primaryParent.firstName} ${primaryParent.lastName}` : undefined,
       occurredAt: 'Только что',
       channel: newChannel,
       type: 'follow_up',
-      author: 'Вы (Текущий пользователь)',
-      content: newNoteText,
+      author: userName || 'Администратор школы',
+      content: `${prefix}${newNoteText.trim()}`,
       result: 'Зафиксировано в истории',
       nextAction: newFollowUpDate ? `Связаться ${newFollowUpDate}` : undefined,
       followUpDate: newFollowUpDate || undefined,
@@ -227,6 +301,19 @@ export default function StudentDetailsPage() {
       interactions: [newEntry, ...prev.interactions],
     }));
 
+    // Sync in-memory INITIAL_STUDENTS
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = {
+        ...INITIAL_STUDENTS[idx],
+        interactions: [newEntry, ...(INITIAL_STUDENTS[idx].interactions || [])],
+      };
+    }
+
+    // Persist to shared timeline storage
+    saveInteractionToStorage(newEntry);
+
+    toast.success('Действие успешно добавлено и сохранено в карточку семьи!');
     setNewNoteText('');
     setNewFollowUpDate('');
   };
@@ -276,13 +363,34 @@ export default function StudentDetailsPage() {
                   {student.status === 'trial' && 'Пробный'}
                   {student.status === 'paused' && 'На паузе'}
                 </span>
+
+                <span
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 font-semibold text-xs border inline-flex items-center gap-1',
+                    student.studentType === 'adult_student'
+                      ? 'bg-purple-50 text-purple-700 border-purple-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  )}
+                >
+                  {student.studentType === 'adult_student' ? (
+                    <>
+                      <GraduationCap className="h-3 w-3" />
+                      Студент (18+)
+                    </>
+                  ) : (
+                    <>
+                      <span>🎒</span>
+                      Школьник
+                    </>
+                  )}
+                </span>
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
                 {student.birthDate && (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    Д/Р: {student.birthDate} (14 лет)
+                    Д/Р: {student.birthDate} {student.studentType === 'adult_student' ? '(18+ лет)' : '(14 лет)'}
                   </span>
                 )}
                 {student.phone && (
@@ -303,6 +411,26 @@ export default function StudentDetailsPage() {
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {student.studentType !== 'adult_student' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
+                  setStudentDirectTelegram(student.telegram || '');
+                  setIsConvertAdultModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50/90 px-3.5 py-2 text-xs font-semibold text-purple-700 shadow-xs hover:bg-purple-100 transition-colors"
+                title="Ученик достиг совершеннолетия: перевести на самостоятельное взаимодействие с сохранением данных родителей"
+              >
+                <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
+                Конвертировать в студента (18+)
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50/80 px-3 py-1.5 text-xs font-medium text-purple-700 border border-purple-200/80">
+                <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
+                Студент (18+)
+              </span>
+            )}
             <button
               onClick={handleOpenEditStudentModal}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
@@ -322,7 +450,7 @@ export default function StudentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-              Записать контакт
+              Добавить действие
             </button>
             <button
               onClick={() => setActiveTab('finance')}
@@ -926,8 +1054,24 @@ export default function StudentDetailsPage() {
         <div className="space-y-6">
           {/* Add Interaction Form */}
           <form onSubmit={handleAddInteraction} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Записать новое взаимодействие с клиентом</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Добавить действие / контакт с учеником или семьей</h4>
             <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span>С кем действие:</span>
+                <select
+                  value={interactionTarget}
+                  onChange={(e) => setInteractionTarget(e.target.value as 'student' | 'parent')}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800"
+                >
+                  <option value="student">С учеником ({student.firstName})</option>
+                  {student.parents.map((p) => (
+                    <option key={p.id} value="parent">
+                      С родителем: {p.firstName} {p.lastName} ({p.relationshipType})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <span>Канал:</span>
                 <select
@@ -967,7 +1111,7 @@ export default function StudentDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
               >
                 <Send className="h-3.5 w-3.5" />
-                Сохранить в Timeline
+                Сохранить действие в Timeline
               </button>
             </div>
           </form>
@@ -981,11 +1125,20 @@ export default function StudentDetailsPage() {
                 </div>
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-slate-900 text-sm">{int.author}</span>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 uppercase">
                         {int.channel}
                       </span>
+                      {int.content.includes('родителем') || int.parentName ? (
+                        <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                          {int.parentName ? `Родитель: ${int.parentName}` : 'Семья / Родитель'}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
+                          Ученик
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-slate-400">{int.occurredAt}</span>
                   </div>
@@ -1381,6 +1534,112 @@ export default function StudentDetailsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONVERT TO ADULT STUDENT MODAL */}
+      {isConvertAdultModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                  <GraduationCap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Конвертация в студента (18+)</h3>
+                  <p className="text-xs text-slate-500">Переход на самостоятельное обучение с сохранением семьи</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConvertAdultModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConvertToAdult} className="mt-4 space-y-4 text-xs">
+              {/* Inheritance Explanation Banner */}
+              <div className="rounded-xl border border-purple-200 bg-purple-50/70 p-3.5 text-purple-900 space-y-2">
+                <div className="font-semibold flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                  <span>Наследование и сохранение данных семьи:</span>
+                </div>
+                <ul className="list-disc list-inside space-y-1 text-[11px] text-purple-800">
+                  <li>
+                    Контакты родителей ({student.parents.length > 0 ? student.parents.map((p) => `${p.firstName} ${p.lastName}`).join(', ') : 'не указаны'}) <strong>сохраняются в карточке</strong> как доверенные лица семьи.
+                  </li>
+                  <li>
+                    Студент становится <strong>основным контактным лицом</strong> и плательщиком по расписанию и счетам.
+                  </li>
+                  <li>
+                    В таймлайн и историю будет внесено системное событие о переходе в статус студента.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Прямой телефон студента (для звонков и счетов) *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={studentDirectPhone}
+                    onChange={(e) => setStudentDirectPhone(e.target.value)}
+                    placeholder="+7 (999) 000-00-00"
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Telegram / Мессенджер студента
+                  </label>
+                  <input
+                    type="text"
+                    value={studentDirectTelegram}
+                    onChange={(e) => setStudentDirectTelegram(e.target.value)}
+                    placeholder="@username"
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Вуз / Род занятий студента (опционально)
+                  </label>
+                  <input
+                    type="text"
+                    value={studentOccupation}
+                    onChange={(e) => setStudentOccupation(e.target.value)}
+                    placeholder="Например: ВШЭ, 2 курс или IT-специалист"
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsConvertAdultModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  Подтвердить перевод в студента (18+)
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

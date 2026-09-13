@@ -849,6 +849,7 @@ export interface FullLeadData {
   studentAge?: string;
   directionOrCourse: string;
   level?: string;
+  clientType?: 'school_student' | 'adult_student';
   source: string;
   assignedTo: string;
   status: 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost' | 'no_response';
@@ -1329,14 +1330,48 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Дмитрий Кузнецов',
     courseName: 'Робототехника',
     groupName: 'Robotics Junior',
-    amount: 8400,
-    amountFormatted: '8 400 ₽',
+    amount: 14000,
+    amountFormatted: '14 000 ₽',
     paymentDate: '25.08.2026',
-    periodLabel: 'Сентябрь 2026',
+    periodLabel: 'Сентябрь–Октябрь 2026',
     status: 'overdue',
     paymentMethod: 'bank_transfer',
     recordedBy: 'Елена Менеджер',
-    comment: 'Отец обещал перевести по СБП до конца недели. Долг 8 400 ₽',
+    comment: 'Отец обещал перевести по СБП до конца недели. Долг 14 000 ₽',
+  },
+  {
+    id: 'pay6',
+    studentId: '5',
+    studentName: 'Артём Кузнецов',
+    parentId: 'p3',
+    parentName: 'Дмитрий Кузнецов',
+    courseName: 'Математика',
+    groupName: 'Kids Math Safari',
+    amount: 13600,
+    amountFormatted: '13 600 ₽',
+    paymentDate: '26.08.2026',
+    periodLabel: 'Сентябрь–Октябрь 2026',
+    status: 'overdue',
+    paymentMethod: 'bank_transfer',
+    recordedBy: 'Елена Менеджер',
+    comment: 'Второй ребенок в семье. Долг 13 600 ₽',
+  },
+  {
+    id: 'pay7',
+    studentId: 's6',
+    studentName: 'Максим Захаров',
+    parentId: 'p5',
+    parentName: 'Наталья Захарова',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    amount: 14400,
+    amountFormatted: '14 400 ₽',
+    paymentDate: '28.08.2026',
+    periodLabel: 'Сентябрь–Октябрь 2026',
+    status: 'overdue',
+    paymentMethod: 'card',
+    recordedBy: 'Анна Администратор',
+    comment: 'Оплата абонемента просрочена на 16 дней. Долг 14 400 ₽',
   },
   {
     id: 'pay3',

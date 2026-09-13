@@ -62,6 +62,17 @@ const INITIAL_PARENTS: ParentRecord[] = [
     balanceStatus: 'debt',
   },
   {
+    id: 'p5',
+    name: 'Наталья Захарова',
+    phone: '+7 (916) 777-33-22',
+    telegram: '@zakharova_n',
+    whatsapp: '+79167773322',
+    preferredChannel: 'Telegram',
+    children: [{ id: 's6', name: 'Максим Захаров', group: 'English B1 Teens' }],
+    totalPaid: '28 800 ₽',
+    balanceStatus: 'debt',
+  },
+  {
     id: 'p4',
     name: 'Елена Васильева',
     phone: '+7 (999) 345-67-89',
