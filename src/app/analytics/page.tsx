@@ -688,39 +688,6 @@ export default function AnalyticsPage() {
     );
   };
 
-  if (role === 'admin') {
-    return (
-      <div className="space-y-6 max-w-6xl mx-auto pb-16">
-        <AdminPerformanceReport />
-      </div>
-    );
-  }
-
-  if (role !== 'owner') {
-    return (
-      <div className="flex flex-col gap-6 max-w-4xl mx-auto py-8">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Аналитика школы</h1>
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 mb-4">
-            <Shield className="h-7 w-7" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">Доступ ограничен</h2>
-          <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-            Раздел сквозной финансовой и маркетинговой аналитики доступен в режиме Владельца школы и Администратора.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
-            >
-              Вернуться на дашборд
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
       {/* Role Navigation Tabs for Owner */}
