@@ -109,8 +109,8 @@ export default function LeadDetailsPage() {
     const fullParent = buildFullName(editForm.parentLastName, editForm.parentFirstName, editForm.parentMiddleName);
     const fullStudent = buildFullName(editForm.studentLastName, editForm.studentFirstName, editForm.studentMiddleName);
 
-    const effectiveName = isAdult ? (fullStudent || lead.name) : (fullParent || lead.name);
-    const effectiveStudentName = fullStudent || lead.studentName;
+    const effectiveName = isAdult ? (fullStudent || lead.name || '') : (fullParent || lead.name || '');
+    const effectiveStudentName = fullStudent || lead.studentName || '';
 
     const updated: FullLeadData = {
       ...lead,
@@ -119,9 +119,9 @@ export default function LeadDetailsPage() {
       parentFirstName: isAdult ? undefined : (editForm.parentFirstName.trim() || undefined),
       parentMiddleName: isAdult ? undefined : (editForm.parentMiddleName.trim() || undefined),
       studentLastName: editForm.studentLastName.trim() || undefined,
-      studentFirstName: editForm.studentFirstName.trim() || effectiveStudentName.split(' ')[0] || '',
+      studentFirstName: editForm.studentFirstName.trim() || (effectiveStudentName ? effectiveStudentName.split(' ')[0] : '') || '',
       studentMiddleName: editForm.studentMiddleName.trim() || undefined,
-      studentName: effectiveStudentName,
+      studentName: effectiveStudentName || undefined,
       contact: editForm.contact.trim() || lead.contact,
       telegram: editForm.telegram.trim() || undefined,
       studentAge: editForm.studentAge.trim() || undefined,
