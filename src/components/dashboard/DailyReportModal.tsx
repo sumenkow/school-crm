@@ -14,7 +14,8 @@ import {
   Sparkles,
   ExternalLink,
   MessageSquare,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -43,24 +44,25 @@ interface DailyReportModalProps {
 
 export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
   const toast = useToast();
-  const { userName } = useRole();
+  const { userName, role, ownerEmail } = useRole();
   const [report, setReport] = useState<DailyReportData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Settings
   const [telegramBotToken, setTelegramBotToken] = useState('');
   const [telegramChatId, setTelegramChatId] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
   const [sendingTg, setSendingTg] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
+  // The recipient email is always the email of the school owner/director from their user account
+  const effectiveOwnerEmail = ownerEmail || (typeof window !== 'undefined' ? (localStorage.getItem('crm_owner_email') || 'admin@smartacademy.ru') : 'admin@smartacademy.ru');
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setTelegramBotToken(localStorage.getItem('crm_tg_bot_token') || '');
       setTelegramChatId(localStorage.getItem('crm_tg_chat_id') || '');
-      setRecipientEmail(localStorage.getItem('crm_report_email') || 'owner@school.ru');
     }
   }, []);
 
@@ -138,31 +140,33 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
   const handleSendEmail = async () => {
     if (!report) return;
 
-    if (!recipientEmail.trim()) {
+    if (!effectiveOwnerEmail || !effectiveOwnerEmail.includes('@')) {
       setShowConfig(true);
-      toast.error('Укажите Email для отправки отчета');
+      toast.error('Адрес электронной почты владельца не найден в его учетной записи');
       return;
     }
 
     try {
       setSendingEmail(true);
-      localStorage.setItem('crm_report_email', recipientEmail.trim());
 
       const res = await fetch('/api/reports/daily/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: 'email',
-          recipientEmail: recipientEmail.trim(),
+          recipientEmail: effectiveOwnerEmail.trim(),
+          senderName: userName || 'Администратор школы',
+          senderRole: role,
           messageText: report.telegramText,
+          emailHtml: report.emailHtml,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || 'Ошибка отправки на почту');
+        toast.error(data.error || 'Ошибка отправки на почту руководителя');
       } else {
-        toast.success(`Отчет отправлен на ${recipientEmail}!`);
+        toast.success(`Отчет успешно отправлен на email руководителя-владельца (${effectiveOwnerEmail})!`);
       }
     } catch (err: any) {
       toast.error('Ошибка: ' + err.message);
@@ -209,6 +213,28 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
             </div>
           ) : report ? (
             <>
+              {/* Destination info: Owner Email Callout */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+                  <Shield size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-xs">Адресат отчета: Руководитель-владелец</span>
+                    <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800">
+                      Учетная запись владельца
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Mail size={13} className="text-blue-600 shrink-0" />
+                    <span className="font-semibold text-xs text-blue-950 break-all">{effectiveOwnerEmail}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-normal">
+                    При отправке отчета администратором он уходит на адрес электронной почты руководителя-владельца, указанный в его учетной записи.
+                  </p>
+                </div>
+              </div>
+
               {/* Key KPI Chips */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
@@ -256,7 +282,7 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                 >
                   <span className="font-bold text-slate-800 flex items-center gap-2">
                     <MessageSquare size={16} className="text-blue-600" />
-                    Настройки получателей (Telegram и Email)
+                    Настройки каналов отправки (Telegram и Email)
                   </span>
                   <span className="text-blue-600 font-medium text-[11px]">
                     {showConfig ? 'Свернуть' : 'Настроить бота и каналы'}
@@ -288,15 +314,22 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block font-medium text-slate-600 mb-1">Email руководителя:</label>
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="block font-medium text-slate-700 text-xs">Email руководителя (из профиля владельца):</label>
+                        <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                          Учетная запись владельца
+                        </span>
+                      </div>
                       <input
                         type="email"
-                        placeholder="owner@school.ru"
-                        value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={effectiveOwnerEmail}
+                        readOnly
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-1.5 text-xs text-slate-700 font-medium cursor-not-allowed"
                       />
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Адрес электронной почты берется из профиля владельца школы и используется для автоматической отправки.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -317,21 +350,21 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleSendEmail}
-              disabled={sendingEmail}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
-            >
-              <Mail size={15} />
-              {sendingEmail ? 'Отправка...' : 'Отправить на Email'}
-            </button>
-
-            <button
               onClick={handleSendTelegram}
               disabled={sendingTg}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
             >
               <Send size={15} />
               {sendingTg ? 'Отправка...' : 'Отправить в Telegram'}
+            </button>
+
+            <button
+              onClick={handleSendEmail}
+              disabled={sendingEmail}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs"
+            >
+              <Mail size={15} />
+              {sendingEmail ? 'Отправка...' : `Отправить руководителю (${effectiveOwnerEmail})`}
             </button>
           </div>
         </div>

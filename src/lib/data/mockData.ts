@@ -831,6 +831,47 @@ export const INITIAL_GROUPS: FullGroupData[] = [
       { id: 'l9', date: '04.09.2026', time: '16:00 – 17:00', topic: 'Графы и комбинаторика в играх', status: 'scheduled', presentCount: 0 },
     ],
   },
+  {
+    id: '5',
+    name: 'Английский: Практическая грамматика (Ср 18:00)',
+    courseId: 'c1',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    schedule: 'Среда • 18:00–19:30',
+    room: 'Онлайн (Zoom 1)',
+    capacity: 8,
+    status: 'active',
+    startDate: '01.09.2026',
+    notes: 'Углубленная проработка грамматических структур и времен.',
+    students: [
+      { id: '1', name: 'Иван Смирнов', status: 'active', attendanceRate: '95%', parentPhone: '+7 (999) 123-45-67', joinedAt: '01.09.2026' },
+      { id: '2', name: 'Мария Кузнецова', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 234-56-78', joinedAt: '01.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l10', date: '02.09.2026', time: '18:00 – 19:30', topic: 'Articles & Conditionals', status: 'completed', presentCount: 2 },
+    ],
+  },
+  {
+    id: '6',
+    name: 'Английский: Разговорный клуб (Сб 12:00)',
+    courseId: 'c1',
+    courseName: 'Английский язык',
+    teacherId: 't1',
+    teacherName: 'Мария Иванова',
+    schedule: 'Суббота • 12:00–13:30',
+    room: 'Онлайн (Zoom 2)',
+    capacity: 8,
+    status: 'active',
+    startDate: '01.09.2026',
+    notes: 'Интерактивные дебаты, обсуждение актуальных тем и преодоление языкового барьера.',
+    students: [
+      { id: '1', name: 'Иван Смирнов', status: 'active', attendanceRate: '95%', parentPhone: '+7 (999) 123-45-67', joinedAt: '01.09.2026' },
+    ],
+    recentLessons: [
+      { id: 'l11', date: '30.08.2026', time: '12:00 – 13:30', topic: 'Travel hacks and cultural differences', status: 'completed', presentCount: 1 },
+    ],
+  },
 ];
 
 export interface LessonTimelineEvent {

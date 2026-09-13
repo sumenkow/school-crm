@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage } from '@/lib/data/studentStorage';
 import {
@@ -89,7 +89,98 @@ export default function StudentDetailsPage() {
     status: student.status,
     studentType: student.studentType || 'school_student',
     notes: student.notes || '',
+    groups: student.groups || [],
   });
+
+  // Enroll in group modal state
+  const [isEnrollGroupModalOpen, setIsEnrollGroupModalOpen] = useState(false);
+  const [selectedGroupIdToEnroll, setSelectedGroupIdToEnroll] = useState('');
+
+  const handleEnrollGroup = (groupId: string) => {
+    if (!groupId) return;
+    const targetGroup = INITIAL_GROUPS.find((g) => g.id === groupId);
+    if (!targetGroup) return;
+
+    if (student.groups.some((g) => g.id === targetGroup.id || g.name === targetGroup.name)) {
+      toast.error('Ученик уже зачислен в эту группу');
+      return;
+    }
+
+    const newGroupEnrollment = {
+      id: targetGroup.id,
+      name: targetGroup.name,
+      courseName: targetGroup.courseName,
+      teacherName: targetGroup.teacherName,
+      schedule: targetGroup.schedule,
+      status: 'active',
+      joinedAt: new Date().toLocaleDateString('ru-RU'),
+    };
+
+    const updatedGroups = [...student.groups, newGroupEnrollment];
+
+    const enrollInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: student.parents[0]?.id,
+      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `Зачислен(а) в группу «${targetGroup.name}» (${targetGroup.courseName}, преподаватель ${targetGroup.teacherName}, расписание: ${targetGroup.schedule}).`,
+      result: `Зачислен. Всего групп: ${updatedGroups.length}`,
+      targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+      targetName: student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : `${student.firstName} ${student.lastName}`),
+      targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+    };
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      groups: updatedGroups,
+      interactions: [enrollInteraction, ...student.interactions],
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+    saveInteractionToStorage(enrollInteraction);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    toast.success(`Ученик успешно зачислен в группу «${targetGroup.name}»! Теперь обучается в ${updatedGroups.length} группах.`);
+    setIsEnrollGroupModalOpen(false);
+    setSelectedGroupIdToEnroll('');
+  };
+
+  const handleRemoveGroup = (groupId: string, groupName: string) => {
+    const updatedGroups = student.groups.filter((g) => g.id !== groupId && g.name !== groupName);
+    const removeInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: student.parents[0]?.id,
+      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `Отчислен(а) из группы «${groupName}».`,
+      result: updatedGroups.length > 0 ? `Активных групп: ${updatedGroups.length}` : 'Все группы завершены',
+      targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+      targetName: student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : `${student.firstName} ${student.lastName}`),
+      targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+    };
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      groups: updatedGroups,
+      interactions: [removeInteraction, ...student.interactions],
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+    saveInteractionToStorage(removeInteraction);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    toast.success(`Ученик исключен из группы «${groupName}»`);
+  };
 
   // Adult Student Conversion Modal state
   const [isConvertAdultModalOpen, setIsConvertAdultModalOpen] = useState(false);
@@ -148,6 +239,7 @@ export default function StudentDetailsPage() {
       status: student.status,
       studentType: student.studentType || 'school_student',
       notes: student.notes || '',
+      groups: [...student.groups],
     });
     setIsEditStudentModalOpen(true);
   };
@@ -164,11 +256,13 @@ export default function StudentDetailsPage() {
       status: editStudentForm.status,
       studentType: editStudentForm.studentType as any,
       notes: editStudentForm.notes.trim() || undefined,
+      groups: editStudentForm.groups,
     };
     setStudent(updated);
     saveStudentToStorage(updated);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
 
-    toast.success('Данные ученика успешно изменены!');
+    toast.success('Данные ученика и группы успешно сохранены!');
     setIsEditStudentModalOpen(false);
   };
 
@@ -479,8 +573,32 @@ export default function StudentDetailsPage() {
         {/* Quick summary strip */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 pt-4 text-xs">
           <div>
-            <span className="text-slate-400">Группа:</span>
-            <p className="font-semibold text-slate-900 mt-0.5">{student.groups[0]?.name || 'Не зачислен'}</p>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Группы ({student.groups.length}):</span>
+              <button
+                type="button"
+                onClick={() => setIsEnrollGroupModalOpen(true)}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                title="Зачислить в группу"
+              >
+                <Plus className="h-3 w-3" />
+                Зачислить
+              </button>
+            </div>
+            {student.groups.length === 0 ? (
+              <p className="font-semibold text-slate-400 mt-0.5">Не зачислен</p>
+            ) : (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {student.groups.map((grp) => (
+                  <span
+                    key={grp.id}
+                    className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200/60"
+                  >
+                    {grp.name.split(' (')[0] || grp.name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <span className="text-slate-400">Посещаемость:</span>
@@ -736,49 +854,79 @@ export default function StudentDetailsPage() {
       {activeTab === 'education' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Текущие зачисления (Enrollments)</h3>
-            <button className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Текущие зачисления (Enrollments)</h3>
+              <p className="text-xs text-slate-500">Ученик может параллельно обучаться в нескольких группах (например, грамматика и разговорный клуб)</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsEnrollGroupModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
               <Plus className="h-3.5 w-3.5" />
               Зачислить в группу
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {student.groups.map((grp) => (
-              <div key={grp.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-xs font-semibold text-blue-600 uppercase">{grp.courseName}</span>
-                    <h4 className="text-base font-bold text-slate-900 mt-0.5">{grp.name}</h4>
+          {student.groups.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+              <BookOpen className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-semibold text-slate-700">Ученик пока не зачислен ни в одну группу</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 mb-3">Выберите группу для начала посещения занятий</p>
+              <button
+                type="button"
+                onClick={() => setIsEnrollGroupModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Зачислить в группу
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {student.groups.map((grp) => (
+                <div key={grp.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-xs font-semibold text-blue-600 uppercase">{grp.courseName}</span>
+                      <h4 className="text-base font-bold text-slate-900 mt-0.5">{grp.name}</h4>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                      Активна
+                    </span>
                   </div>
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                    Активна
-                  </span>
-                </div>
 
-                <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Преподаватель:</span>
-                    <span className="font-semibold text-slate-800">{grp.teacherName}</span>
+                  <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Преподаватель:</span>
+                      <span className="font-semibold text-slate-800">{grp.teacherName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Расписание:</span>
+                      <span className="font-medium text-slate-800">{grp.schedule}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Дата зачисления:</span>
+                      <span>{grp.joinedAt}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Расписание:</span>
-                    <span className="font-medium text-slate-800">{grp.schedule}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Дата начала:</span>
-                    <span>{grp.joinedAt}</span>
-                  </div>
-                </div>
 
-                <div className="pt-2 text-right">
-                  <Link href={`/groups`} className="text-xs font-semibold text-blue-600 hover:underline">
-                    Перейти к журналу группы →
-                  </Link>
+                  <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveGroup(grp.id, grp.name)}
+                      className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
+                    >
+                      Исключить из группы
+                    </button>
+                    <Link href={`/groups`} className="text-xs font-semibold text-blue-600 hover:underline">
+                      Журнал группы →
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1357,6 +1505,82 @@ export default function StudentDetailsPage() {
                 </div>
               </div>
 
+              {/* Multi-Group Enrollment in Edit Modal */}
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="flex items-center justify-between">
+                  <label className="block font-semibold text-slate-700 text-xs">
+                    Учебные группы ({editStudentForm.groups.length})
+                  </label>
+                  <span className="text-[11px] text-slate-500">Мульти-группы (обучение в 2+ группах)</span>
+                </div>
+
+                {editStudentForm.groups.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Не состоит ни в одной группе (выберите ниже)</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {editStudentForm.groups.map((grp) => (
+                      <div
+                        key={grp.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200 shadow-xs"
+                      >
+                        <span className="truncate max-w-[220px]" title={grp.name}>
+                          {grp.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditStudentForm({
+                              ...editStudentForm,
+                              groups: editStudentForm.groups.filter((g) => g.id !== grp.id),
+                            });
+                          }}
+                          className="rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-colors"
+                          title="Удалить из этой группы"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-1">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      if (!selectedId) return;
+                      const grpToAdd = INITIAL_GROUPS.find((g) => g.id === selectedId);
+                      if (grpToAdd && !editStudentForm.groups.some((g) => g.id === grpToAdd.id)) {
+                        setEditStudentForm({
+                          ...editStudentForm,
+                          groups: [
+                            ...editStudentForm.groups,
+                            {
+                              id: grpToAdd.id,
+                              name: grpToAdd.name,
+                              courseName: grpToAdd.courseName,
+                              teacherName: grpToAdd.teacherName,
+                              schedule: grpToAdd.schedule,
+                              status: 'active',
+                              joinedAt: new Date().toLocaleDateString('ru-RU'),
+                            },
+                          ],
+                        });
+                      }
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white text-slate-700"
+                  >
+                    <option value="">+ Добавить ученика в группу...</option>
+                    {INITIAL_GROUPS.filter((g) => !editStudentForm.groups.some((eg) => eg.id === g.id)).map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} — {g.teacherName} ({g.schedule})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности ученика</label>
                 <textarea
@@ -1385,6 +1609,145 @@ export default function StudentDetailsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLL IN GROUP MODAL */}
+      {isEnrollGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-blue-600" />
+                  Зачисление в группу
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Ученик: <span className="font-semibold text-slate-700">{student.firstName} {student.lastName}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEnrollGroupModalOpen(false);
+                  setSelectedGroupIdToEnroll('');
+                }}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-3.5 space-y-3">
+              <div className="rounded-xl bg-blue-50/70 border border-blue-200/60 p-3 text-xs text-blue-800">
+                <p className="font-semibold mb-0.5">Мульти-групповое обучение:</p>
+                <p className="text-[11px] text-blue-700/90 leading-relaxed">
+                  Ученик может одновременно обучаться в двух и более группах (например, грамматика и разговорный клуб).
+                </p>
+                {student.groups.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-blue-200/60">
+                    <span className="text-[11px] font-semibold text-blue-900">Текущие группы:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {student.groups.map((g) => (
+                        <span key={g.id} className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200">
+                          {g.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Выберите группу для зачисления:
+                </label>
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                  {INITIAL_GROUPS.map((grp) => {
+                    const isAlreadyEnrolled = student.groups.some(
+                      (g) => g.id === grp.id || g.name === grp.name
+                    );
+                    const isSelected = selectedGroupIdToEnroll === grp.id;
+
+                    return (
+                      <div
+                        key={grp.id}
+                        onClick={() => {
+                          if (!isAlreadyEnrolled) {
+                            setSelectedGroupIdToEnroll(grp.id);
+                          }
+                        }}
+                        className={cn(
+                          'rounded-xl border p-3 text-xs transition-all cursor-pointer flex items-start gap-3',
+                          isAlreadyEnrolled
+                            ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                            : isSelected
+                            ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 shadow-xs'
+                            : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50/50'
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="group_enroll"
+                          checked={isSelected}
+                          disabled={isAlreadyEnrolled}
+                          onChange={() => setSelectedGroupIdToEnroll(grp.id)}
+                          className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold text-slate-900 truncate">{grp.name}</p>
+                            {isAlreadyEnrolled ? (
+                              <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                Уже зачислен
+                              </span>
+                            ) : (
+                              <span className="shrink-0 text-[11px] font-medium text-slate-500">
+                                {(grp.students || []).length} / {grp.capacity} мест
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            Преподаватель: <span className="text-slate-700 font-medium">{grp.teacherName}</span>
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-600">
+                            <span className="inline-flex items-center gap-1 font-medium text-blue-700">
+                              <Calendar className="h-3 w-3" />
+                              {grp.schedule}
+                            </span>
+                            <span>•</span>
+                            <span className="text-slate-500">{grp.room}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEnrollGroupModalOpen(false);
+                  setSelectedGroupIdToEnroll('');
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                disabled={!selectedGroupIdToEnroll}
+                onClick={() => handleEnrollGroup(selectedGroupIdToEnroll)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Зачислить в группу
+              </button>
+            </div>
           </div>
         </div>
       )}

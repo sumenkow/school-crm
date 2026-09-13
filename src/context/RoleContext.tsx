@@ -26,6 +26,7 @@ interface RoleContextType {
   userTelegram: string;
   setUserTelegram: (tg: string) => void;
   isOwner: boolean;
+  ownerEmail: string;
   updateProfile: (updates: Partial<UserProfileData>) => Promise<void>;
 }
 
@@ -39,6 +40,22 @@ const DEFAULT_PROFILE: UserProfileData = {
 
 const STORAGE_KEY = 'crm_user_profile_v1';
 const ROLE_KEY = 'crm_active_role';
+const OWNER_EMAIL_KEY = 'crm_owner_email';
+
+export function getOwnerEmailFromStorage(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(OWNER_EMAIL_KEY);
+    if (saved && saved.includes('@')) return saved;
+    try {
+      const profileRaw = localStorage.getItem(STORAGE_KEY);
+      if (profileRaw) {
+        const p = JSON.parse(profileRaw);
+        if (p.userEmail && p.userEmail.includes('@')) return p.userEmail;
+      }
+    } catch {}
+  }
+  return DEFAULT_PROFILE.userEmail;
+}
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
@@ -51,6 +68,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [userPhone, setUserPhoneState] = useState(DEFAULT_PROFILE.userPhone);
   const [userTelegram, setUserTelegramState] = useState(DEFAULT_PROFILE.userTelegram);
   const [isOwner, setIsOwner] = useState(true);
+  const [ownerEmail, setOwnerEmailState] = useState<string>(DEFAULT_PROFILE.userEmail);
 
   // 1. Initial hydration from localStorage (guarantee persistent active role across the entire app)
   useEffect(() => {
@@ -71,10 +89,19 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       setRoleState(initialRole);
       setIsOwner(initialRole === 'owner');
 
+      const resolvedOwner = getOwnerEmailFromStorage();
+      setOwnerEmailState(resolvedOwner);
+
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<UserProfileData>;
         if (parsed.userName) setUserNameState(parsed.userName);
-        if (parsed.userEmail) setUserEmailState(parsed.userEmail);
+        if (parsed.userEmail) {
+          setUserEmailState(parsed.userEmail);
+          if (initialRole === 'owner') {
+            setOwnerEmailState(parsed.userEmail);
+            localStorage.setItem(OWNER_EMAIL_KEY, parsed.userEmail);
+          }
+        }
         if (parsed.userPhone) setUserPhoneState(parsed.userPhone);
         if (parsed.userTelegram) setUserTelegramState(parsed.userTelegram);
       }
@@ -231,7 +258,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       setRole(updates.role);
     }
     if (updates.userName !== undefined) setUserNameState(updates.userName);
-    if (updates.userEmail !== undefined) setUserEmailState(updates.userEmail);
+    if (updates.userEmail !== undefined) {
+      setUserEmailState(updates.userEmail);
+      if (isOwnerAccount || accountRole === 'owner' || updates.role === 'owner' || role === 'owner') {
+        setOwnerEmailState(updates.userEmail);
+        try {
+          localStorage.setItem(OWNER_EMAIL_KEY, updates.userEmail);
+        } catch {}
+      }
+    }
     if (updates.userPhone !== undefined) setUserPhoneState(updates.userPhone);
     if (updates.userTelegram !== undefined) setUserTelegramState(updates.userTelegram);
 
@@ -278,6 +313,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         userTelegram,
         setUserTelegram,
         isOwner,
+        ownerEmail,
         updateProfile,
       }}
     >

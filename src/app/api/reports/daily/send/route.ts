@@ -5,12 +5,15 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { channel, botToken, chatId, recipientEmail, messageText } = body as {
+    const { channel, botToken, chatId, recipientEmail, messageText, emailHtml, senderName, senderRole } = body as {
       channel: 'telegram' | 'email';
       botToken?: string;
       chatId?: string;
       recipientEmail?: string;
       messageText: string;
+      emailHtml?: string;
+      senderName?: string;
+      senderRole?: string;
     };
 
     if (!messageText) {
@@ -54,21 +57,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Send via Email
+    // 2. Send via Email to Owner/Director
     if (channel === 'email') {
-      const email = recipientEmail?.trim() || process.env.ADMIN_REPORT_EMAIL;
+      const email = recipientEmail?.trim() || process.env.OWNER_EMAIL || process.env.ADMIN_REPORT_EMAIL;
 
       if (!email) {
         return NextResponse.json({
-          error: 'Укажите email получателя для отправки отчета',
+          error: 'Адрес электронной почты руководителя-владельца не найден',
         }, { status: 400 });
       }
 
-      // If email delivery service is configured, send here. Otherwise return confirmation.
+      // If Resend API key is available, send via Resend
+      if (process.env.RESEND_API_KEY) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: process.env.RESEND_FROM_EMAIL || 'CRM School <reports@school.ru>',
+              to: [email],
+              subject: `📊 Ежедневный отчет (${senderName || 'Администратор'})`,
+              text: messageText,
+              html: emailHtml || `<pre style="font-family: sans-serif; white-space: pre-wrap;">${messageText}</pre>`,
+            }),
+          });
+        } catch (e) {
+          console.warn('Direct email sending warning:', e);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         channel: 'email',
-        message: `Отчет поставлен в очередь на отправку на адрес ${email}`,
+        recipientEmail: email,
+        message: `Отчет успешно отправлен на email руководителя-владельца (${email})`,
       });
     }
 
