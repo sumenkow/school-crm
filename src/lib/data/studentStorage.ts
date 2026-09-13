@@ -425,6 +425,7 @@ export function settleDebtsFromDeposit(studentId: string): {
       ...student.finance,
       deposit: {
         ...currentDeposit,
+        currency: (currentDeposit?.currency || 'RUB') as 'RUB' | 'EUR',
         balance: availableDeposit,
         balanceFormatted: `${availableDeposit.toLocaleString('ru-RU')} ${currencySymbol}`,
       },

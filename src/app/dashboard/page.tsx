@@ -166,7 +166,23 @@ function SmartActionHub() {
         description: 'У всех учащихся на текущий момент отсутствуют просроченные платежи.',
       };
 
-  const tasks = [
+  interface UrgentActionTask {
+    id: string;
+    type: string;
+    badge: string;
+    badgeColor: string;
+    title: string;
+    deadline: string;
+    subtitle: string;
+    highlight: string;
+    phone?: string;
+    waUrl?: string;
+    profileUrl: string;
+    actionLabel: string;
+    description: string;
+  }
+
+  const tasks: UrgentActionTask[] = [
     debtTask,
     {
       id: 'task_lead_1',

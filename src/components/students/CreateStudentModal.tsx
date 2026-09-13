@@ -228,7 +228,17 @@ export function CreateStudentModal({
         history: [],
       },
       finance: {
-        deposit: initialData?.leadFinance?.deposit,
+        deposit: initialData?.leadFinance?.deposit
+          ? {
+              balance: initialData.leadFinance.deposit.balance || 0,
+              balanceFormatted:
+                initialData.leadFinance.deposit.balanceFormatted ||
+                `${(initialData.leadFinance.deposit.balance || 0).toLocaleString('ru-RU')} ₽`,
+              currency: (initialData.leadFinance.deposit.currency as 'RUB' | 'EUR') || 'RUB',
+              pricePerLesson: initialData.leadFinance.deposit.pricePerLesson,
+              pricePerLessonFormatted: initialData.leadFinance.deposit.pricePerLessonFormatted,
+            }
+          : undefined,
         activeSubscription: {
           period: '01.09.2026 – 30.09.2026',
           price: '7 600 ₽',

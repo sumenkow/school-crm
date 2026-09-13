@@ -766,7 +766,7 @@ export default function ParentDetailsPage() {
             {/* Total Paid Card */}
             <div className="rounded-xl p-3.5 border border-slate-200 bg-slate-50/60 flex flex-col justify-between">
               <span className="text-[11px] font-medium text-slate-500">Всего оплачено за всё время:</span>
-              <p className="text-xl font-bold text-slate-900 mt-1">{parent.totalPaid || '0 ₽'}</p>
+              <p className="text-xl font-bold text-slate-900 mt-1">{totalPaidAmount.toLocaleString('ru-RU')} ₽</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Суммарный объем оплат семьи</p>
             </div>
 

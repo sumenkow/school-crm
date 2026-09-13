@@ -118,7 +118,13 @@ export function EnrollStudentFromLeadModal({
         history: []
       },
       finance: {
-        deposit: lead.finance?.deposit,
+        deposit: lead.finance?.deposit
+          ? {
+              balance: lead.finance.deposit.balance,
+              balanceFormatted: lead.finance.deposit.balanceFormatted,
+              currency: (lead.finance.deposit.currency as 'RUB' | 'EUR') || 'RUB',
+            }
+          : undefined,
         activeSubscription: {
           period: subscriptionPeriod,
           price: subscriptionPrice,
