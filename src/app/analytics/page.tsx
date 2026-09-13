@@ -364,40 +364,40 @@ export default function AnalyticsPage() {
       csvRows.push('Удержание учеников (Retention);91.4%;+2.1% к прошлому периоду');
       csvRows.push('Сквозная конверсия CRM;35.7%;10 оплат из 28 обращений');
       csvRows.push('Средний LTV ученика;45 600 ₽;+5.4%');
-      csvRows.push(`Совокупная выручка за период;${currentTeacherData.totalRevenue};100% от плана`);
-      csvRows.push(`Всего активных учеников;${currentTeacherData.totalStudents};чел.`);
+      csvRows.push(`Совокупная выручка за период;${currentTeacherData.total};100% от плана`);
+      csvRows.push(`Учеников в активных группах;${courses.reduce((acc, c) => acc + c.students, 0)};чел.`);
       csvRows.push('');
 
       // 2. Funnel
       csvRows.push('=== 2. ВОРОНКА ПРОДАЖ И СДЕЛОК CRM ===');
       csvRows.push('Этап воронки;Количество лидов;Конверсия');
       funnelSteps.forEach((s) => {
-        csvRows.push(`"${s.name}";${s.count};${s.conversion}`);
+        csvRows.push(`"${s.label}";${s.count};${s.rate}`);
       });
       csvRows.push('');
 
       // 3. Teachers
       csvRows.push('=== 3. ВЫРУЧКА И НАГРУЗКА ПРЕПОДАВАТЕЛЕЙ ===');
-      csvRows.push('Преподаватель;Направление;Выручка;Доля от выручки;Учеников;Групп;Рейтинг');
+      csvRows.push('Преподаватель;Направление;Выручка;Доля от выручки;Учеников;Часов;Занятий;Динамика');
       currentTeacherData.teachers.forEach((t) => {
-        csvRows.push(`"${t.name}";"${t.subject}";${t.revenue};${t.share}%;${t.students};${t.groups};${t.rating}`);
+        csvRows.push(`"${t.name}";"${t.subject}";${t.revenue};${t.share}%;${t.students};${t.hours};${t.lessons};${t.trend}`);
       });
       csvRows.push('');
 
       // 4. Courses
       csvRows.push('=== 4. НАПРАВЛЕНИЯ ОБУЧЕНИЯ И КУРСЫ ===');
-      csvRows.push('Курс;Учеников;Выручка;Активных групп;Динамика');
+      csvRows.push('Курс;Учеников;Выручка;Доля выручки');
       courses.forEach((c) => {
-        csvRows.push(`"${c.name}";${c.students};${c.revenue};${c.activeGroups};${c.growth}`);
+        csvRows.push(`"${c.name}";${c.students};${c.revenue};${c.share}%`);
       });
       csvRows.push('');
 
       // 5. Leads
       csvRows.push('=== 5. РЕЕСТР ОБРАЩЕНИЙ И ЛИДОВ ===');
-      csvRows.push('Имя контакта;Имя ученика;Направление;Контакты;Сумма сделки;Текущий статус;Дата создания');
+      csvRows.push('Имя контакта;Имя ученика;Направление;Контакты;Тариф / Сумма;Текущий статус;Дата создания');
       leads.forEach((l) => {
         csvRows.push(
-          `"${l.name}";"${l.studentName || '—'}";"${l.directionOrCourse || '—'}";"${l.contact}";${l.dealAmount || 0};"${l.status}";"${l.createdAt}"`
+          `"${l.name}";"${l.studentName || '—'}";"${l.directionOrCourse || '—'}";"${l.contact}";"${l.offerAmount || '—'}";"${l.status}";"${l.createdAt}"`
         );
       });
 

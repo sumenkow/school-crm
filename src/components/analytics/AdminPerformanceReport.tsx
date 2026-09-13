@@ -253,7 +253,7 @@ export function AdminPerformanceReport() {
       csvRows.push('');
 
       csvRows.push('=== ИНТЕГРАЛЬНЫЙ KPI ===');
-      csvRows.push(`Общий балл KPI:;${current.kpiScore}%`);
+      csvRows.push(`Общий балл KPI:;${current.integralKpiScore}%`);
       csvRows.push(`Выполнение стандартов:;${current.operationalSummary.standardsMet ? 'Да (в норме)' : 'Требует внимания'}`);
       csvRows.push(`График работы:;${current.operationalSummary.workSchedule}`);
       csvRows.push(`Рекомендация:;${current.operationalSummary.recommendation}`);
@@ -261,10 +261,10 @@ export function AdminPerformanceReport() {
 
       csvRows.push('=== ВЫПОЛНЕНИЕ ЗАДАЧ И СКОРОСТЬ РЕАКЦИИ ===');
       csvRows.push('Показатель;Значение;Норматив');
-      csvRows.push(`Всего задач;${current.tasks.totalTasks};—`);
+      csvRows.push(`Всего задач;${current.tasks.total};—`);
       csvRows.push(`Выполнено в срок;${current.tasks.completedOnTime};${current.tasks.onTimeRate}%`);
-      csvRows.push(`Просрочено задач;${current.tasks.overdueCount};0`);
-      csvRows.push(`Среднее время закрытия задачи;${current.tasks.avgResolutionHours} ч.;—`);
+      csvRows.push(`Просрочено задач;${current.tasks.overdueMissed};0`);
+      csvRows.push(`В процессе;${current.tasks.inProgress};—`);
       csvRows.push(`Средняя скорость первого ответа;${current.tasks.avgReactionMinutes} мин.;до ${current.tasks.targetReactionMinutes} мин.`);
       csvRows.push('');
 
