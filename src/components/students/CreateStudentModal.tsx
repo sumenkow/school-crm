@@ -191,6 +191,8 @@ export function CreateStudentModal({
       telegram: telegram.trim() || (isAdult ? undefined : parentTelegram) || undefined,
       status: (status as any) || 'active',
       notes: notes.trim() || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       parents: isAdult && !parentFirstName.trim()
         ? []
         : [
