@@ -13,7 +13,7 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "School App — Система управления школой",
+  title: "YouEurope School CRM — Система управления школой",
   description: "Единая платформа управления образовательной школой, CRM, посещаемость и финансы",
 };
 

@@ -6,6 +6,7 @@ import { useRole } from '@/context/RoleContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { CommandPalette } from '@/components/common/CommandPalette';
+import { UserProfileModal } from '@/components/profile/UserProfileModal';
 
 interface TopBarProps {
   onOpenMobile: () => void;
@@ -21,6 +22,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const { role, userName, userEmail } = useRole();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -183,11 +185,19 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             }}
           >
             {/* User info */}
-            <div style={{
-              padding: '12px',
-              borderBottom: '1px solid var(--md-outline-variant)',
-              marginBottom: '4px',
-            }}>
+            <div
+              onClick={() => {
+                setUserMenuOpen(false);
+                setProfileModalOpen(true);
+              }}
+              className="cursor-pointer hover:bg-black/5 rounded-lg transition-colors"
+              title="Нажмите, чтобы открыть карточку профиля"
+              style={{
+                padding: '12px',
+                borderBottom: '1px solid var(--md-outline-variant)',
+                marginBottom: '4px',
+              }}
+            >
               <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{displayName}</p>
               <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{userEmail}</p>
               <span
@@ -212,10 +222,14 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                 borderRadius: '8px', color: 'var(--md-on-surface)',
                 fontSize: '14px', textAlign: 'left',
               }}
-              onClick={() => setUserMenuOpen(false)}
+              className="hover:bg-black/5 transition-colors"
+              onClick={() => {
+                setUserMenuOpen(false);
+                setProfileModalOpen(true);
+              }}
             >
               <User size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
-              Профиль
+              Карточка профиля
             </button>
 
             {/* Logout */}
@@ -238,6 +252,12 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
       {/* Global Command Palette */}
       <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} />
+
+      {/* User Account Profile Modal */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </header>
   );
 }

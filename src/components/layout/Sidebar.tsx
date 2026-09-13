@@ -193,8 +193,12 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             <School size={20} />
           </div>
           <div>
-            <p className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>School App</p>
-            <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Управление школой</p>
+            <p className="md-title-small font-bold" style={{ color: 'var(--md-on-surface)', fontSize: '15px', lineHeight: '18px' }}>
+              YouEurope School CRM
+            </p>
+            <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+              Управление школой
+            </p>
           </div>
           {/* Mobile close button */}
           <button
