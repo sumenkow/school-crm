@@ -183,7 +183,6 @@ export function CreateStudentModal({
 
     const newFullStudent: FullStudentData = {
       id: newStudentId,
-      name: fullName,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       studentType,
