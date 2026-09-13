@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -27,6 +28,27 @@ export default function CalendarPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-03');
   const [lessons, setLessons] = useState<FullLessonData[]>(INITIAL_LESSONS);
+  const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
+
+  const handleUpdateAttendance = (
+    lessonId: string,
+    studentId: string,
+    status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked'
+  ) => {
+    setLessons((prev) =>
+      prev.map((les) => {
+        if (les.id !== lessonId) return les;
+        const updatedStudents = les.students.map((st) =>
+          st.id === studentId ? { ...st, attendanceStatus: status } : st
+        );
+        const updatedLesson = { ...les, students: updatedStudents };
+        if (selectedLessonForQuickView?.id === lessonId) {
+          setSelectedLessonForQuickView(updatedLesson);
+        }
+        return updatedLesson;
+      })
+    );
+  };
 
   const daysOfWeek = [
     { name: 'Пн', date: '01 сен', fullDate: '2026-09-01', dayIndex: 0 },
@@ -189,7 +211,7 @@ export default function CalendarPage() {
                         {dayLessons.map((lesson) => (
                           <div
                             key={lesson.id}
-                            onClick={() => router.push(`/calendar/lessons/${lesson.id}`)}
+                            onClick={() => setSelectedLessonForQuickView(lesson)}
                             className={cn(
                               'rounded-xl border p-2.5 text-xs transition-all hover:shadow-md cursor-pointer text-left',
                               lesson.status === 'completed'
@@ -296,7 +318,7 @@ export default function CalendarPage() {
                 .map((lesson) => (
                   <div
                     key={lesson.id}
-                    onClick={() => router.push(`/calendar/lessons/${lesson.id}`)}
+                    onClick={() => setSelectedLessonForQuickView(lesson)}
                     className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 hover:bg-slate-100/70 transition-all cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
@@ -392,6 +414,14 @@ export default function CalendarPage() {
         onClose={() => setIsScheduleModalOpen(false)}
         onScheduled={handleLessonScheduled}
         initialDate={selectedDateForSchedule}
+      />
+
+      {/* Quick Lesson View & Attendance Modal */}
+      <LessonQuickViewModal
+        isOpen={!!selectedLessonForQuickView}
+        lesson={selectedLessonForQuickView}
+        onClose={() => setSelectedLessonForQuickView(null)}
+        onUpdateAttendance={handleUpdateAttendance}
       />
     </div>
   );

@@ -30,6 +30,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
+import { EnrollStudentFromLeadModal } from '@/components/crm/EnrollStudentFromLeadModal';
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 export default function LeadDetailsPage() {
   const params = useParams();
@@ -273,17 +275,45 @@ export default function LeadDetailsPage() {
     setNewFollowUpDate('');
   };
 
+  const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+
   const handleConvertToStudent = () => {
-    if (confirm(`Конвертировать лида "${lead.name}" в постоянного ученика и создать профиль семьи?`)) {
-      setLead((prev) => ({
-        ...prev,
-        status: 'paid',
-        convertedStudentId: '1',
-        convertedParentId: 'p1',
-      }));
-      setConversionSuccess(true);
-      setTimeout(() => setConversionSuccess(false), 3500);
+    setIsEnrollModalOpen(true);
+  };
+
+  const handleEnrolled = (result: { studentId: string; parentId: string; groupName: string }) => {
+    const enrollmentInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: result.studentId,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор',
+      content: `Успешное зачисление! Созданы профили ученика и родителя, зачислен в группу «${result.groupName}».`,
+      result: 'Конверсия завершена',
+    };
+
+    const updatedInteractions = [enrollmentInteraction, ...lead.interactions];
+
+    const updatedLead: FullLeadData = {
+      ...lead,
+      status: 'paid',
+      convertedStudentId: result.studentId,
+      convertedParentId: result.parentId,
+      interactions: updatedInteractions,
+    };
+
+    setLead(updatedLead);
+
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = updatedLead;
     }
+
+    setIsEnrollModalOpen(false);
+    setConversionSuccess(true);
+    toast.success(`Ученик успешно зачислен в группу «${result.groupName}»!`);
   };
 
   return (
@@ -340,7 +370,15 @@ export default function LeadDetailsPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
+              + Поставить задачу
+            </button>
             <button
               type="button"
               onClick={handleOpenEdit}
@@ -364,7 +402,7 @@ export default function LeadDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Конвертировать в ученика
+                Оформить зачисление
               </button>
             )}
           </div>
@@ -409,13 +447,14 @@ export default function LeadDetailsPage() {
                 </p>
               )}
             </div>
-            <Link
-              href="/tasks"
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(true)}
               className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-bold text-amber-900 border border-amber-300 shadow-xs hover:bg-amber-50"
             >
               <CheckSquare className="h-3 w-3" />
               Создать задачу
-            </Link>
+            </button>
           </div>
         )}
 
@@ -798,6 +837,25 @@ export default function LeadDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* ENROLL STUDENT FROM LEAD MODAL */}
+      <EnrollStudentFromLeadModal
+        isOpen={isEnrollModalOpen}
+        lead={lead}
+        onClose={() => setIsEnrollModalOpen(false)}
+        onEnrolled={handleEnrolled}
+      />
+
+      {/* CREATE TASK MODAL (PRE-LINKED TO LEAD) */}
+      <CreateTaskModal
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        defaultLeadId={lead.id}
+        onCreated={(newTask) => {
+          setIsCreateTaskModalOpen(false);
+          toast.success(`Задача «${newTask.title}» добавлена в очередь!`);
+        }}
+      />
     </div>
   );
 }

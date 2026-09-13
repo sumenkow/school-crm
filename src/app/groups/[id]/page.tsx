@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_GROUPS, FullGroupData } from '@/lib/data/mockData';
+import { INITIAL_GROUPS, FullGroupData, INITIAL_STUDENTS } from '@/lib/data/mockData';
 import {
   ArrowLeft,
   Calendar,
@@ -19,7 +19,8 @@ import {
   MoreHorizontal,
   Edit,
   Check,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -91,29 +92,61 @@ export default function GroupDetailsPage() {
   const occupancyPercent = Math.min(100, Math.round((enrolledCount / group.capacity) * 100));
 
   // Quick enroll student state
+  const [enrollMode, setEnrollMode] = useState<'db' | 'new'>('db');
+  const [selectedDbStudentId, setSelectedDbStudentId] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
   const [newStudentPhone, setNewStudentPhone] = useState('');
 
+  // Candidates from school database who are not in this group yet
+  const existingEnrolledIds = new Set(group.students.map((s) => s.id));
+  const availableStudentsFromDb = INITIAL_STUDENTS.filter((s) => !existingEnrolledIds.has(s.id));
+
   const handleQuickEnroll = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStudentName.trim() || freeSpots <= 0) return;
+    if (freeSpots <= 0) return;
 
-    const newStudent = {
-      id: `std_${Date.now()}`,
-      name: newStudentName,
-      status: 'active',
-      attendanceRate: '100%',
-      parentPhone: newStudentPhone || '+7 (999) 000-00-00',
-      joinedAt: new Date().toLocaleDateString('ru-RU'),
-    };
+    if (enrollMode === 'db') {
+      const targetId = selectedDbStudentId || availableStudentsFromDb[0]?.id;
+      const st = INITIAL_STUDENTS.find((s) => s.id === targetId);
+      if (!st) return;
 
-    setGroup((prev) => ({
-      ...prev,
-      students: [newStudent, ...prev.students],
-    }));
+      const newStudent = {
+        id: st.id,
+        name: `${st.firstName} ${st.lastName}`,
+        status: 'active',
+        attendanceRate: st.attendanceStats?.attendanceRate || '100%',
+        parentPhone: st.phone || st.parents?.[0]?.phone || '+7 (999) 000-00-00',
+        joinedAt: new Date().toLocaleDateString('ru-RU'),
+      };
 
-    setNewStudentName('');
-    setNewStudentPhone('');
+      setGroup((prev) => ({
+        ...prev,
+        students: [newStudent, ...prev.students],
+      }));
+
+      success(`Ученик «${newStudent.name}» зачислен в группу!`);
+      setSelectedDbStudentId('');
+    } else {
+      if (!newStudentName.trim()) return;
+
+      const newStudent = {
+        id: `std_${Date.now()}`,
+        name: newStudentName.trim(),
+        status: 'active',
+        attendanceRate: '100%',
+        parentPhone: newStudentPhone.trim() || '+7 (999) 000-00-00',
+        joinedAt: new Date().toLocaleDateString('ru-RU'),
+      };
+
+      setGroup((prev) => ({
+        ...prev,
+        students: [newStudent, ...prev.students],
+      }));
+
+      setNewStudentName('');
+      setNewStudentPhone('');
+      success(`Ученик «${newStudent.name}» зачислен в группу!`);
+    }
   };
 
   const handleRemoveStudent = (id: string) => {
@@ -179,22 +212,34 @@ export default function GroupDetailsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(
+                `Уважаемые родители группы ${group.name}! Напоминаем о расписании онлайн-занятий: ${group.schedule}.`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+              title="Открыть WhatsApp рассылку для родителей группы"
+            >
+              <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+              WhatsApp группы
+            </a>
+            <Link
+              href={`/calendar?group=${encodeURIComponent(group.name)}`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Ближайший урок в календаре →
+            </Link>
             <button
               type="button"
               onClick={handleOpenEdit}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
-              <Edit className="h-3.5 w-3.5 text-blue-600" />
+              <Edit className="h-3.5 w-3.5 text-slate-500" />
               Изменить
             </button>
-            <Link
-              href="/calendar"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
-            >
-              <Calendar className="h-3.5 w-3.5 text-slate-500" />
-              Расписание в календаре
-            </Link>
           </div>
         </div>
 
@@ -264,33 +309,93 @@ export default function GroupDetailsPage() {
         <div className="space-y-6">
           {/* Quick Add Student (if spots available) */}
           {freeSpots > 0 ? (
-            <form onSubmit={handleQuickEnroll} className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 flex flex-col sm:flex-row items-center gap-3">
-              <div className="flex-1 w-full">
-                <input
-                  type="text"
-                  value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
-                  placeholder="Имя и фамилия нового ученика..."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800">Зачислить ученика:</span>
+                  <div className="flex rounded-lg bg-white p-0.5 border border-slate-200 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setEnrollMode('db')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
+                        enrollMode === 'db' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      )}
+                    >
+                      Из базы школы ({availableStudentsFromDb.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEnrollMode('new')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md transition-all font-semibold',
+                        enrollMode === 'new' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                      )}
+                    >
+                      Новый ученик
+                    </button>
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold text-blue-700">
+                  Осталось мест: <strong>{freeSpots}</strong>
+                </span>
               </div>
-              <div className="w-full sm:w-56">
-                <input
-                  type="tel"
-                  value={newStudentPhone}
-                  onChange={(e) => setNewStudentPhone(e.target.value)}
-                  placeholder="Телефон родителя..."
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4" />
-                Зачислить в группу
-              </button>
-            </form>
+
+              <form onSubmit={handleQuickEnroll} className="flex flex-col sm:flex-row items-center gap-2.5">
+                {enrollMode === 'db' ? (
+                  <div className="flex-1 w-full">
+                    {availableStudentsFromDb.length > 0 ? (
+                      <select
+                        value={selectedDbStudentId || availableStudentsFromDb[0]?.id}
+                        onChange={(e) => setSelectedDbStudentId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        {availableStudentsFromDb.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.firstName} {s.lastName} ({s.grade || 'Ученик'} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic p-2 bg-white rounded-xl border border-slate-200">
+                        Все действующие ученики школы уже состоят в этой группе.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1 w-full">
+                      <input
+                        type="text"
+                        required
+                        value={newStudentName}
+                        onChange={(e) => setNewStudentName(e.target.value)}
+                        placeholder="Имя и фамилия нового ученика..."
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="w-full sm:w-56">
+                      <input
+                        type="tel"
+                        value={newStudentPhone}
+                        onChange={(e) => setNewStudentPhone(e.target.value)}
+                        placeholder="Телефон родителя..."
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={enrollMode === 'db' && availableStudentsFromDb.length === 0}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Зачислить в группу
+                </button>
+              </form>
+            </div>
           ) : (
             <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />

@@ -18,11 +18,13 @@ import {
   AlertCircle,
   Edit,
   Check,
-  X
+  X,
+  CheckSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 export default function ParentDetailsPage() {
   const params = useParams();
@@ -60,6 +62,7 @@ export default function ParentDetailsPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
   const handleChildAdded = (newChild: AddedChildData) => {
     // 1. Add child to parent's children list
@@ -244,7 +247,15 @@ export default function ParentDetailsPage() {
             </div>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
+            >
+              <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
+              + Поставить задачу
+            </button>
             <button
               type="button"
               onClick={handleOpenEdit}
@@ -550,6 +561,17 @@ export default function ParentDetailsPage() {
         parentPhone={parent.phone}
         onChildAdded={handleChildAdded}
         existingChildrenIds={parent.children.map((c) => c.id)}
+      />
+
+      {/* CREATE TASK MODAL */}
+      <CreateTaskModal
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        defaultStudentId={parent.children[0]?.id}
+        onCreated={(newTask) => {
+          setIsCreateTaskModalOpen(false);
+          success(`Задача «${newTask.title}» добавлена в очередь!`);
+        }}
       />
     </div>
   );

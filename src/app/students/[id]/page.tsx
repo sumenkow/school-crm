@@ -522,9 +522,19 @@ export default function StudentDetailsPage() {
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
-                        Открыть карточку <ChevronRight className="h-3 w-3" />
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/parents/${parent.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                          title="Открыть полный семейный профиль родителя"
+                        >
+                          Семейный профиль →
+                        </Link>
+                        <span className="text-xs text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
+                          Детали <ChevronRight className="h-3 w-3" />
+                        </span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">

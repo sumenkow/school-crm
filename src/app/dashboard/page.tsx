@@ -748,6 +748,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       clientName: 'Ольга (мама Даниила)',
       phone: '+7 916 555-44-33',
       category: 'lead',
+      leadId: 'lead_1',
     },
     {
       id: 'ut-2',
@@ -760,6 +761,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       clientName: 'Даниил Морозов',
       phone: '+7 903 111-22-33',
       category: 'trial',
+      leadId: 'lead_2',
     },
     {
       id: 'ut-3',
@@ -772,6 +774,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       clientName: 'Екатерина Соколова',
       phone: '+7 926 777-88-99',
       category: 'finance',
+      studentId: '1',
     },
     {
       id: 'ut-4',

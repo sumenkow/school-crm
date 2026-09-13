@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   X,
   Check,
@@ -17,7 +18,8 @@ import {
   CheckCircle2,
   ListPlus,
   Send,
-  Edit3
+  Edit3,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -33,6 +35,9 @@ export interface UrgentTaskItem {
   clientName?: string;
   phone?: string;
   category?: 'lead' | 'trial' | 'finance' | 'admin';
+  leadId?: string;
+  studentId?: string;
+  parentId?: string;
 }
 
 interface TaskDetailsCardModalProps {
@@ -331,6 +336,47 @@ export function TaskDetailsCardModal({
               />
             </div>
           </div>
+
+          {/* Linked Entity direct navigation */}
+          {(task?.leadId || task?.studentId || task?.parentId) && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-purple-50 border border-purple-200 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-purple-900">
+                  {task.leadId ? 'Связанный лид:' : task.studentId ? 'Связанный ученик:' : 'Семья:'}
+                </span>
+                <span className="text-purple-700 font-medium">{clientName || 'Профиль в CRM'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {task.leadId && (
+                  <Link
+                    href={`/crm/leads/${task.leadId}`}
+                    className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-3 py-1 text-xs font-bold text-white hover:bg-purple-700 transition-colors"
+                  >
+                    Карточка лида
+                    <ExternalLink size={12} />
+                  </Link>
+                )}
+                {task.studentId && (
+                  <Link
+                    href={`/students/${task.studentId}`}
+                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 text-xs font-bold text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Карточка ученика
+                    <ExternalLink size={12} />
+                  </Link>
+                )}
+                {task.parentId && (
+                  <Link
+                    href={`/parents/${task.parentId}`}
+                    className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    Семейный профиль
+                    <ExternalLink size={12} />
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Contact quick actions if phone exists */}
           {phone && (
