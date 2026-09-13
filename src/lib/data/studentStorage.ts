@@ -1,6 +1,7 @@
 'use client';
 
-import { FullStudentData, INITIAL_STUDENTS } from './mockData';
+import { FullStudentData, INITIAL_STUDENTS, TimelineInteraction } from './mockData';
+import { saveInteractionToStorage } from './timelineStorage';
 
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
@@ -82,3 +83,90 @@ export function getStudentById(id: string): FullStudentData | undefined {
   const list = getStoredStudents();
   return list.find((s) => s.id === id);
 }
+
+/**
+ * Deducts one lesson fee from the student's prepayment deposit balance.
+ * Logs an expense interaction and updates payment history.
+ */
+export function deductLessonFromDeposit(
+  studentId: string,
+  amountToDeduct?: number,
+  lessonTopic?: string
+): { success: boolean; newBalance: number; message: string; updatedStudent?: FullStudentData } {
+  const students = getStoredStudents();
+  const student = students.find((s) => s.id === studentId);
+  if (!student) {
+    return { success: false, newBalance: 0, message: 'Ученик не найден' };
+  }
+
+  const currentDeposit = student.finance?.deposit || {
+    balance: 0,
+    balanceFormatted: '0 ₽',
+    currency: 'RUB',
+    pricePerLesson: 1050,
+    pricePerLessonFormatted: '1 050 ₽',
+  };
+
+  const deduct = amountToDeduct || currentDeposit.pricePerLesson || 1050;
+  const currencySymbol = currentDeposit.currency === 'EUR' ? '€' : '₽';
+  const newBalance = (currentDeposit.balance || 0) - deduct;
+  const formattedBalance = `${newBalance.toLocaleString('ru-RU')} ${currencySymbol}`;
+  const formattedDeduct = `${deduct.toLocaleString('ru-RU')} ${currencySymbol}`;
+
+  const todayStr = new Date().toLocaleDateString('ru-RU');
+  const expenseInteraction: TimelineInteraction = {
+    id: `int_deduct_${Date.now()}`,
+    studentId: student.id,
+    studentName: `${student.firstName} ${student.lastName}`,
+    parentId: student.parents?.[0]?.id,
+    parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+    occurredAt: 'Только что',
+    channel: 'other',
+    type: 'status_change',
+    author: 'Система (списание по стоимости курса)',
+    content: `Списана оплата за онлайн-занятие ${lessonTopic ? `«${lessonTopic}»` : ''} (-${formattedDeduct}). Остаток на депозите: ${formattedBalance}.`,
+    result: newBalance >= 0 ? 'Списание с депозита' : 'Депозит исчерпан (долг)',
+    targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+    targetName: `${student.firstName} ${student.lastName}`,
+    targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+  };
+
+  const expensePaymentRecord = {
+    id: `pay_deduct_${Date.now()}`,
+    date: todayStr,
+    period: lessonTopic ? `Занятие: ${lessonTopic}` : 'Онлайн-занятие (списание)',
+    amount: `-${formattedDeduct}`,
+    method: 'Списание с депозита',
+    status: (newBalance >= 0 ? 'paid' : 'overdue') as 'paid' | 'overdue',
+  };
+
+  const updatedStudent: FullStudentData = {
+    ...student,
+    finance: {
+      ...student.finance,
+      deposit: {
+        ...currentDeposit,
+        balance: newBalance,
+        balanceFormatted: formattedBalance,
+      },
+      payments: [expensePaymentRecord, ...(student.finance?.payments || [])],
+    },
+    interactions: [expenseInteraction, ...(student.interactions || [])],
+  };
+
+  saveStudentToStorage(updatedStudent);
+  saveInteractionToStorage(expenseInteraction);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    window.dispatchEvent(new CustomEvent('crm-payments-changed'));
+  }
+
+  return {
+    success: true,
+    newBalance,
+    message: `Списано ${formattedDeduct}. Остаток на депозите: ${formattedBalance}`,
+    updatedStudent,
+  };
+}
+

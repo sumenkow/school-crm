@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from '@/lib/data/mockData';
@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 
 export default function ParentDetailsPage() {
   const params = useParams();
@@ -41,19 +42,39 @@ export default function ParentDetailsPage() {
     const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
     const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
 
-    const linkedChildren = allStudents
-      .filter((s) => s.parents?.some((p) => p.id === parentId))
-      .map((s) => ({
-        id: s.id,
-        name: `${s.firstName} ${s.lastName}`,
-        age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-        group: s.groups[0]?.name || 'Онлайн-группа',
-        course: s.groups[0]?.courseName || 'Общий курс',
-        teacher: s.groups[0]?.teacherName || 'Мария Иванова',
-        groups: s.groups || [],
-        status: s.status,
-        attendance: s.attendanceStats?.attendanceRate || '100%',
-      }));
+    const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
+    const uniqueStudents: typeof matchedStudents = [];
+    const seenNames = new Set<string>();
+
+    for (const st of matchedStudents) {
+      const norm = `${st.firstName} ${st.lastName}`.toLowerCase().trim();
+      if (!seenNames.has(norm)) {
+        seenNames.add(norm);
+        uniqueStudents.push({ ...st, groups: [...(st.groups || [])] });
+      } else {
+        const existing = uniqueStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().trim() === norm);
+        if (existing && st.groups) {
+          const existingGroupIds = new Set((existing.groups || []).map((g) => g.id || g.name));
+          for (const grp of st.groups) {
+            if (!existingGroupIds.has(grp.id || grp.name)) {
+              existing.groups.push(grp);
+            }
+          }
+        }
+      }
+    }
+
+    const linkedChildren = uniqueStudents.map((s) => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName}`,
+      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
+      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
+      teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+      groups: s.groups || [],
+      status: s.status,
+      attendance: s.attendanceStats?.attendanceRate || '100%',
+    }));
 
     return {
       id: parentId,
@@ -92,19 +113,39 @@ export default function ParentDetailsPage() {
       const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
       const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
 
-      const linkedChildren = allStudents
-        .filter((s) => s.parents?.some((p) => p.id === parentId))
-        .map((s) => ({
-          id: s.id,
-          name: `${s.firstName} ${s.lastName}`,
-          age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-          group: s.groups[0]?.name || 'Онлайн-группа',
-          course: s.groups[0]?.courseName || 'Общий курс',
-          teacher: s.groups[0]?.teacherName || 'Мария Иванова',
-          groups: s.groups || [],
-          status: s.status,
-          attendance: s.attendanceStats?.attendanceRate || '100%',
-        }));
+      const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
+      const uniqueStudents: typeof matchedStudents = [];
+      const seenNames = new Set<string>();
+
+      for (const st of matchedStudents) {
+        const norm = `${st.firstName} ${st.lastName}`.toLowerCase().trim();
+        if (!seenNames.has(norm)) {
+          seenNames.add(norm);
+          uniqueStudents.push({ ...st, groups: [...(st.groups || [])] });
+        } else {
+          const existing = uniqueStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().trim() === norm);
+          if (existing && st.groups) {
+            const existingGroupIds = new Set((existing.groups || []).map((g) => g.id || g.name));
+            for (const grp of st.groups) {
+              if (!existingGroupIds.has(grp.id || grp.name)) {
+                existing.groups.push(grp);
+              }
+            }
+          }
+        }
+      }
+
+      const linkedChildren = uniqueStudents.map((s) => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+        group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
+        course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
+        teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+        groups: s.groups || [],
+        status: s.status,
+        attendance: s.attendanceStats?.attendanceRate || '100%',
+      }));
 
       if (matchedParent || linkedChildren.length > 0) {
         setParent((prev) => ({
@@ -121,9 +162,11 @@ export default function ParentDetailsPage() {
 
     refreshParent();
     window.addEventListener('crm-students-changed', refreshParent);
+    window.addEventListener('crm-payments-changed', refreshParent);
     window.addEventListener('focus', refreshParent);
     return () => {
       window.removeEventListener('crm-students-changed', refreshParent);
+      window.removeEventListener('crm-payments-changed', refreshParent);
       window.removeEventListener('focus', refreshParent);
     };
   }, [parentId]);
@@ -131,6 +174,83 @@ export default function ParentDetailsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentChildFilter, setPaymentChildFilter] = useState<'all' | string>('all');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Collect all payments for all children belonging to this parent
+  const familyPayments = useMemo(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    const childIds = new Set(parent.children.map((c) => c.id));
+    const list: Array<{
+      id: string;
+      studentId: string;
+      studentName: string;
+      courseName: string;
+      groupName: string;
+      date: string;
+      amount: string;
+      period: string;
+      method: string;
+      status: 'paid' | 'expected' | 'overdue';
+    }> = [];
+
+    for (const st of allStudents) {
+      const isFamilyChild = childIds.has(st.id) || st.parents?.some((p) => p.id === parentId);
+      if (isFamilyChild && st.finance?.payments) {
+        const studentName = `${st.firstName} ${st.lastName}`;
+        const courseName = st.groups?.[0]?.courseName || 'Основной курс';
+        const groupName = (st.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа';
+        for (const pay of st.finance.payments) {
+          list.push({
+            id: pay.id,
+            studentId: st.id,
+            studentName,
+            courseName,
+            groupName,
+            date: pay.date,
+            amount: pay.amount,
+            period: pay.period,
+            method: pay.method,
+            status: pay.status,
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [parent.children, parentId, refreshTrigger]);
+
+  const filteredPayments = useMemo(() => {
+    if (paymentChildFilter === 'all') return familyPayments;
+    return familyPayments.filter((p) => p.studentId === paymentChildFilter);
+  }, [familyPayments, paymentChildFilter]);
+
+  const totalPaidAmount = useMemo(() => {
+    return filteredPayments
+      .filter((p) => p.status === 'paid' && !p.amount.startsWith('-'))
+      .reduce((sum, p) => {
+        const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        return sum + num;
+      }, 0);
+  }, [filteredPayments]);
+
+  const totalDebtAmount = useMemo(() => {
+    return filteredPayments
+      .filter((p) => p.status === 'overdue')
+      .reduce((sum, p) => {
+        const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        return sum + num;
+      }, 0);
+  }, [filteredPayments]);
+
+  const totalFamilyDeposit = useMemo(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    const childIds = new Set(parent.children.map((c) => c.id));
+    return allStudents
+      .filter((s) => childIds.has(s.id) || s.parents?.some((p) => p.id === parentId))
+      .reduce((sum, s) => sum + (s.finance?.deposit?.balance || 0), 0);
+  }, [parent.children, parentId, refreshTrigger]);
 
   // Edit modal child management states
   const [editChildren, setEditChildren] = useState(parent.children);
@@ -397,11 +517,26 @@ export default function ParentDetailsPage() {
               isPrimary: true,
             },
           ];
+        } else {
+          student.parents = student.parents.map((p) =>
+            p.id === parent.id
+              ? {
+                  ...p,
+                  firstName: editForm.firstName.trim() || parent.firstName,
+                  lastName: editForm.lastName.trim() || parent.lastName,
+                  phone: editForm.phone.trim() || parent.phone,
+                  telegram: editForm.telegram.trim() || parent.telegram,
+                  whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
+                  email: editForm.email.trim() || parent.email,
+                }
+              : p
+          );
         }
         saveStudentToStorage(student);
       }
     });
 
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
     success('Данные родителя и состав семьи успешно сохранены!');
     setIsEditModalOpen(false);
   };
@@ -511,7 +646,15 @@ export default function ParentDetailsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-xs hover:bg-emerald-100 transition-colors"
+            >
+              <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+              + Добавить платёж
+            </button>
             <button
               type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
@@ -683,6 +826,180 @@ export default function ParentDetailsPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Family Finances & Payments Section */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-emerald-600" />
+              Финансы и история оплат семьи ({filteredPayments.length})
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Сквозной учёт платежей по каждому ребёнку семьи с детализацией по курсам, абонементам и предоплатам
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsPaymentModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-all active:scale-98 shrink-0 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить платёж
+          </button>
+        </div>
+
+        {/* Financial KPI stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+            <span className="text-[11px] font-semibold text-emerald-800">Всего оплачено</span>
+            <p className="text-lg font-bold text-emerald-700 mt-0.5">
+              {totalPaidAmount.toLocaleString('ru-RU')} ₽
+            </p>
+          </div>
+          <div
+            className={cn(
+              'rounded-xl border p-3',
+              totalDebtAmount > 0 ? 'border-rose-200 bg-rose-50/60' : 'border-slate-100 bg-slate-50/60'
+            )}
+          >
+            <span
+              className={cn(
+                'text-[11px] font-semibold',
+                totalDebtAmount > 0 ? 'text-rose-700' : 'text-slate-500'
+              )}
+            >
+              Задолженность
+            </span>
+            <p
+              className={cn(
+                'text-lg font-bold mt-0.5',
+                totalDebtAmount > 0 ? 'text-rose-700' : 'text-slate-700'
+              )}
+            >
+              {totalDebtAmount > 0 ? `${totalDebtAmount.toLocaleString('ru-RU')} ₽` : 'Нет задолженности'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3">
+            <span className="text-[11px] font-semibold text-teal-800">Депозит семьи (предоплата)</span>
+            <p className="text-lg font-bold text-teal-700 mt-0.5">
+              {totalFamilyDeposit > 0 ? `${totalFamilyDeposit.toLocaleString('ru-RU')} ₽` : '0 ₽'}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+            <span className="text-[11px] font-semibold text-slate-500">Количество платежей</span>
+            <p className="text-lg font-bold text-slate-900 mt-0.5">
+              {filteredPayments.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Multi-child filter tabs */}
+        {parent.children.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+            <span className="text-xs font-semibold text-slate-500 mr-1">Фильтр по детям:</span>
+            <button
+              type="button"
+              onClick={() => setPaymentChildFilter('all')}
+              className={cn(
+                'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                paymentChildFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              Все дети ({familyPayments.length})
+            </button>
+            {parent.children.map((ch) => {
+              const count = familyPayments.filter((p) => p.studentId === ch.id).length;
+              return (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => setPaymentChildFilter(ch.id)}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+                    paymentChildFilter === ch.id
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  )}
+                >
+                  {ch.name} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Payments Table */}
+        <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
+              <tr>
+                <th className="py-3 pl-4 pr-3">Ребёнок</th>
+                <th className="px-3 py-3">Дата</th>
+                <th className="px-3 py-3">Период</th>
+                <th className="px-3 py-3">Курс / Группа</th>
+                <th className="px-3 py-3">Сумма</th>
+                <th className="px-3 py-3">Способ</th>
+                <th className="py-3 pl-3 pr-4 text-right">Статус</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {filteredPayments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    История оплат по выбранным критериям пуста.{' '}
+                    <button
+                      type="button"
+                      onClick={() => setIsPaymentModalOpen(true)}
+                      className="text-emerald-600 font-semibold hover:underline cursor-pointer"
+                    >
+                      Внести платёж
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredPayments.map((pay) => (
+                  <tr key={pay.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 pl-4 pr-3">
+                      <Link
+                        href={`/students/${pay.studentId}`}
+                        className="font-bold text-slate-900 hover:text-blue-600 hover:underline flex items-center gap-1.5"
+                      >
+                        <span className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          {pay.studentName[0]}
+                        </span>
+                        <span>{pay.studentName}</span>
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 font-medium text-slate-900">{pay.date}</td>
+                    <td className="px-3 py-3 text-slate-600">{pay.period}</td>
+                    <td className="px-3 py-3 text-slate-600">
+                      <div className="font-medium text-slate-800">{pay.courseName}</div>
+                      <div className="text-[11px] text-slate-400">{pay.groupName}</div>
+                    </td>
+                    <td className="px-3 py-3 font-bold text-slate-900">{pay.amount}</td>
+                    <td className="px-3 py-3 text-slate-500">{pay.method}</td>
+                    <td className="py-3 pl-3 pr-4 text-right">
+                      <span
+                        className={cn(
+                          'rounded-full px-2.5 py-0.5 font-bold text-[10px]',
+                          pay.status === 'paid' && 'bg-emerald-100 text-emerald-800',
+                          pay.status === 'overdue' && 'bg-rose-100 text-rose-800',
+                          pay.status === 'expected' && 'bg-amber-100 text-amber-800'
+                        )}
+                      >
+                        {pay.status === 'paid' ? 'Оплачено' : pay.status === 'overdue' ? 'Долг' : 'Ожидается'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Unified Family Timeline */}
@@ -1057,6 +1374,19 @@ export default function ParentDetailsPage() {
         onCreated={(newTask) => {
           setIsCreateTaskModalOpen(false);
           success(`Задача «${newTask.title}» добавлена в очередь!`);
+        }}
+      />
+
+      {/* RECORD PAYMENT MODAL */}
+      <RecordPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        initialParentId={parentId}
+        initialStudentId={paymentChildFilter !== 'all' ? paymentChildFilter : parent.children[0]?.id}
+        allowedStudents={parent.children.map((c) => ({ id: c.id, name: c.name }))}
+        onRecorded={() => {
+          setRefreshTrigger((prev) => prev + 1);
+          success('Платёж успешно зафиксирован в карточке семьи!');
         }}
       />
     </div>

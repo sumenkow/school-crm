@@ -179,7 +179,7 @@ export default function CrmPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            + Новый лид
+            Новый лид
           </button>
         </div>
       </div>

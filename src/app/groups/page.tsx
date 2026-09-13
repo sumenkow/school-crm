@@ -1,21 +1,40 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight, Filter, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, FullGroupData } from '@/lib/data/mockData';
+import { getStoredGroups, saveGroupToStorage } from '@/lib/data/groupStorage';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 
 export default function GroupsPage() {
   const router = useRouter();
-  const [groups, setGroups] = useState<FullGroupData[]>(INITIAL_GROUPS);
+  const [groups, setGroups] = useState<FullGroupData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+  });
   const [filterCourse, setFilterCourse] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  useEffect(() => {
+    const sync = () => {
+      setGroups(getStoredGroups());
+    };
+    sync();
+    window.addEventListener('crm-groups-changed', sync);
+    window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-groups-changed', sync);
+      window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
   const handleGroupCreated = (newGroup: FullGroupData) => {
-    setGroups((prev) => [newGroup, ...prev]);
+    saveGroupToStorage(newGroup);
+    setGroups(getStoredGroups());
   };
 
   const filteredGroups = groups.filter((g) => {
@@ -36,7 +55,7 @@ export default function GroupsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          + Создать группу
+          Создать группу
         </button>
       </div>
 
@@ -101,6 +120,10 @@ export default function GroupsPage() {
                   <div className="flex items-center gap-2">
                     <Video className="h-4 w-4 text-blue-500" />
                     <span className="text-blue-700 font-medium">Формат: Онлайн (Zoom / веб-класс)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                    <span>Тариф: <strong className="text-slate-800">{group.pricing?.pricePerLessonFormatted || '1 050 ₽'} / урок</strong></span>
+                    <span>Абонемент: <strong className="text-slate-800">{group.pricing?.pricePerMonthFormatted || '7 600 ₽/мес'}</strong></span>
                   </div>
                 </div>
 

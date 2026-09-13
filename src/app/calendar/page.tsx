@@ -87,10 +87,10 @@ export default function CalendarPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsScheduleModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            + Запланировать занятие
+            Запланировать занятие
           </button>
         </div>
       </div>

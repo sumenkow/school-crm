@@ -57,7 +57,7 @@ const INITIAL_PARENTS: ParentRecord[] = [
     preferredChannel: 'WhatsApp',
     children: [
       { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior' },
-      { id: '5', name: 'Артём Кузнецов', group: 'Kids Math Safari' }
+      { id: 's18', name: 'Артём Кузнецов', group: 'Robotics Junior, Kids Math Safari' },
     ],
     totalPaid: '54 000 ₽',
     balanceStatus: 'debt',
@@ -90,25 +90,59 @@ function getMergedParents(): ParentRecord[] {
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
   const map = new Map<string, ParentRecord>();
 
+  // 1. Initialize parents directory from INITIAL_PARENTS with empty children list (to be filled from allStudents)
   for (const init of INITIAL_PARENTS) {
-    map.set(init.id, { ...init, children: [...init.children] });
+    map.set(init.id, { ...init, children: [] });
   }
 
+  // 2. Aggregate children from unified student storage
   for (const st of allStudents) {
     if (st.parents && st.parents.length > 0) {
       for (const pr of st.parents) {
         if (!pr.id) continue;
         const fullName = `${pr.firstName} ${pr.lastName}`.trim() || 'Родитель';
+        const childFullName = `${st.firstName} ${st.lastName}`.trim();
+
+        // Join all courses / groups comma-separated for students on multiple courses
+        const groupNames = (st.groups || [])
+          .map((g: any) => g.name || g.courseName)
+          .filter(Boolean);
+        const formattedGroups = groupNames.length > 0
+          ? Array.from(new Set(groupNames)).join(', ')
+          : 'Онлайн-группа';
+
         const childInfo = {
           id: st.id,
-          name: `${st.firstName} ${st.lastName}`,
-          group: st.groups?.[0]?.name || 'Онлайн-группа',
+          name: childFullName,
+          group: formattedGroups,
         };
 
         if (map.has(pr.id)) {
           const existing = map.get(pr.id)!;
-          if (!existing.children.some((c) => c.id === st.id)) {
+          // Deduplicate by ID and by full name to prevent a child on multiple courses appearing as a separate third child
+          const existingChildIndex = existing.children.findIndex(
+            (c) => c.id === st.id || c.name.toLowerCase().trim() === childFullName.toLowerCase()
+          );
+
+          if (existingChildIndex === -1) {
             existing.children.push(childInfo);
+          } else {
+            // Merge courses comma-separated if child already recorded under another entry or id
+            const existingGroups = existing.children[existingChildIndex].group
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+            const newGroups = formattedGroups
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+            const combinedGroups = Array.from(new Set([...existingGroups, ...newGroups])).join(', ');
+
+            existing.children[existingChildIndex] = {
+              id: st.id,
+              name: childFullName,
+              group: combinedGroups,
+            };
           }
         } else {
           map.set(pr.id, {
@@ -124,6 +158,14 @@ function getMergedParents(): ParentRecord[] {
           });
         }
       }
+    }
+  }
+
+  // 3. Fallback for any initial parent that had no students in allStudents
+  for (const init of INITIAL_PARENTS) {
+    const parentRecord = map.get(init.id);
+    if (parentRecord && parentRecord.children.length === 0 && init.children && init.children.length > 0) {
+      parentRecord.children = [...init.children];
     }
   }
 
@@ -211,10 +253,10 @@ export default function ParentsPage() {
         </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
         >
           <Plus className="h-4 w-4" />
-          + Новый контакт
+          Новый контакт
         </button>
       </div>
 
@@ -368,22 +410,22 @@ export default function ParentsPage() {
                     + Добавить ребенка
                   </button>
                 </div>
-                <div className="space-y-1.5">
-                  {p.children.length === 0 ? (
-                    <p className="text-[11px] text-slate-400 italic">Нет привязанных учеников</p>
-                  ) : (
-                    p.children.map((child) => (
-                      <Link
-                        key={child.id}
-                        href={`/students/${child.id}`}
-                        className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
-                      >
-                        <span className="font-semibold text-slate-800">{child.name}</span>
-                        <span className="text-[11px] text-slate-500">{child.group} →</span>
-                      </Link>
-                    ))
-                  )}
-                </div>
+                  <div className="space-y-1.5">
+                    {p.children.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 italic">Нет привязанных учеников</p>
+                    ) : (
+                      p.children.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={`/students/${child.id}`}
+                          className="flex items-start sm:items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                        >
+                          <span className="font-semibold text-slate-800 shrink-0">{child.name}</span>
+                          <span className="text-[11px] text-slate-600 font-medium text-right leading-tight">{child.group} →</span>
+                        </Link>
+                      ))
+                    )}
+                  </div>
               </div>
             </div>
 
@@ -433,12 +475,24 @@ export default function ParentsPage() {
             setParents((prev) =>
               prev.map((p) => {
                 if (p.id === linkingChildParent.id) {
+                  const existingIdx = p.children.findIndex(
+                    (c) => c.id === newChild.id || c.name.toLowerCase().trim() === newChild.name.toLowerCase().trim()
+                  );
+                  let updatedChildren = [...p.children];
+                  if (existingIdx >= 0) {
+                    const prevGroups = updatedChildren[existingIdx].group.split(',').map((s) => s.trim()).filter(Boolean);
+                    const newGroups = newChild.group.split(',').map((s) => s.trim()).filter(Boolean);
+                    const combined = Array.from(new Set([...prevGroups, ...newGroups])).join(', ');
+                    updatedChildren[existingIdx] = {
+                      ...updatedChildren[existingIdx],
+                      group: combined,
+                    };
+                  } else {
+                    updatedChildren.push({ id: newChild.id, name: newChild.name, group: newChild.group });
+                  }
                   return {
                     ...p,
-                    children: [
-                      ...p.children,
-                      { id: newChild.id, name: newChild.name, group: newChild.group },
-                    ],
+                    children: updatedChildren,
                   };
                 }
                 return p;

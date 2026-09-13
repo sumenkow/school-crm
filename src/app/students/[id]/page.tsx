@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
-import { getStudentById, saveStudentToStorage } from '@/lib/data/studentStorage';
+import { getStudentById, saveStudentToStorage, deductLessonFromDeposit } from '@/lib/data/studentStorage';
+import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
+import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import {
   ArrowLeft,
   Calendar,
@@ -21,6 +23,8 @@ import {
   Plus,
   Edit,
   Send,
+  Wallet,
+  MinusCircle,
   CheckSquare,
   Sparkles,
   ChevronRight,
@@ -50,6 +54,20 @@ export default function StudentDetailsPage() {
     return getStudentById(studentId) || INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
   });
 
+  // Keep latest student ref for auto-save on unmount / navigation away
+  const latestStudentRef = useRef(student);
+  useEffect(() => {
+    latestStudentRef.current = student;
+  }, [student]);
+
+  useEffect(() => {
+    return () => {
+      if (latestStudentRef.current) {
+        saveStudentToStorage(latestStudentRef.current);
+      }
+    };
+  }, []);
+
   // Re-sync on studentId or when storage updates
   useEffect(() => {
     const loaded = getStudentById(studentId);
@@ -67,6 +85,10 @@ export default function StudentDetailsPage() {
     };
 
     window.addEventListener('crm-students-changed', handleSync);
+    window.addEventListener('crm-groups-changed', () => {
+      const fresh = getStudentById(studentId);
+      if (fresh) setStudent(fresh);
+    });
     return () => {
       window.removeEventListener('crm-students-changed', handleSync);
     };
@@ -80,6 +102,7 @@ export default function StudentDetailsPage() {
 
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editStudentForm, setEditStudentForm] = useState({
     firstName: student.firstName,
     lastName: student.lastName,
@@ -106,79 +129,61 @@ export default function StudentDetailsPage() {
       return;
     }
 
-    const newGroupEnrollment = {
-      id: targetGroup.id,
-      name: targetGroup.name,
-      courseName: targetGroup.courseName,
-      teacherName: targetGroup.teacherName,
-      schedule: targetGroup.schedule,
-      status: 'active',
-      joinedAt: new Date().toLocaleDateString('ru-RU'),
-    };
-
-    const updatedGroups = [...student.groups, newGroupEnrollment];
-
-    const enrollInteraction: TimelineInteraction = {
-      id: `int_${Date.now()}`,
+    const { updatedStudent } = enrollStudentToGroup({
+      groupId,
       studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
-      parentId: student.parents[0]?.id,
-      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-      occurredAt: 'Только что',
-      channel: 'other',
-      type: 'status_change',
-      author: userName || 'Администратор школы',
-      content: `Зачислен(а) в группу «${targetGroup.name}» (${targetGroup.courseName}, преподаватель ${targetGroup.teacherName}, расписание: ${targetGroup.schedule}).`,
-      result: `Зачислен. Всего групп: ${updatedGroups.length}`,
-      targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
-      targetName: student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : `${student.firstName} ${student.lastName}`),
-      targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
-    };
+      authorName: userName || 'Администратор школы',
+    });
 
-    const updatedStudent: FullStudentData = {
-      ...student,
-      groups: updatedGroups,
-      interactions: [enrollInteraction, ...student.interactions],
-    };
-
-    setStudent(updatedStudent);
-    saveStudentToStorage(updatedStudent);
-    saveInteractionToStorage(enrollInteraction);
-    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
-    toast.success(`Ученик успешно зачислен в группу «${targetGroup.name}»! Теперь обучается в ${updatedGroups.length} группах.`);
+    if (updatedStudent) {
+      setStudent(updatedStudent);
+    }
+    toast.success(`Ученик успешно зачислен в группу «${targetGroup.name}»!`);
     setIsEnrollGroupModalOpen(false);
     setSelectedGroupIdToEnroll('');
   };
 
   const handleRemoveGroup = (groupId: string, groupName: string) => {
-    const updatedGroups = student.groups.filter((g) => g.id !== groupId && g.name !== groupName);
-    const removeInteraction: TimelineInteraction = {
-      id: `int_${Date.now()}`,
+    const { updatedStudent } = excludeStudentFromGroup({
+      groupId,
+      groupName,
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
-      parentId: student.parents[0]?.id,
-      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-      occurredAt: 'Только что',
-      channel: 'other',
-      type: 'status_change',
-      author: userName || 'Администратор школы',
-      content: `Отчислен(а) из группы «${groupName}».`,
-      result: updatedGroups.length > 0 ? `Активных групп: ${updatedGroups.length}` : 'Все группы завершены',
-      targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
-      targetName: student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : `${student.firstName} ${student.lastName}`),
-      targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
-    };
+      authorName: userName || 'Администратор школы',
+    });
 
-    const updatedStudent: FullStudentData = {
-      ...student,
-      groups: updatedGroups,
-      interactions: [removeInteraction, ...student.interactions],
-    };
+    if (updatedStudent) {
+      setStudent(updatedStudent);
+    } else {
+      const updatedGroups = student.groups.filter((g) => (groupId ? g.id !== groupId : true) && (groupName ? g.name !== groupName : true));
+      const removeInteraction: TimelineInteraction = {
+        id: `int_${Date.now()}`,
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        parentId: student.parents[0]?.id,
+        parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+        occurredAt: 'Только что',
+        channel: 'other',
+        type: 'status_change',
+        author: userName || 'Администратор школы',
+        content: `Исключен(а) из группы «${groupName}».`,
+        result: 'Исключение из группы',
+        targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+        targetName: student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : `${student.firstName} ${student.lastName}`),
+        targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+      };
 
-    setStudent(updatedStudent);
-    saveStudentToStorage(updatedStudent);
-    saveInteractionToStorage(removeInteraction);
-    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+      const updatedStudentFallback: FullStudentData = {
+        ...student,
+        groups: updatedGroups,
+        interactions: [removeInteraction, ...student.interactions],
+      };
+
+      setStudent(updatedStudentFallback);
+      saveStudentToStorage(updatedStudentFallback);
+      saveInteractionToStorage(removeInteraction);
+    }
+
     toast.success(`Ученик исключен из группы «${groupName}»`);
   };
 
@@ -495,6 +500,16 @@ export default function StudentDetailsPage() {
     toast.success('Комментарий преподавателя добавлен в карточку ученика!');
   };
 
+  const handleDeductDeposit = () => {
+    const topic = student.attendanceStats?.history?.[0]?.topic || 'Онлайн-занятие по расписанию';
+    const res = deductLessonFromDeposit(student.id, undefined, topic);
+    if (res.success) {
+      toast.success(res.message);
+      const fresh = getStudentById(student.id);
+      if (fresh) setStudent(fresh);
+    }
+  };
+
   const handleAddInteraction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteText.trim()) return;
@@ -681,11 +696,11 @@ export default function StudentDetailsPage() {
               Добавить действие
             </button>
             <button
-              onClick={() => setActiveTab('finance')}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <CreditCard className="h-3.5 w-3.5" />
-              Принять оплату
+              Добавить платёж
             </button>
           </div>
         </div>
@@ -1289,12 +1304,95 @@ export default function StudentDetailsPage() {
             </div>
           )}
 
+          {/* Deposit & Prepayment Card */}
+          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/70 to-teal-50/50 p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shadow-2xs">
+                  <Wallet className="h-6 w-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                    Баланс предоплаты (депозит)
+                  </span>
+                  <h4 className="text-xl font-bold text-slate-900 mt-0.5">
+                    {student.finance.deposit?.balanceFormatted || `${(student.finance.deposit?.balance || 0).toLocaleString('ru-RU')} ₽`}
+                  </h4>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDeductDeposit}
+                  disabled={(student.finance.deposit?.balance || 0) <= 0}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors cursor-pointer',
+                    (student.finance.deposit?.balance || 0) > 0
+                      ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                      : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                  )}
+                  title="Списать стоимость одного онлайн-занятия с баланса предоплаты"
+                >
+                  <MinusCircle className="h-3.5 w-3.5 text-amber-700" />
+                  Списать занятие (-{student.finance.deposit?.pricePerLessonFormatted || '1 050 ₽'})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Пополнить депозит
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs border-t border-emerald-200/50 pt-3">
+              <div>
+                <span className="text-slate-500">Стоимость 1 онлайн-занятия:</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  {student.finance.deposit?.pricePerLessonFormatted || '1 050 ₽'}
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500">Остаток оплаченных уроков:</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  {Math.max(
+                    0,
+                    Math.floor((student.finance.deposit?.balance || 0) / (student.finance.deposit?.pricePerLesson || 1050))
+                  )}{' '}
+                  занятий
+                </p>
+              </div>
+              <div>
+                <span className="text-slate-500">Статус депозита:</span>
+                <p className="mt-0.5">
+                  <span
+                    className={cn(
+                      'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                      (student.finance.deposit?.balance || 0) > 0
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    )}
+                  >
+                    {(student.finance.deposit?.balance || 0) > 0 ? 'Баланс положительный' : 'Требуется пополнение'}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Payment History Table */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">История оплат ученика</h4>
-              <button className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline">
-                <Plus className="h-3.5 w-3.5" /> Добавить платеж
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" /> Внести платёж
               </button>
             </div>
             <table className="w-full text-left text-xs">
@@ -1308,23 +1406,31 @@ export default function StudentDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {student.finance.payments.map((pay) => (
-                  <tr key={pay.id} className="hover:bg-slate-50/70">
-                    <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">{pay.date}</td>
-                    <td className="px-3 py-3">{pay.period}</td>
-                    <td className="px-3 py-3 font-bold text-slate-900">{pay.amount}</td>
-                    <td className="px-3 py-3 text-slate-500">{pay.method}</td>
-                    <td className="py-3 pl-3 pr-4 text-right">
-                      <span className={cn(
-                        'rounded-full px-2 py-0.5 font-semibold text-[10px]',
-                        pay.status === 'paid' && 'bg-emerald-100 text-emerald-800',
-                        pay.status === 'overdue' && 'bg-rose-100 text-rose-800'
-                      )}>
-                        {pay.status === 'paid' ? 'Оплачено' : 'Долг'}
-                      </span>
+                {(!student.finance?.payments || student.finance.payments.length === 0) ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                      История оплат пуста. Нажмите «Внести платёж», чтобы добавить запись.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  student.finance.payments.map((pay) => (
+                    <tr key={pay.id} className="hover:bg-slate-50/70">
+                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">{pay.date}</td>
+                      <td className="px-3 py-3">{pay.period}</td>
+                      <td className="px-3 py-3 font-bold text-slate-900">{pay.amount}</td>
+                      <td className="px-3 py-3 text-slate-500">{pay.method}</td>
+                      <td className="py-3 pl-3 pr-4 text-right">
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 font-semibold text-[10px]',
+                          pay.status === 'paid' && 'bg-emerald-100 text-emerald-800',
+                          pay.status === 'overdue' && 'bg-rose-100 text-rose-800'
+                        )}>
+                          {pay.status === 'paid' ? 'Оплачено' : 'Долг'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -2162,6 +2268,18 @@ export default function StudentDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* RECORD PAYMENT MODAL */}
+      <RecordPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        initialStudentId={student.id}
+        lockStudent={true}
+        onRecorded={() => {
+          const fresh = getStudentById(student.id);
+          if (fresh) setStudent(fresh);
+        }}
+      />
     </div>
   );
 }

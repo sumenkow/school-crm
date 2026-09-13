@@ -83,7 +83,7 @@ export default function TasksPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          + Новая задача
+          Новая задача
         </button>
       </div>
 

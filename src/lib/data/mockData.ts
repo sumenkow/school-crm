@@ -63,6 +63,13 @@ export interface FullStudentData extends Student {
       lessonsAttended: string;
       renewalDate: string;
     };
+    deposit?: {
+      balance: number;
+      balanceFormatted: string;
+      currency: 'RUB' | 'EUR';
+      pricePerLesson?: number;
+      pricePerLessonFormatted?: string;
+    };
     payments: Array<{
       id: string;
       date: string;
@@ -718,6 +725,13 @@ export interface FullGroupData {
     status: string;
     presentCount: number;
   }>;
+  pricing?: {
+    pricePerLesson: number;
+    pricePerLessonFormatted: string;
+    pricePerMonth: number;
+    pricePerMonthFormatted: string;
+    currency: 'RUB' | 'EUR';
+  };
 }
 
 export interface FullTeacherData {
@@ -1692,6 +1706,8 @@ export interface FullPaymentData {
   periodLabel: string;
   status: 'paid' | 'expected' | 'overdue' | 'refund';
   paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'invoice';
+  currency?: 'RUB' | 'EUR';
+  paymentType?: 'subscription' | 'prepayment' | 'one_time';
   recordedBy: string;
   comment?: string;
 }

@@ -43,8 +43,12 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   }
 
   const parentPhone = primaryParent?.phone || s.phone || '—';
-  const group = s.groups?.[0]?.name || 'Без группы';
-  const course = s.groups?.[0]?.courseName || 'Общий курс';
+  const group = (s.groups && s.groups.length > 0)
+    ? s.groups.map((g) => g.name).filter(Boolean).join(', ')
+    : 'Без группы';
+  const course = (s.groups && s.groups.length > 0)
+    ? Array.from(new Set(s.groups.map((g) => g.courseName || g.name).filter(Boolean))).join(', ')
+    : '—';
   const teacher = s.groups?.[0]?.teacherName || 'Мария Иванова';
   const attendanceRate = s.attendanceStats?.attendanceRate || '100%';
   const absentLessons = s.attendanceStats?.absentCount ?? 0;
@@ -94,7 +98,8 @@ function StudentsContent() {
   }, [filterParam]);
 
   const [students, setStudents] = useState<StudentListItem[]>(() => {
-    return INITIAL_STUDENTS.map(mapFullStudentToListItem);
+    const list = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    return list.map(mapFullStudentToListItem);
   });
 
   const refreshStudents = () => {
@@ -156,10 +161,10 @@ function StudentsContent() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            + Новый ученик
+            Новый ученик
           </button>
         </div>
       </div>

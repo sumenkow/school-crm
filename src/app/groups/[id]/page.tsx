@@ -25,15 +25,42 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
+import {
+  getStoredGroups,
+  saveGroupToStorage,
+  getGroupById,
+  excludeStudentFromGroup,
+  enrollStudentToGroup,
+} from '@/lib/data/groupStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 
 export default function GroupDetailsPage() {
   const params = useParams();
   const { success } = useToast();
+  const { userName } = useRole();
   const groupId = params.id as string;
 
   const [group, setGroup] = useState<FullGroupData>(() => {
-    return INITIAL_GROUPS.find((g) => g.id === groupId) || INITIAL_GROUPS[0];
+    return getGroupById(groupId) || INITIAL_GROUPS.find((g) => g.id === groupId) || INITIAL_GROUPS[0];
   });
+
+  // Keep synced with unified storage
+  React.useEffect(() => {
+    const sync = () => {
+      const fresh = getGroupById(groupId);
+      if (fresh) setGroup(fresh);
+    };
+    sync();
+    window.addEventListener('crm-groups-changed', sync);
+    window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-groups-changed', sync);
+      window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, [groupId]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -45,6 +72,9 @@ export default function GroupDetailsPage() {
     capacity: group.capacity,
     status: group.status,
     notes: group.notes || '',
+    pricePerLesson: group.pricing?.pricePerLesson || 1050,
+    pricePerMonth: group.pricing?.pricePerMonth || 7600,
+    currency: group.pricing?.currency || 'RUB',
   });
 
   const handleOpenEdit = () => {
@@ -57,12 +87,19 @@ export default function GroupDetailsPage() {
       capacity: group.capacity,
       status: group.status,
       notes: group.notes || '',
+      pricePerLesson: group.pricing?.pricePerLesson || 1050,
+      pricePerMonth: group.pricing?.pricePerMonth || 7600,
+      currency: group.pricing?.currency || 'RUB',
     });
     setIsEditModalOpen(true);
   };
 
   const handleSaveGroup = (e: React.FormEvent) => {
     e.preventDefault();
+    const currencySign = editForm.currency === 'EUR' ? '€' : '₽';
+    const numLesson = Number(editForm.pricePerLesson) || 1050;
+    const numMonth = Number(editForm.pricePerMonth) || 7600;
+
     const updated: FullGroupData = {
       ...group,
       name: editForm.name.trim() || group.name,
@@ -73,15 +110,18 @@ export default function GroupDetailsPage() {
       capacity: Number(editForm.capacity) || group.capacity,
       status: editForm.status as any,
       notes: editForm.notes.trim() || undefined,
+      pricing: {
+        pricePerLesson: numLesson,
+        pricePerLessonFormatted: `${numLesson.toLocaleString('ru-RU')} ${currencySign}`,
+        pricePerMonth: numMonth,
+        pricePerMonthFormatted: `${numMonth.toLocaleString('ru-RU')} ${currencySign} / месяц`,
+        currency: editForm.currency as 'RUB' | 'EUR',
+      },
     };
     setGroup(updated);
+    saveGroupToStorage(updated);
 
-    const idx = INITIAL_GROUPS.findIndex((g) => g.id === group.id);
-    if (idx !== -1) {
-      INITIAL_GROUPS[idx] = updated;
-    }
-
-    success('Данные группы успешно обновлены!');
+    success('Данные группы и тарифы курса успешно обновлены!');
     setIsEditModalOpen(false);
   };
 
@@ -99,8 +139,9 @@ export default function GroupDetailsPage() {
   const [newStudentPhone, setNewStudentPhone] = useState('');
 
   // Candidates from school database who are not in this group yet
+  const allCurrentStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
   const existingEnrolledIds = new Set(group.students.map((s) => s.id));
-  const availableStudentsFromDb = INITIAL_STUDENTS.filter((s) => !existingEnrolledIds.has(s.id));
+  const availableStudentsFromDb = allCurrentStudents.filter((s) => !existingEnrolledIds.has(s.id));
 
   const handleQuickEnroll = (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,25 +149,19 @@ export default function GroupDetailsPage() {
 
     if (enrollMode === 'db') {
       const targetId = selectedDbStudentId || availableStudentsFromDb[0]?.id;
-      const st = INITIAL_STUDENTS.find((s) => s.id === targetId);
-      if (!st) return;
+      if (!targetId) return;
 
-      const newStudent = {
-        id: st.id,
-        name: `${st.firstName} ${st.lastName}`,
-        status: 'active',
-        attendanceRate: st.attendanceStats?.attendanceRate || '100%',
-        parentPhone: st.phone || st.parents?.[0]?.phone || '+7 (999) 000-00-00',
-        joinedAt: new Date().toLocaleDateString('ru-RU'),
-      };
+      const { updatedGroup } = enrollStudentToGroup({
+        groupId: group.id,
+        studentId: targetId,
+        authorName: userName,
+      });
 
-      setGroup((prev) => ({
-        ...prev,
-        students: [newStudent, ...prev.students],
-      }));
-
-      success(`Ученик «${newStudent.name}» зачислен в группу!`);
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+      }
       setSelectedDbStudentId('');
+      success(`Ученик успешно зачислен в группу «${group.name}»!`);
     } else {
       if (!newStudentName.trim()) return;
 
@@ -139,23 +174,41 @@ export default function GroupDetailsPage() {
         joinedAt: new Date().toLocaleDateString('ru-RU'),
       };
 
-      setGroup((prev) => ({
-        ...prev,
-        students: [newStudent, ...prev.students],
-      }));
+      const updatedWithNew = {
+        ...group,
+        students: [newStudent, ...group.students],
+      };
+      setGroup(updatedWithNew);
+      saveGroupToStorage(updatedWithNew);
 
       setNewStudentName('');
       setNewStudentPhone('');
-      success(`Ученик «${newStudent.name}» зачислен в группу!`);
+      success(`Новый ученик «${newStudent.name}» зачислен в группу!`);
     }
   };
 
-  const handleRemoveStudent = (id: string) => {
-    if (confirm('Удалить ученика из состава этой группы?')) {
-      setGroup((prev) => ({
-        ...prev,
-        students: prev.students.filter((s) => s.id !== id),
-      }));
+  const handleRemoveStudent = (id: string, studentName?: string) => {
+    if (confirm('Исключить ученика из состава этой группы?')) {
+      const { updatedGroup } = excludeStudentFromGroup({
+        groupId: group.id,
+        groupName: group.name,
+        studentId: id,
+        studentName,
+        authorName: userName,
+      });
+
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+      } else {
+        const updated = {
+          ...group,
+          students: group.students.filter((s) => s.id !== id),
+        };
+        setGroup(updated);
+        saveGroupToStorage(updated);
+      }
+
+      success('Ученик исключен из группы. Наполняемость и карточка ученика обновлены!');
     }
   };
 
@@ -279,6 +332,41 @@ export default function GroupDetailsPage() {
               )}
               style={{ width: `${occupancyPercent}%` }}
             />
+          </div>
+        </div>
+
+        {/* Course Pricing & Tariff Strip */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 text-xs">
+          <div className="flex items-center justify-between rounded-xl bg-blue-50/60 p-3 border border-blue-100/80">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                Стоимость 1 онлайн-занятия
+              </span>
+              <p className="text-base font-bold text-slate-900 mt-0.5">
+                {group.pricing?.pricePerLessonFormatted || '1 050 ₽'}
+              </p>
+            </div>
+            <span className="text-[11px] text-blue-600 bg-white px-2 py-1 rounded-md border border-blue-200/50 shadow-2xs font-medium">
+              Для списаний с депозита
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-emerald-50/60 p-3 border border-emerald-100/80">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                Стоимость абонемента
+              </span>
+              <p className="text-base font-bold text-slate-900 mt-0.5">
+                {group.pricing?.pricePerMonthFormatted || '7 600 ₽ / месяц'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenEdit}
+              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+            >
+              Настроить тариф →
+            </button>
           </div>
         </div>
       </div>
@@ -605,6 +693,77 @@ export default function GroupDetailsPage() {
                     <option value="recruiting">Идет набор</option>
                     <option value="completed">Завершена</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Course Pricing Settings */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900">
+                    Тариф и стоимость курса
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, currency: 'RUB' })}
+                      className={cn(
+                        'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
+                        editForm.currency === 'RUB'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      )}
+                    >
+                      ₽ Рубли
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, currency: 'EUR' })}
+                      className={cn(
+                        'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
+                        editForm.currency === 'EUR'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      )}
+                    >
+                      € Евро
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Стоимость 1 занятия ({editForm.currency === 'EUR' ? '€' : '₽'})
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.01"
+                      value={editForm.pricePerLesson}
+                      onChange={(e) => setEditForm({ ...editForm, pricePerLesson: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
+                      placeholder={editForm.currency === 'EUR' ? '15' : '1050'}
+                      required
+                    />
+                    <p className="text-[10px] text-slate-500 mt-0.5">Для списаний с депозита</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Абонемент в месяц ({editForm.currency === 'EUR' ? '€' : '₽'})
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.01"
+                      value={editForm.pricePerMonth}
+                      onChange={(e) => setEditForm({ ...editForm, pricePerMonth: parseFloat(e.target.value) || 0 })}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
+                      placeholder={editForm.currency === 'EUR' ? '85' : '7600'}
+                      required
+                    />
+                    <p className="text-[10px] text-slate-500 mt-0.5">Фиксированный тариф</p>
+                  </div>
                 </div>
               </div>
 
