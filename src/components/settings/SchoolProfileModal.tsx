@@ -133,43 +133,43 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
             </div>
           </div>
 
-          {/* Филиалы и помещения */}
-          <div className="space-y-3 pt-2 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5 text-blue-600" />
-              Филиалы и учебные аудитории
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Название филиала</label>
-                <input
-                  type="text"
-                  value={formData.branchName}
-                  onChange={(e) => handleChange('branchName', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="Центральный филиал"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Фактический адрес</label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => handleChange('address', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="г. Москва, ул. Ленина, д. 42"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Аудитории и лаборатории</label>
-                <input
-                  type="text"
-                  value={formData.roomsDescription}
-                  onChange={(e) => handleChange('roomsDescription', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="3 аудитории, 1 IT-лаборатория"
-                />
-              </div>
+            {/* Филиалы и помещения */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                Формат обучения и онлайн-классы
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Название филиала / платформы</label>
+                  <input
+                    type="text"
+                    value={formData.branchName}
+                    onChange={(e) => handleChange('branchName', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Онлайн-школа (Основной аккаунт)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Формат занятий</label>
+                  <input
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => handleChange('address', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Онлайн (Zoom, Google Meet, Miro)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Онлайн-комнаты / Классы</label>
+                  <input
+                    type="text"
+                    value={formData.roomsDescription}
+                    onChange={(e) => handleChange('roomsDescription', e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="Интерактивные онлайн-комнаты"
+                  />
+                </div>
               <div>
                 <label className="block text-slate-600 font-semibold mb-1">Режим работы</label>
                 <input

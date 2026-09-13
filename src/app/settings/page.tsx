@@ -45,9 +45,9 @@ export default function SettingsPage() {
     bik: '044525974',
     phone: '+7 (495) 777-11-22',
     email: 'hello@smartacademy.ru',
-    branchName: 'Центральный филиал',
-    address: 'г. Москва, ул. Ленина, д. 42, 3-й этаж',
-    roomsDescription: '3 аудитории, 1 IT-лаборатория',
+    branchName: 'Онлайн-школа (Основной аккаунт)',
+    address: 'Онлайн (Zoom, Google Meet, интерактивная доска)',
+    roomsDescription: 'Интерактивные онлайн-комнаты',
     workHours: 'Пн-Сб 09:00 - 21:00',
     timezone: 'UTC+3 (Москва)',
   });

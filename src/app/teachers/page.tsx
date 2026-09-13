@@ -29,8 +29,8 @@ export default function TeachersPage() {
   };
 
   useEffect(() => {
-    fetchTeachers();
-  }, []);
+    router.replace('/settings/team?tab=teachers');
+  }, [router]);
 
   return (
     <div className="space-y-6 pb-16">

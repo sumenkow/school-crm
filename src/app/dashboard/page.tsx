@@ -39,6 +39,7 @@ import {
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
+import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -733,7 +734,8 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   ]);
 
   // 4. Tasks queue data
-  const [urgentTasks, setUrgentTasks] = useState([
+  const [selectedTaskForModal, setSelectedTaskForModal] = useState<UrgentTaskItem | null>(null);
+  const [urgentTasks, setUrgentTasks] = useState<UrgentTaskItem[]>([
     {
       id: 'ut-1',
       title: 'Срочно перезвонить Ольге (+7 916 555-44-33)',
@@ -741,14 +743,22 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 11:30',
       priority: 'high',
       completed: false,
+      assignedTo: 'Анна Администратор',
+      clientName: 'Ольга (мама Даниила)',
+      phone: '+7 916 555-44-33',
+      category: 'lead',
     },
     {
       id: 'ut-2',
-      title: 'Подтвердить явку на пробный урок в 16:00',
-      detail: 'Даниил Морозов, Робототехника (Кабинет 2, Дмитрий Смирнов)',
+      title: 'Подтвердить явку на пробный онлайн-урок в 16:00',
+      detail: 'Даниил Морозов, Робототехника (Онлайн-комната 1, Дмитрий Смирнов)',
       deadline: 'до 12:00',
       priority: 'high',
       completed: false,
+      assignedTo: 'Анна Администратор',
+      clientName: 'Даниил Морозов',
+      phone: '+7 903 111-22-33',
+      category: 'trial',
     },
     {
       id: 'ut-3',
@@ -757,22 +767,30 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       deadline: 'до 14:00',
       priority: 'medium',
       completed: false,
+      assignedTo: 'Анна Администратор',
+      clientName: 'Екатерина Соколова',
+      phone: '+7 926 777-88-99',
+      category: 'finance',
     },
     {
       id: 'ut-4',
-      title: 'Сверить журнал посещаемости за вчера (Кабинет 3)',
-      detail: 'Группа Scratch Начало, преподаватель Дмитрий',
+      title: 'Сверить журнал посещаемости онлайн-группы Scratch',
+      detail: 'Онлайн-урок Scratch Начало, преподаватель Дмитрий',
       deadline: 'до 16:00',
       priority: 'medium',
       completed: false,
+      assignedTo: 'Анна Администратор',
+      category: 'admin',
     },
     {
       id: 'ut-5',
-      title: 'Заказать канцтовары и маркеры для белых досок',
-      detail: 'Пополнить запасы расходных материалов на следующую неделю',
+      title: 'Проверить доступность интерактивных ссылок для уроков',
+      detail: 'Обновить шаблоны онлайн-комнат на следующую неделю',
       deadline: 'до 18:00',
       priority: 'normal',
       completed: false,
+      assignedTo: 'Анна Администратор',
+      category: 'admin',
     },
   ]);
 
@@ -796,6 +814,21 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
     );
     toast.success(`Статус задачи обновлен`);
+  };
+
+  const handleSaveTaskDetails = (updated: UrgentTaskItem) => {
+    setUrgentTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setSelectedTaskForModal(null);
+    toast.success(`Задача «${updated.title}» обновлена`);
+  };
+
+  const handleCreateNextStageTask = (parentTaskId: string, nextTask: Omit<UrgentTaskItem, 'id'>) => {
+    const newId = `ut-${Date.now()}`;
+    const created: UrgentTaskItem = {
+      ...nextTask,
+      id: newId,
+    };
+    setUrgentTasks((prev) => [created, ...prev]);
   };
 
   const pendingTasksCount = urgentTasks.filter((t) => !t.completed).length;
@@ -1367,19 +1400,22 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                 .map((task) => (
                   <div
                     key={task.id}
+                    onClick={() => setSelectedTaskForModal(task)}
                     className={cn(
-                      'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all',
+                      'group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none',
                       task.completed
                         ? 'bg-slate-50 border-slate-200 opacity-60'
                         : task.priority === 'high'
-                        ? 'bg-rose-50/40 border-rose-200 shadow-2xs'
-                        : 'bg-white border-slate-200'
+                        ? 'bg-rose-50/40 border-rose-200 hover:border-rose-300 shadow-2xs hover:shadow-xs'
+                        : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/20 shadow-2xs hover:shadow-xs'
                     )}
+                    title="Нажмите, чтобы открыть карточку задачи и управление этапами"
                   >
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
                         checked={task.completed}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={() => handleToggleTaskCompleted(task.id, task.title)}
                         className="mt-1 h-4 w-4 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                       />
@@ -1387,7 +1423,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                         <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={cn(
-                              'text-xs font-bold',
+                              'text-xs font-bold transition-colors group-hover:text-blue-600',
                               task.completed ? 'line-through text-slate-400' : 'text-slate-900'
                             )}
                           >
@@ -1402,6 +1438,11 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                           <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
                             Дедлайн: {task.deadline}
                           </span>
+                          {task.clientName && (
+                            <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full font-medium">
+                              {task.clientName}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500">{task.detail}</p>
                       </div>
@@ -1410,9 +1451,24 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                       <button
                         type="button"
-                        onClick={() => handleToggleTaskCompleted(task.id, task.title)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTaskForModal(task);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-700 transition-colors shadow-2xs"
+                      >
+                        <Edit3 size={12} />
+                        Карточка →
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTaskCompleted(task.id, task.title);
+                        }}
                         className={cn(
-                          'inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all',
+                          'inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-2xs',
                           task.completed
                             ? 'bg-slate-200 text-slate-700'
                             : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -1542,6 +1598,20 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           </div>
         </div>
       </div>
+
+      {/* Task Details Card Modal */}
+      <TaskDetailsCardModal
+        isOpen={!!selectedTaskForModal}
+        task={selectedTaskForModal}
+        onClose={() => setSelectedTaskForModal(null)}
+        onSave={handleSaveTaskDetails}
+        onComplete={(id) => {
+          setUrgentTasks((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, completed: true } : t))
+          );
+        }}
+        onCreateNextStage={handleCreateNextStageTask}
+      />
     </div>
   );
 }

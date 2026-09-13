@@ -15,7 +15,6 @@ import {
   ArrowRight,
   PieChart,
   BookOpen,
-  MapPin,
   Clock,
   Sparkles,
   GraduationCap,
@@ -325,16 +324,346 @@ export default function AnalyticsPage() {
     };
   });
 
-  // Rooms workload
-  const rooms = [
-    { name: 'Аудитория 204', type: 'Языковая', occupancy: '88%', hoursPerWeek: 36, status: 'high' },
-    { name: 'Аудитория 102', type: 'Младшие классы', occupancy: '74%', hoursPerWeek: 28, status: 'optimal' },
-    { name: 'IT Лаборатория', type: 'Компьютерный класс', occupancy: '68%', hoursPerWeek: 24, status: 'optimal' },
-    { name: 'Аудитория 101', type: 'Математика', occupancy: '58%', hoursPerWeek: 20, status: 'medium' },
-  ];
-
   const handleExport = () => {
     alert('Экспорт аналитического отчета в формате Excel (.xlsx) успешно сформирован!');
+  };
+
+  // Render funnel stage table
+  const renderFunnelTable = (targetStage: FunnelStageKey | 'all') => {
+    const activeStep = targetStage === 'all' ? null : funnelSteps.find((s) => s.id === targetStage);
+    const stageFilteredLeads = leads.filter((lead) => {
+      if (targetStage !== 'all') {
+        if (activeStep && !activeStep.leadStatuses.includes(lead.status)) return false;
+      }
+      if (leadSearchTerm.trim()) {
+        const term = leadSearchTerm.toLowerCase();
+        return (
+          lead.name.toLowerCase().includes(term) ||
+          (lead.studentName || '').toLowerCase().includes(term) ||
+          lead.contact.toLowerCase().includes(term) ||
+          (lead.directionOrCourse || '').toLowerCase().includes(term)
+        );
+      }
+      return true;
+    });
+
+    return (
+      <div className="rounded-2xl border-2 border-purple-300 bg-gradient-to-b from-purple-50/40 via-white to-white p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+        {/* Table Header & Stage Switcher */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="rounded-lg bg-purple-600 p-1.5 text-white">
+                <Table className="h-4 w-4" />
+              </span>
+              <h3 className="font-bold text-slate-900 text-sm">
+                {targetStage === 'all'
+                  ? 'Все обращения воронки конверсии'
+                  : `Лиды этапа ${activeStep?.stepNumber}: «${activeStep?.label}»`}
+              </h3>
+              <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-800">
+                {stageFilteredLeads.length} лидов
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedFunnelStage(null);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 font-medium px-2 py-0.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors ml-auto"
+                title="Свернуть таблицу этого этапа"
+              >
+                <X className="h-3 w-3" />
+                Свернуть
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {targetStage === 'all'
+                ? 'Сводный реестр всех потенциальных учеников на разных этапах воронки'
+                : activeStep?.description}
+            </p>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={leadSearchTerm}
+              onChange={(e) => setLeadSearchTerm(e.target.value)}
+              placeholder="Поиск лида, ученика, курса..."
+              className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
+            />
+            {leadSearchTerm && (
+              <button
+                type="button"
+                onClick={() => setLeadSearchTerm('')}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Stage Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setSelectedFunnelStage('all')}
+            className={cn(
+              'rounded-lg px-2.5 py-1 font-semibold transition-all',
+              selectedFunnelStage === 'all'
+                ? 'bg-purple-600 text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+          >
+            Все этапы ({leads.length})
+          </button>
+          {funnelSteps.map((s) => {
+            const count = leads.filter((l) => s.leadStatuses.includes(l.status)).length;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedFunnelStage(s.id)}
+                className={cn(
+                  'rounded-lg px-2.5 py-1 font-semibold transition-all flex items-center gap-1.5',
+                  selectedFunnelStage === s.id
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                )}
+              >
+                <span>{s.stepNumber}. {s.label.split(' ')[0]}</span>
+                <span className={cn(
+                  'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                  selectedFunnelStage === s.id ? 'bg-purple-700 text-white' : 'bg-slate-200 text-slate-700'
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
+              <tr>
+                <th className="py-3 pl-4 pr-3">Лид / Заявитель</th>
+                <th className="px-3 py-3">Ученик</th>
+                <th className="px-3 py-3">Курс / Предмет</th>
+                <th className="px-3 py-3">Контакты</th>
+                <th className="px-3 py-3">Менеджер</th>
+                <th className="px-3 py-3">Статус в воронке</th>
+                <th className="px-3 py-3">Следующее действие</th>
+                <th className="py-3 pl-3 pr-4 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {stageFilteredLeads.map((lead) => {
+                const statusConfig = {
+                  new: { label: 'Новый', badgeClass: 'bg-blue-100 text-blue-800' },
+                  contacted: { label: 'Квалификация', badgeClass: 'bg-amber-100 text-amber-800' },
+                  trial_scheduled: { label: 'Пробный назначен', badgeClass: 'bg-purple-100 text-purple-800' },
+                  trial_held: { label: 'Пробный проведен', badgeClass: 'bg-indigo-100 text-indigo-800' },
+                  thinking: { label: 'Думают / Счёт', badgeClass: 'bg-teal-100 text-teal-800' },
+                  paid: { label: 'Оплачено (Успех)', badgeClass: 'bg-emerald-100 text-emerald-800' },
+                  lost: { label: 'Отказ', badgeClass: 'bg-rose-100 text-rose-800' },
+                  no_response: { label: 'Не отвечает', badgeClass: 'bg-slate-200 text-slate-700' },
+                }[lead.status] || { label: lead.status, badgeClass: 'bg-slate-100 text-slate-700' };
+
+                const cleanPhone = lead.contact.replace(/[^\d+]/g, '');
+
+                return (
+                  <tr key={lead.id} className="hover:bg-slate-50/70 transition-colors">
+                    {/* Лид / Заявитель */}
+                    <td className="py-3 pl-4 pr-3">
+                      <Link
+                        href={`/crm/leads/${lead.id}`}
+                        className="font-bold text-slate-900 hover:text-purple-600 transition-colors flex items-center gap-1.5"
+                      >
+                        {lead.name}
+                        <ArrowUpRight className="h-3 w-3 text-slate-400" />
+                      </Link>
+                      <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                        <span>{lead.source}</span>
+                        <span>•</span>
+                        <span>{new Date(lead.createdAt).toLocaleDateString('ru-RU')}</span>
+                      </div>
+                    </td>
+
+                    {/* Ученик */}
+                    <td className="px-3 py-3">
+                      <p className="font-semibold text-slate-900">{lead.studentName || '—'}</p>
+                      <p className="text-[10px] text-slate-400">{lead.studentAge || 'Возраст не указан'}</p>
+                    </td>
+
+                    {/* Курс */}
+                    <td className="px-3 py-3">
+                      <span className="font-semibold text-slate-900">{lead.directionOrCourse || '—'}</span>
+                      {lead.level && (
+                        <p className="text-[10px] text-slate-400">{lead.level}</p>
+                      )}
+                    </td>
+
+                    {/* Контакты */}
+                    <td className="px-3 py-3 space-y-1">
+                      <a
+                        href={`tel:${cleanPhone}`}
+                        className="font-medium text-slate-900 hover:text-blue-600 transition-colors flex items-center gap-1"
+                      >
+                        <Phone className="h-3 w-3 text-slate-400" />
+                        {lead.contact}
+                      </a>
+                      <div className="flex items-center gap-2">
+                        {lead.telegram && (
+                          <span className="text-[10px] text-blue-600 flex items-center gap-0.5">
+                            <Send className="h-2.5 w-2.5" />
+                            {lead.telegram}
+                          </span>
+                        )}
+                        <a
+                          href={`https://wa.me/${cleanPhone.replace('+', '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-emerald-600 font-bold hover:underline flex items-center gap-0.5"
+                        >
+                          <MessageSquare className="h-2.5 w-2.5" />
+                          WA
+                        </a>
+                      </div>
+                    </td>
+
+                    {/* Менеджер */}
+                    <td className="px-3 py-3">
+                      <span className="text-slate-700 font-medium">{lead.assignedTo}</span>
+                    </td>
+
+                    {/* Статус */}
+                    <td className="px-3 py-3 relative">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold',
+                            statusConfig.badgeClass
+                          )}
+                        >
+                          {statusConfig.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatusMenuOpenLeadId(
+                              statusMenuOpenLeadId === lead.id ? null : lead.id
+                            );
+                          }}
+                          className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
+                          title="Быстро сменить статус"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+
+                      {/* Dropdown status switcher */}
+                      {statusMenuOpenLeadId === lead.id && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute left-3 top-10 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg text-xs"
+                        >
+                          <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            Сменить этап:
+                          </p>
+                          {[
+                            { key: 'new', label: '1. Новый' },
+                            { key: 'contacted', label: '2. Квалификация' },
+                            { key: 'trial_scheduled', label: '3. Назначен пробный' },
+                            { key: 'trial_held', label: '4. Пробный состоялся' },
+                            { key: 'paid', label: '5. Оплачено' },
+                          ].map((st) => (
+                            <button
+                              key={st.key}
+                              type="button"
+                              onClick={() => {
+                                setLeads((prev) =>
+                                  prev.map((l) =>
+                                    l.id === lead.id ? { ...l, status: st.key as any } : l
+                                  )
+                                );
+                                setStatusMenuOpenLeadId(null);
+                                toast.success(`Статус лида обновлен на «${st.label}»`);
+                              }}
+                              className={cn(
+                                'w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors',
+                                lead.status === st.key
+                                  ? 'bg-purple-50 text-purple-700'
+                                  : 'hover:bg-slate-50 text-slate-700'
+                              )}
+                            >
+                              <span>{st.label}</span>
+                              {lead.status === st.key && <Check className="h-3 w-3 text-purple-600" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Следующее действие */}
+                    <td className="px-3 py-3">
+                      <p className="font-semibold text-slate-900 line-clamp-1">{lead.nextAction || '—'}</p>
+                      <p className="text-[10px] text-purple-600 font-medium">{lead.nextActionDate}</p>
+                    </td>
+
+                    {/* Действия */}
+                    <td className="py-3 pl-3 pr-4 text-right">
+                      <Link
+                        href={`/crm/leads/${lead.id}`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-[11px] font-bold text-purple-700 hover:bg-purple-100 transition-colors shadow-2xs"
+                      >
+                        Карточка →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Empty state */}
+          {stageFilteredLeads.length === 0 && (
+            <div className="py-8 text-center text-xs text-slate-500">
+              <p className="font-semibold">По выбранным параметрам лидов не найдено</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setLeadSearchTerm('');
+                  setSelectedFunnelStage('all');
+                }}
+                className="mt-2 text-purple-600 font-bold hover:underline"
+              >
+                Показать все лиды
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Table Footer */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-2 text-xs text-slate-500 gap-2">
+          <p>
+            Показаны лиды этапа конверсии. Вы можете перейти в карточку каждого лида для просмотра полной истории взаимодействий.
+          </p>
+          <Link
+            href="/crm"
+            className="inline-flex items-center gap-1 font-bold text-purple-600 hover:text-purple-700 hover:underline shrink-0"
+          >
+            Открыть CRM-воронку сделок (Канбан-доска)
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    );
   };
 
   if (role !== 'owner') {
@@ -369,7 +698,7 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Сквозная аналитика школы</h1>
           <p className="text-sm text-slate-500">
-            Воронка продаж, когортное удержание (retention), доходы по направлениям и загрузка площадей
+            Воронка продаж, когортное удержание (retention), доходы по направлениям и эффективность педагогов
           </p>
         </div>
 
@@ -446,7 +775,7 @@ export default function AnalyticsPage() {
               Воронка конверсии из заявки в оплаченного ученика
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Нажмите на любой этап конверсии, чтобы открыть детальную таблицу лидов на соответствующем статусе
+              Нажмите на любой этап конверсии, чтобы развернуть список лидов прямо под ним
             </p>
           </div>
 
@@ -471,430 +800,98 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Funnel Steps (Interactive clickable bars) */}
+        {/* Funnel Steps (Interactive clickable bars with in-place accordion tables) */}
         <div className="space-y-3 pt-1">
           {funnelSteps.map((step, idx) => {
             const isSelected = selectedFunnelStage === step.id;
             const stageLeadsCount = leads.filter((l) => step.leadStatuses.includes(l.status)).length;
 
             return (
-              <div
-                key={step.id}
-                onClick={() => setSelectedFunnelStage(isSelected ? null : step.id)}
-                className={cn(
-                  'group rounded-xl border p-3 transition-all cursor-pointer select-none',
-                  isSelected
-                    ? 'border-purple-400 bg-purple-50/60 shadow-sm ring-1 ring-purple-400'
-                    : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-slate-50/80 hover:shadow-2xs'
-                )}
-                title="Нажмите, чтобы открыть таблицу лидов этого этапа"
-              >
-                <div className="flex items-center justify-between text-xs mb-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold',
-                        isSelected
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-slate-100 text-slate-700 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors'
-                      )}
-                    >
-                      {step.stepNumber}
-                    </span>
-                    <div>
-                      <span className={cn('font-bold', step.isGoal ? 'text-emerald-700' : 'text-slate-900')}>
-                        {step.label}
+              <div key={step.id} className="space-y-2">
+                <div
+                  onClick={() => setSelectedFunnelStage(isSelected ? null : step.id)}
+                  className={cn(
+                    'group rounded-xl border p-3 transition-all cursor-pointer select-none',
+                    isSelected
+                      ? 'border-purple-500 bg-purple-50/70 shadow-sm ring-2 ring-purple-300'
+                      : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-slate-50/80 hover:shadow-2xs'
+                  )}
+                  title={isSelected ? 'Нажмите, чтобы свернуть таблицу лидов' : 'Нажмите, чтобы открыть таблицу лидов прямо под этим этапом'}
+                >
+                  <div className="flex items-center justify-between text-xs mb-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold',
+                          isSelected
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-100 text-slate-700 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors'
+                        )}
+                      >
+                        {step.stepNumber}
                       </span>
-                      <span className="hidden md:inline-block text-[11px] text-slate-400 ml-2">
-                        — {step.description}
+                      <div>
+                        <span className={cn('font-bold', step.isGoal ? 'text-emerald-700' : 'text-slate-900')}>
+                          {step.label}
+                        </span>
+                        <span className="hidden md:inline-block text-[11px] text-slate-400 ml-2">
+                          — {step.description}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {step.drop && (
+                        <span className="text-[11px] text-rose-500 font-semibold">{step.drop}</span>
+                      )}
+                      <span className="font-extrabold text-slate-900 text-sm">
+                        {stageLeadsCount} лид.
+                      </span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
+                        {step.rate}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 transition-all',
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'bg-purple-50 text-purple-700 border border-purple-200 group-hover:bg-purple-100'
+                        )}
+                      >
+                        {isSelected ? 'Свернуть таблицу ▲' : 'Лиды этапа ▼'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    {step.drop && (
-                      <span className="text-[11px] text-rose-500 font-semibold">{step.drop}</span>
-                    )}
-                    <span className="font-extrabold text-slate-900 text-sm">
-                      {stageLeadsCount} лид.
-                    </span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
-                      {step.rate}
-                    </span>
-                    <span
+                  {/* Progress bar visual */}
+                  <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div
                       className={cn(
-                        'text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all',
-                        isSelected
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-purple-50 text-purple-700 border border-purple-200 group-hover:bg-purple-100'
+                        'h-full rounded-full transition-all duration-500',
+                        step.isGoal
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                          : 'bg-gradient-to-r from-purple-500 to-indigo-500'
                       )}
-                    >
-                      {isSelected ? 'Таблица открыта ↓' : 'Лиды этапа →'}
-                    </span>
+                      style={{ width: step.rate }}
+                    />
                   </div>
                 </div>
 
-                {/* Progress bar visual */}
-                <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all duration-500',
-                      step.isGoal
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                        : 'bg-gradient-to-r from-purple-500 to-indigo-500'
-                    )}
-                    style={{ width: step.rate }}
-                  />
-                </div>
+                {/* Direct inline table right below this stage */}
+                {isSelected && (
+                  <div className="pt-1 pb-1">
+                    {renderFunnelTable(step.id)}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        {/* DETAILED LEADS TABLE FOR SELECTED STAGE */}
-        {selectedFunnelStage && (
-          <div className="mt-4 rounded-2xl border border-purple-200 bg-gradient-to-b from-purple-50/30 via-white to-white p-5 shadow-sm space-y-4 animate-in fade-in zoom-in-98 duration-200">
-            {/* Table Header & Stage Switcher */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-lg bg-purple-600 p-1.5 text-white">
-                    <Table className="h-4 w-4" />
-                  </span>
-                  <h3 className="font-bold text-slate-900 text-sm">
-                    {selectedFunnelStage === 'all'
-                      ? 'Все обращения воронки конверсии'
-                      : `Лиды на этапе: «${funnelSteps.find((s) => s.id === selectedFunnelStage)?.label}»`}
-                  </h3>
-                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-800">
-                    {
-                      leads.filter((lead) => {
-                        if (selectedFunnelStage !== 'all') {
-                          const step = funnelSteps.find((s) => s.id === selectedFunnelStage);
-                          if (step && !step.leadStatuses.includes(lead.status)) return false;
-                        }
-                        if (leadSearchTerm.trim()) {
-                          const term = leadSearchTerm.toLowerCase();
-                          return (
-                            lead.name.toLowerCase().includes(term) ||
-                            (lead.studentName || '').toLowerCase().includes(term) ||
-                            lead.contact.toLowerCase().includes(term) ||
-                            (lead.directionOrCourse || '').toLowerCase().includes(term)
-                          );
-                        }
-                        return true;
-                      }).length
-                    }{' '}
-                    лидов
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  {selectedFunnelStage === 'all'
-                    ? 'Сводный реестр всех потенциальных учеников на разных этапах воронки'
-                    : funnelSteps.find((s) => s.id === selectedFunnelStage)?.description}
-                </p>
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={leadSearchTerm}
-                  onChange={(e) => setLeadSearchTerm(e.target.value)}
-                  placeholder="Поиск лида, ученика, курса..."
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-purple-500 focus:outline-hidden focus:ring-1 focus:ring-purple-500"
-                />
-                {leadSearchTerm && (
-                  <button
-                    onClick={() => setLeadSearchTerm('')}
-                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Stage Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <button
-                onClick={() => setSelectedFunnelStage('all')}
-                className={cn(
-                  'rounded-lg px-2.5 py-1 font-semibold transition-all',
-                  selectedFunnelStage === 'all'
-                    ? 'bg-purple-600 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                )}
-              >
-                Все этапы ({leads.length})
-              </button>
-              {funnelSteps.map((s) => {
-                const count = leads.filter((l) => s.leadStatuses.includes(l.status)).length;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedFunnelStage(s.id)}
-                    className={cn(
-                      'rounded-lg px-2.5 py-1 font-semibold transition-all flex items-center gap-1.5',
-                      selectedFunnelStage === s.id
-                        ? 'bg-purple-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    )}
-                  >
-                    <span>{s.stepNumber}. {s.label.split(' ')[0]}</span>
-                    <span className={cn(
-                      'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
-                      selectedFunnelStage === s.id ? 'bg-purple-700 text-white' : 'bg-slate-200 text-slate-700'
-                    )}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Table Content */}
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-                  <tr>
-                    <th className="py-3 pl-4 pr-3">Лид / Заявитель</th>
-                    <th className="px-3 py-3">Ученик</th>
-                    <th className="px-3 py-3">Курс / Предмет</th>
-                    <th className="px-3 py-3">Контакты</th>
-                    <th className="px-3 py-3">Менеджер</th>
-                    <th className="px-3 py-3">Статус в воронке</th>
-                    <th className="px-3 py-3">Следующее действие</th>
-                    <th className="py-3 pl-3 pr-4 text-right">Действия</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {leads
-                    .filter((lead) => {
-                      if (selectedFunnelStage !== 'all') {
-                        const step = funnelSteps.find((s) => s.id === selectedFunnelStage);
-                        if (step && !step.leadStatuses.includes(lead.status)) return false;
-                      }
-                      if (leadSearchTerm.trim()) {
-                        const term = leadSearchTerm.toLowerCase();
-                        return (
-                          lead.name.toLowerCase().includes(term) ||
-                          (lead.studentName || '').toLowerCase().includes(term) ||
-                          lead.contact.toLowerCase().includes(term) ||
-                          (lead.directionOrCourse || '').toLowerCase().includes(term)
-                        );
-                      }
-                      return true;
-                    })
-                    .map((lead) => {
-                      const statusConfig = {
-                        new: { label: 'Новый', badgeClass: 'bg-blue-100 text-blue-800' },
-                        contacted: { label: 'Квалификация', badgeClass: 'bg-amber-100 text-amber-800' },
-                        trial_scheduled: { label: 'Пробный назначен', badgeClass: 'bg-purple-100 text-purple-800' },
-                        trial_held: { label: 'Пробный проведен', badgeClass: 'bg-indigo-100 text-indigo-800' },
-                        thinking: { label: 'Думают / Счёт', badgeClass: 'bg-teal-100 text-teal-800' },
-                        paid: { label: 'Оплачено (Успех)', badgeClass: 'bg-emerald-100 text-emerald-800' },
-                        lost: { label: 'Отказ', badgeClass: 'bg-rose-100 text-rose-800' },
-                        no_response: { label: 'Не отвечает', badgeClass: 'bg-slate-200 text-slate-700' },
-                      }[lead.status] || { label: lead.status, badgeClass: 'bg-slate-100 text-slate-700' };
-
-                      const cleanPhone = lead.contact.replace(/[^\d+]/g, '');
-
-                      return (
-                        <tr key={lead.id} className="hover:bg-slate-50/70 transition-colors">
-                          {/* Лид / Заявитель */}
-                          <td className="py-3 pl-4 pr-3">
-                            <Link
-                              href={`/crm/leads/${lead.id}`}
-                              className="font-bold text-slate-900 hover:text-purple-600 transition-colors flex items-center gap-1.5"
-                            >
-                              {lead.name}
-                              <ArrowUpRight className="h-3 w-3 text-slate-400" />
-                            </Link>
-                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
-                              <span>{lead.source}</span>
-                              <span>•</span>
-                              <span>{new Date(lead.createdAt).toLocaleDateString('ru-RU')}</span>
-                            </div>
-                          </td>
-
-                          {/* Ученик */}
-                          <td className="px-3 py-3">
-                            <p className="font-semibold text-slate-900">{lead.studentName || '—'}</p>
-                            <p className="text-[10px] text-slate-400">{lead.studentAge || 'Возраст не указан'}</p>
-                          </td>
-
-                          {/* Курс */}
-                          <td className="px-3 py-3">
-                            <span className="font-semibold text-slate-900">{lead.directionOrCourse || '—'}</span>
-                            {lead.level && (
-                              <p className="text-[10px] text-slate-400">{lead.level}</p>
-                            )}
-                          </td>
-
-                          {/* Контакты */}
-                          <td className="px-3 py-3 space-y-1">
-                            <a
-                              href={`tel:${cleanPhone}`}
-                              className="font-medium text-slate-900 hover:text-blue-600 transition-colors flex items-center gap-1"
-                            >
-                              <Phone className="h-3 w-3 text-slate-400" />
-                              {lead.contact}
-                            </a>
-                            <div className="flex items-center gap-2">
-                              {lead.telegram && (
-                                <span className="text-[10px] text-blue-600 flex items-center gap-0.5">
-                                  <Send className="h-2.5 w-2.5" />
-                                  {lead.telegram}
-                                </span>
-                              )}
-                              <a
-                                href={`https://wa.me/${cleanPhone.replace('+', '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-emerald-600 font-bold hover:underline flex items-center gap-0.5"
-                              >
-                                <MessageSquare className="h-2.5 w-2.5" />
-                                WA
-                              </a>
-                            </div>
-                          </td>
-
-                          {/* Менеджер */}
-                          <td className="px-3 py-3">
-                            <span className="text-slate-700 font-medium">{lead.assignedTo}</span>
-                          </td>
-
-                          {/* Статус */}
-                          <td className="px-3 py-3 relative">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className={cn(
-                                  'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold',
-                                  statusConfig.badgeClass
-                                )}
-                              >
-                                {statusConfig.label}
-                              </span>
-                              <button
-                                onClick={() =>
-                                  setStatusMenuOpenLeadId(
-                                    statusMenuOpenLeadId === lead.id ? null : lead.id
-                                  )
-                                }
-                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
-                                title="Быстро сменить статус"
-                              >
-                                <ChevronDown className="h-3 w-3" />
-                              </button>
-                            </div>
-
-                            {/* Dropdown status switcher */}
-                            {statusMenuOpenLeadId === lead.id && (
-                              <div className="absolute left-3 top-10 z-20 w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-lg text-xs">
-                                <p className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                  Сменить этап:
-                                </p>
-                                {[
-                                  { key: 'new', label: '1. Новый' },
-                                  { key: 'contacted', label: '2. Квалификация' },
-                                  { key: 'trial_scheduled', label: '3. Назначен пробный' },
-                                  { key: 'trial_held', label: '4. Пробный состоялся' },
-                                  { key: 'paid', label: '5. Оплачено' },
-                                ].map((st) => (
-                                  <button
-                                    key={st.key}
-                                    onClick={() => {
-                                      setLeads((prev) =>
-                                        prev.map((l) =>
-                                          l.id === lead.id ? { ...l, status: st.key as any } : l
-                                        )
-                                      );
-                                      setStatusMenuOpenLeadId(null);
-                                      toast.success(`Статус лида обновлен на «${st.label}»`);
-                                    }}
-                                    className={cn(
-                                      'w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors',
-                                      lead.status === st.key
-                                        ? 'bg-purple-50 text-purple-700'
-                                        : 'hover:bg-slate-50 text-slate-700'
-                                    )}
-                                  >
-                                    <span>{st.label}</span>
-                                    {lead.status === st.key && <Check className="h-3 w-3 text-purple-600" />}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Следующее действие */}
-                          <td className="px-3 py-3">
-                            <p className="font-semibold text-slate-900 line-clamp-1">{lead.nextAction || '—'}</p>
-                            <p className="text-[10px] text-purple-600 font-medium">{lead.nextActionDate}</p>
-                          </td>
-
-                          {/* Действия */}
-                          <td className="py-3 pl-3 pr-4 text-right">
-                            <Link
-                              href={`/crm/leads/${lead.id}`}
-                              className="inline-flex items-center gap-1 rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-[11px] font-bold text-purple-700 hover:bg-purple-100 transition-colors shadow-2xs"
-                            >
-                              Карточка →
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-
-              {/* Empty state */}
-              {leads.filter((lead) => {
-                if (selectedFunnelStage !== 'all') {
-                  const step = funnelSteps.find((s) => s.id === selectedFunnelStage);
-                  if (step && !step.leadStatuses.includes(lead.status)) return false;
-                }
-                if (leadSearchTerm.trim()) {
-                  const term = leadSearchTerm.toLowerCase();
-                  return (
-                    lead.name.toLowerCase().includes(term) ||
-                    (lead.studentName || '').toLowerCase().includes(term) ||
-                    lead.contact.toLowerCase().includes(term) ||
-                    (lead.directionOrCourse || '').toLowerCase().includes(term)
-                  );
-                }
-                return true;
-              }).length === 0 && (
-                <div className="py-8 text-center text-xs text-slate-500">
-                  <p className="font-semibold">По выбранным параметрам лидов не найдено</p>
-                  <button
-                    onClick={() => {
-                      setLeadSearchTerm('');
-                      setSelectedFunnelStage('all');
-                    }}
-                    className="mt-2 text-purple-600 font-bold hover:underline"
-                  >
-                    Показать все лиды
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Table Footer */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-2 text-xs text-slate-500 gap-2">
-              <p>
-                Показаны лиды этапа конверсии. Вы можете перейти в карточку каждого лида для просмотра полной истории взаимодействий.
-              </p>
-              <Link
-                href="/crm"
-                className="inline-flex items-center gap-1 font-bold text-purple-600 hover:text-purple-700 hover:underline shrink-0"
-              >
-                Открыть CRM-воронку сделок (Канбан-доска)
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+        {/* DETAILED LEADS TABLE WHEN "ALL" IS SELECTED */}
+        {selectedFunnelStage === 'all' && (
+          <div className="pt-2">
+            {renderFunnelTable('all')}
           </div>
         )}
       </div>
@@ -1250,58 +1247,42 @@ export default function AnalyticsPage() {
         )}
       </div>
 
-      {/* Section 4: КУРСЫ И АУДИТОРИИ (2 columns) */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Доходы по направлениям */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-indigo-600" />
-            Выручка по учебным направлениям
-          </h3>
-
-          <div className="space-y-4 pt-1">
-            {courses.map((course, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-900">{course.name}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-500">{course.students} учеников</span>
-                    <span className="font-bold text-slate-900">{course.revenue}</span>
-                  </div>
-                </div>
-                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                  <div className={cn('h-full rounded-full', course.color)} style={{ width: `${course.share}%` }} />
-                </div>
-              </div>
-            ))}
+      {/* Section 4: ВЫРУЧКА ПО УЧЕБНЫМ НАПРАВЛЕНИЯМ (ОНЛАЙН-КУРСЫ) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-2">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-indigo-600" />
+              Выручка по учебным направлениям (онлайн-курсы)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Распределение дохода и активных учеников по направлениям школы
+            </p>
+          </div>
+          <div className="text-xs font-semibold text-slate-500">
+            Всего активных учеников: <span className="text-slate-900 font-extrabold">{courses.reduce((acc, c) => acc + c.students, 0)}</span>
           </div>
         </div>
 
-        {/* Загрузка аудиторий */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-blue-600" />
-            Загрузка учебных аудиторий
-          </h3>
-
-          <div className="space-y-3 pt-1">
-            {rooms.map((room, idx) => (
-              <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 p-3 text-xs">
-                <div>
-                  <h4 className="font-bold text-slate-900">{room.name}</h4>
-                  <p className="text-[11px] text-slate-500">{room.type} • {room.hoursPerWeek} ч / неделю</p>
-                </div>
-                <div className="text-right">
-                  <span className={cn(
-                    'rounded-full px-2.5 py-0.5 text-xs font-extrabold',
-                    room.status === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                  )}>
-                    {room.occupancy}
-                  </span>
-                </div>
+        {/* Direction Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {courses.map((course, idx) => (
+            <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-sm">{course.name}</span>
+                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                  {course.share}%
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-slate-500">{course.students} учеников</span>
+                <span className="text-base font-extrabold text-slate-900">{course.revenue}</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div className={cn('h-full rounded-full', course.color)} style={{ width: `${course.share}%` }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

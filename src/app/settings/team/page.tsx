@@ -20,9 +20,17 @@ import {
   Phone,
   Mail,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Search,
+  LayoutGrid,
+  Table,
+  ExternalLink,
+  BookOpen
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRole } from '@/context/RoleContext';
+import { INITIAL_TEACHERS, FullTeacherData } from '@/lib/data/mockData';
 
 interface TeamMember {
   id: string;
@@ -58,6 +66,14 @@ const ROLES_INFO = {
 function TeamContent() {
   const { isOwner, role: currentRole } = useRole();
   const searchParams = useSearchParams();
+
+  const tabParam = searchParams.get('tab');
+  const roleParam = searchParams.get('role');
+  const initialTab = (tabParam === 'teachers' || roleParam === 'teacher') ? 'teachers' : 'all';
+
+  const [activeTab, setActiveTab] = useState<'all' | 'teachers' | 'admins'>(initialTab);
+  const [teamSearch, setTeamSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(initialTab === 'teachers' ? 'cards' : 'table');
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +111,54 @@ function TeamContent() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
   const [editCopiedEmail, setEditCopiedEmail] = useState(false);
+
+  const DEFAULT_MOCK_MEMBERS: TeamMember[] = [
+    {
+      id: 'u-owner',
+      email: 'owner@school.ru',
+      full_name: 'Алексей Смирнов',
+      role: 'owner',
+      phone: '+7 (495) 777-11-22',
+      is_active: true,
+      created_at: '2026-01-10T10:00:00Z',
+    },
+    {
+      id: 'u-admin',
+      email: 'admin@school.ru',
+      full_name: 'Анна Администратор',
+      role: 'admin',
+      phone: '+7 (916) 123-45-67',
+      is_active: true,
+      created_at: '2026-02-01T11:30:00Z',
+    },
+    {
+      id: 't1',
+      email: 'maria.ivanova@school.ru',
+      full_name: 'Мария Иванова',
+      role: 'teacher',
+      phone: '+7 (999) 777-11-22',
+      is_active: true,
+      created_at: '2026-02-15T09:00:00Z',
+    },
+    {
+      id: 't2',
+      email: 'denis.smirnov@school.ru',
+      full_name: 'Денис Смирнов',
+      role: 'teacher',
+      phone: '+7 (999) 777-33-44',
+      is_active: true,
+      created_at: '2026-03-01T14:00:00Z',
+    },
+    {
+      id: 't3',
+      email: 'olga.sokolova@school.ru',
+      full_name: 'Ольга Соколова',
+      role: 'teacher',
+      phone: '+7 (999) 777-55-66',
+      is_active: true,
+      created_at: '2026-03-10T16:00:00Z',
+    },
+  ];
 
   // Generate strong random password
   const generatePassword = () => {
@@ -138,9 +202,9 @@ function TeamContent() {
 
   // Check URL query params for ?role=teacher or ?role=admin
   useEffect(() => {
-    const roleParam = searchParams.get('role');
-    if (roleParam === 'teacher' || roleParam === 'admin') {
-      openCreateModalForRole(roleParam);
+    const rParam = searchParams.get('role');
+    if (rParam === 'teacher' || rParam === 'admin') {
+      openCreateModalForRole(rParam);
     }
   }, [searchParams, openCreateModalForRole]);
 
@@ -150,23 +214,27 @@ function TeamContent() {
     try {
       const res = await fetch('/api/auth/users');
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Ошибка загрузки команды');
+      if (!res.ok || !data.users || data.users.length === 0) {
+        setMembers(DEFAULT_MOCK_MEMBERS);
       } else {
-        setMembers(data.users || []);
+        const loadedUsers: TeamMember[] = data.users;
+        const missingTeachers = DEFAULT_MOCK_MEMBERS.filter(
+          (dm) => dm.role === 'teacher' && !loadedUsers.some((u) => u.email === dm.email || u.id === dm.id)
+        );
+        setMembers([...loadedUsers, ...missingTeachers]);
       }
     } catch {
-      setError('Не удалось подключиться к серверу');
+      setMembers(DEFAULT_MOCK_MEMBERS);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isOwner) {
+    if (isOwner || currentRole === 'admin') {
       loadTeam();
     }
-  }, [isOwner, loadTeam]);
+  }, [isOwner, currentRole, loadTeam]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -281,32 +349,59 @@ function TeamContent() {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  if (!isOwner && currentRole !== 'owner') {
+  if (currentRole === 'teacher') {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>Команда</h1>
+        <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>Команда и преподаватели</h1>
         <div className="md-card-outlined" style={{ padding: '48px', textAlign: 'center' }}>
           <Shield size={48} style={{ color: 'var(--md-on-surface-variant)', margin: '0 auto 16px' }} />
           <p className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>Доступ ограничен</p>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '8px' }}>
-            Раздел создания и управления учетными записями доступен только владельцу школы.
+            Раздел управления командой и педагогическим составом доступен только администрации и владельцу школы.
           </p>
         </div>
       </div>
     );
   }
 
+  const getTeacherData = (member: TeamMember) => {
+    return INITIAL_TEACHERS.find(
+      (t) =>
+        t.id === member.id ||
+        t.email?.toLowerCase() === member.email?.toLowerCase() ||
+        t.name?.toLowerCase() === member.full_name?.toLowerCase()
+    );
+  };
+
+  const teachersCount = members.filter((m) => m.role === 'teacher').length;
+  const adminsCount = members.filter((m) => m.role === 'admin' || m.role === 'owner').length;
+
+  const filteredMembers = members.filter((m) => {
+    if (activeTab === 'teachers' && m.role !== 'teacher') return false;
+    if (activeTab === 'admins' && m.role !== 'admin' && m.role !== 'owner') return false;
+    if (!teamSearch.trim()) return true;
+    const q = teamSearch.toLowerCase();
+    const tData = getTeacherData(m);
+    return (
+      m.full_name?.toLowerCase().includes(q) ||
+      m.email?.toLowerCase().includes(q) ||
+      (m.phone && m.phone.toLowerCase().includes(q)) ||
+      (tData?.role && tData.role.toLowerCase().includes(q)) ||
+      (tData?.telegram && tData.telegram.toLowerCase().includes(q))
+    );
+  });
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Header with Quick Role-Specific Create Buttons */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-            Команда и учетные записи
+            Команда и преподаватели
           </h1>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Создавайте и редактируйте профили преподавателей и администраторов школы
+            Педагогический состав, администраторы, учебная нагрузка и учетные записи сотрудников
           </p>
         </div>
 
@@ -320,25 +415,29 @@ function TeamContent() {
             <GraduationCap size={18} />
             + Преподаватель
           </button>
-          <button
-            onClick={() => openCreateModalForRole('admin')}
-            className="md-btn md-btn-tonal"
-            style={{ gap: '8px' }}
-          >
-            <Shield size={18} />
-            + Администратор
-          </button>
-          <button
-            onClick={() => {
-              generatePassword();
-              setShowCreateModal(true);
-            }}
-            className="md-btn md-btn-outlined"
-            style={{ gap: '8px' }}
-          >
-            <UserPlus size={18} />
-            Создать учетную запись
-          </button>
+          {(isOwner || currentRole === 'owner') && (
+            <>
+              <button
+                onClick={() => openCreateModalForRole('admin')}
+                className="md-btn md-btn-tonal"
+                style={{ gap: '8px' }}
+              >
+                <Shield size={18} />
+                + Администратор
+              </button>
+              <button
+                onClick={() => {
+                  generatePassword();
+                  setShowCreateModal(true);
+                }}
+                className="md-btn md-btn-outlined"
+                style={{ gap: '8px' }}
+              >
+                <UserPlus size={18} />
+                Создать учетную запись
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -360,205 +459,253 @@ function TeamContent() {
         </div>
       )}
 
-      {/* Roles comparison cards WITH DIRECT ACTION BUTTONS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Teacher Card */}
+      {/* Quick Summary Chips */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div
-          className="md-card-outlined flex flex-col justify-between"
+          onClick={() => setActiveTab('teachers')}
+          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
           style={{
-            padding: '18px',
-            gap: '12px',
-            borderColor: 'var(--md-primary)',
-            backgroundColor: 'var(--md-surface-container-low)',
+            padding: '14px 18px',
+            backgroundColor: activeTab === 'teachers' ? 'var(--md-primary-container)' : 'var(--md-surface-container-low)',
+            borderColor: activeTab === 'teachers' ? 'var(--md-primary)' : undefined,
           }}
         >
-          <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-              <span
-                className="md-label-medium"
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  backgroundColor: ROLES_INFO.teacher.bg,
-                  color: ROLES_INFO.teacher.color,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <GraduationCap size={14} />
-                Преподаватель
-              </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GraduationCap size={18} style={{ color: 'var(--md-primary)' }} />
+              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватели</span>
             </div>
-            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-              {ROLES_INFO.teacher.desc}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openCreateModalForRole('teacher')}
-            className="md-btn md-btn-filled md-btn-sm"
-            style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
-          >
-            <GraduationCap size={14} />
-            Создать аккаунт учителя
-          </button>
-        </div>
-
-        {/* Admin Card */}
-        <div
-          className="md-card-outlined flex flex-col justify-between"
-          style={{
-            padding: '18px',
-            gap: '12px',
-            borderColor: 'var(--md-outline)',
-            backgroundColor: 'var(--md-surface-container-low)',
-          }}
-        >
-          <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-              <span
-                className="md-label-medium"
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  backgroundColor: ROLES_INFO.admin.bg,
-                  color: ROLES_INFO.admin.color,
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Shield size={14} />
-                Администратор
-              </span>
-            </div>
-            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-              {ROLES_INFO.admin.desc}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => openCreateModalForRole('admin')}
-            className="md-btn md-btn-tonal md-btn-sm"
-            style={{ width: '100%', justifyContent: 'center', gap: '6px', marginTop: '8px' }}
-          >
-            <Shield size={14} />
-            Создать аккаунт администратора
-          </button>
-        </div>
-
-        {/* Owner Card */}
-        <div
-          className="md-card-outlined flex flex-col justify-between"
-          style={{
-            padding: '18px',
-            gap: '12px',
-            backgroundColor: 'var(--md-surface-container-low)',
-          }}
-        >
-          <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-              <span
-                className="md-label-medium"
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  backgroundColor: ROLES_INFO.owner.bg,
-                  color: ROLES_INFO.owner.color,
-                  fontWeight: 600,
-                }}
-              >
-                Владелец школы
-              </span>
-            </div>
-            <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-              {ROLES_INFO.owner.desc}
-            </p>
-          </div>
-          <div style={{ paddingTop: '8px' }}>
-            <span
-              className="md-label-small"
-              style={{
-                display: 'inline-block',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--md-surface-container-high)',
-                color: 'var(--md-on-surface-variant)',
-                width: '100%',
-                textAlign: 'center',
-              }}
-            >
-              Ваша текущая роль
+            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-primary)' }}>
+              {teachersCount}
             </span>
           </div>
+          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+            Нагрузка, расписание занятий и группы
+          </p>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('admins')}
+          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
+          style={{
+            padding: '14px 18px',
+            backgroundColor: activeTab === 'admins' ? 'var(--md-secondary-container)' : 'var(--md-surface-container-low)',
+            borderColor: activeTab === 'admins' ? 'var(--md-secondary)' : undefined,
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Shield size={18} style={{ color: 'var(--md-secondary, #2563eb)' }} />
+              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администрация</span>
+            </div>
+            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-on-surface)' }}>
+              {adminsCount}
+            </span>
+          </div>
+          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+            Операционный контроль, лиды и касса
+          </p>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('all')}
+          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
+          style={{
+            padding: '14px 18px',
+            backgroundColor: activeTab === 'all' ? 'var(--md-surface-container)' : 'var(--md-surface-container-low)',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users2 size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
+              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Все сотрудники</span>
+            </div>
+            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-on-surface)' }}>
+              {members.length}
+            </span>
+          </div>
+          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+            Полный штатный состав онлайн-школы
+          </p>
         </div>
       </div>
 
-      {/* Team table / list with Clickable Rows */}
-      <div className="md-card-elevated" style={{ padding: '0', overflow: 'hidden' }}>
-        <div
-          className="flex items-center justify-between"
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--md-outline-variant)',
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Users2 size={20} style={{ color: 'var(--md-primary)' }} />
-            <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Сотрудники ({members.length})
-            </h2>
-            <span className="md-body-small hidden sm:inline" style={{ color: 'var(--md-on-surface-variant)', marginLeft: '8px' }}>
-              • Нажмите на сотрудника, чтобы открыть и отредактировать карточку
-            </span>
-          </div>
+      {/* Toolbar: Tabs, Search & View Switcher */}
+      <div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-3 md-card-outlined"
+        style={{ padding: '12px 16px', backgroundColor: 'var(--md-surface-container-low)' }}
+      >
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
-            onClick={loadTeam}
-            disabled={loading}
-            className="md-btn md-btn-text md-btn-sm"
-            style={{ gap: '6px' }}
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`md-btn md-btn-sm ${activeTab === 'all' ? 'md-btn-filled' : 'md-btn-tonal'}`}
+            style={{ borderRadius: '9999px', padding: '6px 14px' }}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Обновить
+            Все ({members.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('teachers')}
+            className={`md-btn md-btn-sm ${activeTab === 'teachers' ? 'md-btn-filled' : 'md-btn-tonal'}`}
+            style={{ borderRadius: '9999px', padding: '6px 14px', gap: '6px' }}
+          >
+            <GraduationCap size={15} />
+            Преподаватели ({teachersCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('admins')}
+            className={`md-btn md-btn-sm ${activeTab === 'admins' ? 'md-btn-filled' : 'md-btn-tonal'}`}
+            style={{ borderRadius: '9999px', padding: '6px 14px', gap: '6px' }}
+          >
+            <Shield size={15} />
+            Администраторы ({adminsCount})
           </button>
         </div>
 
-        {error ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--md-error)' }}>
-            <AlertCircle size={24} style={{ margin: '0 auto 8px' }} />
-            <p className="md-body-medium">{error}</p>
+        {/* Search & View Mode Switcher */}
+        <div className="flex items-center gap-2.5">
+          <div style={{ position: 'relative', width: '260px' }}>
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--md-on-surface-variant)',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Поиск сотрудника или предмета..."
+              value={teamSearch}
+              onChange={(e) => setTeamSearch(e.target.value)}
+              className="md-input"
+              style={{
+                width: '100%',
+                paddingLeft: '34px',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                fontSize: '13px',
+                borderRadius: '9999px',
+              }}
+            />
           </div>
-        ) : loading && members.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center' }}>
-            <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
-              Загрузка списка команды...
-            </p>
+
+          <div
+            style={{
+              display: 'inline-flex',
+              padding: '2px',
+              borderRadius: '9999px',
+              backgroundColor: 'var(--md-surface-container)',
+              border: '1px solid var(--md-outline-variant)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              title="Табличный вид"
+              className="md-btn md-btn-sm"
+              style={{
+                borderRadius: '9999px',
+                padding: '6px 10px',
+                backgroundColor: viewMode === 'table' ? 'var(--md-surface-container-lowest)' : 'transparent',
+                color: viewMode === 'table' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
+                boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              <Table size={15} />
+              <span className="hidden sm:inline ml-1 text-xs">Таблица</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              title="Карточки"
+              className="md-btn md-btn-sm"
+              style={{
+                borderRadius: '9999px',
+                padding: '6px 10px',
+                backgroundColor: viewMode === 'cards' ? 'var(--md-surface-container-lowest)' : 'transparent',
+                color: viewMode === 'cards' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
+                boxShadow: viewMode === 'cards' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              <LayoutGrid size={15} />
+              <span className="hidden sm:inline ml-1 text-xs">Карточки</span>
+            </button>
           </div>
-        ) : (
+
+          <button
+            onClick={loadTeam}
+            disabled={loading}
+            className="md-btn md-btn-tonal md-btn-sm"
+            style={{ width: '34px', height: '34px', padding: 0, justifyContent: 'center' }}
+            title="Обновить список"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
+      </div>
+
+      {error ? (
+        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--md-error)' }}>
+          <AlertCircle size={24} style={{ margin: '0 auto 8px' }} />
+          <p className="md-body-medium">{error}</p>
+        </div>
+      ) : loading && members.length === 0 ? (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
+            Загрузка списка команды и преподавателей...
+          </p>
+        </div>
+      ) : filteredMembers.length === 0 ? (
+        <div className="md-card-outlined" style={{ padding: '48px 24px', textAlign: 'center' }}>
+          <GraduationCap size={44} style={{ color: 'var(--md-on-surface-variant)', margin: '0 auto 12px' }} />
+          <p className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
+            Сотрудники не найдены
+          </p>
+          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px', maxWidth: '380px', margin: '4px auto 16px' }}>
+            Попробуйте изменить поисковый запрос или фильтр по ролям.
+          </p>
+          <button
+            onClick={() => {
+              setTeamSearch('');
+              setActiveTab('all');
+            }}
+            className="md-btn md-btn-tonal md-btn-sm"
+          >
+            Сбросить фильтры
+          </button>
+        </div>
+      ) : viewMode === 'table' ? (
+        /* TABLE VIEW */
+        <div className="md-card-elevated" style={{ padding: '0', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--md-surface-container-low)', borderBottom: '1px solid var(--md-outline-variant)' }}>
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Сотрудник</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Email (Логин)</th>
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Роль</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Телефон</th>
+                  <th style={{ padding: '12px 20px' }} className="md-label-large">Учебная нагрузка / Задачи</th>
+                  <th style={{ padding: '12px 20px' }} className="md-label-large">Контакты</th>
                   <th style={{ padding: '12px 20px' }} className="md-label-large">Статус</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'right' }} className="md-label-large">Карточка</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'right' }} className="md-label-large">Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {members.map((m) => {
+                {filteredMembers.map((m) => {
                   const rInfo = ROLES_INFO[m.role] || ROLES_INFO.teacher;
                   const isCurrent = m.role === 'owner';
+                  const tData = getTeacherData(m);
+
                   return (
                     <tr
                       key={m.id}
                       onClick={() => openEditCard(m)}
-                      title="Нажмите для редактирования карточки сотрудника"
+                      title="Нажмите для открытия карточки сотрудника"
                       style={{
                         borderBottom: '1px solid var(--md-outline-variant)',
                         cursor: 'pointer',
@@ -570,8 +717,8 @@ function TeamContent() {
                         <div className="flex items-center gap-3">
                           <div
                             style={{
-                              width: '38px',
-                              height: '38px',
+                              width: '40px',
+                              height: '40px',
                               borderRadius: '50%',
                               backgroundColor: rInfo.bg,
                               color: rInfo.color,
@@ -589,18 +736,21 @@ function TeamContent() {
                             <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
                               {m.full_name || 'Без имени'}
                             </p>
-                            {isCurrent && (
+                            {m.role === 'teacher' && tData?.role ? (
+                              <p className="md-body-small text-xs line-clamp-1" style={{ color: 'var(--md-on-surface-variant)', maxWidth: '240px' }}>
+                                {tData.role.split('(')[0]}
+                              </p>
+                            ) : isCurrent ? (
                               <span className="md-label-small" style={{ color: 'var(--md-primary)' }}>
                                 Вы (Владелец)
+                              </span>
+                            ) : (
+                              <span className="md-body-small text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
+                                {m.email}
                               </span>
                             )}
                           </div>
                         </div>
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <span className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
-                          {m.email}
-                        </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
                         <span
@@ -622,9 +772,32 @@ function TeamContent() {
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
-                        <span className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
-                          {m.phone || '—'}
-                        </span>
+                        {m.role === 'teacher' ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-xs font-semibold text-slate-800">
+                              {tData?.weeklyHours ? `${tData.weeklyHours} ч/нед • ${tData.studentsCount || 0} уч.` : 'Нагрузка уточняется'}
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {tData?.activeGroups ? `${tData.activeGroups.length} активных онлайн-групп` : 'Индивидуальные занятия'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">
+                            {m.role === 'owner' ? 'Полное управление школой' : 'Лиды, касса, расписание'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-700">
+                            <Phone size={12} className="text-slate-400" />
+                            <span>{m.phone || '—'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                            <Mail size={12} className="text-slate-400" />
+                            <span className="truncate max-w-[160px]">{m.email}</span>
+                          </div>
+                        </div>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
                         <span
@@ -651,18 +824,28 @@ function TeamContent() {
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditCard(m);
-                          }}
-                          className="md-btn md-btn-tonal md-btn-sm"
-                          style={{ gap: '4px', padding: '6px 12px' }}
-                        >
-                          <Edit3 size={14} />
-                          Карточка
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          {m.role === 'teacher' && (
+                            <Link
+                              href={`/teachers/${tData?.id || m.id}`}
+                              className="md-btn md-btn-tonal md-btn-sm"
+                              style={{ gap: '4px', padding: '5px 10px', fontSize: '12px' }}
+                              title="Расписание преподавателя"
+                            >
+                              <Calendar size={13} />
+                              Расписание
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openEditCard(m)}
+                            className="md-btn md-btn-outlined md-btn-sm"
+                            style={{ gap: '4px', padding: '5px 10px', fontSize: '12px' }}
+                          >
+                            <Edit3 size={13} />
+                            Карточка
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -670,8 +853,157 @@ function TeamContent() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* CARDS VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredMembers.map((m) => {
+            const rInfo = ROLES_INFO[m.role] || ROLES_INFO.teacher;
+            const tData = getTeacherData(m);
+
+            return (
+              <div
+                key={m.id}
+                className="md-card-elevated flex flex-col justify-between"
+                style={{
+                  padding: '20px',
+                  borderRadius: '20px',
+                  backgroundColor: 'var(--md-surface-container-lowest)',
+                  border: '1px solid var(--md-outline-variant)',
+                  gap: '16px',
+                }}
+              >
+                <div>
+                  {/* Card Top: Avatar, Name, Role badge & Status */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '14px',
+                          backgroundColor: rInfo.bg,
+                          color: rInfo.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '17px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {(m.full_name || m.email).charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base line-clamp-1">
+                          {m.full_name || 'Без имени'}
+                        </h3>
+                        <p className="text-xs text-slate-500 line-clamp-1">
+                          {m.role === 'teacher' ? (tData?.role ? tData.role.split('(')[0] : 'Преподаватель') : rInfo.label}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className="md-label-small"
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        backgroundColor: m.is_active !== false ? 'var(--md-success-container)' : 'var(--md-error-container)',
+                        color: m.is_active !== false ? 'var(--md-on-success-container)' : 'var(--md-on-error-container)',
+                        fontSize: '11px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {m.is_active !== false ? 'Активен' : 'Заблокирован'}
+                    </span>
+                  </div>
+
+                  {/* Contacts Row */}
+                  <div className="mt-4 space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                      <span>{m.phone || '—'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate">{m.email}</span>
+                    </div>
+                    {tData?.telegram && (
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                        <span className="text-blue-600 font-medium">{tData.telegram}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Workload for Teachers or Responsibility for Admins */}
+                  {m.role === 'teacher' ? (
+                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{tData?.activeGroups?.length || 0}</p>
+                        <p className="text-[10px] text-slate-500">Групп</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{tData?.studentsCount || 0}</p>
+                        <p className="text-[10px] text-slate-500">Учеников</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{tData?.weeklyHours ? `${tData.weeklyHours}ч` : '—'}</p>
+                        <p className="text-[10px] text-slate-500">В неделю</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
+                      <p className="font-semibold text-slate-800 mb-0.5">Зона ответственности:</p>
+                      <p className="text-[11px] text-slate-500">
+                        {m.role === 'owner'
+                          ? 'Полное руководство, стратегическая и финансовая аналитика онлайн-школы'
+                          : 'Обработка заявок, сопровождение учеников, расписание занятий и касса'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Card Actions */}
+                <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+                  {m.role === 'teacher' ? (
+                    <>
+                      <Link
+                        href={`/teachers/${tData?.id || m.id}`}
+                        className="md-btn md-btn-tonal md-btn-sm flex-1"
+                        style={{ justifyContent: 'center', gap: '6px', fontSize: '12px' }}
+                      >
+                        <Calendar size={14} />
+                        Расписание
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => openEditCard(m)}
+                        className="md-btn md-btn-outlined md-btn-sm"
+                        style={{ padding: '6px 12px', fontSize: '12px', gap: '4px' }}
+                      >
+                        <Edit3 size={13} />
+                        Карточка
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openEditCard(m)}
+                      className="md-btn md-btn-tonal md-btn-sm w-full"
+                      style={{ justifyContent: 'center', gap: '6px', fontSize: '12px' }}
+                    >
+                      <Edit3 size={14} />
+                      Карточка сотрудника
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* MODAL: КАРТОЧКА СОТРУДНИКА (ПРОСМОТР И РЕДАКТИРОВАНИЕ)       */}
@@ -780,6 +1112,39 @@ function TeamContent() {
                   {editCopiedEmail ? 'Скопирован' : 'Копировать'}
                 </button>
               </div>
+
+              {/* If Teacher: Workload & Link to Schedule */}
+              {editingMember.role === 'teacher' && (
+                <div
+                  style={{
+                    backgroundColor: 'var(--md-primary-container)',
+                    color: 'var(--md-on-primary-container)',
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                  }}
+                >
+                  <div>
+                    <span className="md-label-small" style={{ opacity: 0.85 }}>
+                      Расписание и группы
+                    </span>
+                    <p className="md-label-medium" style={{ marginTop: '2px' }}>
+                      {getTeacherData(editingMember)?.role || 'Преподаватель онлайн-школы'}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/teachers/${getTeacherData(editingMember)?.id || editingMember.id}`}
+                    className="md-btn md-btn-filled md-btn-sm"
+                    style={{ gap: '6px', whiteSpace: 'nowrap', backgroundColor: 'var(--md-primary)', color: '#fff' }}
+                  >
+                    <Calendar size={14} />
+                    Открыть расписание
+                  </Link>
+                </div>
+              )}
 
               {/* Full Name */}
               <div>

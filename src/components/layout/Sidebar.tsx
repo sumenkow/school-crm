@@ -52,12 +52,6 @@ const ownerNav: NavSection[] = [
     ],
   },
   {
-    section: 'Сотрудники',
-    items: [
-      { label: 'Преподаватели', href: '/teachers', icon: <UserCheck size={20} /> },
-    ],
-  },
-  {
     section: 'Продажи',
     items: [
       { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
@@ -74,7 +68,7 @@ const ownerNav: NavSection[] = [
   {
     section: 'Администрирование',
     items: [
-      { label: 'Команда', href: '/settings/team', icon: <Users2 size={20} /> },
+      { label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
       { label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
       { label: 'Бэкап базы', href: '/settings/backup', icon: <Database size={20} /> },
       { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
@@ -104,12 +98,6 @@ const adminNav: NavSection[] = [
     ],
   },
   {
-    section: 'Сотрудники',
-    items: [
-      { label: 'Преподаватели', href: '/teachers', icon: <UserCheck size={20} /> },
-    ],
-  },
-  {
     section: 'Продажи',
     items: [
       { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
@@ -120,6 +108,12 @@ const adminNav: NavSection[] = [
     section: 'Финансы',
     items: [
       { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+    ],
+  },
+  {
+    section: 'Администрирование',
+    items: [
+      { label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
     ],
   },
   {
