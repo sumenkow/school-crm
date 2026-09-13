@@ -17,7 +17,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   const [teacherId, setTeacherId] = useState('t1');
   const [capacity, setCapacity] = useState(8);
   const [schedule, setSchedule] = useState('Пн, Чт • 17:00–18:30');
-  const [room, setRoom] = useState('Аудитория 204');
+  const [room, setRoom] = useState('Онлайн (Zoom)');
   const [startDate, setStartDate] = useState('2026-09-15');
 
   useEffect(() => {
@@ -156,12 +156,12 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-700">Аудитория</label>
+              <label className="text-xs font-medium text-slate-700">Формат / Кабинет (онлайн)</label>
               <input
                 type="text"
                 value={room}
                 onChange={(e) => setRoom(e.target.value)}
-                placeholder="Аудитория 204"
+                placeholder="Онлайн (Zoom / веб-класс)"
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>

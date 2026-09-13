@@ -20,7 +20,8 @@ import {
   Edit,
   Check,
   X,
-  MessageSquare
+  MessageSquare,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -200,9 +201,9 @@ export default function GroupDetailsPage() {
                   <Calendar className="h-3.5 w-3.5 text-slate-400" />
                   {group.schedule}
                 </span>
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                  {group.room}
+                <span className="flex items-center gap-1 font-medium text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200/60">
+                  <Video className="h-3.5 w-3.5 text-blue-600" />
+                  Онлайн-класс (Zoom / платформа)
                 </span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5 text-slate-400" />
@@ -568,13 +569,13 @@ export default function GroupDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Аудитория</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Формат / Кабинет (онлайн)</label>
                   <input
                     type="text"
                     value={editForm.room}
                     onChange={(e) => setEditForm({ ...editForm, room: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    placeholder="Аудитория 204"
+                    placeholder="Онлайн (Zoom / Конференция)"
                     required
                   />
                 </div>

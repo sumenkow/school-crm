@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight, Filter } from 'lucide-react';
+import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight, Filter, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, FullGroupData } from '@/lib/data/mockData';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
@@ -96,7 +96,11 @@ export default function GroupsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <span>Преподаватель: <strong className="text-slate-800">{group.teacherName}</strong> ({group.room})</span>
+                    <span>Преподаватель: <strong className="text-slate-800">{group.teacherName}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-blue-500" />
+                    <span className="text-blue-700 font-medium">Формат: Онлайн (Zoom / веб-класс)</span>
                   </div>
                 </div>
 
