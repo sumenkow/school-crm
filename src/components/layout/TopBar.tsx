@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Search, LogOut, ChevronDown, User, Calendar } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Menu, Search, LogOut, ChevronDown, User, Calendar, Shield } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { UserProfileModal } from '@/components/profile/UserProfileModal';
+import { cn } from '@/lib/utils';
 
 interface TopBarProps {
   onOpenMobile: () => void;
@@ -19,13 +22,37 @@ const roleConfig: Record<UserRole, { label: string }> = {
 };
 
 export function TopBar({ onOpenMobile }: TopBarProps) {
-  const { role, userName, userEmail } = useRole();
+  const { role, setRole, userName, userEmail } = useRole();
+  const router = useRouter();
+  const pathname = usePathname();
+  const toast = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleRoleSwitch = (newRole: UserRole) => {
+    if (newRole === role) return;
+    setRole(newRole);
+    const roleNames: Record<UserRole, string> = {
+      owner: 'Владелец (Суперадмин)',
+      admin: 'Администратор (Управление)',
+      teacher: 'Преподаватель (Журнал и уроки)',
+    };
+    toast.info(`Режим интерфейса переключен: «${roleNames[newRole]}». Изменения применены ко всем разделам.`);
+
+    // If currently on an owner-only page and switching away from owner, redirect to /dashboard
+    if (newRole !== 'owner') {
+      const isOwnerOnly = pathname.startsWith('/settings/team') ||
+                          pathname.startsWith('/settings/backup') ||
+                          pathname.startsWith('/analytics');
+      if (isOwnerOnly) {
+        router.push('/dashboard');
+      }
+    }
+  };
 
   // Format today's date in Russian (e.g., "Вс, 13 сентября")
   useEffect(() => {
@@ -137,6 +164,35 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Desktop Segmented Role Switcher (saves and applies to the entire interface) */}
+      <div
+        className="hidden lg:inline-flex items-center p-1 rounded-full text-xs font-medium transition-all"
+        style={{
+          backgroundColor: 'var(--md-surface-container-highest)',
+          border: '1px solid var(--md-outline-variant)',
+        }}
+        title="Смена роли интерфейса: сохраняется и применяется ко всему интерфейсу до следующего изменения"
+      >
+        {(['owner', 'admin', 'teacher'] as UserRole[]).map((r) => {
+          const isActive = role === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => handleRoleSwitch(r)}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs transition-all cursor-pointer select-none',
+                isActive
+                  ? 'bg-white text-blue-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/5 font-semibold'
+              )}
+            >
+              {r === 'owner' ? '👑 Владелец' : r === 'admin' ? '💼 Админ' : '🎓 Учитель'}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Today's highlighted date */}
       {currentDate && (
         <div
@@ -216,9 +272,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             style={{
               position: 'absolute', right: 0, top: '48px',
               backgroundColor: 'var(--md-surface-container-lowest)',
-              borderRadius: '12px',
+              borderRadius: '16px',
               boxShadow: 'var(--md-elevation-3)',
-              minWidth: '200px',
+              minWidth: '240px',
               padding: '8px',
               zIndex: 100,
             }}
@@ -229,27 +285,73 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                 setUserMenuOpen(false);
                 setProfileModalOpen(true);
               }}
-              className="cursor-pointer hover:bg-black/5 rounded-lg transition-colors"
+              className="cursor-pointer hover:bg-black/5 rounded-xl transition-colors"
               title="Нажмите, чтобы открыть карточку профиля"
               style={{
                 padding: '12px',
                 borderBottom: '1px solid var(--md-outline-variant)',
+                marginBottom: '6px',
+              }}
+            >
+              <p className="md-label-large font-bold" style={{ color: 'var(--md-on-surface)' }}>{displayName}</p>
+              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{userEmail}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span
+                  className="md-label-small"
+                  style={{
+                    display: 'inline-block',
+                    padding: '2px 8px', borderRadius: '9999px',
+                    backgroundColor:
+                      role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
+                      role === 'admin' ? 'var(--md-secondary-container)' :
+                      'var(--md-primary-container)',
+                    color:
+                      role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
+                      role === 'admin' ? 'var(--md-on-secondary-container)' :
+                      'var(--md-on-primary-container)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {roleConfig[role].label}
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">Активный режим</span>
+              </div>
+            </div>
+
+            {/* Quick role switcher inside menu */}
+            <div
+              style={{
+                padding: '8px 8px 10px',
+                borderBottom: '1px solid var(--md-outline-variant)',
                 marginBottom: '4px',
               }}
             >
-              <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{displayName}</p>
-              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{userEmail}</p>
-              <span
-                className="md-label-small"
-                style={{
-                  display: 'inline-block', marginTop: '4px',
-                  padding: '2px 8px', borderRadius: '9999px',
-                  backgroundColor: 'var(--md-secondary-container)',
-                  color: 'var(--md-on-secondary-container)',
-                }}
-              >
-                {roleConfig[role].label}
-              </span>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                  <Shield size={12} className="text-blue-600" />
+                  Режим интерфейса
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                {(['owner', 'admin', 'teacher'] as UserRole[]).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handleRoleSwitch(r)}
+                    className={cn(
+                      'py-1.5 text-xs rounded-lg font-semibold transition-all text-center cursor-pointer',
+                      role === r
+                        ? 'bg-white text-blue-700 shadow-2xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    )}
+                  >
+                    {r === 'owner' ? 'Владелец' : r === 'admin' ? 'Админ' : 'Учитель'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1.5 leading-tight px-1">
+                Применяется ко всем экранам и сохраняется до следующей смены
+              </p>
             </div>
 
             {/* Profile link */}
