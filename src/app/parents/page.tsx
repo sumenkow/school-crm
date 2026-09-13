@@ -18,6 +18,7 @@ import {
   Send,
   AlertTriangle,
   X,
+  Wallet,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
@@ -34,6 +35,8 @@ interface ParentRecord {
   children: Array<{ id: string; name: string; group: string }>;
   totalPaid: string;
   balanceStatus: string;
+  depositFormatted?: string;
+  depositBalance?: number;
 }
 
 const INITIAL_PARENTS: ParentRecord[] = [
@@ -169,6 +172,42 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
+  // 4. Compute true dynamic finances (total paid, active deposit, balance status) from children
+  for (const parent of map.values()) {
+    let paidSum = 0;
+    let depositSum = 0;
+    let hasOverdue = false;
+    let currencySymbol = '₽';
+
+    for (const ch of parent.children) {
+      const st = allStudents.find((s) => s.id === ch.id);
+      if (st?.finance) {
+        if (st.finance.deposit?.balance) {
+          depositSum += st.finance.deposit.balance;
+          if (st.finance.deposit.currency === 'EUR') currencySymbol = '€';
+        }
+        if (st.finance.payments) {
+          for (const p of st.finance.payments) {
+            if (p.status === 'paid' && !p.amount.startsWith('-')) {
+              const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+              paidSum += num;
+              if (p.amount.includes('€')) currencySymbol = '€';
+            } else if (p.status === 'overdue') {
+              hasOverdue = true;
+            }
+          }
+        }
+      }
+    }
+
+    if (paidSum > 0) {
+      parent.totalPaid = `${paidSum.toLocaleString('ru-RU')} ${currencySymbol}`;
+    }
+    parent.balanceStatus = hasOverdue ? 'overdue' : 'paid';
+    parent.depositBalance = depositSum;
+    parent.depositFormatted = depositSum > 0 ? `${depositSum.toLocaleString('ru-RU')} ${currencySymbol}` : undefined;
+  }
+
   return Array.from(map.values());
 }
 
@@ -185,9 +224,11 @@ export default function ParentsPage() {
     };
     sync();
     window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('crm-payments-changed', sync);
     window.addEventListener('focus', sync);
     return () => {
       window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('crm-payments-changed', sync);
       window.removeEventListener('focus', sync);
     };
   }, []);
@@ -430,9 +471,16 @@ export default function ParentsPage() {
             </div>
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500">
-                Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
-              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-slate-500">
+                  Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
+                </span>
+                {p.depositFormatted && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                    <Wallet className="h-3 w-3" /> Депозит семьи: {p.depositFormatted}
+                  </span>
+                )}
+              </div>
               <Link
                 href={`/parents/${p.id}`}
                 className="inline-flex items-center gap-0.5 text-blue-600 font-bold hover:underline"

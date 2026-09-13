@@ -76,18 +76,34 @@ export default function StudentDetailsPage() {
     }
 
     const handleSync = (e: any) => {
-      if (e?.detail?.id === studentId) {
-        setStudent(e.detail);
-      } else {
-        const fresh = getStudentById(studentId);
-        if (fresh) setStudent(fresh);
+      const fresh = (e?.detail?.id === studentId ? e.detail : null) || getStudentById(studentId);
+      if (fresh) {
+        setStudent(fresh);
+        latestStudentRef.current = fresh;
       }
     };
 
     window.addEventListener('crm-students-changed', handleSync);
+    window.addEventListener('crm-payments-changed', () => {
+      const fresh = getStudentById(studentId);
+      if (fresh) {
+        setStudent(fresh);
+        latestStudentRef.current = fresh;
+      }
+    });
     window.addEventListener('crm-groups-changed', () => {
       const fresh = getStudentById(studentId);
-      if (fresh) setStudent(fresh);
+      if (fresh) {
+        setStudent(fresh);
+        latestStudentRef.current = fresh;
+      }
+    });
+    window.addEventListener('focus', () => {
+      const fresh = getStudentById(studentId);
+      if (fresh) {
+        setStudent(fresh);
+        latestStudentRef.current = fresh;
+      }
     });
     return () => {
       window.removeEventListener('crm-students-changed', handleSync);
@@ -506,7 +522,10 @@ export default function StudentDetailsPage() {
     if (res.success) {
       toast.success(res.message);
       const fresh = getStudentById(student.id);
-      if (fresh) setStudent(fresh);
+      if (fresh) {
+        setStudent(fresh);
+        latestStudentRef.current = fresh;
+      }
     }
   };
 
@@ -2277,7 +2296,10 @@ export default function StudentDetailsPage() {
         lockStudent={true}
         onRecorded={() => {
           const fresh = getStudentById(student.id);
-          if (fresh) setStudent(fresh);
+          if (fresh) {
+            setStudent(fresh);
+            latestStudentRef.current = fresh;
+          }
         }}
       />
     </div>

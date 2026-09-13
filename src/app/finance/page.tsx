@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_PAYMENTS, INITIAL_SUBSCRIPTIONS, FullPaymentData, FullSubscriptionData } from '@/lib/data/mockData';
+import { getStoredPayments, savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
 
@@ -30,11 +31,28 @@ function FinanceContent() {
   const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions' | 'debts'>(
     filterParam === 'overdue' ? 'debts' : 'payments'
   );
-  const [payments, setPayments] = useState<FullPaymentData[]>(INITIAL_PAYMENTS);
+  const [payments, setPayments] = useState<FullPaymentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
   const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(INITIAL_SUBSCRIPTIONS);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'expected' | 'overdue'>(
     filterParam === 'overdue' ? 'overdue' : 'all'
   );
+
+  useEffect(() => {
+    const sync = () => {
+      setPayments(getStoredPayments());
+    };
+    sync();
+    window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (filterParam === 'overdue') {
@@ -47,7 +65,8 @@ function FinanceContent() {
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
 
   const handlePaymentRecorded = (newPayment: FullPaymentData) => {
-    setPayments((prev) => [newPayment, ...prev]);
+    savePaymentToStorage(newPayment);
+    setPayments(getStoredPayments());
   };
 
   const handleSubCreated = (newSub: FullSubscriptionData) => {
@@ -244,6 +263,7 @@ function FinanceContent() {
                       {p.paymentMethod === 'cash' && 'Наличные'}
                       {p.paymentMethod === 'bank_transfer' && 'Перевод по СБП'}
                       {p.paymentMethod === 'invoice' && 'По счету (ООО)'}
+                      {(p.paymentMethod as any) === 'deposit_deduction' && 'Списание с депозита'}
                     </td>
                     <td className="px-3 py-3">
                       <span

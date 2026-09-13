@@ -44,6 +44,7 @@ import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
+import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -245,8 +246,25 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
-  // Dynamic overdue stats matching INITIAL_PAYMENTS & actual client debts
-  const overduePayments = INITIAL_PAYMENTS.filter((p: FullPaymentData) => p.status === 'overdue');
+  const [allPayments, setAllPayments] = useState<FullPaymentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
+
+  useEffect(() => {
+    const sync = () => {
+      setAllPayments(getStoredPayments());
+    };
+    sync();
+    window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
+  // Dynamic overdue stats matching stored payments & actual client debts
+  const overduePayments = allPayments.filter((p: FullPaymentData) => p.status === 'overdue');
   const totalOverdueAmount = overduePayments.reduce((sum: number, p: FullPaymentData) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
   const overdueStudentsCount = new Set(overduePayments.map((p: FullPaymentData) => p.studentId)).size;
 

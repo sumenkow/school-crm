@@ -107,6 +107,8 @@ export default function ParentDetailsPage() {
     };
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   useEffect(() => {
     const refreshParent = () => {
       const allStudents = getStoredStudents();
@@ -158,6 +160,7 @@ export default function ParentDetailsPage() {
           children: linkedChildren.length > 0 ? linkedChildren : prev.children,
         }));
       }
+      setRefreshTrigger((prev) => prev + 1);
     };
 
     refreshParent();
@@ -176,7 +179,6 @@ export default function ParentDetailsPage() {
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentChildFilter, setPaymentChildFilter] = useState<'all' | string>('all');
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Collect all payments for all children belonging to this parent
   const familyPayments = useMemo(() => {

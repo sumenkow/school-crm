@@ -42,34 +42,77 @@ export function getStoredStudents(): FullStudentData[] {
   }
 }
 
+import { savePaymentToStorage } from './paymentStorage';
+
 /**
  * Persists student data to localStorage and syncs in-memory INITIAL_STUDENTS.
  * Dispatches a custom window event 'crm-students-changed' so all views sync in real time.
+ * Safely preserves latest payments and deposit balances against accidental stale overwrites.
  */
 export function saveStudentToStorage(student: FullStudentData): void {
+  let studentToSave = student;
+
+  // Safeguard: merge with stored version so payments/deposit are never wiped by a stale ref
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);
+      if (raw) {
+        const stored: FullStudentData[] = JSON.parse(raw);
+        const existing = stored.find((s) => s.id === student.id);
+        if (existing) {
+          const incomingPayments = student.finance?.payments || [];
+          const existingPayments = existing.finance?.payments || [];
+          const payMap = new Map();
+          for (const p of [...incomingPayments, ...existingPayments]) {
+            if (!payMap.has(p.id)) payMap.set(p.id, p);
+          }
+          const mergedPayments = Array.from(payMap.values());
+
+          const incomingDeposit = student.finance?.deposit;
+          const existingDeposit = existing.finance?.deposit;
+          let mergedDeposit = incomingDeposit;
+          if (!incomingDeposit && existingDeposit) {
+            mergedDeposit = existingDeposit;
+          }
+
+          studentToSave = {
+            ...student,
+            finance: {
+              ...student.finance,
+              payments: mergedPayments,
+              deposit: mergedDeposit || student.finance?.deposit,
+            },
+          };
+        }
+      }
+    } catch (e) {
+      // Ignore parse error, proceed with student
+    }
+  }
+
   // 1. Update in-memory INITIAL_STUDENTS
-  const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+  const idx = INITIAL_STUDENTS.findIndex((s) => s.id === studentToSave.id);
   if (idx !== -1) {
-    INITIAL_STUDENTS[idx] = student;
+    INITIAL_STUDENTS[idx] = studentToSave;
   } else {
-    INITIAL_STUDENTS.unshift(student);
+    INITIAL_STUDENTS.unshift(studentToSave);
   }
 
   // 2. Persist to localStorage
   if (typeof window !== 'undefined') {
     try {
       const all = getStoredStudents();
-      const existingIdx = all.findIndex((s) => s.id === student.id);
+      const existingIdx = all.findIndex((s) => s.id === studentToSave.id);
       let updated: FullStudentData[];
       if (existingIdx !== -1) {
-        updated = all.map((s) => (s.id === student.id ? student : s));
+        updated = all.map((s) => (s.id === studentToSave.id ? studentToSave : s));
       } else {
-        updated = [student, ...all];
+        updated = [studentToSave, ...all];
       }
       localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(updated));
 
       // Notify other views
-      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: student }));
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
     } catch (err) {
       console.error('Failed to save student to storage:', err);
     }
@@ -157,10 +200,26 @@ export function deductLessonFromDeposit(
   saveStudentToStorage(updatedStudent);
   saveInteractionToStorage(expenseInteraction);
 
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
-    window.dispatchEvent(new CustomEvent('crm-payments-changed'));
-  }
+  // Record in global payment storage
+  savePaymentToStorage({
+    id: expensePaymentRecord.id,
+    studentId: student.id,
+    studentName: `${student.firstName} ${student.lastName}`,
+    parentId: student.parents?.[0]?.id,
+    parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+    courseName: student.groups?.[0]?.courseName || 'Онлайн-курс',
+    groupName: student.groups?.[0]?.name || 'Основная группа',
+    amount: -deduct,
+    amountFormatted: `-${formattedDeduct}`,
+    paymentDate: todayStr,
+    periodLabel: lessonTopic ? `Занятие: ${lessonTopic}` : 'Списание за занятие',
+    status: newBalance >= 0 ? 'paid' : 'overdue',
+    paymentMethod: 'deposit_deduction' as any,
+    currency: (currentDeposit.currency as any) || 'RUB',
+    paymentType: 'prepayment',
+    recordedBy: 'Система',
+    comment: `Списано с баланса депозита за онлайн-занятие. Остаток: ${formattedBalance}`,
+  });
 
   return {
     success: true,

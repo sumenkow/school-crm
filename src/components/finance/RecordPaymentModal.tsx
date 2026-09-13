@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, DollarSign, Calendar, Check, User, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet } from 'lucide-react';
 import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
-import { getStoredStudents, saveStudentToStorage } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, getStudentById } from '@/lib/data/studentStorage';
+import { savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
@@ -107,14 +108,16 @@ export function RecordPaymentModal({
     };
     const methodLabel = methodLabels[paymentMethod] || 'Банковская карта';
 
+    const freshStudent = getStudentById(selectedStudent.id) || selectedStudent;
+
     const newPayment: FullPaymentData = {
       id: `pay_${Date.now()}`,
-      studentId: selectedStudent.id,
-      studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+      studentId: freshStudent.id,
+      studentName: `${freshStudent.firstName} ${freshStudent.lastName}`,
       parentId: parent?.id,
       parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
-      courseName: selectedStudent.groups?.[0]?.courseName || 'Английский язык',
-      groupName: selectedStudent.groups?.[0]?.name || 'Основная группа',
+      courseName: freshStudent.groups?.[0]?.courseName || 'Английский язык',
+      groupName: freshStudent.groups?.[0]?.name || 'Основная группа',
       amount: numAmount,
       amountFormatted: formattedAmount,
       paymentDate: formattedDate,
@@ -135,6 +138,8 @@ export function RecordPaymentModal({
       amount: formattedAmount,
       method: methodLabel,
       status: status === 'paid' ? ('paid' as const) : ('expected' as const),
+      currency,
+      paymentType,
     };
 
     let interactionContent = `Внесена оплата ${formattedAmount} за период «${periodLabel}» (способ: ${methodLabel}).`;
@@ -150,8 +155,8 @@ export function RecordPaymentModal({
 
     const paymentInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
-      studentId: selectedStudent.id,
-      studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+      studentId: freshStudent.id,
+      studentName: `${freshStudent.firstName} ${freshStudent.lastName}`,
       parentId: parent?.id,
       parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
       occurredAt: 'Только что',
@@ -160,25 +165,25 @@ export function RecordPaymentModal({
       author: 'Администратор школы',
       content: interactionContent,
       result: interactionResult,
-      targetType: selectedStudent.studentType === 'adult_student' ? 'student' : 'parent',
+      targetType: freshStudent.studentType === 'adult_student' ? 'student' : 'parent',
       targetName:
-        selectedStudent.studentType === 'adult_student'
-          ? `${selectedStudent.firstName} ${selectedStudent.lastName}`
+        freshStudent.studentType === 'adult_student'
+          ? `${freshStudent.firstName} ${freshStudent.lastName}`
           : parent
           ? `${parent.firstName} ${parent.lastName}`
-          : `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-      targetRole: selectedStudent.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+          : `${freshStudent.firstName} ${freshStudent.lastName}`,
+      targetRole: freshStudent.studentType === 'adult_student' ? 'Студент' : 'Родитель',
     };
 
     saveInteractionToStorage(paymentInteraction);
 
-    const currentPayments = selectedStudent.finance?.payments || [];
-    let updatedDeposit = selectedStudent.finance?.deposit;
+    const currentPayments = freshStudent.finance?.payments || [];
+    let updatedDeposit = freshStudent.finance?.deposit;
 
     if (paymentType === 'prepayment' && status === 'paid') {
-      const currentBalance = selectedStudent.finance?.deposit?.balance || 0;
+      const currentBalance = freshStudent.finance?.deposit?.balance || 0;
       const newBal = currentBalance + numAmount;
-      const lessonPrice = selectedStudent.finance?.deposit?.pricePerLesson || (currency === 'EUR' ? 15 : 1050);
+      const lessonPrice = freshStudent.finance?.deposit?.pricePerLesson || (currency === 'EUR' ? 15 : 1050);
       updatedDeposit = {
         balance: newBal,
         balanceFormatted: `${newBal.toLocaleString('ru-RU')} ${currencySymbol}`,
@@ -189,15 +194,16 @@ export function RecordPaymentModal({
     }
 
     const updatedStudent = {
-      ...selectedStudent,
+      ...freshStudent,
       finance: {
-        ...selectedStudent.finance,
+        ...freshStudent.finance,
         payments: [paymentRecordForStudent, ...currentPayments],
         ...(updatedDeposit ? { deposit: updatedDeposit } : {}),
       },
-      interactions: [paymentInteraction, ...(selectedStudent.interactions || [])],
+      interactions: [paymentInteraction, ...(freshStudent.interactions || [])],
     };
     saveStudentToStorage(updatedStudent);
+    savePaymentToStorage(newPayment);
 
     // 2. Dispatch events
     if (typeof window !== 'undefined') {

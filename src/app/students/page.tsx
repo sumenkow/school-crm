@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight, Copy, AlertTriangle, GraduationCap } from 'lucide-react';
+import { Search, Filter, Plus, Phone, Mail, MoreHorizontal, CheckCircle2, Clock, AlertCircle, ChevronRight, Copy, AlertTriangle, GraduationCap, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
@@ -27,6 +27,8 @@ export interface StudentListItem {
   churnRiskReason?: string;
   paymentStatus: 'paid' | 'overdue' | 'expected';
   subscriptionEnd: string;
+  depositBalance?: number;
+  depositFormatted?: string;
 }
 
 export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
@@ -54,7 +56,16 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   const absentLessons = s.attendanceStats?.absentCount ?? 0;
   const isChurnRisk = absentLessons >= 3;
   const churnRiskReason = isChurnRisk ? `${absentLessons} пропуска подряд, риск оттока` : undefined;
-  const paymentStatus = (s.finance?.payments?.[0]?.status as any) || 'paid';
+  const depositBalance = s.finance?.deposit?.balance;
+  const depositFormatted = s.finance?.deposit?.balanceFormatted;
+  const rawPaymentStatus = (s.finance?.payments?.[0]?.status as any) || 'paid';
+  const paymentStatus = (depositBalance !== undefined && depositBalance > 0)
+    ? 'paid'
+    : rawPaymentStatus === 'overdue'
+    ? 'overdue'
+    : rawPaymentStatus === 'expected'
+    ? 'expected'
+    : 'paid';
   const subscriptionEnd = s.finance?.activeSubscription?.renewalDate || '30.09.2026';
 
   const validStatus: 'active' | 'trial' | 'paused' | 'archived' =
@@ -76,8 +87,10 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     absentLessons,
     isChurnRisk,
     churnRiskReason,
-    paymentStatus: paymentStatus === 'overdue' ? 'overdue' : paymentStatus === 'expected' ? 'expected' : 'paid',
+    paymentStatus,
     subscriptionEnd,
+    depositBalance,
+    depositFormatted,
   };
 }
 
@@ -115,10 +128,12 @@ function StudentsContent() {
     };
 
     window.addEventListener('crm-students-changed', handleSync);
+    window.addEventListener('crm-payments-changed', handleSync);
     window.addEventListener('focus', handleSync);
 
     return () => {
       window.removeEventListener('crm-students-changed', handleSync);
+      window.removeEventListener('crm-payments-changed', handleSync);
       window.removeEventListener('focus', handleSync);
     };
   }, []);
@@ -352,26 +367,32 @@ function StudentsContent() {
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="flex items-center gap-1.5">
-                      {student.paymentStatus === 'paid' && (
-                        <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Оплачен
+                    <div className="flex flex-col gap-1 items-start">
+                      <div className="flex items-center gap-1.5">
+                        {student.paymentStatus === 'paid' && (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Оплачен
+                          </span>
+                        )}
+                        {student.paymentStatus === 'overdue' && (
+                          <span className="inline-flex items-center gap-1 text-rose-600 font-semibold">
+                            <AlertCircle className="h-3.5 w-3.5" /> Долг
+                          </span>
+                        )}
+                        {student.paymentStatus === 'expected' && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                            <Clock className="h-3.5 w-3.5" /> Ожидается
+                          </span>
+                        )}
+                      </div>
+                      {student.depositBalance !== undefined && student.depositBalance > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                          <Wallet className="h-3 w-3" /> Депозит: {student.depositFormatted}
                         </span>
-                      )}
-                      {student.paymentStatus === 'overdue' && (
-                        <span className="inline-flex items-center gap-1 text-rose-600 font-semibold">
-                          <AlertCircle className="h-3.5 w-3.5" /> Долг
-                        </span>
-                      )}
-                      {student.paymentStatus === 'expected' && (
-                        <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                          <Clock className="h-3.5 w-3.5" /> Ожидается
-                        </span>
-                      )}
+                      ) : student.subscriptionEnd !== '—' ? (
+                        <p className="text-[10px] text-slate-400">до {student.subscriptionEnd}</p>
+                      ) : null}
                     </div>
-                    {student.subscriptionEnd !== '—' && (
-                      <p className="text-[10px] text-slate-400">до {student.subscriptionEnd}</p>
-                    )}
                   </td>
                   <td className="py-3 pl-3 pr-4 text-right">
                     <span className="inline-flex items-center text-xs font-semibold text-blue-600 group-hover:underline">
