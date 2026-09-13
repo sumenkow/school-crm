@@ -313,7 +313,7 @@ export default function ParentDetailsPage() {
   };
 
   const [interactions, setInteractions] = useState<TimelineInteraction[]>(() => {
-    const childrenIds = initialChildren.map((c) => c.id);
+    const childrenIds = (parent?.children || []).map((c: { id: string }) => c.id);
     return getCombinedParentTimeline(parentId, childrenIds);
   });
 

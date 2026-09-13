@@ -59,23 +59,37 @@ export default function LeadDetailsPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const [editForm, setEditForm] = useState({
-    parentName: lead.name || '',
-    studentName: lead.studentName || '',
-    contact: lead.contact?.startsWith('+') ? lead.contact : (lead.contact ? `+${lead.contact}` : '+'),
-    telegram: lead.telegram || '',
-    studentAge: lead.studentAge || '',
-    directionOrCourse: lead.directionOrCourse || '',
-    source: lead.source,
-    assignedTo: lead.assignedTo,
-    parentNotes: lead.parentNotes || '',
-    studentNotes: lead.studentNotes || '',
+  const [editForm, setEditForm] = useState(() => {
+    const pFio = splitFullName(lead.name || '');
+    const sFio = splitFullName(lead.studentName || '');
+    return {
+      parentLastName: lead.parentLastName || pFio.lastName || '',
+      parentFirstName: lead.parentFirstName || pFio.firstName || '',
+      parentMiddleName: lead.parentMiddleName || pFio.middleName || '',
+      studentLastName: lead.studentLastName || sFio.lastName || '',
+      studentFirstName: lead.studentFirstName || sFio.firstName || '',
+      studentMiddleName: lead.studentMiddleName || sFio.middleName || '',
+      contact: lead.contact?.startsWith('+') ? lead.contact : (lead.contact ? `+${lead.contact}` : '+'),
+      telegram: lead.telegram || '',
+      studentAge: lead.studentAge || '',
+      directionOrCourse: lead.directionOrCourse || '',
+      source: lead.source,
+      assignedTo: lead.assignedTo,
+      parentNotes: lead.parentNotes || '',
+      studentNotes: lead.studentNotes || '',
+    };
   });
 
   const handleOpenEdit = () => {
+    const pFio = splitFullName(lead.name || '');
+    const sFio = splitFullName(lead.studentName || '');
     setEditForm({
-      parentName: lead.name || '',
-      studentName: lead.studentName || '',
+      parentLastName: lead.parentLastName || pFio.lastName || '',
+      parentFirstName: lead.parentFirstName || pFio.firstName || '',
+      parentMiddleName: lead.parentMiddleName || pFio.middleName || '',
+      studentLastName: lead.studentLastName || sFio.lastName || '',
+      studentFirstName: lead.studentFirstName || sFio.firstName || '',
+      studentMiddleName: lead.studentMiddleName || sFio.middleName || '',
       contact: lead.contact?.startsWith('+') ? lead.contact : (lead.contact ? `+${lead.contact}` : '+'),
       telegram: lead.telegram || '',
       studentAge: lead.studentAge || '',
@@ -91,22 +105,22 @@ export default function LeadDetailsPage() {
   const handleSaveLead = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const pFio = splitFullName(editForm.parentName.trim());
-    const sFio = splitFullName(editForm.studentName.trim());
-
     const isAdult = lead.clientType === 'adult_student';
-    const effectiveName = isAdult ? (editForm.studentName.trim() || lead.name) : (editForm.parentName.trim() || lead.name);
-    const effectiveStudentName = editForm.studentName.trim() || lead.studentName;
+    const fullParent = buildFullName(editForm.parentLastName, editForm.parentFirstName, editForm.parentMiddleName);
+    const fullStudent = buildFullName(editForm.studentLastName, editForm.studentFirstName, editForm.studentMiddleName);
+
+    const effectiveName = isAdult ? (fullStudent || lead.name) : (fullParent || lead.name);
+    const effectiveStudentName = fullStudent || lead.studentName;
 
     const updated: FullLeadData = {
       ...lead,
       name: effectiveName,
-      parentLastName: isAdult ? undefined : (pFio.lastName || undefined),
-      parentFirstName: isAdult ? undefined : (pFio.firstName || undefined),
-      parentMiddleName: isAdult ? undefined : (pFio.middleName || undefined),
-      studentLastName: sFio.lastName || undefined,
-      studentFirstName: sFio.firstName,
-      studentMiddleName: sFio.middleName || undefined,
+      parentLastName: isAdult ? undefined : (editForm.parentLastName.trim() || undefined),
+      parentFirstName: isAdult ? undefined : (editForm.parentFirstName.trim() || undefined),
+      parentMiddleName: isAdult ? undefined : (editForm.parentMiddleName.trim() || undefined),
+      studentLastName: editForm.studentLastName.trim() || undefined,
+      studentFirstName: editForm.studentFirstName.trim() || effectiveStudentName.split(' ')[0] || '',
+      studentMiddleName: editForm.studentMiddleName.trim() || undefined,
       studentName: effectiveStudentName,
       contact: editForm.contact.trim() || lead.contact,
       telegram: editForm.telegram.trim() || undefined,
@@ -800,30 +814,62 @@ export default function LeadDetailsPage() {
             </div>
 
             <form onSubmit={handleSaveLead} className="mt-4 space-y-3.5 text-xs">
-              {/* Parent Name (Single field) */}
+              {/* Parent Name (3 fields: Фамилия, Имя, Отчество) */}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">ФИО родителя / контакта *</label>
-                <input
-                  type="text"
-                  required
-                  value={editForm.parentName}
-                  onChange={(e) => setEditForm({ ...editForm, parentName: e.target.value })}
-                  placeholder="Например: Морозова Анна Сергеевна"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={editForm.parentLastName}
+                    onChange={(e) => setEditForm({ ...editForm, parentLastName: e.target.value })}
+                    placeholder="Фамилия"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={editForm.parentFirstName}
+                    onChange={(e) => setEditForm({ ...editForm, parentFirstName: e.target.value })}
+                    placeholder="Имя *"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.parentMiddleName}
+                    onChange={(e) => setEditForm({ ...editForm, parentMiddleName: e.target.value })}
+                    placeholder="Отчество"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                </div>
               </div>
 
-              {/* Student Name (Single field) */}
+              {/* Student Name (3 fields: Фамилия, Имя, Отчество) */}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">ФИО ученика *</label>
-                <input
-                  type="text"
-                  required
-                  value={editForm.studentName}
-                  onChange={(e) => setEditForm({ ...editForm, studentName: e.target.value })}
-                  placeholder="Например: Морозов Максим"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={editForm.studentLastName}
+                    onChange={(e) => setEditForm({ ...editForm, studentLastName: e.target.value })}
+                    placeholder="Фамилия"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={editForm.studentFirstName}
+                    onChange={(e) => setEditForm({ ...editForm, studentFirstName: e.target.value })}
+                    placeholder="Имя *"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                  <input
+                    type="text"
+                    value={editForm.studentMiddleName}
+                    onChange={(e) => setEditForm({ ...editForm, studentMiddleName: e.target.value })}
+                    placeholder="Отчество"
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
