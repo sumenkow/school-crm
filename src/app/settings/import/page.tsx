@@ -29,7 +29,7 @@ export default function ExcelMigrationPage() {
 
   // Sample raw Excel data representing erratic legacy spreadsheet
   const sampleExcelRows = [
-    { row: 1, rawStudent: 'Смирнов Иван', birth: '15.05.2010', rawParent: 'Смирнова Ольга', phone: '+7 (999) 123-45-67', rawCourse: 'Англ B1', group: 'Пн/Чт 18:45', pay: '7600 руб', status: 'Оплачено', note: 'Аллергия на орехи' },
+    { row: 1, rawStudent: 'Смирнов Иван', birth: '15.05.2010', rawParent: 'Смирнова Ольга', phone: '+7 (999) 123-45-67', rawCourse: 'Англ B1', group: 'Пн/Чт 18:45', pay: '7600 руб', status: 'Оплачено', note: 'Цель — сдать B2' },
     { row: 2, rawStudent: 'Смирнова Анна', birth: '02.11.2014', rawParent: 'Смирнова Ольга', phone: '+7 (999) 123-45-67', rawCourse: 'Kids English', group: 'Вт/Пт 15:00', pay: '7200', status: 'Оплачено', note: 'Младшая сестра Ивана' },
     { row: 3, rawStudent: 'Кузнецова Мария', birth: '22.08.2011', rawParent: 'Кузнецов Дмитрий', phone: '+7 (999) 234-56-78', rawCourse: 'Роботы', group: 'Ср/Сб 15:00', pay: '8400', status: 'Долг', note: 'Обещал перевести в пятницу' },
     { row: 4, rawStudent: 'Кузнецов Артем', birth: '10.03.2016', rawParent: 'Кузнецов Дмитрий', phone: '+7 (999) 234-56-78', rawCourse: 'Математика Kids', group: 'Чт 16:00', pay: '6800', status: 'Оплачено', note: 'Сын Дмитрия' },
@@ -170,7 +170,7 @@ export default function ExcelMigrationPage() {
                   { col: 'Группа', example: 'Пн/Чт 18:45', entity: 'Groups + Enrollments', field: 'group_id, enrolled_at' },
                   { col: 'Оплата за месяц', example: '7600 руб', entity: 'Payments', field: 'amount (integer), currency' },
                   { col: 'Статус оплаты', example: 'Оплачено', entity: 'Payments', field: 'status (paid / overdue)' },
-                  { col: 'Примечания', example: 'Аллергия на орехи', entity: 'Timeline & Notes', field: 'student_notes, interactions' },
+                  { col: 'Примечания', example: 'Увлекается робототехникой', entity: 'Timeline & Notes', field: 'student_notes, interactions' },
                 ].map((row, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/70">
                     <td className="py-2.5 pl-4 pr-3 font-bold text-slate-900">{row.col}</td>

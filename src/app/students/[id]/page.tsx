@@ -576,7 +576,7 @@ export default function StudentDetailsPage() {
 
               {!isEditingNotes ? (
                 <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100 whitespace-pre-line">
-                  {student.notes || 'Заметок об особенностях ученика пока нет. Нажмите «Редактировать», чтобы указать аллергии, особенности характера или рекомендации.'}
+                  {student.notes || 'Заметок об особенностях ученика пока нет. Нажмите «Редактировать», чтобы указать особенности характера, цели обучения или рекомендации.'}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -584,7 +584,7 @@ export default function StudentDetailsPage() {
                     rows={4}
                     value={editedNotes}
                     onChange={(e) => setEditedNotes(e.target.value)}
-                    placeholder="Индивидуальные особенности, характер, пожелания родителей, аллергии..."
+                    placeholder="Индивидуальные особенности, характер, пожелания родителей, цели обучения..."
                     className="w-full rounded-xl border border-blue-300 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
                   />
                   <p className="text-[11px] text-slate-400">
@@ -1096,7 +1096,7 @@ export default function StudentDetailsPage() {
                   <option value="telegram">Telegram</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="phone">Телефонный звонок</option>
-                  <option value="call">Очная встреча</option>
+                  <option value="call">Онлайн-встреча (Zoom / Meet)</option>
                 </select>
               </div>
 
@@ -1364,7 +1364,7 @@ export default function StudentDetailsPage() {
                   value={editStudentForm.notes}
                   onChange={(e) => setEditStudentForm({ ...editStudentForm, notes: e.target.value })}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden resize-none"
-                  placeholder="Аллергии, особенности характера, рекомендации..."
+                  placeholder="Особенности восприятия, интересы, цели обучения, рекомендации..."
                 />
               </div>
 

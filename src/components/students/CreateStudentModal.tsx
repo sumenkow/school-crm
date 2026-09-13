@@ -47,6 +47,7 @@ export interface CreateStudentInitialData {
   preferredChannel?: string;
   sourceLeadId?: string;
   sourceLeadName?: string;
+  leadInteractions?: TimelineInteraction[];
 }
 
 interface CreateStudentModalProps {
@@ -192,33 +193,114 @@ export function CreateStudentModal({
             amount: '7 600 ₽',
             period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
             method: 'Банковская карта',
+    const parentFullName = `${parentFirstName.trim()} ${parentLastName.trim()}`.trim();
+    const isAdult = studentType === 'adult_student';
+
+    const creationInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: newStudentId,
+      studentName: fullName,
+      parentId: parentId,
+      parentName: parentFullName || undefined,
+      occurredAt: 'Только что',
+      channel: (preferredChannel as any) || 'telegram',
+      type: 'status_change',
+      author: 'Администратор школы',
+      content: initialData?.sourceLeadId
+        ? `Ученик успешно зачислен из карточки лида (${isAdult ? 'Студент 18+' : 'Школьник'}). Заполнена карточка и создан профиль.`
+        : `Создана карточка (${isAdult ? 'Студент 18+' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
+      result: 'Карточка ученика сохранена',
+      targetType: isAdult ? 'student' : 'parent',
+      targetName: isAdult ? fullName : (parentFullName || 'Родитель'),
+      targetRole: isAdult ? 'Студент' : 'Родитель',
+    };
+
+    const inheritedLeadInteractions: TimelineInteraction[] = (initialData?.leadInteractions || []).map((int, idx) => {
+      const isStudentAction = int.targetType === 'student' || isAdult;
+      return {
+        ...int,
+        id: int.id || `lead_int_${Date.now()}_${idx}`,
+        studentId: newStudentId,
+        studentName: fullName,
+        parentId: parentId,
+        parentName: parentFullName || undefined,
+        targetType: int.targetType || (isStudentAction ? 'student' : 'parent'),
+        targetName: int.targetName || (isStudentAction ? fullName : (parentFullName || 'Родитель')),
+        targetRole: int.targetRole || (isStudentAction ? (isAdult ? 'Студент' : 'Ученик') : 'Родитель'),
+      };
+    });
+
+    const combinedInteractions = [creationInteraction, ...inheritedLeadInteractions];
+
+    const newFullStudent: FullStudentData = {
+      id: newStudentId,
+      name: fullName,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      studentType,
+      birthDate: birthDate || '2012-05-15',
+      phone: isAdult ? (phone.trim() || '—') : (phone.trim() || parentPhone || '—'),
+      telegram: telegram.trim() || (isAdult ? undefined : parentTelegram) || undefined,
+      status: (status as any) || 'active',
+      notes: notes.trim() || undefined,
+      parents: isAdult && !parentFirstName.trim()
+        ? []
+        : [
+            {
+              id: parentId,
+              firstName: parentFirstName.trim() || (isAdult ? 'Контакт' : 'Родитель'),
+              lastName: parentLastName.trim() || '',
+              phone: parentPhone || '—',
+              telegram: parentTelegram || undefined,
+              relationshipType: relationshipType || (isAdult ? 'Экстренный контакт' : 'Родитель'),
+              isPrimary: true,
+            },
+          ],
+      groups: [
+        {
+          id: `g_${Date.now()}`,
+          name: group,
+          courseName,
+          teacherName: group.includes('English') ? 'Мария Иванова' : 'Денис Смирнов',
+          schedule: 'Пн, Чт • 18:45–20:15',
+          status: 'active',
+          joinedAt: new Date().toLocaleDateString('ru-RU'),
+        },
+      ],
+      attendanceStats: {
+        totalLessons: 0,
+        presentCount: 0,
+        absentCount: 0,
+        rescheduledCount: 0,
+        attendanceRate: '100%',
+        history: [],
+      },
+      finance: {
+        activeSubscription: {
+          period: '01.09.2026 – 30.09.2026',
+          price: '7 600 ₽',
+          status: 'active',
+          lessonsAttended: '0 из 8 занятий',
+          renewalDate: '28.09.2026',
+        },
+        payments: [
+          {
+            id: `pay_${Date.now()}`,
+            date: new Date().toLocaleDateString('ru-RU'),
+            amount: '7 600 ₽',
+            period: 'Сентябрь 2026',
+            method: 'Банковская карта',
             status: 'paid',
           },
         ],
       },
-      interactions: [
-        {
-          id: `int_${Date.now()}`,
-          studentId: newStudentId,
-          studentName: fullName,
-          parentId: parentId,
-          parentName: `${parentFirstName.trim()} ${parentLastName.trim()}`,
-          occurredAt: 'Только что',
-          channel: (preferredChannel as any) || 'telegram',
-          type: 'status_change',
-          author: 'Администратор школы',
-          content: initialData?.sourceLeadId
-            ? `Ученик успешно зачислен из карточки лида (${studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}). Заполнена карточка и создан профиль.`
-            : `Создана карточка (${studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
-          result: 'Карточка ученика сохранена',
-        },
-      ],
+      interactions: combinedInteractions,
       tasks: [],
     };
 
     INITIAL_STUDENTS.unshift(newFullStudent);
     saveStudentToStorage(newFullStudent);
-    saveInteractionToStorage(newFullStudent.interactions[0]);
+    combinedInteractions.forEach((i) => saveInteractionToStorage(i));
 
     // Update group enrollment count in INITIAL_GROUPS if found
     const targetGroup = INITIAL_GROUPS.find((g) => g.name === group || g.name.includes(group.split(' ')[0]));
@@ -556,13 +638,13 @@ export function CreateStudentModal({
             </div>
             <div>
               <label className="text-xs font-medium text-slate-700">
-                Индивидуальные особенности, характер, пожелания родителей, аллергии
+                Индивидуальные особенности, характер, цели обучения
               </label>
               <textarea
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Например: аллергия на орехи; стесняется у доски; просили сажать ближе; интерес к IT и робототехнике..."
+                placeholder="Например: интерес к IT и программированию, занимается с ноутбука, цель — сдать B2..."
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
               />
               <p className="mt-1 text-[11px] text-slate-400">

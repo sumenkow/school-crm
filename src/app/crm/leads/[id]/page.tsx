@@ -388,6 +388,7 @@ export default function LeadDetailsPage() {
       notes: [lead.studentNotes, lead.parentNotes, lead.comment].filter(Boolean).join('\n\n'),
       sourceLeadId: lead.id,
       sourceLeadName: lead.name,
+      leadInteractions: lead.interactions,
     };
   };
 
@@ -645,7 +646,7 @@ export default function LeadDetailsPage() {
                 <option value="telegram">Telegram</option>
                 <option value="whatsapp">WhatsApp</option>
                 <option value="phone">Телефонный звонок</option>
-                <option value="call">Очная встреча</option>
+                <option value="call">Онлайн-встреча (Zoom / Meet)</option>
               </select>
             </div>
 

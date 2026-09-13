@@ -600,7 +600,7 @@ export function AddChildModal({
                     </label>
                     <textarea
                       rows={2}
-                      placeholder="Например: Любит робототехнику, занимался Lego, аллергия на пыльцу, сильная сторона — логика..."
+                      placeholder="Например: Любит робототехнику, занимался программированием, сильная сторона — логика..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"

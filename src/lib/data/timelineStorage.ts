@@ -1,6 +1,7 @@
 'use client';
 
 import { TimelineInteraction, INITIAL_STUDENTS } from './mockData';
+import { getStoredStudents } from './studentStorage';
 
 const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
 
@@ -72,8 +73,12 @@ export function getCombinedStudentTimeline(
   });
 
   // Also check if any parent interaction was logged on other students in the family
-  INITIAL_STUDENTS.forEach((st) => {
-    if (st.parents.some((p) => parentIds.includes(p.id))) {
+  const allKnownStudents = typeof window !== 'undefined'
+    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
+    : INITIAL_STUDENTS;
+
+  allKnownStudents.forEach((st) => {
+    if (st.parents?.some((p) => parentIds.includes(p.id)) || st.id === studentId) {
       (st.interactions || []).forEach((i) => {
         if (i.studentId === studentId || (i.parentId && parentIds.includes(i.parentId))) {
           map.set(i.id, i);
@@ -110,9 +115,13 @@ export function getCombinedParentTimeline(
     }
   });
 
-  // Also scan INITIAL_STUDENTS for children belonging to this parent
-  INITIAL_STUDENTS.forEach((st) => {
-    if (childrenIds.includes(st.id) || st.parents.some((p) => p.id === parentId)) {
+  // Also scan all students (INITIAL_STUDENTS and getStoredStudents) for children belonging to this parent
+  const allKnownStudents = typeof window !== 'undefined'
+    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
+    : INITIAL_STUDENTS;
+
+  allKnownStudents.forEach((st) => {
+    if (childrenIds.includes(st.id) || st.parents?.some((p) => p.id === parentId)) {
       (st.interactions || []).forEach((i) => {
         map.set(i.id, i);
       });
