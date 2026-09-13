@@ -19,7 +19,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ExternalLink,
-  ShieldCheck,
   HeartHandshake,
   Users,
   Search,
@@ -552,72 +551,7 @@ export function AdminPerformanceReport() {
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {current.funnelAndService.renewalsCompleted} из {current.funnelAndService.renewalsDue} абонементов продлены без перерыва в обучении. Контроль баланса за 2 занятия.
-                </p>
               </div>
-            </div>
-          </div>
-
-          {/* Operational Standards Summary Card (Fixed salary evaluation without bonus linking) */}
-          <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white shadow-lg">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-4">
-              <div>
-                <span className="rounded-md bg-blue-500/20 text-blue-300 border border-blue-400/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                  Аттестация и стандарты работы
-                </span>
-                <h3 className="text-xl font-bold mt-1">
-                  Операционный статус: Все нормативы соблюдены ({current.integralKpiScore} / 100)
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Формат работы: {current.operationalSummary.workSchedule}. Оценка эффективности проводится для контроля качества сервиса без привязки к переменной оплате.
-                </p>
-              </div>
-              <div className="sm:text-right">
-                <span className="text-xs text-slate-400 block">Результат проверки</span>
-                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold text-sm bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 mt-1">
-                  <ShieldCheck size={16} />
-                  Стандарты соблюдены
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4 text-xs">
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
-                <span className="text-slate-300 block font-medium">Дисциплина задач</span>
-                <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  {current.tasks.onTimeRate}% в срок
-                </span>
-                <span className="text-slate-400 text-[11px]">0 просрочек, SLA 100%</span>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
-                <span className="text-slate-300 block font-medium">Сбор оплат</span>
-                <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  {current.payments.planProgress}% плана
-                </span>
-                <span className="text-slate-400 text-[11px]">{current.payments.collectedAmount.toLocaleString('ru-RU')} ₽ (0 долгов &gt;3 дн)</span>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
-                <span className="text-slate-300 block font-medium">Скорость ответа</span>
-                <span className="text-lg font-bold text-emerald-400 mt-1 block">
-                  {current.tasks.avgReactionMinutes} мин
-                </span>
-                <span className="text-slate-400 text-[11px]">Норматив &lt; 15 мин (факт 96.4%)</span>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/5">
-                <span className="text-slate-300 block font-medium">Качество сервиса</span>
-                <span className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                  {current.funnelAndService.parentSatisfactionCsat} / 5.0
-                </span>
-                <span className="text-slate-400 text-[11px]">Продление абонементов {current.funnelAndService.renewalRate}%</span>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <span>{current.operationalSummary.recommendation}</span>
-              <span className="text-slate-400 shrink-0">Период оценки: {current.period}</span>
             </div>
           </div>
         </div>
