@@ -5,7 +5,7 @@ import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, B
 import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
-import { saveStudentToStorage } from '@/lib/data/studentStorage';
+import { saveStudentToStorage, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
 
 export interface NewStudentData {
   id: string;
@@ -48,6 +48,7 @@ export interface CreateStudentInitialData {
   sourceLeadId?: string;
   sourceLeadName?: string;
   leadInteractions?: TimelineInteraction[];
+  leadFinance?: any;
 }
 
 interface CreateStudentModalProps {
@@ -227,6 +228,7 @@ export function CreateStudentModal({
         history: [],
       },
       finance: {
+        deposit: initialData?.leadFinance?.deposit,
         activeSubscription: {
           period: '01.09.2026 – 30.09.2026',
           price: '7 600 ₽',
@@ -243,6 +245,14 @@ export function CreateStudentModal({
             method: 'Банковская карта',
             status: 'paid',
           },
+          ...(initialData?.leadFinance?.payments || []).map((p: any) => ({
+            id: p.id || `pay_${Date.now()}_lead`,
+            date: p.date || new Date().toLocaleDateString('ru-RU'),
+            amount: p.amountFormatted || (typeof p.amount === 'number' ? `${p.amount.toLocaleString('ru-RU')} ₽` : String(p.amount)),
+            period: p.period || p.description || 'Аванс/Предоплата лида',
+            method: p.method || 'Банковская карта',
+            status: p.status || 'paid',
+          })),
         ],
       },
       interactions: combinedInteractions,
@@ -251,6 +261,7 @@ export function CreateStudentModal({
 
     INITIAL_STUDENTS.unshift(newFullStudent);
     saveStudentToStorage(newFullStudent);
+    settleDebtsFromDeposit(newStudentId);
     combinedInteractions.forEach((i) => saveInteractionToStorage(i));
 
     // Update group enrollment count in INITIAL_GROUPS if found

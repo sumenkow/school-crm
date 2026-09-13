@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from '@/lib/data/mockData';
-import { getStoredStudents, saveStudentToStorage } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { useRole } from '@/context/RoleContext';
 import {
@@ -19,6 +19,9 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
+  Wallet,
+  Clock,
   Edit,
   Check,
   X,
@@ -111,6 +114,7 @@ export default function ParentDetailsPage() {
 
   useEffect(() => {
     const refreshParent = () => {
+      reconcileAllStudentDepositsAndDebts();
       const allStudents = getStoredStudents();
       const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
       const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
@@ -618,13 +622,31 @@ export default function ParentDetailsPage() {
               {parent.firstName[0]}{parent.lastName[0]}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                   {parent.firstName} {parent.lastName}
                 </h1>
                 <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
                   Канал: {parent.preferredChannel}
                 </span>
+
+                {/* Hero Family Balance Badge */}
+                {totalFamilyDeposit > 0 ? (
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
+                    <Wallet className="h-3.5 w-3.5 text-emerald-600" />
+                    Депозит семьи: +{totalFamilyDeposit.toLocaleString('ru-RU')} ₽
+                  </span>
+                ) : totalDebtAmount > 0 ? (
+                  <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                    Долг семьи: -{totalDebtAmount.toLocaleString('ru-RU')} ₽
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
+                    <Clock className="h-3.5 w-3.5 text-amber-600" />
+                    Баланс семьи: 0 ₽ (требуется пополнение)
+                  </span>
+                )}
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
@@ -655,7 +677,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-xs hover:bg-emerald-100 transition-colors"
             >
               <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
-              + Добавить платёж
+              Добавить платёж
             </button>
             <button
               type="button"
@@ -663,7 +685,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
             >
               <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
-              + Поставить задачу
+              Поставить задачу
             </button>
             <button
               type="button"
@@ -673,6 +695,91 @@ export default function ParentDetailsPage() {
               <Edit className="h-3.5 w-3.5 text-blue-600" />
               Изменить
             </button>
+          </div>
+        </div>
+
+        {/* Family Balance 3-Card Summary Strip */}
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            {/* Balance Card */}
+            <div className={cn(
+              "rounded-xl p-3.5 border flex flex-col justify-between",
+              totalFamilyDeposit > 0 && "bg-emerald-50/70 border-emerald-200",
+              totalDebtAmount > 0 && "bg-rose-50/80 border-rose-200",
+              totalFamilyDeposit === 0 && totalDebtAmount === 0 && "bg-amber-50/70 border-amber-200"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  {totalFamilyDeposit > 0 ? (
+                    <Wallet className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : totalDebtAmount > 0 ? (
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                  ) : (
+                    <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  )}
+                  Баланс семьи:
+                </span>
+                {totalDebtAmount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-2 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    Погасить долг
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-2 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
+                  >
+                    Пополнить депозит
+                  </button>
+                )}
+              </div>
+              <p className={cn(
+                "text-xl font-black mt-1",
+                totalFamilyDeposit > 0 && "text-emerald-700",
+                totalDebtAmount > 0 && "text-rose-700",
+                totalFamilyDeposit === 0 && totalDebtAmount === 0 && "text-slate-900"
+              )}>
+                {totalFamilyDeposit > 0
+                  ? `+${totalFamilyDeposit.toLocaleString('ru-RU')} ₽`
+                  : totalDebtAmount > 0
+                  ? `-${totalDebtAmount.toLocaleString('ru-RU')} ₽`
+                  : '0 ₽'}
+              </p>
+              <p className={cn(
+                "text-[11px] mt-0.5 font-medium",
+                totalFamilyDeposit > 0 && "text-emerald-600",
+                totalDebtAmount > 0 && "text-rose-600 font-semibold",
+                totalFamilyDeposit === 0 && totalDebtAmount === 0 && "text-amber-800 font-semibold"
+              )}>
+                {totalFamilyDeposit > 0
+                  ? 'Активный семейный депозит • списание за уроки'
+                  : totalDebtAmount > 0
+                  ? 'Просроченная задолженность по счетам'
+                  : 'Баланс нулевой • требуется пополнение'}
+              </p>
+            </div>
+
+            {/* Total Paid Card */}
+            <div className="rounded-xl p-3.5 border border-slate-200 bg-slate-50/60 flex flex-col justify-between">
+              <span className="text-[11px] font-medium text-slate-500">Всего оплачено за всё время:</span>
+              <p className="text-xl font-bold text-slate-900 mt-1">{parent.totalPaid || '0 ₽'}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Суммарный объем оплат семьи</p>
+            </div>
+
+            {/* Children Status Card */}
+            <div className="rounded-xl p-3.5 border border-slate-200 bg-slate-50/60 flex flex-col justify-between">
+              <span className="text-[11px] font-medium text-slate-500">Дети на обучении:</span>
+              <p className="text-xl font-bold text-slate-900 mt-1">
+                {parent.children.length} {parent.children.length === 1 ? 'ребенок' : 'детей'}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {parent.children.map((c) => c.name.split(' ')[0]).join(', ') || 'Нет привязанных'}
+              </p>
+            </div>
           </div>
         </div>
 

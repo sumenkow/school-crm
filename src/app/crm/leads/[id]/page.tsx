@@ -25,11 +25,15 @@ import {
   BookOpen,
   Edit,
   Check,
-  X
+  X,
+  CreditCard,
+  Wallet,
+  MinusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
@@ -334,6 +338,269 @@ export default function LeadDetailsPage() {
     setNewFollowUpDate('');
   };
 
+  // Lead Payment & Deposit Deduction state
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
+  const [isDeductModalOpen, setIsDeductModalOpen] = useState(false);
+
+  const [paymentAmount, setPaymentAmount] = useState('5000');
+  const [paymentPurpose, setPaymentPurpose] = useState('Предоплата за курс');
+  const [paymentType, setPaymentType] = useState<'prepayment' | 'subscription' | 'one_time'>('prepayment');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank_transfer' | 'cash' | 'invoice'>('card');
+  const [paymentComment, setPaymentComment] = useState('');
+  const [autoSetStatusPaid, setAutoSetStatusPaid] = useState(true);
+
+  const [deductAmount, setDeductAmount] = useState('1000');
+  const [deductPurpose, setDeductPurpose] = useState('Оплата пробного занятия');
+  const [deductComment, setDeductComment] = useState('');
+
+  const leadDeposit = lead.finance?.deposit?.balance || 0;
+  const leadPayments = lead.finance?.payments || [];
+  const totalLeadPaid = leadPayments
+    .filter((p) => !p.amount.startsWith('-') && p.status === 'paid')
+    .reduce((sum, p) => sum + (p.numAmount || parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
+
+  const handleRecordLeadPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(paymentAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    if (num <= 0) {
+      toast.error('Введите корректную сумму оплаты');
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('ru-RU');
+    const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const currentDeposit = lead.finance?.deposit?.balance || 0;
+    const newDeposit = currentDeposit + num;
+
+    const methodLabels: Record<string, string> = {
+      card: 'Банковская карта',
+      bank_transfer: 'Перевод по СБП',
+      cash: 'Наличные',
+      invoice: 'Безналичный расчет (счет)',
+    };
+    const methodLabel = methodLabels[paymentMethod] || 'Банковская карта';
+
+    const newPaymentRecord = {
+      id: `pay_lead_${Date.now()}`,
+      date: todayStr,
+      amount: `${num.toLocaleString('ru-RU')} ₽`,
+      numAmount: num,
+      period: paymentPurpose,
+      method: methodLabel,
+      status: 'paid' as const,
+      type: paymentType,
+      comment: paymentComment || undefined,
+    };
+
+    const paymentInteraction: TimelineInteraction = {
+      id: `int_pay_${Date.now()}`,
+      studentId: lead.convertedStudentId,
+      occurredAt: `Сегодня, ${timeStr}`,
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор',
+      content: `Принята оплата ${num.toLocaleString('ru-RU')} ₽ от лида. Назначение: «${paymentPurpose}» (способ: ${methodLabel}). Зачислено на депозит лида. Текущий баланс: ${newDeposit.toLocaleString('ru-RU')} ₽.${paymentComment ? ` Комментарий: ${paymentComment}` : ''}`,
+      result: 'Оплата получена (до квалификации)',
+    };
+
+    let updatedStatus = lead.status;
+    let statusInteractions: TimelineInteraction[] = [];
+    if (autoSetStatusPaid && lead.status !== 'paid') {
+      updatedStatus = 'paid';
+      statusInteractions.push({
+        id: `status_change_${Date.now()}`,
+        studentId: lead.convertedStudentId,
+        occurredAt: `Сегодня, ${timeStr}`,
+        channel: 'other',
+        type: 'status_change',
+        author: userName || 'Администратор',
+        content: `Сменил(а) статус воронки: «${lead.status}» → «Оплачено (Успех)» в связи с поступлением оплаты`,
+        result: 'Этап воронки: Оплачено (Успех)',
+      });
+    }
+
+    const updatedInteractions = [
+      ...statusInteractions,
+      paymentInteraction,
+      ...lead.interactions,
+    ];
+
+    const updatedLead: FullLeadData = {
+      ...lead,
+      status: updatedStatus,
+      interactions: updatedInteractions,
+      finance: {
+        deposit: {
+          balance: newDeposit,
+          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} ₽`,
+          currency: 'RUB',
+        },
+        payments: [newPaymentRecord, ...(lead.finance?.payments || [])],
+      },
+    };
+
+    setLead(updatedLead);
+
+    // Save in INITIAL_LEADS & localStorage
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = updatedLead;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('crm_leads_v2');
+        let list: FullLeadData[] = stored ? JSON.parse(stored) : [...INITIAL_LEADS];
+        const idxStored = list.findIndex((l) => l.id === lead.id);
+        if (idxStored !== -1) {
+          list[idxStored] = updatedLead;
+        } else {
+          list.unshift(updatedLead);
+        }
+        localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    // Save to global payments so actual revenue / finance updates dynamically
+    savePaymentToStorage({
+      id: newPaymentRecord.id,
+      studentId: lead.convertedStudentId || `lead_${lead.id}`,
+      studentName: lead.studentName || lead.name,
+      parentId: lead.convertedParentId,
+      parentName: lead.name,
+      courseName: lead.directionOrCourse || 'Курс',
+      groupName: 'Лид (до квалификации)',
+      amount: num,
+      amountFormatted: `${num.toLocaleString('ru-RU')} ₽`,
+      paymentDate: todayStr,
+      periodLabel: paymentPurpose,
+      status: 'paid',
+      paymentMethod,
+      currency: 'RUB',
+      paymentType,
+      recordedBy: userName || 'Администратор',
+      comment: `Оплата от лида «${lead.name}» (${paymentPurpose})`,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-leads-changed', { detail: updatedLead }));
+    }
+
+    toast.success(`Платёж ${num.toLocaleString('ru-RU')} ₽ зафиксирован! Депозит лида: ${newDeposit.toLocaleString('ru-RU')} ₽`);
+    setIsRecordPaymentOpen(false);
+    setPaymentComment('');
+  };
+
+  const handleDeductLeadDeposit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = parseFloat(deductAmount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    const currentDeposit = lead.finance?.deposit?.balance || 0;
+
+    if (num <= 0) {
+      toast.error('Введите корректную сумму для списания');
+      return;
+    }
+    if (num > currentDeposit) {
+      toast.error(`Недостаточно средств на депозите (доступно ${currentDeposit.toLocaleString('ru-RU')} ₽)`);
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('ru-RU');
+    const timeStr = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const newDeposit = currentDeposit - num;
+
+    const deductionRecord = {
+      id: `pay_deduct_lead_${Date.now()}`,
+      date: todayStr,
+      amount: `-${num.toLocaleString('ru-RU')} ₽`,
+      numAmount: -num,
+      period: deductPurpose,
+      method: 'Списание с депозита',
+      status: 'paid' as const,
+      type: 'deduction' as const,
+      comment: deductComment || undefined,
+    };
+
+    const deductionInteraction: TimelineInteraction = {
+      id: `int_deduct_${Date.now()}`,
+      studentId: lead.convertedStudentId,
+      occurredAt: `Сегодня, ${timeStr}`,
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор',
+      content: `Списано ${num.toLocaleString('ru-RU')} ₽ с депозита лида. Назначение: «${deductPurpose}». Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} ₽.${deductComment ? ` Комментарий: ${deductComment}` : ''}`,
+      result: 'Списание с баланса лида',
+    };
+
+    const updatedInteractions = [deductionInteraction, ...lead.interactions];
+
+    const updatedLead: FullLeadData = {
+      ...lead,
+      interactions: updatedInteractions,
+      finance: {
+        deposit: {
+          balance: newDeposit,
+          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} ₽`,
+          currency: 'RUB',
+        },
+        payments: [deductionRecord, ...(lead.finance?.payments || [])],
+      },
+    };
+
+    setLead(updatedLead);
+
+    // Save in INITIAL_LEADS & localStorage
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = updatedLead;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('crm_leads_v2');
+        let list: FullLeadData[] = stored ? JSON.parse(stored) : [...INITIAL_LEADS];
+        const idxStored = list.findIndex((l) => l.id === lead.id);
+        if (idxStored !== -1) {
+          list[idxStored] = updatedLead;
+        } else {
+          list.unshift(updatedLead);
+        }
+        localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+
+    // Save deduction to global payments
+    savePaymentToStorage({
+      id: deductionRecord.id,
+      studentId: lead.convertedStudentId || `lead_${lead.id}`,
+      studentName: lead.studentName || lead.name,
+      parentId: lead.convertedParentId,
+      parentName: lead.name,
+      courseName: lead.directionOrCourse || 'Курс',
+      groupName: 'Лид (до квалификации)',
+      amount: -num,
+      amountFormatted: `-${num.toLocaleString('ru-RU')} ₽`,
+      paymentDate: todayStr,
+      periodLabel: `Списание: ${deductPurpose}`,
+      status: 'paid',
+      paymentMethod: 'deposit_deduction' as any,
+      currency: 'RUB',
+      paymentType: 'prepayment',
+      recordedBy: userName || 'Администратор',
+      comment: `Списание с депозита лида «${lead.name}» (${deductPurpose})`,
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-leads-changed', { detail: updatedLead }));
+    }
+
+    toast.success(`Списано ${num.toLocaleString('ru-RU')} ₽. Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} ₽`);
+    setIsDeductModalOpen(false);
+    setDeductComment('');
+  };
+
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
@@ -389,6 +656,7 @@ export default function LeadDetailsPage() {
       sourceLeadId: lead.id,
       sourceLeadName: lead.name,
       leadInteractions: lead.interactions,
+      leadFinance: lead.finance,
     };
   };
 
@@ -476,6 +744,32 @@ export default function LeadDetailsPage() {
                   <span>Ответственный: <strong>{lead.assignedTo}</strong></span>
                 </div>
               </div>
+
+              {/* Financial status badges */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {leadDeposit > 0 ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
+                    <Wallet className="h-3.5 w-3.5 text-emerald-600" />
+                    Депозит лида: +{leadDeposit.toLocaleString('ru-RU')} ₽
+                  </span>
+                ) : totalLeadPaid > 0 ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1.5 shadow-2xs">
+                    <CreditCard className="h-3.5 w-3.5 text-blue-600" />
+                    Оплачено: {totalLeadPaid.toLocaleString('ru-RU')} ₽ (депозит израсходован)
+                  </span>
+                ) : (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    Баланс: 0 ₽ (оплата не поступала)
+                  </span>
+                )}
+                {lead.status === 'paid' && (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Этап: Оплачено (Успех)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -483,11 +777,29 @@ export default function LeadDetailsPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
+              onClick={() => setIsRecordPaymentOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3.5 py-2 text-xs font-bold text-emerald-700 shadow-xs hover:bg-emerald-100 transition-colors cursor-pointer"
+            >
+              <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+              Принять оплату
+            </button>
+            {leadDeposit > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsDeductModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/90 px-3.5 py-2 text-xs font-bold text-amber-800 shadow-xs hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <MinusCircle className="h-3.5 w-3.5 text-amber-600" />
+                Списать с баланса
+              </button>
+            )}
+            <button
+              type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/60 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
             >
               <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
-              + Поставить задачу
+              Поставить задачу
             </button>
             <button
               type="button"
@@ -582,6 +894,134 @@ export default function LeadDetailsPage() {
         {lead.status === 'lost' && (
           <div className="mt-4 rounded-xl bg-rose-50 p-3.5 border border-rose-200 text-xs text-rose-800">
             <strong>Причина потери клиента:</strong> {lead.lossReason || 'Причина не указана'}
+          </div>
+        )}
+      </div>
+
+      {/* ЛИД ФИНАНСЫ И ДЕПОЗИТ (Оплата до квалификации и списание) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-emerald-600" />
+              Финансы и депозит лида (оплата до квалификации)
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Лид может вносить предоплату или депозит до зачисления в группу, а средства могут быть списаны за пробные уроки, бронь или диагностику.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsRecordPaymentOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              Принять оплату
+            </button>
+            {leadDeposit > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsDeductModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800 shadow-xs hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <MinusCircle className="h-3.5 w-3.5 text-amber-600" />
+                Списать с баланса
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
+            <span className="text-slate-500 text-[11px] font-medium">Текущий депозит лида:</span>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">
+              +{leadDeposit.toLocaleString('ru-RU')} ₽
+            </p>
+            <p className="text-[11px] text-emerald-600 mt-0.5 font-medium">
+              {leadDeposit > 0 ? 'Доступно для списания или переноса в группу' : 'Депозит нулевой • требуется пополнение'}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+            <span className="text-slate-500 text-[11px] font-medium">Всего поступило от лида:</span>
+            <p className="text-xl font-bold text-slate-900 mt-0.5">
+              {totalLeadPaid.toLocaleString('ru-RU')} ₽
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Сумма всех платежей до зачисления
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+            <span className="text-slate-500 text-[11px] font-medium">Статус этапа воронки:</span>
+            <p className="text-base font-bold text-slate-900 mt-1 flex items-center gap-1.5">
+              {lead.status === 'paid' ? (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  Оплачено (Успех)
+                </span>
+              ) : (
+                <span className="text-slate-700">
+                  {statuses.find((s) => s.key === lead.status)?.label || lead.status}
+                </span>
+              )}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {lead.status === 'paid' ? 'Готов к конвертации в ученика' : 'Оплата может быть зафиксирована в любой момент'}
+            </p>
+          </div>
+        </div>
+
+        {/* Transactions list */}
+        {leadPayments.length > 0 ? (
+          <div className="rounded-xl border border-slate-200 overflow-hidden text-xs">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Дата</th>
+                  <th className="py-2.5 px-3">Назначение / Операция</th>
+                  <th className="py-2.5 px-3">Способ</th>
+                  <th className="py-2.5 px-3">Сумма</th>
+                  <th className="py-2.5 px-3">Статус</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {leadPayments.map((p) => {
+                  const isDeduct = p.amount.startsWith('-');
+                  return (
+                    <tr key={p.id} className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 text-slate-600">{p.date}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">
+                        {p.period}
+                        {p.comment && (
+                          <span className="block text-[11px] font-normal text-slate-500">
+                            {p.comment}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">{p.method}</td>
+                      <td className={cn(
+                        "py-2.5 px-3 font-bold",
+                        isDeduct ? "text-amber-700" : "text-emerald-700"
+                      )}>
+                        {p.amount}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                          {isDeduct ? 'Списано' : 'Оплачено'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-slate-200 p-4 text-center text-xs text-slate-500">
+            По этому лиду еще не зафиксировано платежей или списаний. Нажмите «Принять оплату», чтобы внести аванс, бронь или оплату за пробное занятие.
           </div>
         )}
       </div>
@@ -1013,6 +1453,236 @@ export default function LeadDetailsPage() {
           toast.success(`Задача «${newTask.title}» добавлена в очередь!`);
         }}
       />
+
+      {/* LEAD RECORD PAYMENT MODAL (Оплата до квалификации) */}
+      {isRecordPaymentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Прием оплаты от лида</h2>
+                  <p className="text-xs text-slate-500">Фиксация поступления денег до зачисления в группу</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRecordPaymentOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordLeadPayment} className="p-6 space-y-4">
+              <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900">
+                <p>
+                  <strong>Лид:</strong> {lead.name} • <strong>Ученик:</strong> {lead.studentName || '—'}
+                </p>
+                <p className="text-blue-700 mt-0.5">
+                  Текущий баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} ₽</strong>
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Сумма оплаты (₽) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="5000"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Назначение платежа *
+                </label>
+                <select
+                  value={paymentPurpose}
+                  onChange={(e) => {
+                    setPaymentPurpose(e.target.value);
+                    if (e.target.value.includes('Предоплата') || e.target.value.includes('депозит') || e.target.value.includes('Бронь')) {
+                      setPaymentType('prepayment');
+                    } else if (e.target.value.includes('пробн')) {
+                      setPaymentType('one_time');
+                    } else {
+                      setPaymentType('subscription');
+                    }
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="Предоплата за курс">Предоплата за курс (зачисление на депозит)</option>
+                  <option value="Бронирование места в группе">Бронирование места в группе (аванс)</option>
+                  <option value="Оплата за пробное занятие / диагностику">Оплата за пробное занятие / диагностику</option>
+                  <option value="Полная оплата первого месяца">Полная оплата первого месяца обучения</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Способ оплаты *
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="card">Банковская карта (эквайринг)</option>
+                  <option value="bank_transfer">Перевод по СБП</option>
+                  <option value="cash">Наличные в кассу</option>
+                  <option value="invoice">Безналичный расчет (счет организации)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Комментарий к платежу
+                </label>
+                <input
+                  type="text"
+                  value={paymentComment}
+                  onChange={(e) => setPaymentComment(e.target.value)}
+                  placeholder="Например: бронь слота на субботу 11:00"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-xs flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="auto_set_paid"
+                  checked={autoSetStatusPaid}
+                  onChange={(e) => setAutoSetStatusPaid(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <label htmlFor="auto_set_paid" className="text-slate-800 font-medium cursor-pointer">
+                  Перевести этап лида в <strong>«Оплачено (Успех)»</strong> после фиксации этого платежа
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsRecordPaymentOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Зафиксировать поступление
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* LEAD DEDUCT FROM DEPOSIT MODAL (Списание средств с баланса лида) */}
+      {isDeductModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                  <MinusCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Списание с депозита лида</h2>
+                  <p className="text-xs text-slate-500">Удержание средств за оказанные услуги до зачисления</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDeductModalOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDeductLeadDeposit} className="p-6 space-y-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
+                <p>
+                  Доступный баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} ₽</strong>
+                </p>
+                <p className="text-amber-800 mt-0.5">
+                  Сумма списания будет вычтена из депозита и зафиксирована в финансовом журнале школы.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Сумма списания (₽) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={deductAmount}
+                  onChange={(e) => setDeductAmount(e.target.value)}
+                  placeholder="1000"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Назначение списания *
+                </label>
+                <select
+                  value={deductPurpose}
+                  onChange={(e) => setDeductPurpose(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  <option value="Оплата пробного занятия">Оплата пробного занятия</option>
+                  <option value="Диагностическое тестирование уровня">Диагностическое тестирование уровня</option>
+                  <option value="Учебные материалы и пособия">Учебные материалы и пособия</option>
+                  <option value="Удержание за бронирование слота">Удержание за бронирование слота</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Комментарий
+                </label>
+                <input
+                  type="text"
+                  value={deductComment}
+                  onChange={(e) => setDeductComment(e.target.value)}
+                  placeholder="Например: списано после проведения пробного урока"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsDeductModalOpen(false)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition-colors cursor-pointer"
+                >
+                  <MinusCircle className="h-3.5 w-3.5" />
+                  Списать с баланса
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

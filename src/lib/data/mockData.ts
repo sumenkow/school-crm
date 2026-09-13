@@ -1257,6 +1257,24 @@ export interface FullLeadData {
   convertedStudentId?: string;
   convertedParentId?: string;
   interactions: TimelineInteraction[];
+  finance?: {
+    deposit?: {
+      balance: number;
+      balanceFormatted: string;
+      currency?: string;
+    };
+    payments?: Array<{
+      id: string;
+      date: string;
+      amount: string;
+      numAmount: number;
+      period: string;
+      method: string;
+      status: 'paid' | 'expected';
+      type?: 'prepayment' | 'subscription' | 'one_time' | 'deduction';
+      comment?: string;
+    }>;
+  };
 }
 
 export const INITIAL_LEADS: FullLeadData[] = [

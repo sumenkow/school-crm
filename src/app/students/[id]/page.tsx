@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
-import { getStudentById, saveStudentToStorage, deductLessonFromDeposit } from '@/lib/data/studentStorage';
+import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import {
@@ -20,6 +20,7 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Plus,
   Edit,
   Send,
@@ -590,6 +591,18 @@ export default function StudentDetailsPage() {
     }));
   };
 
+  useEffect(() => {
+    reconcileAllStudentDepositsAndDebts();
+  }, [studentId]);
+
+  const studentDeposit = student.finance?.deposit?.balance || 0;
+  const overduePayments = (student.finance?.payments || []).filter((p) => p.status === 'overdue');
+  const studentOverdueDebt = overduePayments.reduce((sum, p) => {
+    const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    return sum + num;
+  }, 0);
+  const currencySymbol = student.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
       {/* Back link & breadcrumbs */}
@@ -646,6 +659,24 @@ export default function StudentDetailsPage() {
                     </>
                   )}
                 </span>
+
+                {/* Hero Balance Badge */}
+                {studentDeposit > 0 ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
+                    <Wallet className="h-3 w-3 text-emerald-600" />
+                    Депозит: +{studentDeposit.toLocaleString('ru-RU')} {currencySymbol}
+                  </span>
+                ) : studentOverdueDebt > 0 ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
+                    <AlertTriangle className="h-3 w-3 text-rose-600" />
+                    Долг: -{studentOverdueDebt.toLocaleString('ru-RU')} {currencySymbol}
+                  </span>
+                ) : (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
+                    <Clock className="h-3 w-3 text-amber-600" />
+                    Баланс: 0 {currencySymbol} (требуется пополнение)
+                  </span>
+                )}
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
@@ -725,7 +756,7 @@ export default function StudentDetailsPage() {
         </div>
 
         {/* Quick summary strip */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t border-slate-100 pt-4 text-xs">
+        <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3 border-t border-slate-100 pt-4 text-xs">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Группы ({student.groups.length}):</span>
@@ -770,6 +801,68 @@ export default function StudentDetailsPage() {
             <span className="text-slate-400">Основной контакт:</span>
             <p className="font-semibold text-slate-900 group-hover:text-blue-600 mt-0.5 flex items-center gap-1">
               {student.parents[0]?.firstName} ({student.parents[0]?.relationshipType}) ↗
+            </p>
+          </div>
+
+          {/* 5th Column: Hero Balance Card */}
+          <div className={cn(
+            "rounded-xl p-2.5 border flex flex-col justify-between",
+            studentDeposit > 0 && "bg-emerald-50/70 border-emerald-200",
+            studentOverdueDebt > 0 && "bg-rose-50/80 border-rose-200",
+            studentDeposit === 0 && studentOverdueDebt === 0 && "bg-amber-50/70 border-amber-200"
+          )}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                {studentDeposit > 0 ? (
+                  <Wallet className="h-3 w-3 text-emerald-600" />
+                ) : studentOverdueDebt > 0 ? (
+                  <AlertTriangle className="h-3 w-3 text-rose-600" />
+                ) : (
+                  <Clock className="h-3 w-3 text-amber-600" />
+                )}
+                Баланс:
+              </span>
+              {studentOverdueDebt > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
+                >
+                  Погасить
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
+                >
+                  Пополнить
+                </button>
+              )}
+            </div>
+            <p className={cn(
+              "font-extrabold text-sm mt-0.5",
+              studentDeposit > 0 && "text-emerald-700",
+              studentOverdueDebt > 0 && "text-rose-700",
+              studentDeposit === 0 && studentOverdueDebt === 0 && "text-slate-900"
+            )}>
+              {studentDeposit > 0
+                ? `+${studentDeposit.toLocaleString('ru-RU')} ${currencySymbol}`
+                : studentOverdueDebt > 0
+                ? `-${studentOverdueDebt.toLocaleString('ru-RU')} ${currencySymbol}`
+                : `0 ${currencySymbol}`}
+            </p>
+            <p className={cn(
+              "text-[10px] font-medium leading-tight",
+              studentDeposit > 0 && "text-emerald-600",
+              studentOverdueDebt > 0 && "text-rose-600 font-semibold",
+              studentDeposit === 0 && studentOverdueDebt === 0 && "text-amber-800 font-semibold"
+            )}>
+              {studentDeposit > 0
+                ? 'Депозит активен'
+                : studentOverdueDebt > 0
+                ? 'Просрочен счет'
+                : 'Баланс нулевой • пополните'}
             </p>
           </div>
         </div>

@@ -258,4 +258,231 @@ export function settleStudentOverdueDebts(studentId: string): void {
   }
 }
 
+/**
+ * Automatically settles overdue course debts using available deposit funds for a student.
+ * Ensures that a student never has an active overdue debt while having unused deposit funds.
+ * If deposit >= debt: debt is marked 'paid', deposit is reduced by debt amount.
+ * If deposit < debt: deposit is reduced to 0, debt is partially reduced.
+ */
+export function settleDebtsFromDeposit(studentId: string): {
+  settled: boolean;
+  settledAmount: number;
+  remainingDeposit: number;
+  remainingDebt: number;
+} {
+  const student = getStudentById(studentId);
+  if (!student) {
+    return { settled: false, settledAmount: 0, remainingDeposit: 0, remainingDebt: 0 };
+  }
+
+  const currentDeposit = student.finance?.deposit;
+  let availableDeposit = currentDeposit?.balance || 0;
+  if (availableDeposit <= 0) {
+    return { settled: false, settledAmount: 0, remainingDeposit: 0, remainingDebt: 0 };
+  }
+
+  let allStoredPayments: any[] = [];
+  try {
+    const { getStoredPayments } = require('./paymentStorage');
+    allStoredPayments = getStoredPayments();
+  } catch (e) {
+    console.error('Failed to get stored payments for deposit settlement:', e);
+  }
+
+  const globalOverdue = allStoredPayments.filter(
+    (p: any) => p.studentId === studentId && p.status === 'overdue'
+  );
+  const studentOverdue = (student.finance?.payments || []).filter((p) => p.status === 'overdue');
+
+  if (globalOverdue.length === 0 && studentOverdue.length === 0) {
+    return { settled: false, settledAmount: 0, remainingDeposit: availableDeposit, remainingDebt: 0 };
+  }
+
+  let settledAmount = 0;
+  const todayStr = new Date().toLocaleDateString('ru-RU');
+  const currencySymbol = currentDeposit?.currency === 'EUR' ? '€' : '₽';
+  let studentPayments = [...(student.finance?.payments || [])];
+  const newInteractions: TimelineInteraction[] = [];
+
+  // 1. Settle in global payment storage
+  const updatedGlobalPayments = allStoredPayments.map((p: any) => {
+    if (p.studentId === studentId && p.status === 'overdue' && availableDeposit > 0) {
+      const debtAmount = typeof p.amount === 'number'
+        ? p.amount
+        : parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+
+      if (debtAmount <= 0) return p;
+
+      if (availableDeposit >= debtAmount) {
+        // Full payoff
+        availableDeposit -= debtAmount;
+        settledAmount += debtAmount;
+
+        newInteractions.push({
+          id: `int_settle_${Date.now()}_${p.id}`,
+          studentId: student.id,
+          studentName: `${student.firstName} ${student.lastName}`,
+          parentId: student.parents?.[0]?.id,
+          parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+          occurredAt: 'Только что',
+          channel: 'other',
+          type: 'status_change',
+          author: 'Система (списание долга с депозита)',
+          content: `Списано ${debtAmount.toLocaleString('ru-RU')} ${currencySymbol} с депозита в счет полного погашения задолженности за «${p.courseName || p.groupName || 'Курс'}». Остаток на депозите: ${availableDeposit.toLocaleString('ru-RU')} ${currencySymbol}.`,
+          result: 'Задолженность погашена с депозита',
+          targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+          targetName: `${student.firstName} ${student.lastName}`,
+          targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+        });
+
+        // Update matching student payment
+        studentPayments = studentPayments.map((sp) => {
+          if (sp.id === p.id || sp.period === p.periodLabel) {
+            return {
+              ...sp,
+              status: 'paid' as const,
+              method: 'Списание с депозита',
+            };
+          }
+          return sp;
+        });
+
+        return {
+          ...p,
+          status: 'paid' as const,
+          paymentDate: todayStr,
+          paymentMethod: 'deposit_deduction' as any,
+          comment: p.comment ? `${p.comment} (Погашено с депозита ${todayStr})` : `Задолженность полностью погашена с депозита ${todayStr}`,
+        };
+      } else {
+        // Partial payoff
+        const covered = availableDeposit;
+        const remaining = debtAmount - covered;
+        settledAmount += covered;
+        availableDeposit = 0;
+
+        newInteractions.push({
+          id: `int_settle_part_${Date.now()}_${p.id}`,
+          studentId: student.id,
+          studentName: `${student.firstName} ${student.lastName}`,
+          parentId: student.parents?.[0]?.id,
+          parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+          occurredAt: 'Только что',
+          channel: 'other',
+          type: 'status_change',
+          author: 'Система (частичное списание долга с депозита)',
+          content: `Списано ${covered.toLocaleString('ru-RU')} ${currencySymbol} с депозита в счет частичного погашения задолженности за «${p.courseName || p.groupName || 'Курс'}». Остаток задолженности: ${remaining.toLocaleString('ru-RU')} ${currencySymbol}. Депозит исчерпан.`,
+          result: 'Частичное погашение долга с депозита',
+          targetType: student.studentType === 'adult_student' ? 'student' : 'parent',
+          targetName: `${student.firstName} ${student.lastName}`,
+          targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Родитель',
+        });
+
+        studentPayments = studentPayments.map((sp) => {
+          if (sp.id === p.id || sp.period === p.periodLabel) {
+            return {
+              ...sp,
+              amount: `${remaining.toLocaleString('ru-RU')} ${currencySymbol}`,
+            };
+          }
+          return sp;
+        });
+
+        return {
+          ...p,
+          amount: remaining,
+          amountFormatted: `${remaining.toLocaleString('ru-RU')} ${currencySymbol}`,
+          comment: p.comment
+            ? `${p.comment} (Частично погашено с депозита на ${covered.toLocaleString('ru-RU')} ${currencySymbol} ${todayStr})`
+            : `Частично погашено с депозита на ${covered.toLocaleString('ru-RU')} ${currencySymbol} ${todayStr}`,
+        };
+      }
+    }
+    return p;
+  });
+
+  // Check any student-level payments that were not matched globally
+  studentPayments = studentPayments.map((sp) => {
+    if (sp.status === 'overdue' && availableDeposit > 0) {
+      const debtAmount = parseFloat(String(sp.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+      if (debtAmount > 0 && availableDeposit >= debtAmount) {
+        availableDeposit -= debtAmount;
+        settledAmount += debtAmount;
+        return {
+          ...sp,
+          status: 'paid' as const,
+          method: 'Списание с депозита',
+        };
+      }
+    }
+    return sp;
+  });
+
+  // Update student
+  const updatedStudent: FullStudentData = {
+    ...student,
+    finance: {
+      ...student.finance,
+      deposit: {
+        ...currentDeposit,
+        balance: availableDeposit,
+        balanceFormatted: `${availableDeposit.toLocaleString('ru-RU')} ${currencySymbol}`,
+      },
+      payments: studentPayments,
+    },
+    interactions: [...newInteractions, ...(student.interactions || [])],
+  };
+
+  saveStudentToStorage(updatedStudent);
+  for (const inter of newInteractions) {
+    saveInteractionToStorage(inter);
+  }
+
+  // Save global payments
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('crm_payments_v2', JSON.stringify(updatedGlobalPayments));
+      const { INITIAL_PAYMENTS } = require('./mockData');
+      for (const up of updatedGlobalPayments) {
+        const idx = INITIAL_PAYMENTS.findIndex((x: any) => x.id === up.id);
+        if (idx !== -1) {
+          INITIAL_PAYMENTS[idx] = up;
+        }
+      }
+      window.dispatchEvent(new CustomEvent('crm-payments-changed'));
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    } catch (e) {
+      console.error('Failed to sync updated global payments after deposit settlement:', e);
+    }
+  }
+
+  const remainingDebt = updatedGlobalPayments
+    .filter((p: any) => p.studentId === studentId && p.status === 'overdue')
+    .reduce((sum: number, p: any) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
+
+  return {
+    settled: settledAmount > 0,
+    settledAmount,
+    remainingDeposit: availableDeposit,
+    remainingDebt,
+  };
+}
+
+/**
+ * Reconciles all students so that no student ever has an active debt while having unused deposit funds.
+ */
+export function reconcileAllStudentDepositsAndDebts(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const students = getStoredStudents();
+    for (const s of students) {
+      if ((s.finance?.deposit?.balance || 0) > 0) {
+        settleDebtsFromDeposit(s.id);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to reconcile all student deposits and debts:', err);
+  }
+}
+
 

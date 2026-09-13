@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, DollarSign, Calendar, Check, User, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet, AlertCircle } from 'lucide-react';
 import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
-import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
 import { savePaymentToStorage, settleOverduePayments, getStoredPayments } from '@/lib/data/paymentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
@@ -64,6 +64,7 @@ export function RecordPaymentModal({
   const parent = (initialParentId && selectedStudent?.parents?.find((p) => p.id === initialParentId)) || selectedStudent?.parents?.[0];
   const parentDisplayName = parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель';
   const currencySymbol = currency === 'EUR' ? '€' : '₽';
+  const selectedStudentDeposit = selectedStudent?.finance?.deposit?.balance || 0;
 
   const allStoredPayments = typeof window !== 'undefined' ? getStoredPayments() : [];
   const overduePaymentsForStudent = allStoredPayments.filter(
@@ -218,6 +219,7 @@ export function RecordPaymentModal({
     if (status === 'paid') {
       settleOverduePayments(freshStudent.id, numAmount, parent?.id);
       settleStudentOverdueDebts(freshStudent.id);
+      settleDebtsFromDeposit(freshStudent.id);
     }
 
     // 2. Dispatch events
@@ -300,25 +302,45 @@ export function RecordPaymentModal({
           </div>
 
           {totalOverdueForStudent > 0 && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs">
-              <div className="flex items-center justify-between gap-2">
+            <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="font-semibold text-rose-900 flex items-center gap-1.5">
                   <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
                   Ученик имеет задолженность: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAmount(String(totalOverdueForStudent));
-                    setPeriodLabel('Погашение задолженности');
-                  }}
-                  className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition-colors shrink-0 cursor-pointer"
-                >
-                  Погасить долг ({totalOverdueForStudent.toLocaleString('ru-RU')} ₽)
-                </button>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {selectedStudentDeposit > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const res = settleDebtsFromDeposit(selectedStudent.id);
+                        if (res.settled) {
+                          success(`Списано ${res.settledAmount.toLocaleString('ru-RU')} ₽ с депозита в счет погашения долга!`);
+                          onClose();
+                        }
+                      }}
+                      className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                    >
+                      <Wallet className="h-3 w-3" />
+                      Списать с депозита ({selectedStudentDeposit.toLocaleString('ru-RU')} ₽)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAmount(String(totalOverdueForStudent));
+                      setPeriodLabel('Погашение задолженности');
+                    }}
+                    className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition-colors shrink-0 cursor-pointer"
+                  >
+                    Внести оплату ({totalOverdueForStudent.toLocaleString('ru-RU')} ₽)
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-rose-700 mt-1">
-                При внесении оплаты статус просрочки будет автоматически снят с ученика, а общая сумма задолженности школы пересчитается по оставшимся клиентам.
+              <p className="text-[11px] text-rose-700">
+                {selectedStudentDeposit > 0
+                  ? `На депозите ученика доступно ${selectedStudentDeposit.toLocaleString('ru-RU')} ₽. Вы можете списать долг с депозита или внести новый платёж.`
+                  : 'При внесении оплаты статус просрочки будет автоматически снят с ученика, а общая сумма задолженности школы пересчитается по оставшимся клиентам.'}
               </p>
             </div>
           )}

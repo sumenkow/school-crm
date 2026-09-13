@@ -15,6 +15,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { FullLeadData, INITIAL_GROUPS, INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
+import { saveStudentToStorage, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
 
 interface EnrollStudentFromLeadModalProps {
   isOpen: boolean;
@@ -117,6 +118,7 @@ export function EnrollStudentFromLeadModal({
         history: []
       },
       finance: {
+        deposit: lead.finance?.deposit,
         activeSubscription: {
           period: subscriptionPeriod,
           price: subscriptionPrice,
@@ -132,7 +134,15 @@ export function EnrollStudentFromLeadModal({
             period: subscriptionPeriod,
             method: 'Банковская карта',
             status: paymentStatus === 'paid' ? 'paid' : 'overdue'
-          }
+          },
+          ...(lead.finance?.payments || []).map((p) => ({
+            id: p.id,
+            date: p.date,
+            amount: p.amount,
+            period: p.period,
+            method: p.method,
+            status: p.status,
+          }))
         ]
       },
       teacherComments: [],
@@ -145,13 +155,15 @@ export function EnrollStudentFromLeadModal({
           channel: 'other',
           type: 'initial_contact',
           author: 'Система CRM',
-          content: `Ученик успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».`,
+          content: `Ученик успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».${lead.finance?.deposit?.balance ? ` Сохранен депозит с этапа лида: ${lead.finance.deposit.balanceFormatted}.` : ''}`,
           result: 'Зачисление завершено'
         }
       ]
     };
 
     INITIAL_STUDENTS.unshift(newStudent);
+    saveStudentToStorage(newStudent);
+    settleDebtsFromDeposit(newStudentId);
 
     // 2. Add student to target group
     targetGroup.students.push({
