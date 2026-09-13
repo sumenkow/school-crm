@@ -347,7 +347,77 @@ export default function AnalyticsPage() {
   });
 
   const handleExport = () => {
-    alert('Экспорт аналитического отчета в формате Excel (.xlsx) успешно сформирован!');
+    try {
+      const periodLabel =
+        timeRange === 'month' ? 'Сентябрь 2026' : timeRange === 'quarter' ? '3-й квартал 2026' : '2026 год';
+      const nowStr = new Date().toLocaleString('ru-RU');
+
+      const csvRows: string[] = [];
+      csvRows.push('ОТЧЕТ: АНАЛИТИКА ШКОЛЫ И ПОКАЗАТЕЛИ ЭФФЕКТИВНОСТИ');
+      csvRows.push(`Период:;${periodLabel}`);
+      csvRows.push(`Дата и время выгрузки:;${nowStr}`);
+      csvRows.push('');
+
+      // 1. KPI
+      csvRows.push('=== 1. КЛЮЧЕВЫЕ МЕТРИКИ (KPI) ===');
+      csvRows.push('Показатель;Значение;Динамика / Пояснение');
+      csvRows.push('Удержание учеников (Retention);91.4%;+2.1% к прошлому периоду');
+      csvRows.push('Сквозная конверсия CRM;35.7%;10 оплат из 28 обращений');
+      csvRows.push('Средний LTV ученика;45 600 ₽;+5.4%');
+      csvRows.push(`Совокупная выручка за период;${currentTeacherData.totalRevenue};100% от плана`);
+      csvRows.push(`Всего активных учеников;${currentTeacherData.totalStudents};чел.`);
+      csvRows.push('');
+
+      // 2. Funnel
+      csvRows.push('=== 2. ВОРОНКА ПРОДАЖ И СДЕЛОК CRM ===');
+      csvRows.push('Этап воронки;Количество лидов;Конверсия');
+      funnelSteps.forEach((s) => {
+        csvRows.push(`"${s.name}";${s.count};${s.conversion}`);
+      });
+      csvRows.push('');
+
+      // 3. Teachers
+      csvRows.push('=== 3. ВЫРУЧКА И НАГРУЗКА ПРЕПОДАВАТЕЛЕЙ ===');
+      csvRows.push('Преподаватель;Направление;Выручка;Доля от выручки;Учеников;Групп;Рейтинг');
+      currentTeacherData.teachers.forEach((t) => {
+        csvRows.push(`"${t.name}";"${t.subject}";${t.revenue};${t.share}%;${t.students};${t.groups};${t.rating}`);
+      });
+      csvRows.push('');
+
+      // 4. Courses
+      csvRows.push('=== 4. НАПРАВЛЕНИЯ ОБУЧЕНИЯ И КУРСЫ ===');
+      csvRows.push('Курс;Учеников;Выручка;Активных групп;Динамика');
+      courses.forEach((c) => {
+        csvRows.push(`"${c.name}";${c.students};${c.revenue};${c.activeGroups};${c.growth}`);
+      });
+      csvRows.push('');
+
+      // 5. Leads
+      csvRows.push('=== 5. РЕЕСТР ОБРАЩЕНИЙ И ЛИДОВ ===');
+      csvRows.push('Имя контакта;Имя ученика;Направление;Контакты;Сумма сделки;Текущий статус;Дата создания');
+      leads.forEach((l) => {
+        csvRows.push(
+          `"${l.name}";"${l.studentName || '—'}";"${l.directionOrCourse || '—'}";"${l.contact}";${l.dealAmount || 0};"${l.status}";"${l.createdAt}"`
+        );
+      });
+
+      const csvString = '\uFEFF' + csvRows.join('\r\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `analytics_report_${timeRange}_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Отчет «${filename}» успешно сформирован и скачан!`);
+    } catch (err) {
+      console.error('Ошибка экспорта отчета:', err);
+      toast.error('Не удалось сформировать файл отчета');
+    }
   };
 
   // Render funnel stage table

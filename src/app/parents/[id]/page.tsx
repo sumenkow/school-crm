@@ -50,6 +50,7 @@ export default function ParentDetailsPage() {
         group: s.groups[0]?.name || 'Онлайн-группа',
         course: s.groups[0]?.courseName || 'Общий курс',
         teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+        groups: s.groups || [],
         status: s.status,
         attendance: s.attendanceStats?.attendanceRate || '100%',
       }));
@@ -72,6 +73,9 @@ export default function ParentDetailsPage() {
           group: 'English B1 Teens',
           course: 'Английский язык',
           teacher: 'Мария Иванова',
+          groups: [
+            { id: '1', name: 'English B1 Teens', courseName: 'Английский язык', teacherName: 'Мария Иванова', schedule: 'Пн, Чт • 18:45–20:15', status: 'active', joinedAt: '01.09.2026' },
+          ],
           status: 'active',
           attendance: '94%',
         },
@@ -97,6 +101,7 @@ export default function ParentDetailsPage() {
           group: s.groups[0]?.name || 'Онлайн-группа',
           course: s.groups[0]?.courseName || 'Общий курс',
           teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+          groups: s.groups || [],
           status: s.status,
           attendance: s.attendanceStats?.attendanceRate || '100%',
         }));
@@ -152,8 +157,9 @@ export default function ParentDetailsPage() {
         group: st.groups[0]?.name || 'Основная группа',
         course: st.groups[0]?.courseName || 'Курс',
         teacher: st.groups[0]?.teacherName || 'Преподаватель',
+        groups: st.groups || [],
         status: st.status,
-        attendance: st.attendanceStats.attendanceRate,
+        attendance: st.attendanceStats?.attendanceRate || '100%',
       },
     ]);
 
@@ -180,6 +186,17 @@ export default function ParentDetailsPage() {
         group: newChildGroupInEdit,
         course,
         teacher: 'Мария Иванова',
+        groups: [
+          {
+            id: `g_${Date.now()}`,
+            name: newChildGroupInEdit,
+            courseName: course,
+            teacherName: 'Мария Иванова',
+            schedule: '—',
+            status: 'active',
+            joinedAt: new Date().toLocaleDateString('ru-RU'),
+          },
+        ],
         status: 'active',
         attendance: '100%',
       },
@@ -201,6 +218,17 @@ export default function ParentDetailsPage() {
           group: newChild.group,
           course: newChild.course,
           teacher: newChild.teacher,
+          groups: [
+            {
+              id: `g_${Date.now()}`,
+              name: newChild.group,
+              courseName: newChild.course,
+              teacherName: newChild.teacher,
+              schedule: '—',
+              status: 'active',
+              joinedAt: new Date().toLocaleDateString('ru-RU'),
+            },
+          ],
           status: newChild.status,
           attendance: newChild.attendance,
         },
@@ -514,16 +542,67 @@ export default function ParentDetailsPage() {
                     </span>
                   </div>
 
-                  <p className="text-xs font-semibold text-blue-600 mt-3">{child.course}</p>
-                  <div className="mt-2 space-y-1 text-xs text-slate-600">
-                    <p>
-                      Группа: <strong>{child.group}</strong>
-                    </p>
-                    <p>Преподаватель: {child.teacher}</p>
-                    <p>
-                      Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
-                    </p>
-                  </div>
+                  {child.groups && child.groups.length > 1 ? (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800">
+                          Группы обучения ({child.groups.length}):
+                        </span>
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
+                          {child.groups.length} группы
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {child.groups.map((grp, gIdx) => (
+                          <div
+                            key={grp.id || gIdx}
+                            className="rounded-lg border border-blue-100 bg-white p-2.5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                                {grp.name}
+                              </span>
+                              {grp.courseName && (
+                                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                  {grp.courseName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                              {grp.teacherName && (
+                                <span>Преподаватель: <strong className="text-slate-700">{grp.teacherName}</strong></span>
+                              )}
+                              {grp.schedule && (
+                                <span>Расписание: <span className="text-slate-600">{grp.schedule}</span></span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-600 pt-1">
+                        Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold text-blue-600 mt-3">
+                        {child.course || child.groups?.[0]?.courseName || 'Основной курс'}
+                      </p>
+                      <div className="mt-2 space-y-1 text-xs text-slate-600">
+                        <p>
+                          Группа: <strong>{child.group || child.groups?.[0]?.name}</strong>
+                        </p>
+                        <p>Преподаватель: {child.teacher || child.groups?.[0]?.teacherName}</p>
+                        {child.groups?.[0]?.schedule && (
+                          <p>Расписание: {child.groups[0].schedule}</p>
+                        )}
+                        <p>
+                          Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                   <span className="text-[11px] text-slate-400">ID: {child.id}</span>
@@ -754,7 +833,11 @@ export default function ParentDetailsPage() {
                           </div>
                           <div>
                             <span className="font-bold text-slate-900">{ch.name}</span>
-                            <span className="text-[10px] text-slate-500 ml-1.5">{ch.group}</span>
+                            <span className="text-[10px] text-slate-500 ml-1.5">
+                              {ch.groups && ch.groups.length > 1
+                                ? ch.groups.map((g) => g.name).join(', ')
+                                : (ch.group || ch.groups?.[0]?.name || 'Без группы')}
+                            </span>
                           </div>
                         </div>
                         <button

@@ -243,7 +243,70 @@ export function AdminPerformanceReport() {
   const current = ADMIN_PROFILES[selectedAdminKey];
 
   const handleExport = () => {
-    toast.success(`Отчет по эффективности «${current.adminName}» успешно сформирован`);
+    try {
+      const nowStr = new Date().toLocaleString('ru-RU');
+      const csvRows: string[] = [];
+      csvRows.push(`ОТЧЕТ ПО ЭФФЕКТИВНОСТИ РАБОТЫ АДМИНИСТРАТОРА`);
+      csvRows.push(`Сотрудник:;${current.adminName} (${current.role})`);
+      csvRows.push(`Отчетный период:;${current.period}`);
+      csvRows.push(`Дата выгрузки:;${nowStr}`);
+      csvRows.push('');
+
+      csvRows.push('=== ИНТЕГРАЛЬНЫЙ KPI ===');
+      csvRows.push(`Общий балл KPI:;${current.kpiScore}%`);
+      csvRows.push(`Выполнение стандартов:;${current.operationalSummary.standardsMet ? 'Да (в норме)' : 'Требует внимания'}`);
+      csvRows.push(`График работы:;${current.operationalSummary.workSchedule}`);
+      csvRows.push(`Рекомендация:;${current.operationalSummary.recommendation}`);
+      csvRows.push('');
+
+      csvRows.push('=== ВЫПОЛНЕНИЕ ЗАДАЧ И СКОРОСТЬ РЕАКЦИИ ===');
+      csvRows.push('Показатель;Значение;Норматив');
+      csvRows.push(`Всего задач;${current.tasks.totalTasks};—`);
+      csvRows.push(`Выполнено в срок;${current.tasks.completedOnTime};${current.tasks.onTimeRate}%`);
+      csvRows.push(`Просрочено задач;${current.tasks.overdueCount};0`);
+      csvRows.push(`Среднее время закрытия задачи;${current.tasks.avgResolutionHours} ч.;—`);
+      csvRows.push(`Средняя скорость первого ответа;${current.tasks.avgReactionMinutes} мин.;до ${current.tasks.targetReactionMinutes} мин.`);
+      csvRows.push('');
+
+      csvRows.push('=== ФИНАНСЫ И СБОР ОПЛАТ ===');
+      csvRows.push('Показатель;Значение');
+      csvRows.push(`Собрано оплат;${current.payments.collectedAmount.toLocaleString('ru-RU')} ₽`);
+      csvRows.push(`План по сборам;${current.payments.planAmount.toLocaleString('ru-RU')} ₽ (${current.payments.planProgress}%)`);
+      csvRows.push(`Выставлено счетов;${current.payments.invoicesIssued}`);
+      csvRows.push(`Оплачено счетов;${current.payments.invoicesPaid} (${current.payments.paymentConversion}%)`);
+      csvRows.push(`Среднее время оплаты счета;${current.payments.avgInvoiceHours} ч.`);
+      csvRows.push(`Задолженностей старше 3 дней;${current.payments.debtsOlderThan3Days}`);
+      csvRows.push('');
+
+      csvRows.push('=== ВОРОНКА, СЕРВИС И RETENTION ===');
+      csvRows.push('Показатель;Значение');
+      csvRows.push(`Обработано лидов всего;${current.funnelAndService.leadsTotal}`);
+      csvRows.push(`Первый контакт до 15 мин;${current.funnelAndService.firstContactWithin15MinRate}%`);
+      csvRows.push(`Назначено пробных;${current.funnelAndService.trialsScheduled}`);
+      csvRows.push(`Доходимость до пробных;${current.funnelAndService.trialsAttended} (${current.funnelAndService.trialShowUpRate}%)`);
+      csvRows.push(`Конверсия пробный → оплата;${current.funnelAndService.trialsToPaidCount} (${current.funnelAndService.trialToPaidConversion}%)`);
+      csvRows.push(`Продление абонементов (Retention);${current.funnelAndService.renewalsCompleted} из ${current.funnelAndService.renewalsDue} (${current.funnelAndService.renewalRate}%)`);
+      csvRows.push(`Отработка пропусков;${current.funnelAndService.absenceFollowUpRate}%`);
+      csvRows.push(`Чистота данных в CRM;${current.funnelAndService.crmDataHygieneScore}%`);
+      csvRows.push(`Оценка родителей (CSAT);${current.funnelAndService.parentSatisfactionCsat} / 5.0 (отзывов: ${current.funnelAndService.reviewsCount})`);
+
+      const csvString = '\uFEFF' + csvRows.join('\r\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `admin_efficiency_${selectedAdminKey}_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Отчет «${filename}» успешно сформирован и скачан!`);
+    } catch (err) {
+      console.error('Ошибка экспорта:', err);
+      toast.error('Не удалось скачать отчет');
+    }
   };
 
   return (

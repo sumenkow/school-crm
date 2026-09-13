@@ -1,8 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckSquare, Calendar, Clock, User, Check } from 'lucide-react';
+import { X, CheckSquare, Calendar, Clock, User, Check, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
+
+export interface StudentTaskScope {
+  id: string;
+  name: string;
+  parents?: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    relationshipType?: string;
+  }>;
+}
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -10,15 +22,24 @@ interface CreateTaskModalProps {
   onCreated: (newTask: FullTaskData) => void;
   defaultStudentId?: string;
   defaultLeadId?: string;
+  studentScope?: StudentTaskScope;
 }
 
-export function CreateTaskModal({ isOpen, onClose, onCreated, defaultStudentId, defaultLeadId }: CreateTaskModalProps) {
+export function CreateTaskModal({
+  isOpen,
+  onClose,
+  onCreated,
+  defaultStudentId,
+  defaultLeadId,
+  studentScope,
+}: CreateTaskModalProps) {
   const [title, setTitle] = useState('');
   const [taskType, setTaskType] = useState<FullTaskData['taskType']>('Retention');
   const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
   const [priority, setPriority] = useState<FullTaskData['priority']>('medium');
   const [dueDate, setDueDate] = useState('2026-09-12');
   const [dueTime, setDueTime] = useState('15:00');
+  const [scopedTarget, setScopedTarget] = useState<string>('student');
   const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'none'>(
     defaultStudentId ? 'student' : defaultLeadId ? 'lead' : 'student'
   );
@@ -36,10 +57,22 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultStudentId, 
 
     let studentId: string | undefined;
     let studentName: string | undefined;
+    let parentId: string | undefined;
+    let parentName: string | undefined;
     let leadId: string | undefined;
     let leadName: string | undefined;
 
-    if (relatedEntity === 'student') {
+    if (studentScope) {
+      studentId = studentScope.id;
+      studentName = studentScope.name;
+      if (scopedTarget !== 'student') {
+        const parent = studentScope.parents?.find((p) => p.id === scopedTarget);
+        if (parent) {
+          parentId = parent.id;
+          parentName = `${parent.firstName} ${parent.lastName}`.trim();
+        }
+      }
+    } else if (relatedEntity === 'student') {
       const st = INITIAL_STUDENTS.find((s) => s.id === selectedEntityId);
       studentId = selectedEntityId;
       studentName = st ? `${st.firstName} ${st.lastName}` : 'Иван Смирнов';
@@ -55,6 +88,8 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultStudentId, 
       taskType,
       studentId,
       studentName,
+      parentId,
+      parentName,
       leadId,
       leadName,
       assignedTo,
@@ -164,56 +199,104 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultStudentId, 
           </div>
 
           {/* Link to Entity */}
-          <div className="space-y-2 border-t border-slate-100 pt-3">
-            <label className="text-xs font-medium text-slate-700">Связать с клиентом:</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setRelatedEntity('student')}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'student' ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white border-slate-200 text-slate-600'}`}
-              >
-                Ученик
-              </button>
-              <button
-                type="button"
-                onClick={() => setRelatedEntity('lead')}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'lead' ? 'bg-purple-50 border-purple-300 text-purple-800' : 'bg-white border-slate-200 text-slate-600'}`}
-              >
-                Лид CRM
-              </button>
-              <button
-                type="button"
-                onClick={() => setRelatedEntity('none')}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'none' ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-white border-slate-200 text-slate-600'}`}
-              >
-                Без привязки
-              </button>
+          {studentScope ? (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  Связать задачу с клиентом:
+                </label>
+                <span className="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  Только этот ученик или семья
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setScopedTarget('student')}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors',
+                    scopedTarget === 'student'
+                      ? 'bg-blue-50 border-blue-400 text-blue-800 shadow-xs ring-1 ring-blue-300'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <User className="h-3.5 w-3.5" />
+                  Ученик: {studentScope.name}
+                </button>
+                {(studentScope.parents || []).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setScopedTarget(p.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors',
+                      scopedTarget === p.id
+                        ? 'bg-purple-50 border-purple-400 text-purple-800 shadow-xs ring-1 ring-purple-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    {p.relationshipType || 'Родитель'}: {p.firstName} {p.lastName}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Задача будет создана в карточке {studentScope.name}
+                {scopedTarget !== 'student' ? ' с привязкой к родителю' : ''}. Выбор других учеников заблокирован.
+              </p>
             </div>
+          ) : (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <label className="text-xs font-medium text-slate-700">Связать с клиентом:</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRelatedEntity('student')}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'student' ? 'bg-blue-50 border-blue-300 text-blue-800' : 'bg-white border-slate-200 text-slate-600'}`}
+                >
+                  Ученик
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRelatedEntity('lead')}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'lead' ? 'bg-purple-50 border-purple-300 text-purple-800' : 'bg-white border-slate-200 text-slate-600'}`}
+                >
+                  Лид CRM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRelatedEntity('none')}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium border ${relatedEntity === 'none' ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-white border-slate-200 text-slate-600'}`}
+                >
+                  Без привязки
+                </button>
+              </div>
 
-            {relatedEntity === 'student' && (
-              <select
-                value={selectedEntityId}
-                onChange={(e) => setSelectedEntityId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-              >
-                {INITIAL_STUDENTS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.groups[0]?.name || 'Ученик'})</option>
-                ))}
-              </select>
-            )}
+              {relatedEntity === 'student' && (
+                <select
+                  value={selectedEntityId}
+                  onChange={(e) => setSelectedEntityId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                >
+                  {INITIAL_STUDENTS.map((s) => (
+                    <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.groups[0]?.name || 'Ученик'})</option>
+                  ))}
+                </select>
+              )}
 
-            {relatedEntity === 'lead' && (
-              <select
-                value={selectedEntityId}
-                onChange={(e) => setSelectedEntityId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-              >
-                {INITIAL_LEADS.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name} — {l.directionOrCourse}</option>
-                ))}
-              </select>
-            )}
-          </div>
+              {relatedEntity === 'lead' && (
+                <select
+                  value={selectedEntityId}
+                  onChange={(e) => setSelectedEntityId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                >
+                  {INITIAL_LEADS.map((l) => (
+                    <option key={l.id} value={l.id}>{l.name} — {l.directionOrCourse}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-slate-700">Подробное описание</label>

@@ -246,23 +246,89 @@ export default function StudentDetailsPage() {
 
   const handleSaveStudentEdit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newFirstName = editStudentForm.firstName.trim() || student.firstName;
+    const newLastName = editStudentForm.lastName.trim() || student.lastName;
+    const newBirthDate = editStudentForm.birthDate.trim() || undefined;
+    const newPhone = editStudentForm.phone.trim() || undefined;
+    const newTelegram = editStudentForm.telegram.trim() || undefined;
+    const newStatus = editStudentForm.status;
+    const newStudentType = editStudentForm.studentType as any;
+    const newNotes = editStudentForm.notes.trim() || undefined;
+    const newGroups = editStudentForm.groups;
+
+    const changes: string[] = [];
+    if (newFirstName !== student.firstName || newLastName !== student.lastName) {
+      changes.push(`ФИО: ${student.firstName} ${student.lastName} → ${newFirstName} ${newLastName}`);
+    }
+    if (newPhone !== student.phone) {
+      changes.push(`Телефон: ${student.phone || 'не указан'} → ${newPhone || 'не указан'}`);
+    }
+    if (newTelegram !== student.telegram) {
+      changes.push(`Telegram: ${student.telegram || 'не указан'} → ${newTelegram || 'не указан'}`);
+    }
+    if (newBirthDate !== student.birthDate) {
+      changes.push(`Дата рождения: ${student.birthDate || 'не указана'} → ${newBirthDate || 'не указана'}`);
+    }
+    if (newStatus !== student.status) {
+      changes.push(`Статус: ${student.status} → ${newStatus}`);
+    }
+    if (newStudentType !== student.studentType) {
+      changes.push(`Тип: ${student.studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'} → ${newStudentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}`);
+    }
+    if (newNotes !== student.notes) {
+      changes.push('Заметки и особенности');
+    }
+    const oldGroupIds = student.groups.map((g) => g.id).sort().join(',');
+    const newGroupIds = newGroups.map((g) => g.id).sort().join(',');
+    if (oldGroupIds !== newGroupIds) {
+      changes.push(`Группы: ${newGroups.map((g) => g.name).join(', ') || 'нет групп'}`);
+    }
+
+    const editInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${newFirstName} ${newLastName}`,
+      parentId: student.parents[0]?.id,
+      parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: changes.length > 0
+        ? `Изменение личных данных: ${changes.join('; ')}`
+        : 'Изменение личных данных: карточка обновлена администратором',
+      result: 'Изменение личных данных',
+      targetType: newStudentType === 'adult_student' ? 'student' : 'student',
+      targetName: `${newFirstName} ${newLastName}`,
+      targetRole: newStudentType === 'adult_student' ? 'Студент' : 'Ученик',
+    };
+
     const updated: FullStudentData = {
       ...student,
-      firstName: editStudentForm.firstName.trim() || student.firstName,
-      lastName: editStudentForm.lastName.trim() || student.lastName,
-      birthDate: editStudentForm.birthDate.trim() || undefined,
-      phone: editStudentForm.phone.trim() || undefined,
-      telegram: editStudentForm.telegram.trim() || undefined,
-      status: editStudentForm.status,
-      studentType: editStudentForm.studentType as any,
-      notes: editStudentForm.notes.trim() || undefined,
-      groups: editStudentForm.groups,
+      firstName: newFirstName,
+      lastName: newLastName,
+      birthDate: newBirthDate,
+      phone: newPhone,
+      telegram: newTelegram,
+      status: newStatus,
+      studentType: newStudentType,
+      notes: newNotes,
+      groups: newGroups,
+      updatedAt: new Date().toISOString(),
+      interactions: [editInteraction, ...student.interactions],
     };
+
     setStudent(updated);
     saveStudentToStorage(updated);
+    saveInteractionToStorage(editInteraction);
     window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
 
-    toast.success('Данные ученика и группы успешно сохранены!');
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = updated;
+    }
+
+    toast.success('Данные сохранены и зафиксированы в таймлайне ("Изменение личных данных")');
     setIsEditStudentModalOpen(false);
   };
 
@@ -305,26 +371,80 @@ export default function StudentDetailsPage() {
       priority: newTask.priority,
     };
 
-    setStudent((prev) => ({
-      ...prev,
-      tasks: [taskItem, ...prev.tasks],
-    }));
+    const targetIsParent = Boolean(newTask.parentId);
+    const taskInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: newTask.parentId || student.parents[0]?.id,
+      parentName: newTask.parentName || (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined),
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `Создана задача: «${newTask.title}» (${newTask.taskType}, срок: ${newTask.dueDateFormatted || newTask.dueDate}, ответственный: ${newTask.assignedTo}${targetIsParent ? `, контакт: ${newTask.parentName}` : ''}).`,
+      result: `Задача закреплена за ${newTask.assignedTo}`,
+      targetType: targetIsParent ? 'parent' : (student.studentType === 'adult_student' ? 'student' : 'student'),
+      targetName: targetIsParent ? (newTask.parentName || 'Родитель') : `${student.firstName} ${student.lastName}`,
+      targetRole: targetIsParent ? 'Родитель' : (student.studentType === 'adult_student' ? 'Студент' : 'Ученик'),
+    };
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      tasks: [taskItem, ...student.tasks],
+      interactions: [taskInteraction, ...student.interactions],
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+    saveInteractionToStorage(taskInteraction);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
 
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
     if (idx !== -1) {
       INITIAL_STUDENTS[idx] = {
         ...INITIAL_STUDENTS[idx],
         tasks: [taskItem, ...(INITIAL_STUDENTS[idx].tasks || [])],
+        interactions: [taskInteraction, ...(INITIAL_STUDENTS[idx].interactions || [])],
       };
     }
 
-    toast.success(`Задача «${newTask.title}» успешно создана для ученика!`);
+    toast.success(`Задача «${newTask.title}» успешно создана и добавлена в таймлайн!`);
     setIsCreateTaskModalOpen(false);
   };
 
   const handleSaveNotes = () => {
     const updatedNotes = editedNotes.trim();
-    setStudent((prev) => ({ ...prev, notes: updatedNotes }));
+    if (updatedNotes !== (student.notes || '').trim()) {
+      const notesInteraction: TimelineInteraction = {
+        id: `int_${Date.now()}`,
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        parentId: student.parents[0]?.id,
+        parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
+        occurredAt: 'Только что',
+        channel: 'other',
+        type: 'status_change',
+        author: userName || 'Администратор школы',
+        content: `Изменение личных данных: обновлены заметки и особенности ученика`,
+        result: 'Изменение личных данных',
+        targetType: student.studentType === 'adult_student' ? 'student' : 'student',
+        targetName: `${student.firstName} ${student.lastName}`,
+        targetRole: student.studentType === 'adult_student' ? 'Студент' : 'Ученик',
+      };
+      saveInteractionToStorage(notesInteraction);
+      const updatedStudent: FullStudentData = {
+        ...student,
+        notes: updatedNotes,
+        updatedAt: new Date().toISOString(),
+        interactions: [notesInteraction, ...student.interactions],
+      };
+      setStudent(updatedStudent);
+      saveStudentToStorage(updatedStudent);
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    } else {
+      setStudent((prev) => ({ ...prev, notes: updatedNotes }));
+    }
 
     // Sync with in-memory INITIAL_STUDENTS
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
@@ -333,7 +453,7 @@ export default function StudentDetailsPage() {
     }
 
     setIsEditingNotes(false);
-    toast.success('Заметки и особенности ученика сохранены!');
+    toast.success('Заметки сохранены и зафиксированы в таймлайне ("Изменение личных данных")!');
   };
 
   const handleAddTeacherComment = (e: React.FormEvent) => {
@@ -1408,6 +1528,11 @@ export default function StudentDetailsPage() {
         onClose={() => setIsCreateTaskModalOpen(false)}
         onCreated={handleTaskCreated}
         defaultStudentId={student.id}
+        studentScope={{
+          id: student.id,
+          name: `${student.firstName} ${student.lastName}`.trim(),
+          parents: student.parents,
+        }}
       />
 
       {/* EDIT STUDENT MODAL DIALOG */}
