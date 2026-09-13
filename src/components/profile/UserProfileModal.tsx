@@ -72,7 +72,7 @@ const roleDescriptions: Record<UserRole, { title: string; subtitle: string; badg
 };
 
 export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
-  const { role, setRole, userName, userEmail, userPhone, userTelegram, updateProfile } = useRole();
+  const { role, setRole, isOwnerAccount, userName, userEmail, userPhone, userTelegram, updateProfile } = useRole();
   const toast = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -278,34 +278,66 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
               </div>
 
               {/* Section: Role and Access Permissions */}
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 mb-3 gap-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                     <Shield className="h-4 w-4 text-purple-600" />
                     Уровень доступа и роль в системе
                   </span>
-                  {/* Quick role switcher for testing / owner */}
-                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
-                    <span className="text-slate-500 px-1.5 text-[10px]">Режим:</span>
-                    {(['owner', 'admin', 'teacher'] as UserRole[]).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          setRole(r);
-                          toast.info(`Режим роли переключен на: ${roleDescriptions[r].title.split(' ')[0]}`);
-                        }}
-                        className={cn(
-                          'px-2 py-0.5 rounded-md transition-all',
-                          role === r
-                            ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900'
-                        )}
-                      >
-                        {r === 'owner' ? 'Владелец' : r === 'admin' ? 'Админ' : 'Учитель'}
-                      </button>
-                    ))}
-                  </div>
+                  {isOwnerAccount && (
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                      Учетная запись владельца
+                    </span>
+                  )}
                 </div>
+
+                {/* Role switcher ONLY for owner account */}
+                {isOwnerAccount ? (
+                  <div className="rounded-xl bg-purple-50/70 border border-purple-200/80 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-purple-600" />
+                        Переключение роли интерфейса CRM
+                      </span>
+                      <span className="text-[10px] font-bold text-purple-700 bg-white px-2 py-0.5 rounded-md border border-purple-200">
+                        Только для владельца
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-purple-800 leading-relaxed">
+                      Вы можете переключить режим работы системы на <strong>Администратора</strong> или <strong>Преподавателя</strong>. Выбранная роль немедленно применится ко всему интерфейсу (боковое меню, главный дашборд, доступ к разделам) и останется активной до следующего переключения в этой карточке.
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 pt-1.5">
+                      {(['owner', 'admin', 'teacher'] as UserRole[]).map((r) => {
+                        const isActive = role === r;
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => {
+                              setRole(r);
+                              toast.info(`Режим роли переключен на «${roleDescriptions[r].title.split(' ')[0]}». Изменения применены ко всему интерфейсу.`);
+                            }}
+                            className={cn(
+                              'py-2 px-2 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer shadow-2xs',
+                              isActive
+                                ? 'bg-purple-700 text-white border-purple-700 ring-2 ring-purple-400'
+                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                            )}
+                          >
+                            {r === 'owner' ? '👑 Владелец' : r === 'admin' ? '💼 Администратор' : '🎓 Преподаватель'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-700">
+                    <p className="font-semibold text-slate-900">Роль учетной записи: {currentRoleInfo.title}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Роль назначается владельцем школы в разделе управления командой и не может быть изменена пользователем.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">
@@ -426,34 +458,48 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                 </div>
               </div>
 
-              {/* Role Select */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Роль в CRM
-                </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { key: 'owner', label: 'Владелец', desc: 'Полный доступ' },
-                    { key: 'admin', label: 'Администратор', desc: 'Управление' },
-                    { key: 'teacher', label: 'Преподаватель', desc: 'Уроки и журнал' },
-                  ].map((r) => (
-                    <button
-                      key={r.key}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, role: r.key as UserRole })}
-                      className={cn(
-                        'p-2.5 rounded-xl border text-left transition-all',
-                        formData.role === r.key
-                          ? 'border-blue-500 bg-blue-50/70 text-blue-900 ring-1 ring-blue-500'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                      )}
-                    >
-                      <p className="text-xs font-bold">{r.label}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{r.desc}</p>
-                    </button>
-                  ))}
+              {/* Role Select - ONLY if owner account */}
+              {isOwnerAccount ? (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Роль в CRM
+                    </label>
+                    <span className="text-[10px] text-purple-700 font-semibold bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                      Доступно владельцу
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { key: 'owner', label: 'Владелец', desc: 'Полный доступ' },
+                      { key: 'admin', label: 'Администратор', desc: 'Управление' },
+                      { key: 'teacher', label: 'Преподаватель', desc: 'Уроки и журнал' },
+                    ].map((r) => (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, role: r.key as UserRole })}
+                        className={cn(
+                          'p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                          formData.role === r.key
+                            ? 'border-purple-600 bg-purple-50/70 text-purple-950 ring-1 ring-purple-600 font-bold'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                        )}
+                      >
+                        <p className="text-xs font-bold">{r.label}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{r.desc}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-xs text-slate-700">
+                  <span className="font-semibold text-slate-900">Роль в CRM:</span> {currentRoleInfo.title}
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Роль сотрудника назначается владельцем школы и не может быть изменена в профиле.
+                  </p>
+                </div>
+              )}
 
               {/* Password change section */}
               <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">

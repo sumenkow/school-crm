@@ -29,7 +29,12 @@ import {
   ExternalLink,
   Printer,
   Send,
-  MessageSquare
+  MessageSquare,
+  MessageCircle,
+  Search,
+  Flame,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
@@ -591,7 +596,212 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. ADMIN DASHBOARD (Оперативное управление: ученики, лиды, звонки, оплаты)
 // ─────────────────────────────────────────────────────────────────────────────
+type AdminQueueType = 'leads' | 'trials' | 'payments' | 'tasks';
+
 function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
+  const toast = useToast();
+  const [activeQueue, setActiveQueue] = useState<AdminQueueType | null>(null);
+  const [queueSearch, setQueueSearch] = useState('');
+
+  // 1. Leads queue data
+  const [leadsList, setLeadsList] = useState([
+    {
+      id: 'ql-1',
+      name: 'Ольга (мама Алисы, 8 лет)',
+      course: 'Робототехника Начало',
+      source: 'Сайт (15 мин назад)',
+      phone: '+7 916 555-44-33',
+      status: 'Требует 1-го звонка',
+      deadline: 'до 11:30',
+      urgent: true,
+      contacted: false,
+      leadId: '1',
+    },
+    {
+      id: 'ql-2',
+      name: 'Артем (папа Максима, 10 лет)',
+      course: 'Python для детей',
+      source: 'ВКонтакте (40 мин назад)',
+      phone: '+7 905 333-22-11',
+      status: 'Ожидает подбора группы',
+      deadline: 'до 12:30',
+      urgent: true,
+      contacted: false,
+      leadId: '2',
+    },
+    {
+      id: 'ql-3',
+      name: 'Дарья (мама Софии, 6 лет)',
+      course: 'Английский Kids',
+      source: 'Рекомендация родителей',
+      phone: '+7 925 111-88-99',
+      status: 'Повторное обращение',
+      deadline: 'до 14:00',
+      urgent: false,
+      contacted: false,
+      leadId: '3',
+    },
+    {
+      id: 'ql-4',
+      name: 'Константин (папа Ивана, 12 лет)',
+      course: 'Веб-разработка HTML/JS',
+      source: 'Входящий звонок',
+      phone: '+7 915 777-66-55',
+      status: 'Запрос расписания сб/вс',
+      deadline: 'до 15:00',
+      urgent: false,
+      contacted: false,
+      leadId: '4',
+    },
+  ]);
+
+  // 2. Trials queue data
+  const [trialsList, setTrialsList] = useState([
+    {
+      id: 'qt-1',
+      time: '16:00 - 16:45',
+      student: 'Даниил Морозов (7 лет)',
+      parent: 'Анна (мама)',
+      phone: '+7 999 444-11-22',
+      course: 'Робототехника (Пробное)',
+      room: 'Кабинет 2',
+      teacher: 'Дмитрий Смирнов',
+      status: 'Подтверждено по SMS',
+      attended: false,
+    },
+    {
+      id: 'qt-2',
+      time: '17:30 - 18:15',
+      student: 'Алиса Смирнова (8 лет)',
+      parent: 'Игорь (папа)',
+      phone: '+7 903 555-66-77',
+      course: 'Английский язык Kids (Пробное)',
+      room: 'Кабинет 1',
+      teacher: 'Мария Иванова',
+      status: 'Ожидает звонка',
+      attended: false,
+    },
+    {
+      id: 'qt-3',
+      time: '19:00 - 19:45',
+      student: 'Кирилл Зайцев (11 лет)',
+      parent: 'Елена (мама)',
+      phone: '+7 926 777-33-44',
+      course: 'Scratch Программирование (Пробное)',
+      room: 'Лаборатория',
+      teacher: 'Алексей Ковалев',
+      status: 'Подтверждено',
+      attended: false,
+    },
+  ]);
+
+  // 3. Payments queue data
+  const [paymentsList, setPaymentsList] = useState([
+    {
+      id: 'qp-1',
+      amount: '9 600 ₽',
+      student: 'Егор Михайлов (папа Михаил)',
+      course: 'Абонемент 8 занятий (Робототехника)',
+      method: 'СБП (Тинькофф)',
+      time: '10:14',
+      receipt: '№20491',
+      phone: '+7 999 123-45-67',
+      status: 'Принят',
+    },
+    {
+      id: 'qp-2',
+      amount: '11 200 ₽',
+      student: 'Полина Васильева (мама Ольга)',
+      course: 'Индивидуальный блок (4 занятия, Английский)',
+      method: 'Терминал (эквайринг)',
+      time: '11:45',
+      receipt: '№20492',
+      phone: '+7 916 555-44-33',
+      status: 'Принят',
+    },
+    {
+      id: 'qp-3',
+      amount: '8 000 ₽',
+      student: 'Артем Новиков (мама Елена)',
+      course: 'Продление курса Scratch (8 занятий)',
+      method: 'Наличные в кассу',
+      time: '12:20',
+      receipt: '№20493',
+      phone: '+7 905 333-22-11',
+      status: 'Принят',
+    },
+  ]);
+
+  // 4. Tasks queue data
+  const [urgentTasks, setUrgentTasks] = useState([
+    {
+      id: 'ut-1',
+      title: 'Срочно перезвонить Ольге (+7 916 555-44-33)',
+      detail: 'Новая заявка с сайта висит > 15 минут без первого контакта',
+      deadline: 'до 11:30',
+      priority: 'high',
+      completed: false,
+    },
+    {
+      id: 'ut-2',
+      title: 'Подтвердить явку на пробный урок в 16:00',
+      detail: 'Даниил Морозов, Робототехника (Кабинет 2, Дмитрий Смирнов)',
+      deadline: 'до 12:00',
+      priority: 'high',
+      completed: false,
+    },
+    {
+      id: 'ut-3',
+      title: 'Отправить договор и анкету родителю Максима Соколова',
+      detail: 'Курс Python для детей, согласовано расписание субботы',
+      deadline: 'до 14:00',
+      priority: 'medium',
+      completed: false,
+    },
+    {
+      id: 'ut-4',
+      title: 'Сверить журнал посещаемости за вчера (Кабинет 3)',
+      detail: 'Группа Scratch Начало, преподаватель Дмитрий',
+      deadline: 'до 16:00',
+      priority: 'medium',
+      completed: false,
+    },
+    {
+      id: 'ut-5',
+      title: 'Заказать канцтовары и маркеры для белых досок',
+      detail: 'Пополнить запасы расходных материалов на следующую неделю',
+      deadline: 'до 18:00',
+      priority: 'normal',
+      completed: false,
+    },
+  ]);
+
+  // Handlers
+  const handleToggleLeadContacted = (id: string, name: string) => {
+    setLeadsList((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, contacted: !l.contacted } : l))
+    );
+    toast.success(`Звонок по лиду «${name}» отмечен в воронке`);
+  };
+
+  const handleToggleTrialAttended = (id: string, student: string) => {
+    setTrialsList((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, attended: !t.attended } : t))
+    );
+    toast.success(`Явка на пробный урок «${student}» успешно зафиксирована`);
+  };
+
+  const handleToggleTaskCompleted = (id: string, title: string) => {
+    setUrgentTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+    );
+    toast.success(`Статус задачи обновлен`);
+  };
+
+  const pendingTasksCount = urgentTasks.filter((t) => !t.completed).length;
+  const highPriorityTasksCount = urgentTasks.filter((t) => !t.completed && t.priority === 'high').length;
+  const pendingLeadsCount = leadsList.filter((l) => !l.contacted).length;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -651,41 +861,85 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
       {/* SMART ACTION HUB */}
       <SmartActionHub />
 
-      {/* Admin KPI metrics */}
+      {/* Admin KPI metrics (Clickable cards that open today's task queues) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="md-card-elevated" style={{ padding: '18px' }}>
+        {/* Card 1: Заявки сегодня */}
+        <button
+          type="button"
+          onClick={() => setActiveQueue(activeQueue === 'leads' ? null : 'leads')}
+          className={cn(
+            'md-card-elevated text-left transition-all duration-200 cursor-pointer p-4.5 rounded-2xl relative',
+            activeQueue === 'leads'
+              ? 'ring-2 ring-blue-600 bg-blue-50/50 shadow-md border-blue-300'
+              : 'hover:-translate-y-0.5 hover:shadow-md border border-transparent'
+          )}
+        >
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Заявки сегодня</span>
+            <span className="md-label-large font-bold" style={{ color: 'var(--md-on-surface-variant)' }}>Заявки сегодня</span>
             <IconContainer bg="var(--md-primary-container)" color="var(--md-primary)">
               <UserCheck size={20} />
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            4 новых
+            {pendingLeadsCount} новых
           </p>
-          <p className="md-body-small" style={{ color: 'var(--md-primary)', marginTop: '4px' }}>
-            2 требуют первого звонка
+          <p className="md-body-small font-medium" style={{ color: 'var(--md-primary)', marginTop: '4px' }}>
+            {leadsList.filter(l => l.urgent && !l.contacted).length} требуют первого звонка
           </p>
-        </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
+            <span style={{ color: 'var(--md-primary)' }}>
+              {activeQueue === 'leads' ? '▼ Очередь открыта' : 'Открыть очередь →'}
+            </span>
+            <span className="text-[11px] text-slate-400">4 лида</span>
+          </div>
+        </button>
 
-        <div className="md-card-elevated" style={{ padding: '18px' }}>
+        {/* Card 2: Пробные сегодня */}
+        <button
+          type="button"
+          onClick={() => setActiveQueue(activeQueue === 'trials' ? null : 'trials')}
+          className={cn(
+            'md-card-elevated text-left transition-all duration-200 cursor-pointer p-4.5 rounded-2xl relative',
+            activeQueue === 'trials'
+              ? 'ring-2 ring-blue-600 bg-blue-50/50 shadow-md border-blue-300'
+              : 'hover:-translate-y-0.5 hover:shadow-md border border-transparent'
+          )}
+        >
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Пробные сегодня</span>
+            <span className="md-label-large font-bold" style={{ color: 'var(--md-on-surface-variant)' }}>Пробные сегодня</span>
             <IconContainer bg="var(--md-secondary-container)" color="var(--md-on-secondary-container)">
               <Calendar size={20} />
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            3 урока
+            {trialsList.length} урока
           </p>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+          <p className="md-body-small font-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
             16:00, 17:30, 19:00
           </p>
-        </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
+            <span style={{ color: 'var(--md-primary)' }}>
+              {activeQueue === 'trials' ? '▼ Очередь открыта' : 'Открыть очередь →'}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {trialsList.filter(t => t.attended).length}/{trialsList.length} пришли
+            </span>
+          </div>
+        </button>
 
-        <div className="md-card-elevated" style={{ padding: '18px' }}>
+        {/* Card 3: Оплаты сегодня */}
+        <button
+          type="button"
+          onClick={() => setActiveQueue(activeQueue === 'payments' ? null : 'payments')}
+          className={cn(
+            'md-card-elevated text-left transition-all duration-200 cursor-pointer p-4.5 rounded-2xl relative',
+            activeQueue === 'payments'
+              ? 'ring-2 ring-emerald-600 bg-emerald-50/50 shadow-md border-emerald-300'
+              : 'hover:-translate-y-0.5 hover:shadow-md border border-transparent'
+          )}
+        >
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Оплаты сегодня</span>
+            <span className="md-label-large font-bold" style={{ color: 'var(--md-on-surface-variant)' }}>Оплаты сегодня</span>
             <IconContainer bg="var(--md-success-container)" color="var(--md-on-success-container)">
               <CreditCard size={20} />
             </IconContainer>
@@ -693,26 +947,496 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-success)' }}>
             28 800 ₽
           </p>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            3 платежа принято
+          <p className="md-body-small font-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+            {paymentsList.length} платежа принято
           </p>
-        </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
+            <span className="text-emerald-700">
+              {activeQueue === 'payments' ? '▼ Очередь открыта' : 'Открыть кассу →'}
+            </span>
+            <span className="text-[11px] text-slate-400">Касса OK</span>
+          </div>
+        </button>
 
-        <div className="md-card-elevated" style={{ padding: '18px' }}>
+        {/* Card 4: Срочные задачи */}
+        <button
+          type="button"
+          onClick={() => setActiveQueue(activeQueue === 'tasks' ? null : 'tasks')}
+          className={cn(
+            'md-card-elevated text-left transition-all duration-200 cursor-pointer p-4.5 rounded-2xl relative',
+            activeQueue === 'tasks'
+              ? 'ring-2 ring-amber-600 bg-amber-50/50 shadow-md border-amber-300'
+              : 'hover:-translate-y-0.5 hover:shadow-md border border-transparent'
+          )}
+        >
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Срочные задачи</span>
+            <span className="md-label-large font-bold" style={{ color: 'var(--md-on-surface-variant)' }}>Срочные задачи</span>
             <IconContainer bg="var(--md-warning-container)" color="var(--md-warning)">
               <CheckSquare size={20} />
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-warning)' }}>
-            5 задач
+            {pendingTasksCount} задач
           </p>
-          <p className="md-body-small" style={{ color: 'var(--md-error)', marginTop: '4px' }}>
-            2 с горящим дедлайном
+          <p className="md-body-small font-medium" style={{ color: 'var(--md-error)', marginTop: '4px' }}>
+            {highPriorityTasksCount} с горящим дедлайном
           </p>
-        </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
+            <span style={{ color: 'var(--md-warning)' }}>
+              {activeQueue === 'tasks' ? '▼ Очередь открыта' : 'Открыть задачи →'}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {urgentTasks.filter(t => t.completed).length}/{urgentTasks.length} выполнено
+            </span>
+          </div>
+        </button>
       </div>
+
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {/* EXPANDABLE OPERATIONAL QUEUE PANEL (Открывается по нажатию на карточку) */}
+      {/* ───────────────────────────────────────────────────────────────────── */}
+      {activeQueue && (
+        <div className="rounded-2xl border border-blue-200 bg-white p-5 shadow-lg animate-in fade-in slide-in-from-top-3 duration-200 space-y-4">
+          {/* Header with Title, Tab Switcher and Close */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                {activeQueue === 'leads' && <UserCheck size={18} />}
+                {activeQueue === 'trials' && <Calendar size={18} />}
+                {activeQueue === 'payments' && <CreditCard size={18} />}
+                {activeQueue === 'tasks' && <CheckSquare size={18} />}
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">
+                  {activeQueue === 'leads' && '⚡ Операционная очередь: Заявки на сегодня'}
+                  {activeQueue === 'trials' && '📅 Операционная очередь: Пробные уроки сегодня'}
+                  {activeQueue === 'payments' && '💳 Операционная очередь: Оплаты и касса за сегодня'}
+                  {activeQueue === 'tasks' && '🔥 Операционная очередь: Срочные задачи на смену'}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {activeQueue === 'leads' && 'Обработка входящих лидов и назначение пробных занятий'}
+                  {activeQueue === 'trials' && 'Контроль доходимости, звонки-напоминания и фиксация явки'}
+                  {activeQueue === 'payments' && 'Прием денежных средств, электронные чеки в WhatsApp и выставление счетов'}
+                  {activeQueue === 'tasks' && 'Контроль дедлайнов и выполнение оперативных поручений'}
+                </p>
+              </div>
+            </div>
+
+            {/* Segmented Queue Switcher & Close button */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setActiveQueue('leads')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    activeQueue === 'leads' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  ⚡ Заявки ({pendingLeadsCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveQueue('trials')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    activeQueue === 'trials' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  📅 Пробные ({trialsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveQueue('payments')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    activeQueue === 'payments' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  💳 Оплаты ({paymentsList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveQueue('tasks')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    activeQueue === 'tasks' ? 'bg-white text-blue-700 shadow-2xs font-bold' : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  🔥 Задачи ({pendingTasksCount})
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveQueue(null)}
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Свернуть очередь"
+              >
+                <X size={14} />
+                <span>Свернуть</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Search */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={queueSearch}
+                onChange={(e) => setQueueSearch(e.target.value)}
+                placeholder="Быстрый поиск по имени, курсу, телефону..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-hidden"
+              />
+            </div>
+            {queueSearch && (
+              <button
+                onClick={() => setQueueSearch('')}
+                className="text-xs text-blue-600 font-medium hover:underline"
+              >
+                Сбросить
+              </button>
+            )}
+          </div>
+
+          {/* QUEUE 1: LEADS CONTENT */}
+          {activeQueue === 'leads' && (
+            <div className="space-y-2.5">
+              {leadsList
+                .filter((lead) => {
+                  const q = queueSearch.toLowerCase();
+                  return (
+                    lead.name.toLowerCase().includes(q) ||
+                    lead.course.toLowerCase().includes(q) ||
+                    lead.phone.includes(q) ||
+                    lead.source.toLowerCase().includes(q)
+                  );
+                })
+                .map((lead) => (
+                  <div
+                    key={lead.id}
+                    className={cn(
+                      'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all',
+                      lead.contacted
+                        ? 'bg-slate-50 border-slate-200 opacity-70'
+                        : lead.urgent
+                        ? 'bg-amber-50/40 border-amber-200 shadow-2xs'
+                        : 'bg-white border-slate-200'
+                    )}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-xs text-slate-900">{lead.name}</span>
+                        <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-[10px] font-bold">
+                          {lead.course}
+                        </span>
+                        <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                          {lead.source}
+                        </span>
+                        {lead.contacted ? (
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
+                            ✓ Звонок совершен
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold animate-pulse">
+                            Дедлайн: {lead.deadline}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-600 flex items-center gap-2">
+                        <Phone size={12} className="text-slate-400" />
+                        <span className="font-mono">{lead.phone}</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-slate-500">{lead.status}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                      <a
+                        href={`tel:${lead.phone.replace(/[^0-9+]/g, '')}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                        title="Позвонить родителю"
+                      >
+                        <PhoneCall size={13} />
+                        Позвонить
+                      </a>
+                      <a
+                        href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                        title="Написать в WhatsApp"
+                      >
+                        <MessageCircle size={13} />
+                        WhatsApp
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleLeadContacted(lead.id, lead.name)}
+                        className={cn(
+                          'px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors',
+                          lead.contacted
+                            ? 'bg-slate-200 text-slate-700 border-slate-300'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        )}
+                      >
+                        {lead.contacted ? 'Отменить звонок' : '✓ Звонок совершен'}
+                      </button>
+                      <Link
+                        href={`/crm/leads/${lead.leadId}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                        title="Открыть карточку лида"
+                      >
+                        <ExternalLink size={15} />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* QUEUE 2: TRIALS CONTENT */}
+          {activeQueue === 'trials' && (
+            <div className="space-y-2.5">
+              {trialsList
+                .filter((trial) => {
+                  const q = queueSearch.toLowerCase();
+                  return (
+                    trial.student.toLowerCase().includes(q) ||
+                    trial.course.toLowerCase().includes(q) ||
+                    trial.teacher.toLowerCase().includes(q) ||
+                    trial.phone.includes(q)
+                  );
+                })
+                .map((trial) => (
+                  <div
+                    key={trial.id}
+                    className={cn(
+                      'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all',
+                      trial.attended
+                        ? 'bg-emerald-50/50 border-emerald-200'
+                        : 'bg-white border-slate-200 shadow-2xs'
+                    )}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono font-bold text-xs bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-md">
+                          {trial.time}
+                        </span>
+                        <span className="font-bold text-xs text-slate-900">{trial.student}</span>
+                        <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-[10px] font-bold">
+                          {trial.course}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {trial.room} • Преподаватель: {trial.teacher}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 flex items-center gap-2">
+                        <span>Родитель: <strong>{trial.parent}</strong> ({trial.phone})</span>
+                        <span className="text-slate-400">•</span>
+                        <span className={cn(
+                          'text-[10px] font-bold px-2 py-0.2 rounded-full',
+                          trial.attended
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-slate-100 text-slate-700'
+                        )}>
+                          {trial.attended ? '✓ Явка подтверждена' : trial.status}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTrialAttended(trial.id, trial.student)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                          trial.attended
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                        )}
+                      >
+                        {trial.attended ? '✓ Пришел на урок' : 'Отметить явку'}
+                      </button>
+                      <a
+                        href={`https://wa.me/${trial.phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                      >
+                        <MessageCircle size={13} />
+                        WhatsApp
+                      </a>
+                      <a
+                        href={`tel:${trial.phone.replace(/[^0-9+]/g, '')}`}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                        title="Позвонить родителю"
+                      >
+                        <PhoneCall size={15} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* QUEUE 3: PAYMENTS CONTENT */}
+          {activeQueue === 'payments' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl bg-emerald-50/70 p-3 border border-emerald-200/80 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-emerald-900">Итого принято сегодня: 28 800 ₽</span>
+                  <span className="text-emerald-700">• 3 успешных платежа</span>
+                </div>
+                <Link
+                  href="/finance"
+                  className="font-bold text-emerald-800 hover:text-emerald-950 underline"
+                >
+                  Перейти в раздел Финансы →
+                </Link>
+              </div>
+
+              <div className="space-y-2">
+                {paymentsList
+                  .filter((p) => {
+                    const q = queueSearch.toLowerCase();
+                    return (
+                      p.student.toLowerCase().includes(q) ||
+                      p.course.toLowerCase().includes(q) ||
+                      p.method.toLowerCase().includes(q)
+                    );
+                  })
+                  .map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 transition-all shadow-2xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-extrabold text-emerald-700">{p.amount}</span>
+                          <span className="text-xs font-bold text-slate-900">{p.student}</span>
+                          <span className="text-[11px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded-sm">
+                            Чек {p.receipt} ({p.time})
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600">
+                          {p.course} • Способ оплаты: <strong className="text-slate-800">{p.method}</strong>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={`https://wa.me/${p.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                        >
+                          <MessageCircle size={13} />
+                          Чек в WhatsApp
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toast.info(`Печатная форма чека ${p.receipt} отправлена на принтер`);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+                        >
+                          <Printer size={13} />
+                          Печать
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* QUEUE 4: URGENT TASKS CONTENT */}
+          {activeQueue === 'tasks' && (
+            <div className="space-y-2.5">
+              {urgentTasks
+                .filter((task) => {
+                  const q = queueSearch.toLowerCase();
+                  return (
+                    task.title.toLowerCase().includes(q) ||
+                    task.detail.toLowerCase().includes(q)
+                  );
+                })
+                .map((task) => (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all',
+                      task.completed
+                        ? 'bg-slate-50 border-slate-200 opacity-60'
+                        : task.priority === 'high'
+                        ? 'bg-rose-50/40 border-rose-200 shadow-2xs'
+                        : 'bg-white border-slate-200'
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={() => handleToggleTaskCompleted(task.id, task.title)}
+                        className="mt-1 h-4 w-4 rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <div className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              'text-xs font-bold',
+                              task.completed ? 'line-through text-slate-400' : 'text-slate-900'
+                            )}
+                          >
+                            {task.title}
+                          </span>
+                          {task.priority === 'high' && !task.completed && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                              <Flame size={11} />
+                              Срочно
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                            Дедлайн: {task.deadline}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{task.detail}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTaskCompleted(task.id, task.title)}
+                        className={cn(
+                          'inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all',
+                          task.completed
+                            ? 'bg-slate-200 text-slate-700'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        )}
+                      >
+                        <Check size={13} />
+                        {task.completed ? 'Выполнено' : 'Отметить готовым'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+              <div className="pt-2 flex justify-end">
+                <Link
+                  href="/tasks"
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                >
+                  Все задачи школы в разделе Задачи →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Admin Action lists: Leads to call + Today's Lessons */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
