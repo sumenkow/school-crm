@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Search, LogOut, ChevronDown, User } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronDown, User, Calendar } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
@@ -24,7 +24,25 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Format today's date in Russian (e.g., "Вс, 13 сентября")
+  useEffect(() => {
+    const updateDate = () => {
+      const now = new Date();
+      const formatted = now.toLocaleDateString('ru-RU', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'long',
+      });
+      const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      setCurrentDate(capitalized);
+    };
+    updateDate();
+    const timer = setInterval(updateDate, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -118,6 +136,27 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {/* Today's highlighted date */}
+      {currentDate && (
+        <div
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all select-none"
+          style={{
+            backgroundColor: 'var(--md-secondary-container, #D7E3F7)',
+            color: 'var(--md-on-secondary-container, #101C2B)',
+            border: '1px solid rgba(21, 101, 192, 0.22)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+          title="Сегодняшняя дата"
+        >
+          <span
+            className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
+            title="Текущий рабочий день"
+          />
+          <Calendar size={15} style={{ color: 'var(--md-primary, #1565C0)' }} />
+          <span className="tracking-tight">{currentDate}</span>
+        </div>
+      )}
 
       {/* User avatar + dropdown */}
       <div ref={menuRef} style={{ position: 'relative' }}>
