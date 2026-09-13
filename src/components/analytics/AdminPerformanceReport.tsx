@@ -551,6 +551,7 @@ export function AdminPerformanceReport() {
                 </div>
                 <p className="text-[11px] text-slate-500">
                   {current.funnelAndService.renewalsCompleted} из {current.funnelAndService.renewalsDue} абонементов продлены без перерыва в обучении. Контроль баланса за 2 занятия.
+                </p>
               </div>
             </div>
           </div>
