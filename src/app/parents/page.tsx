@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
+import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 
 interface ParentRecord {
   id: string;
@@ -115,36 +116,6 @@ export default function ParentsPage() {
     setParents((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
     success(`Данные контакта ${updated.name} обновлены`);
     setEditingParent(null);
-  };
-
-  const handleLinkChild = (childId: string) => {
-    if (!linkingChildParent) return;
-    const student = INITIAL_STUDENTS.find((s) => s.id === childId);
-    if (!student) return;
-
-    const studentName = `${student.firstName} ${student.lastName}`;
-    const studentGroup = student.groups?.[0]?.name || 'Без группы';
-
-    const newChild = {
-      id: student.id,
-      name: studentName,
-      group: studentGroup,
-    };
-
-    setParents((prev) =>
-      prev.map((p) => {
-        if (p.id === linkingChildParent.id) {
-          return {
-            ...p,
-            children: [...p.children, newChild],
-          };
-        }
-        return p;
-      })
-    );
-
-    success(`Ученик ${studentName} успешно привязан к ${linkingChildParent.name}`);
-    setLinkingChildParent(null);
   };
 
   const handleCreateParent = (newParent: Omit<ParentRecord, 'id' | 'children' | 'totalPaid' | 'balanceStatus'>) => {
@@ -280,7 +251,7 @@ export default function ParentsPage() {
                         className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                       >
                         <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>Привязать ребенка</span>
+                        <span>Добавить / привязать ребенка</span>
                       </button>
 
                       <div className="my-1 border-t border-slate-100" />
@@ -323,9 +294,9 @@ export default function ParentsPage() {
                   </p>
                   <button
                     onClick={() => setLinkingChildParent(p)}
-                    className="text-[10px] font-semibold text-blue-600 hover:underline"
+                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
                   >
-                    + Привязать
+                    + Добавить ребенка
                   </button>
                 </div>
                 <div className="space-y-1.5">
@@ -380,12 +351,33 @@ export default function ParentsPage() {
         />
       )}
 
-      {/* 3. Modal: Link Child */}
+      {/* 3. Modal: Add / Link Child */}
       {linkingChildParent && (
-        <LinkChildModal
-          parent={linkingChildParent}
+        <AddChildModal
+          isOpen={!!linkingChildParent}
           onClose={() => setLinkingChildParent(null)}
-          onLink={handleLinkChild}
+          parentId={linkingChildParent.id}
+          parentName={linkingChildParent.name}
+          parentPhone={linkingChildParent.phone}
+          existingChildrenIds={linkingChildParent.children.map((c) => c.id)}
+          onChildAdded={(newChild) => {
+            setParents((prev) =>
+              prev.map((p) => {
+                if (p.id === linkingChildParent.id) {
+                  return {
+                    ...p,
+                    children: [
+                      ...p.children,
+                      { id: newChild.id, name: newChild.name, group: newChild.group },
+                    ],
+                  };
+                }
+                return p;
+              })
+            );
+            success(`Ребенок ${newChild.name} успешно добавлен к родителю ${linkingChildParent.name}`);
+            setLinkingChildParent(null);
+          }}
         />
       )}
 
@@ -573,82 +565,6 @@ function DeleteConfirmModal({
           >
             Да, удалить родителя
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LinkChildModal({
-  parent,
-  onClose,
-  onLink,
-}: {
-  parent: ParentRecord;
-  onClose: () => void;
-  onLink: (childId: string) => void;
-}) {
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    INITIAL_STUDENTS.filter((s) => !parent.children.some((c) => c.id === s.id))[0]?.id || ''
-  );
-
-  const availableStudents = INITIAL_STUDENTS.filter(
-    (s) => !parent.children.some((c) => c.id === s.id)
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <UserPlus className="h-4 w-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Привязать ребенка</h3>
-              <p className="text-xs text-slate-500">Родитель: {parent.name}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-3 text-xs">
-          {availableStudents.length === 0 ? (
-            <p className="text-slate-500 py-4 text-center">Все ученики уже привязаны к этому родителю.</p>
-          ) : (
-            <div>
-              <label className="mb-1.5 block font-semibold text-slate-700">Выберите ученика из базы:</label>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
-              >
-                {availableStudents.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.firstName} {s.lastName} ({s.groups?.[0]?.name || 'Без группы'})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-            <button
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2 font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Отмена
-            </button>
-            <button
-              disabled={!selectedStudentId || availableStudents.length === 0}
-              onClick={() => onLink(selectedStudentId)}
-              className="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              Привязать
-            </button>
-          </div>
         </div>
       </div>
     </div>

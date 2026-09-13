@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 
 export default function ParentDetailsPage() {
   const params = useParams();
@@ -58,6 +59,56 @@ export default function ParentDetailsPage() {
   });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
+
+  const handleChildAdded = (newChild: AddedChildData) => {
+    // 1. Add child to parent's children list
+    setParent((prev) => ({
+      ...prev,
+      children: [
+        ...prev.children,
+        {
+          id: newChild.id,
+          name: newChild.name,
+          age: newChild.age,
+          group: newChild.group,
+          course: newChild.course,
+          teacher: newChild.teacher,
+          status: newChild.status,
+          attendance: newChild.attendance,
+        },
+      ],
+      payments: newChild.paymentStatus === 'paid'
+        ? [
+            {
+              id: `pay_${Date.now()}`,
+              studentName: newChild.name,
+              date: new Date().toLocaleDateString('ru-RU'),
+              amount: newChild.price,
+              period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+              status: 'paid',
+            },
+            ...prev.payments,
+          ]
+        : prev.payments,
+    }));
+
+    // 2. Add event to family timeline
+    setInteractions((prev) => [
+      {
+        id: `int_${Date.now()}`,
+        occurredAt: 'Только что',
+        channel: 'telegram',
+        author: 'Администратор школы',
+        studentName: newChild.name,
+        content: `В семью зачислен ребенок: ${newChild.name} (${newChild.course}, группа «${newChild.group}», преподаватель ${newChild.teacher}). Тариф: ${newChild.subscriptionType} (${newChild.price}). Степень родства: ${newChild.relationshipType}.`,
+        result: newChild.paymentStatus === 'paid' ? 'Оплачено и зачислено' : 'Ожидается оплата',
+      },
+      ...prev,
+    ]);
+
+    success(`Ребенок ${newChild.name} успешно добавлен в семью!`);
+  };
   const [editForm, setEditForm] = useState({
     firstName: parent.firstName,
     lastName: parent.lastName,
@@ -214,33 +265,93 @@ export default function ParentDetailsPage() {
 
       {/* Children of this parent */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <Users className="h-4 w-4 text-blue-600" />
-          Дети семьи ({parent.children.length})
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {parent.children.map((child) => (
-            <div key={child.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm">{child.name}</h4>
-                  <span className="text-xs text-slate-500">{child.age}</span>
-                </div>
-                <p className="text-xs font-semibold text-blue-600 mt-1">{child.course}</p>
-                <div className="mt-2 space-y-1 text-xs text-slate-600">
-                  <p>Группа: <strong>{child.group}</strong></p>
-                  <p>Преподаватель: {child.teacher}</p>
-                  <p>Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong></p>
-                </div>
-              </div>
-              <div className="mt-4 pt-3 border-t border-slate-200/60 text-right">
-                <Link href={`/students/${child.id}`} className="text-xs font-semibold text-blue-600 hover:underline">
-                  Карточка ученика →
-                </Link>
-              </div>
-            </div>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-600" />
+              Дети семьи ({parent.children.length})
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Ученики, привязанные к данному родителю в рамках единого семейного аккаунта
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddChildModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98 shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Добавить ребенка
+          </button>
         </div>
+
+        {parent.children.length === 0 ? (
+          <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
+            <p className="font-semibold">К этому родителю пока не привязано ни одного ребенка</p>
+            <button
+              type="button"
+              onClick={() => setIsAddChildModalOpen(true)}
+              className="mt-2 inline-flex items-center gap-1 text-blue-600 font-bold hover:underline"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Добавить ребенка сейчас
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {parent.children.map((child) => (
+              <div
+                key={child.id}
+                className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 flex flex-col justify-between hover:border-blue-300 hover:bg-white transition-all shadow-2xs"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs shadow-2xs">
+                        {child.name.split(' ')[0]?.[0] || 'У'}
+                        {child.name.split(' ')[1]?.[0] || ''}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{child.name}</h4>
+                        <span className="text-[11px] text-slate-500">{child.age}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                        child.status === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      )}
+                    >
+                      {child.status === 'active' ? 'Активен' : 'Пробный'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-semibold text-blue-600 mt-3">{child.course}</p>
+                  <div className="mt-2 space-y-1 text-xs text-slate-600">
+                    <p>
+                      Группа: <strong>{child.group}</strong>
+                    </p>
+                    <p>Преподаватель: {child.teacher}</p>
+                    <p>
+                      Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">ID: {child.id}</span>
+                  <Link
+                    href={`/students/${child.id}`}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    Карточка ученика →
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Unified Family Timeline */}
@@ -429,6 +540,17 @@ export default function ParentDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* ADD CHILD MODAL */}
+      <AddChildModal
+        isOpen={isAddChildModalOpen}
+        onClose={() => setIsAddChildModalOpen(false)}
+        parentId={parent.id}
+        parentName={`${parent.firstName} ${parent.lastName}`}
+        parentPhone={parent.phone}
+        onChildAdded={handleChildAdded}
+        existingChildrenIds={parent.children.map((c) => c.id)}
+      />
     </div>
   );
 }
