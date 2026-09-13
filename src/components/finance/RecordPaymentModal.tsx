@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, DollarSign, Calendar, Check, User, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet, AlertCircle } from 'lucide-react';
+import { X, CreditCard, DollarSign, Calendar, Check, User, Users, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet, AlertCircle } from 'lucide-react';
 import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
-import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit, settleFamilyDebtsFromFamilyDeposit } from '@/lib/data/studentStorage';
 import { savePaymentToStorage, settleOverduePayments, getStoredPayments } from '@/lib/data/paymentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
@@ -68,9 +68,19 @@ export function RecordPaymentModal({
 
   const allStoredPayments = typeof window !== 'undefined' ? getStoredPayments() : [];
   const overduePaymentsForStudent = allStoredPayments.filter(
-    (p) => p.status === 'overdue' && (p.studentId === studentId || (initialParentId && p.parentId === initialParentId))
+    (p) => p.status === 'overdue' && p.studentId === studentId
   );
   const totalOverdueForStudent = overduePaymentsForStudent.reduce(
+    (sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0),
+    0
+  );
+
+  const otherFamilyDebts = initialParentId
+    ? allStoredPayments.filter(
+        (p) => p.status === 'overdue' && p.parentId === initialParentId && p.studentId !== studentId
+      )
+    : [];
+  const totalOtherFamilyDebts = otherFamilyDebts.reduce(
     (sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0),
     0
   );
@@ -220,6 +230,9 @@ export function RecordPaymentModal({
       settleOverduePayments(freshStudent.id, numAmount, parent?.id);
       settleStudentOverdueDebts(freshStudent.id);
       settleDebtsFromDeposit(freshStudent.id);
+      if (parent?.id) {
+        settleFamilyDebtsFromFamilyDeposit(parent.id);
+      }
     }
 
     // 2. Dispatch events
@@ -280,11 +293,23 @@ export function RecordPaymentModal({
                 onChange={(e) => setStudentId(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                {allowedStudents.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
+                {allowedStudents.map((s) => {
+                  const studentData = allStudents.find((st) => st.id === s.id);
+                  const sDeposit = studentData?.finance?.deposit?.balance || 0;
+                  const sDebts = (studentData?.finance?.payments || [])
+                    .filter((p) => p.status === 'overdue')
+                    .reduce((sum, p) => sum + (parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
+                  const statusSuffix = sDebts > 0
+                    ? ` • Долг: -${sDebts.toLocaleString('ru-RU')} ₽`
+                    : sDeposit > 0
+                    ? ` • Депозит: +${sDeposit.toLocaleString('ru-RU')} ₽`
+                    : ' • Баланс: 0 ₽';
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name}{statusSuffix}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <select
@@ -306,7 +331,7 @@ export function RecordPaymentModal({
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="font-semibold text-rose-900 flex items-center gap-1.5">
                   <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  Ученик имеет задолженность: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
+                  Ученик {selectedStudent?.firstName} имеет задолженность: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {selectedStudentDeposit > 0 && (
@@ -342,6 +367,26 @@ export function RecordPaymentModal({
                   ? `На депозите ученика доступно ${selectedStudentDeposit.toLocaleString('ru-RU')} ₽. Вы можете списать долг с депозита или внести новый платёж.`
                   : 'При внесении оплаты статус просрочки будет автоматически снят с ученика, а общая сумма задолженности школы пересчитается по оставшимся клиентам.'}
               </p>
+            </div>
+          )}
+
+          {totalOverdueForStudent === 0 && totalOtherFamilyDebts > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 flex items-center justify-between gap-2 flex-wrap">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Users className="h-4 w-4 text-amber-600 shrink-0" />
+                В этой семье есть задолженность по другому ребенку: <strong className="text-amber-800">{totalOtherFamilyDebts.toLocaleString('ru-RU')} ₽</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (otherFamilyDebts[0]?.studentId) {
+                    setStudentId(otherFamilyDebts[0].studentId);
+                  }
+                }}
+                className="text-[11px] font-bold text-amber-800 bg-white border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors cursor-pointer shrink-0 shadow-2xs"
+              >
+                Переключить на {otherFamilyDebts[0]?.studentName || 'должника'}
+              </button>
             </div>
           )}
 

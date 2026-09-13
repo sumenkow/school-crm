@@ -5,7 +5,7 @@ import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, B
 import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
-import { saveStudentToStorage, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
+import { saveStudentToStorage, settleDebtsFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 
 export interface NewStudentData {
   id: string;
@@ -83,6 +83,7 @@ export function CreateStudentModal({
   const [parentTelegram, setParentTelegram] = useState('');
   const [relationshipType, setRelationshipType] = useState('Мама');
   const [preferredChannel, setPreferredChannel] = useState('telegram');
+  const [selectedParentId, setSelectedParentId] = useState('');
 
   useEffect(() => {
     if (isOpen && initialData) {
@@ -120,6 +121,7 @@ export function CreateStudentModal({
       setParentTelegram('');
       setRelationshipType('Мама');
       setPreferredChannel('telegram');
+      setSelectedParentId('');
     }
   }, [isOpen, initialData]);
 
@@ -133,7 +135,10 @@ export function CreateStudentModal({
     }
 
     const newStudentId = `std_${Date.now()}`;
-    const parentId = `p_${Date.now()}`;
+    const parentId =
+      parentMode === 'existing' && selectedParentId
+        ? selectedParentId
+        : (initialData as any)?.parentId || `p_${Date.now()}`;
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
     const courseName = group.includes('English')
       ? 'Английский язык'
@@ -272,7 +277,13 @@ export function CreateStudentModal({
     INITIAL_STUDENTS.unshift(newFullStudent);
     saveStudentToStorage(newFullStudent);
     settleDebtsFromDeposit(newStudentId);
+    reconcileAllStudentDepositsAndDebts();
     combinedInteractions.forEach((i) => saveInteractionToStorage(i));
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-students-changed'));
+      window.dispatchEvent(new CustomEvent('crm-payments-changed'));
+    }
 
     // Update group enrollment count in INITIAL_GROUPS if found
     const targetGroup = INITIAL_GROUPS.find((g) => g.name === group || g.name.includes(group.split(' ')[0]));
@@ -574,23 +585,40 @@ export function CreateStudentModal({
               <div className="rounded-xl bg-slate-50/60 p-3.5 border border-slate-200">
                 <label className="text-xs font-medium text-slate-700">Выберите семью / родителя из базы</label>
                 <select
+                  value={selectedParentId}
                   className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none"
                   onChange={(e) => {
                     const selected = e.target.value;
+                    setSelectedParentId(selected);
                     if (selected === 'p1') {
                       setParentFirstName('Ольга');
                       setParentLastName('Смирнова');
                       setParentPhone('+7 (999) 123-45-67');
+                      setPreferredChannel('telegram');
                     } else if (selected === 'p3') {
                       setParentFirstName('Дмитрий');
                       setParentLastName('Кузнецов');
                       setParentPhone('+7 (999) 234-56-78');
+                      setParentTelegram('@dkuznetsov');
+                      setPreferredChannel('whatsapp');
+                    } else if (selected === 'p4') {
+                      setParentFirstName('Елена');
+                      setParentLastName('Васильева');
+                      setParentPhone('+7 (999) 345-67-89');
+                      setPreferredChannel('phone');
+                    } else if (selected === 'p5') {
+                      setParentFirstName('Наталья');
+                      setParentLastName('Захарова');
+                      setParentPhone('+7 (916) 777-33-22');
+                      setParentTelegram('@zakharova_n');
+                      setPreferredChannel('telegram');
                     }
                   }}
                 >
                   <option value="">-- Выберите родителя --</option>
-                  <option value="p1">Ольга Смирнова (+7 999 123-45-67) — Семья Смирновых</option>
                   <option value="p3">Дмитрий Кузнецов (+7 999 234-56-78) — Дети: Мария, Артём</option>
+                  <option value="p1">Ольга Смирнова (+7 999 123-45-67) — Семья Смирновых (Иван)</option>
+                  <option value="p5">Наталья Захарова (+7 916 777-33-22) — Максим</option>
                   <option value="p4">Елена Васильева (+7 999 345-67-89) — Дочь: Анна</option>
                 </select>
                 <p className="mt-2 text-[11px] text-slate-500">

@@ -232,23 +232,24 @@ export default function ParentDetailsPage() {
     return familyPayments.filter((p) => p.studentId === paymentChildFilter);
   }, [familyPayments, paymentChildFilter]);
 
-  const totalPaidAmount = useMemo(() => {
-    return filteredPayments
+  // Family-wide totals (ALWAYS across ALL children of the family)
+  const familyTotalPaid = useMemo(() => {
+    return familyPayments
       .filter((p) => p.status === 'paid' && !p.amount.startsWith('-'))
       .reduce((sum, p) => {
         const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         return sum + num;
       }, 0);
-  }, [filteredPayments]);
+  }, [familyPayments]);
 
-  const totalDebtAmount = useMemo(() => {
-    return filteredPayments
+  const familyTotalDebt = useMemo(() => {
+    return familyPayments
       .filter((p) => p.status === 'overdue')
       .reduce((sum, p) => {
         const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
         return sum + num;
       }, 0);
-  }, [filteredPayments]);
+  }, [familyPayments]);
 
   const totalFamilyDeposit = useMemo(() => {
     const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
@@ -257,6 +258,28 @@ export default function ParentDetailsPage() {
       .filter((s) => childIds.has(s.id) || s.parents?.some((p) => p.id === parentId))
       .reduce((sum, s) => sum + (s.finance?.deposit?.balance || 0), 0);
   }, [parent.children, parentId, refreshTrigger]);
+
+  // Per-child finances for individual children cards
+  const childFinanceMap = useMemo(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    const map = new Map<string, { deposit: number; debt: number; totalPaid: number; currency: string }>();
+
+    for (const ch of parent.children) {
+      const st = allStudents.find((s) => s.id === ch.id);
+      const deposit = st?.finance?.deposit?.balance || 0;
+      const debt = (st?.finance?.payments || [])
+        .filter((p) => p.status === 'overdue')
+        .reduce((sum, p) => sum + (parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
+      const paid = (st?.finance?.payments || [])
+        .filter((p) => p.status === 'paid' && !p.amount.startsWith('-'))
+        .reduce((sum, p) => sum + (parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
+      const currency = st?.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+      map.set(ch.id, { deposit, debt, totalPaid: paid, currency });
+    }
+    return map;
+  }, [parent.children, refreshTrigger]);
+
+  const [paymentModalStudentId, setPaymentModalStudentId] = useState<string | undefined>(undefined);
 
   // Edit modal child management states
   const [editChildren, setEditChildren] = useState(parent.children);
@@ -636,10 +659,10 @@ export default function ParentDetailsPage() {
                     <Wallet className="h-3.5 w-3.5 text-emerald-600" />
                     Депозит семьи: +{totalFamilyDeposit.toLocaleString('ru-RU')} ₽
                   </span>
-                ) : totalDebtAmount > 0 ? (
+                ) : familyTotalDebt > 0 ? (
                   <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                     <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-                    Долг семьи: -{totalDebtAmount.toLocaleString('ru-RU')} ₽
+                    Долг семьи: -{familyTotalDebt.toLocaleString('ru-RU')} ₽
                   </span>
                 ) : (
                   <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
@@ -673,7 +696,10 @@ export default function ParentDetailsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsPaymentModalOpen(true)}
+              onClick={() => {
+                setPaymentModalStudentId(undefined);
+                setIsPaymentModalOpen(true);
+              }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2 text-xs font-semibold text-emerald-700 shadow-xs hover:bg-emerald-100 transition-colors"
             >
               <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
@@ -705,24 +731,31 @@ export default function ParentDetailsPage() {
             <div className={cn(
               "rounded-xl p-3.5 border flex flex-col justify-between",
               totalFamilyDeposit > 0 && "bg-emerald-50/70 border-emerald-200",
-              totalDebtAmount > 0 && "bg-rose-50/80 border-rose-200",
-              totalFamilyDeposit === 0 && totalDebtAmount === 0 && "bg-amber-50/70 border-amber-200"
+              familyTotalDebt > 0 && "bg-rose-50/80 border-rose-200",
+              totalFamilyDeposit === 0 && familyTotalDebt === 0 && "bg-amber-50/70 border-amber-200"
             )}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                   {totalFamilyDeposit > 0 ? (
                     <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                  ) : totalDebtAmount > 0 ? (
+                  ) : familyTotalDebt > 0 ? (
                     <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
                   ) : (
                     <Clock className="h-3.5 w-3.5 text-amber-600" />
                   )}
                   Баланс семьи:
                 </span>
-                {totalDebtAmount > 0 ? (
+                {familyTotalDebt > 0 ? (
                   <button
                     type="button"
-                    onClick={() => setIsPaymentModalOpen(true)}
+                    onClick={() => {
+                      const childWithDebt = parent.children.find((c) => {
+                        const f = childFinanceMap.get(c.id);
+                        return f && f.debt > 0;
+                      });
+                      setPaymentModalStudentId(childWithDebt?.id || parent.children[0]?.id);
+                      setIsPaymentModalOpen(true);
+                    }}
                     className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-2 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
                   >
                     Погасить долг
@@ -730,7 +763,10 @@ export default function ParentDetailsPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setIsPaymentModalOpen(true)}
+                    onClick={() => {
+                      setPaymentModalStudentId(parent.children[0]?.id);
+                      setIsPaymentModalOpen(true);
+                    }}
                     className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-2 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
                   >
                     Пополнить депозит
@@ -740,24 +776,24 @@ export default function ParentDetailsPage() {
               <p className={cn(
                 "text-xl font-black mt-1",
                 totalFamilyDeposit > 0 && "text-emerald-700",
-                totalDebtAmount > 0 && "text-rose-700",
-                totalFamilyDeposit === 0 && totalDebtAmount === 0 && "text-slate-900"
+                familyTotalDebt > 0 && "text-rose-700",
+                totalFamilyDeposit === 0 && familyTotalDebt === 0 && "text-slate-900"
               )}>
                 {totalFamilyDeposit > 0
                   ? `+${totalFamilyDeposit.toLocaleString('ru-RU')} ₽`
-                  : totalDebtAmount > 0
-                  ? `-${totalDebtAmount.toLocaleString('ru-RU')} ₽`
+                  : familyTotalDebt > 0
+                  ? `-${familyTotalDebt.toLocaleString('ru-RU')} ₽`
                   : '0 ₽'}
               </p>
               <p className={cn(
                 "text-[11px] mt-0.5 font-medium",
                 totalFamilyDeposit > 0 && "text-emerald-600",
-                totalDebtAmount > 0 && "text-rose-600 font-semibold",
-                totalFamilyDeposit === 0 && totalDebtAmount === 0 && "text-amber-800 font-semibold"
+                familyTotalDebt > 0 && "text-rose-600 font-semibold",
+                totalFamilyDeposit === 0 && familyTotalDebt === 0 && "text-amber-800 font-semibold"
               )}>
                 {totalFamilyDeposit > 0
                   ? 'Активный семейный депозит • списание за уроки'
-                  : totalDebtAmount > 0
+                  : familyTotalDebt > 0
                   ? 'Просроченная задолженность по счетам'
                   : 'Баланс нулевой • требуется пополнение'}
               </p>
@@ -766,7 +802,7 @@ export default function ParentDetailsPage() {
             {/* Total Paid Card */}
             <div className="rounded-xl p-3.5 border border-slate-200 bg-slate-50/60 flex flex-col justify-between">
               <span className="text-[11px] font-medium text-slate-500">Всего оплачено за всё время:</span>
-              <p className="text-xl font-bold text-slate-900 mt-1">{totalPaidAmount.toLocaleString('ru-RU')} ₽</p>
+              <p className="text-xl font-bold text-slate-900 mt-1">{familyTotalPaid.toLocaleString('ru-RU')} ₽</p>
               <p className="text-[11px] text-slate-500 mt-0.5">Суммарный объем оплат семьи</p>
             </div>
 
@@ -920,7 +956,55 @@ export default function ParentDetailsPage() {
                         </p>
                       </div>
                     </>
-                  )}
+                  {/* Child Balance Bar */}
+                  {(() => {
+                    const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '₽' };
+                    return (
+                      <div className="mt-3 rounded-xl border p-2.5 flex items-center justify-between gap-2 text-xs bg-white shadow-2xs">
+                        <div className="flex items-center gap-1.5">
+                          {cFinance.debt > 0 ? (
+                            <span className="font-bold text-rose-700 flex items-center gap-1">
+                              <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                              Долг: -{cFinance.debt.toLocaleString('ru-RU')} {cFinance.currency}
+                            </span>
+                          ) : cFinance.deposit > 0 ? (
+                            <span className="font-bold text-emerald-700 flex items-center gap-1">
+                              <Wallet className="h-3.5 w-3.5 text-emerald-600" />
+                              Депозит: +{cFinance.deposit.toLocaleString('ru-RU')} {cFinance.currency}
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-slate-600 flex items-center gap-1">
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                              Счета оплачены (0 {cFinance.currency})
+                            </span>
+                          )}
+                        </div>
+                        {cFinance.debt > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentModalStudentId(child.id);
+                              setIsPaymentModalOpen(true);
+                            }}
+                            className="rounded-lg bg-rose-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-rose-700 transition-colors cursor-pointer"
+                          >
+                            Погасить долг
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentModalStudentId(child.id);
+                              setIsPaymentModalOpen(true);
+                            }}
+                            className="rounded-lg bg-blue-50 border border-blue-200 px-2.5 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
+                          >
+                            Внести платёж
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                   <span className="text-[11px] text-slate-400">ID: {child.id}</span>
@@ -1489,9 +1573,12 @@ export default function ParentDetailsPage() {
       {/* RECORD PAYMENT MODAL */}
       <RecordPaymentModal
         isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          setPaymentModalStudentId(undefined);
+        }}
         initialParentId={parentId}
-        initialStudentId={paymentChildFilter !== 'all' ? paymentChildFilter : parent.children[0]?.id}
+        initialStudentId={paymentModalStudentId || (paymentChildFilter !== 'all' ? paymentChildFilter : parent.children[0]?.id)}
         allowedStudents={parent.children.map((c) => ({ id: c.id, name: c.name }))}
         onRecorded={() => {
           setRefreshTrigger((prev) => prev + 1);

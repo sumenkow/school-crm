@@ -470,7 +470,164 @@ export function settleDebtsFromDeposit(studentId: string): {
 }
 
 /**
- * Reconciles all students so that no student ever has an active debt while having unused deposit funds.
+ * Reconciles family finances across multiple children of a parent:
+ * If one child in the family has an active course debt and another child has unused deposit funds,
+ * the family deposit is automatically used to settle the sibling's debt so the family never has
+ * an active debt while holding idle deposit funds.
+ */
+export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
+  settled: boolean;
+  settledAmount: number;
+} {
+  if (typeof window === 'undefined') return { settled: false, settledAmount: 0 };
+
+  const allStudents = getStoredStudents();
+  const familyStudents = allStudents.filter(
+    (s) => s.parents?.some((p) => p.id === parentId)
+  );
+
+  if (familyStudents.length < 2) {
+    return { settled: false, settledAmount: 0 };
+  }
+
+  let totalSettled = 0;
+
+  // Find children with deposit and children with overdue debt
+  for (const debtor of familyStudents) {
+    const debtorDebts = (debtor.finance?.payments || []).filter((p) => p.status === 'overdue');
+    if (debtorDebts.length === 0) continue;
+
+    for (const donor of familyStudents) {
+      if (donor.id === debtor.id) continue;
+      let donorDeposit = donor.finance?.deposit?.balance || 0;
+      if (donorDeposit <= 0) continue;
+
+      const currencySymbol = donor.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+      const todayStr = new Date().toLocaleDateString('ru-RU');
+
+      for (const debt of debtorDebts) {
+        if (donorDeposit <= 0) break;
+        if (debt.status !== 'overdue') continue;
+
+        const debtAmount = parseFloat(String(debt.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (debtAmount <= 0) continue;
+
+        if (donorDeposit >= debtAmount) {
+          // Fully pay off debt using sibling deposit
+          donorDeposit -= debtAmount;
+          totalSettled += debtAmount;
+          debt.status = 'paid';
+          debt.method = 'Списание с семейного депозита';
+
+          // Log interaction on debtor
+          saveInteractionToStorage({
+            id: `int_fam_settle_${Date.now()}_${debt.id}`,
+            studentId: debtor.id,
+            studentName: `${debtor.firstName} ${debtor.lastName}`,
+            parentId,
+            occurredAt: 'Только что',
+            channel: 'other',
+            type: 'status_change',
+            author: 'Система (семейный депозит)',
+            content: `Погашена задолженность ${debtAmount.toLocaleString('ru-RU')} ${currencySymbol} за «${debt.period || 'Курс'}» за счет семейного депозита (списано с баланса ${donor.firstName} ${donor.lastName}).`,
+            result: 'Задолженность погашена из семейного депозита',
+          });
+
+          // Log interaction on donor
+          saveInteractionToStorage({
+            id: `int_fam_donor_${Date.now()}_${debt.id}`,
+            studentId: donor.id,
+            studentName: `${donor.firstName} ${donor.lastName}`,
+            parentId,
+            occurredAt: 'Только что',
+            channel: 'other',
+            type: 'status_change',
+            author: 'Система (семейный депозит)',
+            content: `Списано ${debtAmount.toLocaleString('ru-RU')} ${currencySymbol} с депозита в счет оплаты курса «${debt.period || 'Курс'}» для ${debtor.firstName} ${debtor.lastName}. Остаток депозита: ${donorDeposit.toLocaleString('ru-RU')} ${currencySymbol}.`,
+            result: 'Средства переведены на оплату курса брата/сестры',
+          });
+        } else {
+          // Partial payoff
+          const covered = donorDeposit;
+          const remaining = debtAmount - covered;
+          totalSettled += covered;
+          donorDeposit = 0;
+          debt.amount = `${remaining.toLocaleString('ru-RU')} ${currencySymbol}`;
+
+          saveInteractionToStorage({
+            id: `int_fam_part_${Date.now()}_${debt.id}`,
+            studentId: debtor.id,
+            studentName: `${debtor.firstName} ${debtor.lastName}`,
+            parentId,
+            occurredAt: 'Только что',
+            channel: 'other',
+            type: 'status_change',
+            author: 'Система (семейный депозит)',
+            content: `Частично погашена задолженность на ${covered.toLocaleString('ru-RU')} ${currencySymbol} за счет семейного депозита (${donor.firstName}). Остаток долга: ${remaining.toLocaleString('ru-RU')} ${currencySymbol}.`,
+            result: 'Частичное погашение долга из семейного депозита',
+          });
+        }
+      }
+
+      // Update donor student
+      const updatedDonor: FullStudentData = {
+        ...donor,
+        finance: {
+          ...donor.finance,
+          deposit: {
+            ...donor.finance?.deposit,
+            currency: (donor.finance?.deposit?.currency || 'RUB') as 'RUB' | 'EUR',
+            balance: donorDeposit,
+            balanceFormatted: `${donorDeposit.toLocaleString('ru-RU')} ${currencySymbol}`,
+          },
+        },
+      };
+      saveStudentToStorage(updatedDonor);
+    }
+
+    // Update debtor student
+    const updatedDebtor: FullStudentData = {
+      ...debtor,
+      finance: {
+        ...debtor.finance,
+        payments: debtorDebts,
+      },
+    };
+    saveStudentToStorage(updatedDebtor);
+  }
+
+  if (totalSettled > 0) {
+    try {
+      const { getStoredPayments } = require('./paymentStorage');
+      const allPayments = getStoredPayments();
+      const updatedPayments = allPayments.map((p: any) => {
+        const matchingDebtor = familyStudents.find((s) => s.id === p.studentId);
+        if (matchingDebtor) {
+          const matchP = matchingDebtor.finance?.payments?.find((sp: any) => sp.id === p.id || sp.period === p.periodLabel);
+          if (matchP && matchP.status === 'paid' && p.status === 'overdue') {
+            return {
+              ...p,
+              status: 'paid' as const,
+              paymentMethod: 'deposit_deduction' as any,
+              comment: `${p.comment || ''} (Погашено из семейного депозита)`.trim(),
+            };
+          }
+        }
+        return p;
+      });
+      localStorage.setItem('crm_payments_v2', JSON.stringify(updatedPayments));
+      window.dispatchEvent(new CustomEvent('crm-payments-changed'));
+    } catch (e) {
+      console.error('Failed to sync global payments after family settlement:', e);
+    }
+  }
+
+  return { settled: totalSettled > 0, settledAmount: totalSettled };
+}
+
+/**
+ * Reconciles all students and families so that neither an individual student nor a family
+ * ever has an active debt while having unused deposit funds.
  */
 export function reconcileAllStudentDepositsAndDebts(): void {
   if (typeof window === 'undefined') return;
@@ -480,6 +637,19 @@ export function reconcileAllStudentDepositsAndDebts(): void {
       if ((s.finance?.deposit?.balance || 0) > 0) {
         settleDebtsFromDeposit(s.id);
       }
+    }
+
+    // Reconcile multi-child families
+    const parentIds = new Set<string>();
+    for (const s of students) {
+      if (s.parents && s.parents.length > 0) {
+        for (const p of s.parents) {
+          if (p.id) parentIds.add(p.id);
+        }
+      }
+    }
+    for (const pid of parentIds) {
+      settleFamilyDebtsFromFamilyDeposit(pid);
     }
   } catch (err) {
     console.error('Failed to reconcile all student deposits and debts:', err);

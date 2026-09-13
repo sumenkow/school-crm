@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
-import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredStudents, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 
 interface ParentRecord {
@@ -220,6 +220,7 @@ export default function ParentsPage() {
 
   useEffect(() => {
     const sync = () => {
+      reconcileAllStudentDepositsAndDebts();
       setParents(getMergedParents());
     };
     sync();

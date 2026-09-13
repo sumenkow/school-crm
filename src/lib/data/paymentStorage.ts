@@ -92,17 +92,31 @@ export function settleOverduePayments(
   if (typeof window !== 'undefined') {
     try {
       const all = getStoredPayments();
+      let remainingBudget = typeof amountPaid === 'number' && amountPaid > 0 ? amountPaid : Infinity;
+
       const updated = all.map((p) => {
-        const isMatch = p.status === 'overdue' && (p.studentId === studentId || (parentId && p.parentId === parentId));
-        if (isMatch) {
-          settledCount++;
-          settledAmount += typeof p.amount === 'number' ? p.amount : 0;
-          return {
-            ...p,
-            status: 'paid' as const,
-            paymentDate: todayStr,
-            comment: p.comment ? `${p.comment} (Погашено ${todayStr})` : `Задолженность погашена ${todayStr}`,
-          };
+        const isMatch =
+          p.status === 'overdue' &&
+          (p.studentId ? p.studentId === studentId : (parentId && p.parentId === parentId));
+
+        if (isMatch && remainingBudget > 0) {
+          const debt = typeof p.amount === 'number'
+            ? p.amount
+            : parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+
+          if (debt <= 0) return p;
+
+          if (remainingBudget >= debt) {
+            remainingBudget -= debt;
+            settledCount++;
+            settledAmount += debt;
+            return {
+              ...p,
+              status: 'paid' as const,
+              paymentDate: todayStr,
+              comment: p.comment ? `${p.comment} (Погашено ${todayStr})` : `Задолженность погашена ${todayStr}`,
+            };
+          }
         }
         return p;
       });
