@@ -34,7 +34,8 @@ import {
   Search,
   Flame,
   Check,
-  Sparkles
+  Sparkles,
+  Edit3
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
