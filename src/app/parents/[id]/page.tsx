@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
-import { getStoredStudents } from '@/lib/data/studentStorage';
+import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from '@/lib/data/mockData';
+import { getStoredStudents, saveStudentToStorage } from '@/lib/data/studentStorage';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { useRole } from '@/context/RoleContext';
 import {
@@ -266,6 +266,70 @@ export default function ParentDetailsPage() {
     setInteractions((prev) => [childInteraction, ...prev]);
     saveInteractionToStorage(childInteraction);
 
+    const newStudentEntity: FullStudentData = {
+      id: newChild.id,
+      firstName: newChild.firstName || newChild.name.split(' ')[0] || 'Ребенок',
+      lastName: newChild.lastName || newChild.name.split(' ')[1] || parent.lastName,
+      studentType: 'school_student',
+      birthDate: newChild.birthDate || '2014-05-15',
+      phone: newChild.phone || parent.phone,
+      telegram: newChild.telegram || parent.telegram,
+      status: (newChild.status as any) || 'active',
+      notes: newChild.notes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      parents: [
+        {
+          id: parent.id,
+          firstName: parent.firstName,
+          lastName: parent.lastName,
+          phone: parent.phone,
+          telegram: parent.telegram,
+          whatsapp: parent.whatsapp,
+          email: parent.email,
+          preferredChannel: (parent.preferredChannel as any) || 'telegram',
+          relationshipType: newChild.relationshipType || 'Родитель',
+          isPrimary: true,
+        },
+      ],
+      groups: [
+        {
+          id: `g_${Date.now()}`,
+          name: newChild.group,
+          courseName: newChild.course,
+          teacherName: newChild.teacher,
+          schedule: 'Пн, Чт • 18:45–20:15',
+          status: 'active',
+          joinedAt: new Date().toLocaleDateString('ru-RU'),
+        },
+      ],
+      attendanceStats: {
+        totalLessons: 0,
+        presentCount: 0,
+        absentCount: 0,
+        rescheduledCount: 0,
+        attendanceRate: newChild.attendance || '100%',
+        history: [],
+      },
+      finance: {
+        payments: [
+          {
+            id: `pay_${Date.now()}`,
+            date: new Date().toLocaleDateString('ru-RU'),
+            amount: newChild.price || '7 600 ₽',
+            period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+            method: 'Банковская карта',
+            status: newChild.paymentStatus === 'paid' ? 'paid' : 'expected',
+          },
+        ],
+      },
+      interactions: [childInteraction],
+      tasks: [],
+    };
+
+    saveStudentToStorage(newStudentEntity);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: newStudentEntity }));
+
     success(`Ребенок ${newChild.name} успешно добавлен в семью!`);
   };
 
@@ -311,11 +375,11 @@ export default function ParentDetailsPage() {
       children: editChildren,
     }));
 
-    // Update parent info in INITIAL_STUDENTS for all attached children
+    // Update parent info in storage for all attached children
+    const allStudents = getStoredStudents();
     editChildren.forEach((ch) => {
-      const idx = INITIAL_STUDENTS.findIndex((s) => s.id === ch.id);
-      if (idx !== -1) {
-        const student = INITIAL_STUDENTS[idx];
+      const student = allStudents.find((s) => s.id === ch.id) || INITIAL_STUDENTS.find((s) => s.id === ch.id);
+      if (student) {
         const hasParent = student.parents?.some((p) => p.id === parent.id);
         if (!hasParent) {
           student.parents = [
@@ -327,12 +391,14 @@ export default function ParentDetailsPage() {
               phone: editForm.phone.trim() || parent.phone,
               telegram: editForm.telegram.trim() || parent.telegram,
               whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
-              preferredChannel: editForm.preferredChannel as any,
+              email: editForm.email.trim() || parent.email,
+              preferredChannel: (editForm.preferredChannel as any) || 'telegram',
               relationshipType: 'Родитель',
               isPrimary: true,
             },
           ];
         }
+        saveStudentToStorage(student);
       }
     });
 
