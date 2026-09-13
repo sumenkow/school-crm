@@ -15,6 +15,7 @@ export interface NewStudentData {
   studentType?: 'school_student' | 'adult_student';
   status: string;
   parent: string;
+  parentId?: string;
   parentPhone: string;
   group: string;
   course: string;
@@ -240,6 +241,7 @@ export function CreateStudentModal({
       studentType: studentType,
       status,
       parent: parentFirstName ? `${parentFirstName.trim()} ${parentLastName.trim()} (${relationshipType})` : (studentType === 'adult_student' ? 'Самостоятельный студент' : 'Контакт не указан'),
+      parentId: parentId,
       parentPhone: parentPhone || '—',
       group,
       course: courseName,

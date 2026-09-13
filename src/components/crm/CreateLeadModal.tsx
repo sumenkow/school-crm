@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, UserCheck, Calendar, Phone, Check, GraduationCap, School, Info, ArrowDown } from 'lucide-react';
-import { FullLeadData, INITIAL_LEADS } from '@/lib/data/mockData';
+import { FullLeadData, INITIAL_LEADS, splitFullName } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 
 interface CreateLeadModalProps {
@@ -15,18 +15,14 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   // Client type: 'school_student' (minor, through parents) vs 'adult_student' (18+, self-sufficient)
   const [clientType, setClientType] = useState<'school_student' | 'adult_student'>('school_student');
 
-  // Parent / Primary contact FIO (3 blocks: Фамилия - Имя - Отчество)
-  const [parentLastName, setParentLastName] = useState('');
-  const [parentFirstName, setParentFirstName] = useState('');
-  const [parentMiddleName, setParentMiddleName] = useState('');
+  // Parent / Primary contact (single field)
+  const [parentName, setParentName] = useState('');
 
-  // Student FIO (3 blocks: Фамилия - Имя - Отчество)
-  const [studentLastName, setStudentLastName] = useState('');
-  const [studentFirstName, setStudentFirstName] = useState('');
-  const [studentMiddleName, setStudentMiddleName] = useState('');
+  // Student (single field)
+  const [studentName, setStudentName] = useState('');
 
-  // Shared contacts
-  const [contact, setContact] = useState('');
+  // Shared contacts (with prefix +)
+  const [contact, setContact] = useState('+');
   const [telegram, setTelegram] = useState('');
 
   // School student additional fields
@@ -48,38 +44,32 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
   if (!isOpen) return null;
 
-  const handleCopyParentLastNameToStudent = () => {
-    if (parentLastName.trim()) {
-      setStudentLastName(parentLastName.trim());
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const isAdult = clientType === 'adult_student';
 
-    const parentFullName = [parentLastName.trim(), parentFirstName.trim(), parentMiddleName.trim()].filter(Boolean).join(' ');
-    const studentFullName = [studentLastName.trim(), studentFirstName.trim(), studentMiddleName.trim()].filter(Boolean).join(' ');
-
     if (isAdult) {
-      if (!studentFirstName.trim() || !contact.trim()) {
-        alert('Укажите имя студента и контактный телефон');
+      if (!studentName.trim() || !contact.trim() || contact.trim() === '+') {
+        alert('Укажите ФИО студента и контактный номер телефона');
         return;
       }
     } else {
-      if (!parentFirstName.trim() || !contact.trim()) {
-        alert('Укажите имя родителя и контактный телефон');
+      if (!parentName.trim() || !contact.trim() || contact.trim() === '+') {
+        alert('Укажите ФИО родителя и контактный номер телефона');
         return;
       }
-      if (!studentFirstName.trim()) {
-        alert('Укажите имя ребенка');
+      if (!studentName.trim()) {
+        alert('Укажите ФИО ученика');
         return;
       }
     }
 
-    const effectiveName = isAdult ? studentFullName : parentFullName;
-    const effectiveStudentName = isAdult ? studentFullName : studentFullName;
+    const pFio = splitFullName(parentName.trim());
+    const sFio = splitFullName(studentName.trim());
+
+    const effectiveName = isAdult ? studentName.trim() : parentName.trim();
+    const effectiveStudentName = studentName.trim();
 
     const createdLead: FullLeadData = {
       id: `lead_${Date.now()}`,
@@ -87,12 +77,12 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       name: effectiveName,
       contact: contact.trim(),
       telegram: telegram ? (telegram.startsWith('@') ? telegram : `@${telegram}`) : undefined,
-      parentLastName: isAdult ? undefined : (parentLastName.trim() || undefined),
-      parentFirstName: isAdult ? undefined : (parentFirstName.trim() || undefined),
-      parentMiddleName: isAdult ? undefined : (parentMiddleName.trim() || undefined),
-      studentLastName: studentLastName.trim() || undefined,
-      studentFirstName: studentFirstName.trim(),
-      studentMiddleName: studentMiddleName.trim() || undefined,
+      parentLastName: isAdult ? undefined : (pFio.lastName || undefined),
+      parentFirstName: isAdult ? undefined : (pFio.firstName || undefined),
+      parentMiddleName: isAdult ? undefined : (pFio.middleName || undefined),
+      studentLastName: sFio.lastName || undefined,
+      studentFirstName: sFio.firstName,
+      studentMiddleName: sFio.middleName || undefined,
       studentName: effectiveStudentName,
       studentAge: isAdult ? adultOccupation.trim() || undefined : studentAge.trim() || undefined,
       directionOrCourse,
@@ -230,42 +220,19 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               {/* Parent Block */}
               <div className="flex items-center gap-2 border-b border-blue-100 pb-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">1</span>
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Контакты и ФИО родителя (заказчика)</span>
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Родитель / Представитель ребенка</span>
               </div>
 
-              {/* 3 Blocks for Parent: Фамилия - Имя - Отчество */}
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">ФИО родителя (3 поля)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <input
-                      type="text"
-                      value={parentLastName}
-                      onChange={(e) => setParentLastName(e.target.value)}
-                      placeholder="Фамилия (напр. Морозова)"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      value={parentFirstName}
-                      onChange={(e) => setParentFirstName(e.target.value)}
-                      placeholder="Имя *"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={parentMiddleName}
-                      onChange={(e) => setParentMiddleName(e.target.value)}
-                      placeholder="Отчество"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО родителя *</label>
+                <input
+                  type="text"
+                  required
+                  value={parentName}
+                  onChange={(e) => setParentName(e.target.value)}
+                  placeholder="Например: Морозова Анна Сергеевна"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -275,8 +242,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                     type="tel"
                     required
                     value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    placeholder="+7 (999) 000-00-00"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
+                    }}
+                    placeholder="+XXXXXXXXXXX"
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                   />
                 </div>
@@ -293,57 +263,21 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </div>
 
               {/* Student Block */}
-              <div className="flex items-center justify-between border-b border-blue-100 pb-2 pt-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">2</span>
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Данные школьника (учащегося)</span>
-                </div>
-                {parentLastName && (
-                  <button
-                    type="button"
-                    onClick={handleCopyParentLastNameToStudent}
-                    className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold hover:underline flex items-center gap-1"
-                    title="Скопировать фамилию родителя"
-                  >
-                    <ArrowDown className="h-3 w-3" />
-                    Взять фамилию родителя
-                  </button>
-                )}
+              <div className="flex items-center gap-2 border-b border-blue-100 pb-2 pt-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">2</span>
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Данные школьника (учащегося)</span>
               </div>
 
-              {/* 3 Blocks for Student: Фамилия - Имя - Отчество */}
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">ФИО ученика (3 поля)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <input
-                      type="text"
-                      value={studentLastName}
-                      onChange={(e) => setStudentLastName(e.target.value)}
-                      placeholder="Фамилия (напр. Морозов)"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      value={studentFirstName}
-                      onChange={(e) => setStudentFirstName(e.target.value)}
-                      placeholder="Имя ребенка *"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={studentMiddleName}
-                      onChange={(e) => setStudentMiddleName(e.target.value)}
-                      placeholder="Отчество"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                    />
-                  </div>
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО ученика *</label>
+                <input
+                  type="text"
+                  required
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="Например: Морозов Максим"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -358,24 +292,24 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-700">Особенности ребенка (интересы, навыки)</label>
+                  <label className="text-xs font-medium text-slate-700">О ребенке</label>
                   <input
                     type="text"
                     value={studentNotes}
                     onChange={(e) => setStudentNotes(e.target.value)}
-                    placeholder="Любит роботов, изучал Scratch"
+                    placeholder="Интересы, цели, особенности..."
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700">Заметки о родителе (предпочтения по общению)</label>
+                <label className="text-xs font-medium text-slate-700">О родителе</label>
                 <textarea
                   rows={2}
                   value={parentNotes}
                   onChange={(e) => setParentNotes(e.target.value)}
-                  placeholder="Например: писать в Telegram, звонить строго после 18:00..."
+                  placeholder="Удобное время для связи, предпочтения по общению..."
                   className="mt-1 w-full rounded-lg border border-slate-200 p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
                 />
               </div>
@@ -388,39 +322,16 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Данные студента (совершеннолетнего)</span>
               </div>
 
-              {/* 3 Blocks for Adult: Фамилия - Имя - Отчество */}
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 block mb-1">ФИО студента (3 поля)</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <input
-                      type="text"
-                      value={studentLastName}
-                      onChange={(e) => setStudentLastName(e.target.value)}
-                      placeholder="Фамилия (напр. Романов)"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      value={studentFirstName}
-                      onChange={(e) => setStudentFirstName(e.target.value)}
-                      placeholder="Имя студента *"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      value={studentMiddleName}
-                      onChange={(e) => setStudentMiddleName(e.target.value)}
-                      placeholder="Отчество"
-                      className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                    />
-                  </div>
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО студента *</label>
+                <input
+                  type="text"
+                  required
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  placeholder="Например: Романов Алексей"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -430,8 +341,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                     type="tel"
                     required
                     value={contact}
-                    onChange={(e) => setContact(e.target.value)}
-                    placeholder="+7 (999) 555-44-33"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
+                    }}
+                    placeholder="+XXXXXXXXXXX"
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
                   />
                 </div>

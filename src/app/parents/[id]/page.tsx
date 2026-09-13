@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { useRole } from '@/context/RoleContext';
 import {
@@ -34,51 +35,93 @@ export default function ParentDetailsPage() {
   const { userName } = useRole();
   const parentId = params.id as string;
 
-  // Find matching parent from INITIAL_STUDENTS
-  const matchedStudent = INITIAL_STUDENTS.find((s) => s.parents?.some((p) => p.id === parentId));
-  const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+  // Load parent and linked children from unified storage (supports converted leads)
+  const [parent, setParent] = useState(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
+    const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
 
-  const linkedChildren = INITIAL_STUDENTS.filter((s) => s.parents?.some((p) => p.id === parentId)).map((s) => ({
-    id: s.id,
-    name: `${s.firstName} ${s.lastName}`,
-    age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-    group: s.groups[0]?.name || 'English B1 Teens',
-    course: s.groups[0]?.courseName || 'Английский язык',
-    teacher: s.groups[0]?.teacherName || 'Мария Иванова',
-    status: s.status,
-    attendance: s.attendanceStats.attendanceRate,
-  }));
+    const linkedChildren = allStudents
+      .filter((s) => s.parents?.some((p) => p.id === parentId))
+      .map((s) => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+        group: s.groups[0]?.name || 'Онлайн-группа',
+        course: s.groups[0]?.courseName || 'Общий курс',
+        teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+        status: s.status,
+        attendance: s.attendanceStats?.attendanceRate || '100%',
+      }));
 
-  const initialChildren = linkedChildren.length > 0 ? linkedChildren : [
-    {
-      id: '1',
-      name: 'Иван Смирнов',
-      age: '14 лет',
-      group: 'English B1 Teens',
-      course: 'Английский язык',
-      teacher: 'Мария Иванова',
-      status: 'active',
-      attendance: '94%',
-    },
-  ];
-
-  // Parent state
-  const [parent, setParent] = useState({
-    id: parentId,
-    firstName: matchedParent?.firstName || 'Ольга',
-    lastName: matchedParent?.lastName || 'Смирнова',
-    phone: matchedParent?.phone || '+7 (999) 123-45-67',
-    telegram: matchedParent?.telegram || '@olga_smirnova',
-    whatsapp: matchedParent?.whatsapp || '+79991234567',
-    email: matchedParent?.email || 'olga.smirnova@example.com',
-    preferredChannel: matchedParent?.preferredChannel || 'Telegram',
-    notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00. Платит вовремя по карте.',
-    children: initialChildren,
-    payments: [
-      { id: 'pay1', studentName: initialChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
-      { id: 'pay2', studentName: initialChildren[0]?.name || 'Иван Смирнов', date: '01.08.2026', amount: '7 600 ₽', period: 'Август 2026', status: 'paid' },
-    ],
+    return {
+      id: parentId,
+      firstName: matchedParent?.firstName || 'Ольга',
+      lastName: matchedParent?.lastName || 'Смирнова',
+      phone: matchedParent?.phone || '+7 (999) 123-45-67',
+      telegram: matchedParent?.telegram || '@olga_smirnova',
+      whatsapp: matchedParent?.whatsapp || '+79991234567',
+      email: matchedParent?.email || 'olga.smirnova@example.com',
+      preferredChannel: matchedParent?.preferredChannel || 'Telegram',
+      notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00.',
+      children: linkedChildren.length > 0 ? linkedChildren : [
+        {
+          id: '1',
+          name: 'Иван Смирнов',
+          age: '14 лет',
+          group: 'English B1 Teens',
+          course: 'Английский язык',
+          teacher: 'Мария Иванова',
+          status: 'active',
+          attendance: '94%',
+        },
+      ],
+      payments: [
+        { id: 'pay1', studentName: linkedChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
+      ],
+    };
   });
+
+  useEffect(() => {
+    const refreshParent = () => {
+      const allStudents = getStoredStudents();
+      const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
+      const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+
+      const linkedChildren = allStudents
+        .filter((s) => s.parents?.some((p) => p.id === parentId))
+        .map((s) => ({
+          id: s.id,
+          name: `${s.firstName} ${s.lastName}`,
+          age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+          group: s.groups[0]?.name || 'Онлайн-группа',
+          course: s.groups[0]?.courseName || 'Общий курс',
+          teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+          status: s.status,
+          attendance: s.attendanceStats?.attendanceRate || '100%',
+        }));
+
+      if (matchedParent || linkedChildren.length > 0) {
+        setParent((prev) => ({
+          ...prev,
+          firstName: matchedParent?.firstName || prev.firstName,
+          lastName: matchedParent?.lastName || prev.lastName,
+          phone: matchedParent?.phone || prev.phone,
+          telegram: matchedParent?.telegram || prev.telegram,
+          whatsapp: matchedParent?.whatsapp || prev.whatsapp,
+          children: linkedChildren.length > 0 ? linkedChildren : prev.children,
+        }));
+      }
+    };
+
+    refreshParent();
+    window.addEventListener('crm-students-changed', refreshParent);
+    window.addEventListener('focus', refreshParent);
+    return () => {
+      window.removeEventListener('crm-students-changed', refreshParent);
+      window.removeEventListener('focus', refreshParent);
+    };
+  }, [parentId]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
@@ -450,7 +493,12 @@ export default function ParentDetailsPage() {
                         {child.name.split(' ')[1]?.[0] || ''}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-900 text-sm">{child.name}</h4>
+                        <Link
+                          href={`/students/${child.id}`}
+                          className="font-bold text-slate-900 text-sm hover:text-blue-600 hover:underline block"
+                        >
+                          {child.name}
+                        </Link>
                         <span className="text-[11px] text-slate-500">{child.age}</span>
                       </div>
                     </div>

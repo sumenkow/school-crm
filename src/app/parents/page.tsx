@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 
 interface ParentRecord {
@@ -85,12 +86,69 @@ const INITIAL_PARENTS: ParentRecord[] = [
   },
 ];
 
+function getMergedParents(): ParentRecord[] {
+  const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+  const map = new Map<string, ParentRecord>();
+
+  for (const init of INITIAL_PARENTS) {
+    map.set(init.id, { ...init, children: [...init.children] });
+  }
+
+  for (const st of allStudents) {
+    if (st.parents && st.parents.length > 0) {
+      for (const pr of st.parents) {
+        if (!pr.id) continue;
+        const fullName = `${pr.firstName} ${pr.lastName}`.trim() || 'Родитель';
+        const childInfo = {
+          id: st.id,
+          name: `${st.firstName} ${st.lastName}`,
+          group: st.groups?.[0]?.name || 'Онлайн-группа',
+        };
+
+        if (map.has(pr.id)) {
+          const existing = map.get(pr.id)!;
+          if (!existing.children.some((c) => c.id === st.id)) {
+            existing.children.push(childInfo);
+          }
+        } else {
+          map.set(pr.id, {
+            id: pr.id,
+            name: fullName,
+            phone: pr.phone || '—',
+            telegram: pr.telegram,
+            whatsapp: pr.whatsapp,
+            preferredChannel: pr.preferredChannel || 'Telegram',
+            children: [childInfo],
+            totalPaid: '7 600 ₽',
+            balanceStatus: 'paid',
+          });
+        }
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 export default function ParentsPage() {
   const router = useRouter();
   const { success } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [parents, setParents] = useState<ParentRecord[]>(INITIAL_PARENTS);
+  const [parents, setParents] = useState<ParentRecord[]>(() => getMergedParents());
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sync = () => {
+      setParents(getMergedParents());
+    };
+    sync();
+    window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
 
   // Modals state
   const [editingParent, setEditingParent] = useState<ParentRecord | null>(null);

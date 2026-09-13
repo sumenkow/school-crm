@@ -59,18 +59,10 @@ export default function LeadDetailsPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Helper to resolve initial FIO fields
-  const parentFio = splitFullName(lead.name);
-  const studentFio = splitFullName(lead.studentName || '');
-
   const [editForm, setEditForm] = useState({
-    parentLastName: lead.parentLastName || parentFio.lastName,
-    parentFirstName: lead.parentFirstName || parentFio.firstName,
-    parentMiddleName: lead.parentMiddleName || parentFio.middleName,
-    studentLastName: lead.studentLastName || studentFio.lastName,
-    studentFirstName: lead.studentFirstName || studentFio.firstName,
-    studentMiddleName: lead.studentMiddleName || studentFio.middleName,
-    contact: lead.contact,
+    parentName: lead.name || '',
+    studentName: lead.studentName || '',
+    contact: lead.contact?.startsWith('+') ? lead.contact : (lead.contact ? `+${lead.contact}` : '+'),
     telegram: lead.telegram || '',
     studentAge: lead.studentAge || '',
     directionOrCourse: lead.directionOrCourse || '',
@@ -81,16 +73,10 @@ export default function LeadDetailsPage() {
   });
 
   const handleOpenEdit = () => {
-    const pFio = splitFullName(lead.name);
-    const sFio = splitFullName(lead.studentName || '');
     setEditForm({
-      parentLastName: lead.parentLastName || pFio.lastName,
-      parentFirstName: lead.parentFirstName || pFio.firstName,
-      parentMiddleName: lead.parentMiddleName || pFio.middleName,
-      studentLastName: lead.studentLastName || sFio.lastName,
-      studentFirstName: lead.studentFirstName || sFio.firstName,
-      studentMiddleName: lead.studentMiddleName || sFio.middleName,
-      contact: lead.contact,
+      parentName: lead.name || '',
+      studentName: lead.studentName || '',
+      contact: lead.contact?.startsWith('+') ? lead.contact : (lead.contact ? `+${lead.contact}` : '+'),
       telegram: lead.telegram || '',
       studentAge: lead.studentAge || '',
       directionOrCourse: lead.directionOrCourse || '',
@@ -105,22 +91,22 @@ export default function LeadDetailsPage() {
   const handleSaveLead = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const parentFullName = buildFullName(editForm.parentLastName, editForm.parentFirstName, editForm.parentMiddleName);
-    const studentFullName = buildFullName(editForm.studentLastName, editForm.studentFirstName, editForm.studentMiddleName);
+    const pFio = splitFullName(editForm.parentName.trim());
+    const sFio = splitFullName(editForm.studentName.trim());
 
     const isAdult = lead.clientType === 'adult_student';
-    const effectiveName = isAdult ? (studentFullName || lead.name) : (parentFullName || lead.name);
-    const effectiveStudentName = studentFullName || editForm.studentFirstName.trim() || lead.studentName;
+    const effectiveName = isAdult ? (editForm.studentName.trim() || lead.name) : (editForm.parentName.trim() || lead.name);
+    const effectiveStudentName = editForm.studentName.trim() || lead.studentName;
 
     const updated: FullLeadData = {
       ...lead,
       name: effectiveName,
-      parentLastName: editForm.parentLastName.trim() || undefined,
-      parentFirstName: editForm.parentFirstName.trim() || undefined,
-      parentMiddleName: editForm.parentMiddleName.trim() || undefined,
-      studentLastName: editForm.studentLastName.trim() || undefined,
-      studentFirstName: editForm.studentFirstName.trim() || undefined,
-      studentMiddleName: editForm.studentMiddleName.trim() || undefined,
+      parentLastName: isAdult ? undefined : (pFio.lastName || undefined),
+      parentFirstName: isAdult ? undefined : (pFio.firstName || undefined),
+      parentMiddleName: isAdult ? undefined : (pFio.middleName || undefined),
+      studentLastName: sFio.lastName || undefined,
+      studentFirstName: sFio.firstName,
+      studentMiddleName: sFio.middleName || undefined,
       studentName: effectiveStudentName,
       contact: editForm.contact.trim() || lead.contact,
       telegram: editForm.telegram.trim() || undefined,
@@ -409,6 +395,7 @@ export default function LeadDetailsPage() {
       ...lead,
       status: 'paid',
       convertedStudentId: newStudent.id,
+      convertedParentId: newStudent.parentId,
       interactions: updatedInteractions,
     };
 
@@ -496,13 +483,23 @@ export default function LeadDetailsPage() {
               Изменить
             </button>
             {lead.status === 'paid' && lead.convertedStudentId ? (
-              <Link
-                href={`/students/${lead.convertedStudentId}`}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-              >
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                Ученик зачислен → Карточка
-              </Link>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link
+                  href={`/students/${lead.convertedStudentId}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                >
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  Ученик зачислен → Карточка ученика
+                </Link>
+                {lead.convertedParentId && (
+                  <Link
+                    href={`/parents/${lead.convertedParentId}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 border border-blue-200 hover:bg-blue-100"
+                  >
+                    Карточка родителя →
+                  </Link>
+                )}
+              </div>
             ) : (
               <button
                 type="button"
@@ -581,7 +578,7 @@ export default function LeadDetailsPage() {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <span>Заметки и особенности ученика ({lead.studentName || 'Ученик'})</span>
+                <span>О ребенке ({lead.studentName || 'Ученик'})</span>
               </span>
             </div>
             <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -598,7 +595,7 @@ export default function LeadDetailsPage() {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <span>Заметки о родителе ({lead.name})</span>
+                <span>О родителе ({lead.name})</span>
               </span>
             </div>
             <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
@@ -803,106 +800,44 @@ export default function LeadDetailsPage() {
             </div>
 
             <form onSubmit={handleSaveLead} className="mt-4 space-y-3.5 text-xs">
-              {/* Parent FIO (3 blocks: Фамилия, Имя, Отчество) */}
-              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 space-y-2">
-                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                  ФИО родителя / контакта (3 поля)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Фамилия</label>
-                    <input
-                      type="text"
-                      value={editForm.parentLastName}
-                      onChange={(e) => setEditForm({ ...editForm, parentLastName: e.target.value })}
-                      placeholder="Фамилия"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Имя *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.parentFirstName}
-                      onChange={(e) => setEditForm({ ...editForm, parentFirstName: e.target.value })}
-                      placeholder="Имя"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Отчество</label>
-                    <input
-                      type="text"
-                      value={editForm.parentMiddleName}
-                      onChange={(e) => setEditForm({ ...editForm, parentMiddleName: e.target.value })}
-                      placeholder="Отчество"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
+              {/* Parent Name (Single field) */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">ФИО родителя / контакта *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.parentName}
+                  onChange={(e) => setEditForm({ ...editForm, parentName: e.target.value })}
+                  placeholder="Например: Морозова Анна Сергеевна"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                />
               </div>
 
-              {/* Student FIO (3 blocks: Фамилия, Имя, Отчество) */}
-              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
-                    ФИО ученика (3 поля)
-                  </span>
-                  {editForm.parentLastName && (
-                    <button
-                      type="button"
-                      onClick={() => setEditForm({ ...editForm, studentLastName: editForm.parentLastName })}
-                      className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold hover:underline"
-                    >
-                      Взять фамилию родителя
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Фамилия</label>
-                    <input
-                      type="text"
-                      value={editForm.studentLastName}
-                      onChange={(e) => setEditForm({ ...editForm, studentLastName: e.target.value })}
-                      placeholder="Фамилия"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Имя *</label>
-                    <input
-                      type="text"
-                      required
-                      value={editForm.studentFirstName}
-                      onChange={(e) => setEditForm({ ...editForm, studentFirstName: e.target.value })}
-                      placeholder="Имя"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 block mb-0.5">Отчество</label>
-                    <input
-                      type="text"
-                      value={editForm.studentMiddleName}
-                      onChange={(e) => setEditForm({ ...editForm, studentMiddleName: e.target.value })}
-                      placeholder="Отчество"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-purple-500 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
+              {/* Student Name (Single field) */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">ФИО ученика *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.studentName}
+                  onChange={(e) => setEditForm({ ...editForm, studentName: e.target.value })}
+                  placeholder="Например: Морозов Максим"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Телефон контакта *</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={editForm.contact}
-                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditForm({ ...editForm, contact: v.startsWith('+') ? v : '+' + v.replace(/^\+*/, '') });
+                    }}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-purple-500 focus:outline-hidden"
-                    placeholder="+7 (999) 000-00-00"
+                    placeholder="+XXXXXXXXXXX"
                     required
                   />
                 </div>
@@ -971,7 +906,7 @@ export default function LeadDetailsPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Комментарий / Заметки о родителе</label>
+                <label className="block font-semibold text-slate-700 mb-1">О родителе</label>
                 <textarea
                   rows={2}
                   value={editForm.parentNotes}
@@ -982,7 +917,7 @@ export default function LeadDetailsPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Комментарий / Особенности ученика</label>
+                <label className="block font-semibold text-slate-700 mb-1">О ребенке</label>
                 <textarea
                   rows={2}
                   value={editForm.studentNotes}
