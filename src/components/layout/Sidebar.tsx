@@ -281,36 +281,6 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </div>
         ))}
       </nav>
-
-      {/* Active Role Indicator in Sidebar */}
-      <div
-        style={{
-          margin: '12px 16px 0',
-          padding: '10px 14px',
-          borderRadius: '12px',
-          backgroundColor: 'var(--md-surface-container)',
-          border: '1px solid var(--md-outline-variant)',
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-slate-500 font-medium">Режим CRM:</span>
-          <span
-            className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
-            style={{
-              backgroundColor:
-                role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
-                role === 'admin' ? 'var(--md-secondary-container)' :
-                'var(--md-primary-container)',
-              color:
-                role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
-                role === 'admin' ? 'var(--md-on-secondary-container)' :
-                'var(--md-on-primary-container)',
-            }}
-          >
-            {role === 'owner' ? '👑 Владелец' : role === 'admin' ? '💼 Админ' : '🎓 Учитель'}
-          </span>
-        </div>
-      </div>
     </div>
   );
 
