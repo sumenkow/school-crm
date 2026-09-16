@@ -132,28 +132,6 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
     }
   }
 
-      // Avoid duplicates if already added via student
-      if (!result.some((r) => r.studentId === pay.studentId && r.type === 'subscription')) {
-        result.push({
-          id: `upcoming_pay_${pay.id}`,
-          type: 'expected_payment',
-          studentId: pay.studentId,
-          studentName: pay.studentName,
-          parentId: pay.parentId,
-          parentName: pay.parentName,
-          courseName: pay.courseName || 'Обучение',
-          groupName: pay.groupName,
-          amount: pay.amount,
-          amountFormatted: pay.amountFormatted || `${pay.amount.toLocaleString('ru-RU')} ₽`,
-          dueDate: pay.paymentDate,
-          daysRemaining,
-          isUrgent: daysRemaining <= 3,
-          statusLabel: daysRemaining <= 0 ? 'Ожидается сегодня' : `Ожидается через ${daysRemaining} дн.`,
-        });
-      }
-    }
-  }
-
   // 3. Process Leads awaiting payment after trial (lead conversions)
   const leads = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('crm_leads_v2') || 'null') || INITIAL_LEADS) : INITIAL_LEADS;
   for (const lead of leads) {
