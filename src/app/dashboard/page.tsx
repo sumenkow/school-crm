@@ -793,6 +793,7 @@ type AdminQueueType = 'leads' | 'trials' | 'payments' | 'tasks';
 
 function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const toast = useToast();
+  const { userName } = useRole();
   const [activeQueue, setActiveQueue] = useState<AdminQueueType | null>(null);
   const [queueSearch, setQueueSearch] = useState('');
 

@@ -40,7 +40,7 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
 
   // 1. Resolve Student & Parents link if studentId provided
   if (studentId && (!studentName || !parentId || !parentName)) {
-    const student = allStudents.find((s) => s.id === studentId);
+    const student = allStudents.find((s) => String(s.id) === String(studentId));
     if (student) {
       if (!studentName) studentName = `${student.firstName} ${student.lastName}`.trim();
       if (!parentId && student.parents && student.parents.length > 0) {
@@ -53,7 +53,7 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
   // 2. Resolve Parent's children if parentId provided without student
   if (parentId && !parentName) {
     for (const s of allStudents) {
-      const p = s.parents?.find((pr) => pr.id === parentId);
+      const p = s.parents?.find((pr) => String(pr.id) === String(parentId));
       if (p) {
         parentName = `${p.firstName} ${p.lastName}`.trim() || 'Родитель';
         if (!studentId) {
@@ -67,12 +67,12 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
 
   // 3. Resolve Lead if leadId provided
   if (leadId && !leadName) {
-    const lead = INITIAL_LEADS.find((l) => l.id === leadId);
+    const lead = INITIAL_LEADS.find((l) => String(l.id) === String(leadId));
     if (lead) {
       leadName = lead.name;
       if (!studentId && lead.convertedStudentId) {
         studentId = lead.convertedStudentId;
-        const st = allStudents.find((s) => s.id === studentId);
+        const st = allStudents.find((s) => String(s.id) === String(studentId));
         if (st) studentName = `${st.firstName} ${st.lastName}`.trim();
       }
     }
@@ -193,14 +193,14 @@ export async function updateUnifiedTaskStatus(
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
 
   if (resolvedStudentId && (!resolvedParentId || !resolvedParentName)) {
-    const st = allStudents.find((s) => s.id === resolvedStudentId);
+    const st = allStudents.find((s) => String(s.id) === String(resolvedStudentId));
     if (st && st.parents && st.parents.length > 0) {
       if (!resolvedParentId) resolvedParentId = st.parents[0].id;
       if (!resolvedParentName) resolvedParentName = `${st.parents[0].firstName} ${st.parents[0].lastName}`.trim();
     }
   } else if (resolvedParentId && (!resolvedStudentId || !resolvedStudentName)) {
     for (const st of allStudents) {
-      const p = st.parents?.find((pr) => pr.id === resolvedParentId);
+      const p = st.parents?.find((pr) => String(pr.id) === String(resolvedParentId));
       if (p) {
         if (!resolvedStudentId) resolvedStudentId = st.id;
         if (!resolvedStudentName) resolvedStudentName = `${st.firstName} ${st.lastName}`.trim();
@@ -257,11 +257,14 @@ export async function updateUnifiedTaskStatus(
  */
 export async function getTasksForStudent(studentId: string): Promise<FullTaskData[]> {
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
-  const st = allStudents.find((s) => s.id === studentId);
-  const parentIds = new Set(st?.parents?.map((p) => p.id) || []);
+  const st = allStudents.find((s) => String(s.id) === String(studentId));
+  const parentIds = new Set(st?.parents?.map((p) => String(p.id)) || []);
 
   const tasks = await getStoredTasks();
-  return tasks.filter((t) => t.studentId === studentId || (t.parentId && parentIds.has(t.parentId)));
+  return tasks.filter((t) => 
+    (t.studentId && String(t.studentId) === String(studentId)) || 
+    (t.parentId && parentIds.has(String(t.parentId)))
+  );
 }
 
 /**
@@ -270,11 +273,16 @@ export async function getTasksForStudent(studentId: string): Promise<FullTaskDat
 export async function getTasksForParent(parentId: string): Promise<FullTaskData[]> {
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
   const familyChildIds = new Set(
-    allStudents.filter((s) => s.parents?.some((p) => p.id === parentId)).map((s) => s.id)
+    allStudents
+      .filter((s) => s.parents?.some((p) => String(p.id) === String(parentId)))
+      .map((s) => String(s.id))
   );
 
   const tasks = await getStoredTasks();
-  return tasks.filter((t) => t.parentId === parentId || (t.studentId && familyChildIds.has(t.studentId)));
+  return tasks.filter((t) => 
+    (t.parentId && String(t.parentId) === String(parentId)) || 
+    (t.studentId && familyChildIds.has(String(t.studentId)))
+  );
 }
 
 /**

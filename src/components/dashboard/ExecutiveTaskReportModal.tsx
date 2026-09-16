@@ -49,11 +49,21 @@ interface ExecutiveReportData {
     revenueTodayEur?: number;
   };
   keyRisks: string[];
-  teamBreakdown: Array<{
+  teamBreakdown?: Array<{
     name: string;
     role: string;
     total: number;
-    done: number;
+    done?: number;
+    completed?: number;
+    overdue: number;
+    onTimeRate: number;
+  }>;
+  managers?: Array<{
+    name: string;
+    role: string;
+    total: number;
+    done?: number;
+    completed?: number;
     overdue: number;
     onTimeRate: number;
   }>;
@@ -361,7 +371,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                 <span className="text-[11px] text-slate-400">Рейтинг своевременности</span>
               </div>
               <div className="divide-y divide-slate-100 text-xs">
-                {report.managers.map((m) => (
+                {(report.teamBreakdown || report.managers || []).map((m) => (
                   <div key={m.name} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors">
                     <div>
                       <p className="font-bold text-slate-900">{m.name}</p>
@@ -369,7 +379,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                     </div>
                     <div className="flex items-center gap-4 text-right">
                       <div>
-                        <span className="text-slate-700 font-bold">{m.completed} / {m.total}</span>
+                        <span className="text-slate-700 font-bold">{m.done ?? m.completed ?? 0} / {m.total}</span>
                         <p className="text-[10px] text-slate-400">закрыто</p>
                       </div>
                       <div className="w-20">

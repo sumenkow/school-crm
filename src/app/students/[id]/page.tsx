@@ -42,6 +42,7 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
+import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import type { Task } from '@/types';
@@ -414,6 +415,14 @@ export default function StudentDetailsPage() {
       targetRole: targetIsParent ? 'Родитель' : (student.studentType === 'adult_student' ? 'Студент' : 'Ученик'),
     };
 
+    const fullNewTask: FullTaskData = {
+      ...newTask,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: newTask.parentId || student.parents[0]?.id,
+      parentName: newTask.parentName || (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined),
+    };
+
     const updatedStudent: FullStudentData = {
       ...student,
       tasks: [taskItem, ...student.tasks],
@@ -422,8 +431,11 @@ export default function StudentDetailsPage() {
 
     setStudent(updatedStudent);
     saveStudentToStorage(updatedStudent);
+    saveTaskToStorage(fullNewTask);
     saveInteractionToStorage(taskInteraction);
     window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: fullNewTask }));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: taskInteraction }));
 
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
     if (idx !== -1) {
