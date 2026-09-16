@@ -18,11 +18,13 @@ import {
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 
 export default function CalendarPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday (Today)
@@ -50,16 +52,17 @@ export default function CalendarPage() {
     status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked'
   ) => {
     setLessons((prev) =>
-      prev.map((les) => {
-        if (les.id !== lessonId) return les;
-        const updatedStudents = les.students.map((st) =>
-          st.id === studentId ? { ...st, attendanceStatus: status } : st
-        );
-        const updatedLesson = { ...les, students: updatedStudents };
-        if (selectedLessonForQuickView?.id === lessonId) {
-          setSelectedLessonForQuickView(updatedLesson);
+      prev.map((l) => {
+        if (l.id === lessonId) {
+          const updatedStudents = (l.students || []).map((s) => {
+            if (s.id === studentId) {
+              return { ...s, attendance: status };
+            }
+            return s;
+          });
+          return { ...l, students: updatedStudents };
         }
-        return updatedLesson;
+        return l;
       })
     );
   };
@@ -93,9 +96,9 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Календарь школы</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('calendar.title', 'Календарь школы')}</h1>
           <p className="text-sm text-slate-500">
-            Расписание занятий всех групп и преподавателей (One Source of Truth)
+            {t('calendar.subtitle', 'Расписание занятий всех групп и преподавателей')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -104,7 +107,7 @@ export default function CalendarPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Запланировать занятие
+            {t('action.scheduleLesson', 'Запланировать занятие')}
           </button>
         </div>
       </div>
@@ -123,9 +126,9 @@ export default function CalendarPage() {
           </button>
           <button
             onClick={() => setSelectedDayIndex(2)}
-            className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
           >
-            Сегодня
+            {t('calendar.today', 'Сегодня')}
           </button>
         </div>
 
@@ -133,13 +136,13 @@ export default function CalendarPage() {
           {/* Teacher filter */}
           <div className="flex items-center gap-1.5 text-xs text-slate-600">
             <Filter className="h-3.5 w-3.5 text-slate-400" />
-            <span>Преподаватель:</span>
+            <span>{t('calendar.filterTeacher', 'Преподаватель')}:</span>
             <select
               value={selectedTeacher}
               onChange={(e) => setSelectedTeacher(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="all">Все преподаватели</option>
+              <option value="all">{t('action.all', 'Все')} {t('calendar.filterTeacher', 'преподаватели').toLowerCase()}</option>
               <option value="t1">Мария Иванова (English)</option>
               <option value="t2">Денис Смирнов (Robotics)</option>
               <option value="t3">Ольга Соколова (Math)</option>
@@ -150,21 +153,21 @@ export default function CalendarPage() {
           <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
             <button
               onClick={() => setViewMode('day')}
-              className={cn('rounded px-2.5 py-1 transition-all', viewMode === 'day' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'day' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
             >
-              День
+              {t('calendar.viewDay', 'День')}
             </button>
             <button
               onClick={() => setViewMode('week')}
-              className={cn('rounded px-2.5 py-1 transition-all', viewMode === 'week' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'week' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
             >
-              Неделя
+              {t('calendar.viewWeek', 'Неделя')}
             </button>
             <button
               onClick={() => setViewMode('month')}
-              className={cn('rounded px-2.5 py-1 transition-all', viewMode === 'month' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'month' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
             >
-              Месяц
+              {t('calendar.viewMonth', 'Месяц')}
             </button>
           </div>
         </div>

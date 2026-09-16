@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskReportModal';
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
@@ -2164,28 +2165,26 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
 // 3. TEACHER DASHBOARD (Свои занятия, журнал, группы, посещаемость)
 // ─────────────────────────────────────────────────────────────────────────────
 function TeacherDashboard() {
+  const { t } = useLanguage();
   const [lessons, setLessons] = useState<FullLessonData[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const loadData = () => {
-    const allLessons = getStoredLessons();
-    const allGroups = getStoredGroups();
-    setLessons(allLessons.filter((l) => l.teacherId === 't1' || l.teacherName.includes('Мария') || !l.teacherId));
-    setGroups(allGroups);
+    const allL = getStoredLessons();
+    const allG = getStoredGroups();
+    setLessons(allL);
+    setGroups(allG);
   };
 
   useEffect(() => {
     loadData();
-
-    const handleLessonsChanged = () => {
-      loadData();
-    };
-    window.addEventListener('crm-lessons-changed', handleLessonsChanged);
-    window.addEventListener('crm-groups-changed', handleLessonsChanged);
+    const handleSync = () => loadData();
+    window.addEventListener('crm-lessons-changed', handleSync);
+    window.addEventListener('crm-groups-changed', handleSync);
     return () => {
-      window.removeEventListener('crm-lessons-changed', handleLessonsChanged);
-      window.removeEventListener('crm-groups-changed', handleLessonsChanged);
+      window.removeEventListener('crm-lessons-changed', handleSync);
+      window.removeEventListener('crm-groups-changed', handleSync);
     };
   }, []);
 
@@ -2200,7 +2199,7 @@ function TeacherDashboard() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Кабинет преподавателя
+              {t('role.teacherCabinet', 'Кабинет преподавателя')}
             </h1>
             <span
               className="md-label-small"
@@ -2212,11 +2211,11 @@ function TeacherDashboard() {
                 fontWeight: 600,
               }}
             >
-              Преподаватель
+              {t('role.teacher', 'Преподаватель')}
             </span>
           </div>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Ваши занятия на сегодня, группы и журнал посещаемости
+            {t('teacher.myLessonsSubtitle', 'Ваши занятия на сегодня, группы и журнал посещаемости')}
           </p>
         </div>
 
@@ -2229,54 +2228,54 @@ function TeacherDashboard() {
             style={{ gap: '6px' }}
           >
             <Calendar size={16} />
-            + Запланировать занятие
+            + {t('action.scheduleLesson', 'Запланировать занятие')}
           </button>
           <Link href="/teacher/attendance" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
             <CheckCircle size={16} />
-            Журнал посещаемости
+            {t('nav.attendanceJournal', 'Журнал посещаемости')}
           </Link>
           <Link href="/groups" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
             <BookOpen size={16} />
-            Мои группы
+            {t('dashboard.myGroups', 'Мои группы')}
           </Link>
         </div>
       </div>
 
-      {/* Teacher Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* KPI Cards row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md-card-elevated" style={{ padding: '18px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Уроков сегодня</span>
+            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>{t('dashboard.lessonsToday', 'Уроков сегодня')}</span>
             <IconContainer bg="var(--md-primary-container)" color="var(--md-primary)">
               <Clock size={20} />
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            {displayLessons.length} {displayLessons.length === 1 ? 'занятие' : 'занятия'}
+            {displayLessons.length}
           </p>
           <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            {displayLessons[0] ? `Ближайший в ${displayLessons[0].startTime}` : 'Занятий нет'}
+            {displayLessons[0] ? `Ближайший в ${displayLessons[0].startTime}` : t('dashboard.noLessonsToday', 'Занятий нет')}
           </p>
         </div>
 
         <div className="md-card-elevated" style={{ padding: '18px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Мои группы</span>
+            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>{t('dashboard.myGroups', 'Мои группы')}</span>
             <IconContainer bg="var(--md-secondary-container)" color="var(--md-on-secondary-container)">
               <BookOpen size={20} />
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            {groups.length} {groups.length === 1 ? 'группа' : 'группы'}
+            {groups.length}
           </p>
           <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Всего {totalStudents || 19} учеников
+            Всего {totalStudents || 19} {t('nav.students', 'учеников')}
           </p>
         </div>
 
         <div className="md-card-elevated" style={{ padding: '18px' }}>
           <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
-            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>Посещаемость</span>
+            <span className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>{t('dashboard.attendance', 'Посещаемость')}</span>
             <IconContainer bg="var(--md-success-container)" color="var(--md-on-success-container)">
               <CheckCircle size={20} />
             </IconContainer>
@@ -2285,7 +2284,7 @@ function TeacherDashboard() {
             94%
           </p>
           <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Средняя за месяц
+            {t('dashboard.avgPerMonth', 'Средняя за месяц')}
           </p>
         </div>
       </div>
@@ -2296,11 +2295,11 @@ function TeacherDashboard() {
           <div className="flex items-center gap-2">
             <Calendar size={20} style={{ color: 'var(--md-primary)' }} />
             <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Мои уроки на сегодня
+              {t('dashboard.todayLessonsTitle', 'Мои уроки на сегодня')}
             </h3>
           </div>
           <Link href="/teacher" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
-            Все занятия →
+            {t('dashboard.allLessons', 'Все занятия')} →
           </Link>
         </div>
 

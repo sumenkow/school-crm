@@ -264,14 +264,14 @@ function StudentsContent() {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-600">
               <tr>
-                <th className="py-3.5 pl-4 pr-3">Ученик / Тип</th>
-                <th className="px-3 py-3.5">Статус</th>
-                <th className="px-3 py-3.5">Родитель / Контакт</th>
-                <th className="px-3 py-3.5">Группа / Курс</th>
-                <th className="px-3 py-3.5">Преподаватель</th>
-                <th className="px-3 py-3.5 text-center">Посещаемость</th>
-                <th className="px-3 py-3.5">Оплата / Абонемент</th>
-                <th className="py-3.5 pl-3 pr-4 text-right">Карточка</th>
+                <th className="py-3.5 pl-4 pr-3">{t('students.colStudent', 'Ученик / Тип')}</th>
+                <th className="px-3 py-3.5">{t('status.active', 'Статус')}</th>
+                <th className="px-3 py-3.5">{t('students.colParent', 'Родитель / Контакт')}</th>
+                <th className="px-3 py-3.5">{t('students.colGroup', 'Группа / Курс')}</th>
+                <th className="px-3 py-3.5">{t('hero.teacher', 'Преподаватель')}</th>
+                <th className="px-3 py-3.5 text-center">{t('dashboard.attendance', 'Посещаемость')}</th>
+                <th className="px-3 py-3.5">{t('students.colBalance', 'Актуальный баланс / Оплата')}</th>
+                <th className="py-3.5 pl-3 pr-4 text-right">{t('action.viewCard', 'Карточка')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -285,7 +285,7 @@ function StudentsContent() {
                     <div className="flex items-center gap-2.5">
                       <div
                         className={cn(
-                          'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs',
+                          'flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs shrink-0',
                           student.studentType === 'adult_student'
                             ? 'bg-purple-100 text-purple-700'
                             : 'bg-blue-100 text-blue-700'
@@ -293,8 +293,8 @@ function StudentsContent() {
                       >
                         {student.studentType === 'adult_student' ? <GraduationCap size={15} /> : student.name[0]}
                       </div>
-                      <div>
-                        <span className="hover:text-blue-600 font-bold text-slate-900 transition-colors block">
+                      <div className="min-w-0">
+                        <span className="hover:text-blue-600 font-bold text-slate-900 transition-colors block truncate">
                           {student.name}
                         </span>
                         <span className="text-[10px] text-slate-500 font-medium">
@@ -313,13 +313,13 @@ function StudentsContent() {
                           student.status === 'paused' && 'bg-amber-100 text-amber-800'
                         )}
                       >
-                        {student.status === 'active' && 'Активен'}
-                        {student.status === 'trial' && 'Пробный'}
-                        {student.status === 'paused' && 'На паузе'}
+                        {student.status === 'active' && t('status.active', 'Активен')}
+                        {student.status === 'trial' && t('status.trial', 'Пробный')}
+                        {student.status === 'paused' && t('status.paused', 'На паузе')}
                       </span>
                       {(student.isChurnRisk || (student.absentLessons !== undefined && student.absentLessons >= 3)) && (
                         <span className="rounded-md bg-rose-100 text-rose-800 px-1.5 py-0.5 font-bold text-[10px] flex items-center gap-1">
-                          <AlertTriangle size={10} /> Риск оттока ({student.absentLessons} проп.)
+                          <AlertTriangle size={10} /> {student.absentLessons} проп.
                         </span>
                       )}
                     </div>
@@ -333,7 +333,7 @@ function StudentsContent() {
                           navigator.clipboard.writeText(student.parentPhone);
                           toast.success(`Номер скопирован: ${student.parentPhone}`);
                         }}
-                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         title="Скопировать телефон"
                       >
                         <Copy size={12} />
@@ -349,7 +349,7 @@ function StudentsContent() {
                       </a>
                       <a
                         href={`tel:${student.parentPhone.replace(/[^\d+]/g, '')}`}
-                        className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                        className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
                         title="Позвонить"
                       >
                         <Phone size={12} />
@@ -375,36 +375,35 @@ function StudentsContent() {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-col gap-1 items-start">
-                      <div className="flex items-center gap-1.5">
-                        {student.paymentStatus === 'paid' && (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                            <CheckCircle2 className="h-3.5 w-3.5" /> Оплачен
-                          </span>
-                        )}
-                        {student.paymentStatus === 'overdue' && (
-                          <span className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[11px] font-bold text-rose-700 animate-pulse">
-                            <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
-                            Долг: {student.debtFormatted || 'Есть долг'}
-                          </span>
-                        )}
-                        {student.paymentStatus === 'expected' && (
-                          <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
-                            <Clock className="h-3.5 w-3.5" /> Ожидается
-                          </span>
-                        )}
-                      </div>
-                      {student.depositBalance !== undefined && student.depositBalance > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                          <Wallet className="h-3 w-3" /> Депозит: {student.depositFormatted}
+                      {/* Debt / Overdue Status */}
+                      {student.debtFormatted && student.debtFormatted !== '0 € (0 ₽)' ? (
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 border border-rose-200 px-2 py-0.5 text-xs font-bold text-rose-700">
+                          <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                          <span>{t('hero.debt', 'Долг')}: {student.debtFormatted}</span>
                         </span>
-                      ) : student.subscriptionEnd !== '—' ? (
-                        <p className="text-[10px] text-slate-400">до {student.subscriptionEnd}</p>
-                      ) : null}
+                      ) : student.depositBalance !== undefined && student.depositBalance > 0 ? (
+                        /* Positive Deposit Balance */
+                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                          <Wallet className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{t('hero.deposit', 'Депозит')}: {student.depositFormatted}</span>
+                        </span>
+                      ) : (
+                        /* Standard Paid Status */
+                        <div className="flex flex-col">
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold text-xs">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>{t('status.paid', 'Оплачено')}</span>
+                          </span>
+                          {student.subscriptionEnd && student.subscriptionEnd !== '—' && (
+                            <span className="text-[10px] text-slate-400 mt-0.5">до {student.subscriptionEnd}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="py-3 pl-3 pr-4 text-right">
                     <span className="inline-flex items-center text-xs font-semibold text-blue-600 group-hover:underline">
-                      Открыть <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                      {t('action.viewCard', 'Открыть')} <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
                     </span>
                   </td>
                 </tr>
