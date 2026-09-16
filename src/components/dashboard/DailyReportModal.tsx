@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { getEurRubRate } from '@/lib/data/currencyHelper';
+import { getEurRubRate, fetchLiveEurRubRate } from '@/lib/data/currencyHelper';
 
 interface DailyReportData {
   date: string;
@@ -81,7 +81,15 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
     async function loadReport() {
       try {
         setLoading(true);
-        const rate = getEurRubRate();
+        // Attempt to get fresh rate from CBR
+        let rate = getEurRubRate();
+        try {
+          const meta = await fetchLiveEurRubRate();
+          if (meta.rate) rate = meta.rate;
+        } catch (e) {
+          // ignore error
+        }
+
         const res = await fetch(`/api/reports/daily?eurRate=${rate}`);
         if (res.ok) {
           const data = await res.json();

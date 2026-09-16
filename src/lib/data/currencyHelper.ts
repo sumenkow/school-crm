@@ -2,6 +2,66 @@
 
 export const DEFAULT_EUR_RUB_RATE = 100; // 1 EUR = 100 RUB (конверсионный курс по умолчанию)
 const EUR_RATE_STORAGE_KEY = 'crm_eur_rub_rate';
+const EUR_RATE_META_KEY = 'crm_eur_rub_rate_meta';
+
+export interface CurrencyRateMeta {
+  rate: number;
+  source: string;
+  updatedAt: string;
+  isAuto: boolean;
+}
+
+/**
+ * Fetches live exchange rate from /api/currency/rate (CBR / Open FX).
+ */
+export async function fetchLiveEurRubRate(): Promise<CurrencyRateMeta> {
+  try {
+    const res = await fetch('/api/currency/rate');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.rate === 'number' && data.rate > 0) {
+        const meta: CurrencyRateMeta = {
+          rate: data.rate,
+          source: data.source || 'ЦБ РФ',
+          updatedAt: data.updatedAt || new Date().toISOString(),
+          isAuto: true,
+        };
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(EUR_RATE_STORAGE_KEY, String(data.rate));
+          localStorage.setItem(EUR_RATE_META_KEY, JSON.stringify(meta));
+          window.dispatchEvent(new CustomEvent('crm-currency-rate-changed', { detail: { rate: data.rate, meta } }));
+        }
+        return meta;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live EUR rate:', err);
+  }
+
+  const fallbackRate = getEurRubRate();
+  return {
+    rate: fallbackRate,
+    source: 'Сохраненный / Базовый',
+    updatedAt: new Date().toISOString(),
+    isAuto: false,
+  };
+}
+
+/**
+ * Returns metadata about the current rate if available.
+ */
+export function getCurrencyRateMeta(): CurrencyRateMeta | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem(EUR_RATE_META_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    // Ignore error
+  }
+  return null;
+}
 
 /**
  * Returns current exchange rate (RUB per 1 EUR).
@@ -23,11 +83,18 @@ export function getEurRubRate(): number {
 /**
  * Persists exchange rate (RUB per 1 EUR).
  */
-export function setEurRubRate(rate: number): void {
+export function setEurRubRate(rate: number, source: string = 'Пользовательский'): void {
   if (typeof window === 'undefined') return;
   if (rate > 0) {
+    const meta: CurrencyRateMeta = {
+      rate,
+      source,
+      updatedAt: new Date().toISOString(),
+      isAuto: false,
+    };
     localStorage.setItem(EUR_RATE_STORAGE_KEY, String(rate));
-    window.dispatchEvent(new CustomEvent('crm-currency-rate-changed', { detail: { rate } }));
+    localStorage.setItem(EUR_RATE_META_KEY, JSON.stringify(meta));
+    window.dispatchEvent(new CustomEvent('crm-currency-rate-changed', { detail: { rate, meta } }));
   }
 }
 

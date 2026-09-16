@@ -19,7 +19,14 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
 
-import { getEurRubRate, setEurRubRate, formatDualCurrency } from '@/lib/data/currencyHelper';
+import {
+  getEurRubRate,
+  setEurRubRate,
+  formatDualCurrency,
+  fetchLiveEurRubRate,
+  getCurrencyRateMeta,
+  type CurrencyRateMeta
+} from '@/lib/data/currencyHelper';
 
 interface ExecutiveReportData {
   date: string;
@@ -41,11 +48,12 @@ interface ExecutiveReportData {
     revenueToday?: number;
     revenueTodayEur?: number;
   };
-  managers: Array<{
+  keyRisks: string[];
+  teamBreakdown: Array<{
     name: string;
     role: string;
     total: number;
-    completed: number;
+    done: number;
     overdue: number;
     onTimeRate: number;
   }>;
@@ -65,7 +73,9 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
   const [copiedText, setCopiedText] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
   const [eurRate, setEurRate] = useState(() => getEurRubRate());
+  const [rateMeta, setRateMeta] = useState<CurrencyRateMeta | null>(() => getCurrencyRateMeta());
   const [isEditingRate, setIsEditingRate] = useState(false);
+  const [syncingRate, setSyncingRate] = useState(false);
 
   const loadReport = async (customRate?: number) => {
     try {
@@ -90,13 +100,45 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Fetch initial report
     loadReport();
+
+    // Auto-fetch live CBR rate in background on open
+    fetchLiveEurRubRate().then((meta) => {
+      setRateMeta(meta);
+      if (meta.rate && meta.rate !== eurRate) {
+        setEurRate(meta.rate);
+        loadReport(meta.rate);
+      }
+    }).catch(() => {});
   }, [isOpen]);
+
+  const handleSyncLiveRate = async () => {
+    try {
+      setSyncingRate(true);
+      const meta = await fetchLiveEurRubRate();
+      setRateMeta(meta);
+      setEurRate(meta.rate);
+      await loadReport(meta.rate);
+      toast.success(`Курс обновлен (${meta.source}): 1 € = ${meta.rate} ₽`);
+    } catch (err) {
+      toast.error('Не удалось загрузить онлайн курс');
+    } finally {
+      setSyncingRate(false);
+    }
+  };
 
   const handleRateChange = (newRate: number) => {
     if (newRate > 0) {
       setEurRate(newRate);
-      setEurRubRate(newRate);
+      setEurRubRate(newRate, 'Вручную');
+      setRateMeta({
+        rate: newRate,
+        source: 'Установлен вручную',
+        updatedAt: new Date().toISOString(),
+        isAuto: false,
+      });
       loadReport(newRate);
       toast.success(`Курс валют обновлен: 1 € = ${newRate} ₽`);
     }
@@ -172,14 +214,29 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
           <div className="p-6 space-y-6">
             {/* Currency Rate Bar (Base: EUR) */}
             <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-purple-950">💱 Основная валюта отчета: EUR (€)</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-extrabold text-purple-950">💱 Валюта отчета: EUR (€)</span>
                 <span className="text-[11px] text-purple-800 bg-purple-100/80 px-2 py-0.5 rounded-full font-bold">
                   1 € = {eurRate} ₽
                 </span>
+                {rateMeta?.source && (
+                  <span className="text-[10px] text-slate-500 bg-white/70 px-2 py-0.5 rounded border border-purple-100">
+                    {rateMeta.source}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSyncLiveRate}
+                  disabled={syncingRate}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-white px-2 py-1 rounded-lg border border-purple-200 shadow-2xs hover:bg-purple-50 transition-colors"
+                  title="Обновить актуальный курс из ЦБ РФ"
+                >
+                  <RefreshCw className={`h-3 w-3 ${syncingRate ? 'animate-spin' : ''}`} />
+                  {syncingRate ? 'Загрузка...' : 'Курс ЦБ РФ'}
+                </button>
+
                 {isEditingRate ? (
                   <div className="flex items-center gap-1.5">
                     <span className="text-slate-600 text-[11px]">Курс 1 € =</span>
@@ -203,9 +260,9 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                 ) : (
                   <button
                     onClick={() => setIsEditingRate(true)}
-                    className="text-[11px] font-bold text-purple-700 hover:text-purple-900 hover:underline"
+                    className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:underline"
                   >
-                    Изменить курс конвертации →
+                    Изменить вручную
                   </button>
                 )}
               </div>
