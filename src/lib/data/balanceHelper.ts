@@ -168,7 +168,7 @@ export function getLeadFinancialSummary(
     for (const s of allStudents) {
       const p = s.parents?.find((parent) => parent.id === lead.convertedParentId);
       if (p) {
-        linkedParent = { id: p.id, name: p.name };
+        linkedParent = { id: p.id, name: `${p.firstName} ${p.lastName}`.trim() || 'Родитель' };
         break;
       }
     }
@@ -184,7 +184,7 @@ export function getLeadFinancialSummary(
         return false;
       });
       if (p) {
-        linkedParent = { id: p.id, name: p.name };
+        linkedParent = { id: p.id, name: `${p.firstName} ${p.lastName}`.trim() || 'Родитель' };
         if (!linkedStudent) linkedStudent = s;
         break;
       }

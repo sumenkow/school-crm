@@ -1707,7 +1707,7 @@ export default function ParentDetailsPage() {
         defaultParentId={parentId}
         parentScope={{
           id: parent.id,
-          name: `${parent.firstName} ${parent.lastName}`.trim() || parent.name,
+          name: `${parent.firstName} ${parent.lastName}`.trim() || 'Родитель',
           children: parent.children.map((c) => ({ id: c.id, name: c.name })),
         }}
         onCreated={(newTask) => {

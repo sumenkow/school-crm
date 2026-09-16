@@ -55,7 +55,7 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
     for (const s of allStudents) {
       const p = s.parents?.find((pr) => pr.id === parentId);
       if (p) {
-        parentName = `${p.firstName} ${p.lastName}`.trim() || p.name;
+        parentName = `${p.firstName} ${p.lastName}`.trim() || 'Родитель';
         if (!studentId) {
           studentId = s.id;
           studentName = `${s.firstName} ${s.lastName}`.trim();

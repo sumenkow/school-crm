@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullTaskData } from '@/lib/data/mockData';
-import { getStoredTasks } from '@/lib/data/taskStorage';
+import { getStoredTasks, saveTaskToStorage } from '@/lib/data/taskStorage';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { useRole } from '@/context/RoleContext';
