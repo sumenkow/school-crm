@@ -70,13 +70,13 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-30 flex items-center justify-around border-t backdrop-blur-md transition-all select-none"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t backdrop-blur-lg transition-all select-none"
       style={{
-        backgroundColor: 'rgba(242, 244, 249, 0.94)',
+        backgroundColor: 'rgba(242, 244, 249, 0.96)',
         borderColor: 'var(--md-outline-variant, #C1C7CE)',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        height: 'calc(60px + env(safe-area-inset-bottom, 0px))',
-        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+        height: 'calc(62px + env(safe-area-inset-bottom, 0px))',
+        boxShadow: '0 -3px 12px rgba(0, 0, 0, 0.08)',
       }}
       aria-label="Мобильная навигация"
     >
