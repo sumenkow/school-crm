@@ -956,6 +956,8 @@ export default function ParentDetailsPage() {
                         </p>
                       </div>
                     </>
+                  )}
+
                   {/* Child Balance Bar */}
                   {(() => {
                     const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '₽' };
