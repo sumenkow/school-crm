@@ -23,7 +23,8 @@ import {
 } from '@/components/settings/SchoolProfileModal';
 import {
   getSchoolSettings,
-  saveSchoolSettings
+  saveSchoolSettings,
+  fetchSchoolSettingsFromCloud
 } from '@/lib/data/schoolSettingsStorage';
 import {
   CoursesSettingsModal,
@@ -39,6 +40,7 @@ import { useRole } from '@/context/RoleContext';
 export default function SettingsPage() {
   const { role } = useRole();
   const [activeModal, setActiveModal] = useState<'school' | 'courses' | 'roles' | 'telegram' | null>(null);
+  const [cloudSynced, setCloudSynced] = useState(true);
 
   // 1. School Profile State (from storage/DB)
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileData>(() => getSchoolSettings());
@@ -46,8 +48,16 @@ export default function SettingsPage() {
   React.useEffect(() => {
     setSchoolProfile(getSchoolSettings());
 
+    fetchSchoolSettingsFromCloud().then((cloudData) => {
+      if (cloudData) {
+        setSchoolProfile(cloudData);
+        setCloudSynced(true);
+      }
+    });
+
     const handleSync = () => {
       setSchoolProfile(getSchoolSettings());
+      setCloudSynced(true);
     };
 
     window.addEventListener('crm-school-settings-changed', handleSync);

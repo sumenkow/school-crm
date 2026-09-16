@@ -1881,7 +1881,7 @@ export default function StudentDetailsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Статус обучения</label>
                   <select
@@ -1902,6 +1902,16 @@ export default function StudentDetailsPage() {
                     onChange={(e) => setEditStudentForm({ ...editStudentForm, birthDate: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
                     placeholder="15.03.2012"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Класс (школьный)</label>
+                  <input
+                    type="text"
+                    value={editStudentForm.grade}
+                    onChange={(e) => setEditStudentForm({ ...editStudentForm, grade: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="8 класс"
                   />
                 </div>
               </div>

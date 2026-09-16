@@ -58,7 +58,34 @@ export function getSchoolSettings(): SchoolProfileData {
 }
 
 /**
- * Saves school settings to localStorage and dual-writes to Supabase.
+ * Asynchronously loads the latest school profile from cloud database / API.
+ */
+export async function fetchSchoolSettingsFromCloud(): Promise<SchoolProfileData> {
+  if (typeof window === 'undefined') return DEFAULT_SCHOOL_PROFILE;
+
+  try {
+    const res = await fetch('/api/school/settings');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.schoolSettings) {
+        const merged = { ...DEFAULT_SCHOOL_PROFILE, ...json.schoolSettings };
+        localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('crm-school-settings-changed', { detail: merged }));
+        return merged;
+      }
+      if (json.ownerProfile?.email) {
+        localStorage.setItem('crm_owner_email', json.ownerProfile.email);
+      }
+    }
+  } catch (err) {
+    console.warn('Cloud school settings fetch warning:', err);
+  }
+
+  return getSchoolSettings();
+}
+
+/**
+ * Saves school settings to localStorage and persists to Supabase cloud DB.
  * Dispatches crm-school-settings-changed event.
  */
 export function saveSchoolSettings(data: SchoolProfileData): void {
@@ -68,14 +95,29 @@ export function saveSchoolSettings(data: SchoolProfileData): void {
     localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new CustomEvent('crm-school-settings-changed', { detail: data }));
 
-    // Supabase dual-write (fire and forget)
+    // 1. Send to cloud API route (service role admin upsert)
+    fetch('/api/school/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        schoolSettings: data,
+        ownerProfile: {
+          email: data.email,
+          fullName: data.legalEntity || data.name,
+          phone: data.phone,
+        },
+      }),
+    }).catch((err) => console.warn('Cloud API save error:', err));
+
+    // 2. Supabase client dual-write (fire and forget)
     import('@/lib/supabase/client').then(({ createClient }) => {
       try {
         const supabase = createClient();
-        // Upsert into a generic settings key-value or metadata if available
         supabase.from('profiles').upsert({
           id: '00000000-0000-0000-0000-000000000001',
           full_name: data.legalEntity || data.name,
+          email: data.email,
+          phone: data.phone,
           role: 'owner',
           updated_at: new Date().toISOString(),
         }).then(() => {}, () => {});
@@ -97,14 +139,17 @@ export function getReportRecipientEmails(): {
   schoolEmail: string;
   recipientList: string[];
 } {
-  let ownerEmail = 'admin@smartacademy.ru';
+  const schoolSettings = getSchoolSettings();
+  const schoolEmail = schoolSettings.email || 'hello@smartacademy.ru';
+  let ownerEmail = schoolEmail;
+
   if (typeof window !== 'undefined') {
     try {
       const explicit = localStorage.getItem('crm_owner_email');
       if (explicit && explicit.includes('@')) {
         ownerEmail = explicit;
       } else {
-        const userProf = localStorage.getItem('crm_user_profile');
+        const userProf = localStorage.getItem('crm_user_profile_v1') || localStorage.getItem('crm_user_profile');
         if (userProf) {
           const parsed = JSON.parse(userProf);
           if (parsed.userEmail && parsed.userEmail.includes('@')) {
@@ -114,9 +159,6 @@ export function getReportRecipientEmails(): {
       }
     } catch {}
   }
-
-  const schoolSettings = getSchoolSettings();
-  const schoolEmail = schoolSettings.email || 'hello@smartacademy.ru';
 
   const recipientList = Array.from(new Set([ownerEmail, schoolEmail].filter((e) => e && e.includes('@'))));
 
