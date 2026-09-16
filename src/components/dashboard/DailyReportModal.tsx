@@ -15,7 +15,8 @@ import {
   ExternalLink,
   MessageSquare,
   FileText,
-  Shield
+  Shield,
+  Code
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -64,6 +65,8 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
   const [sendingTg, setSendingTg] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
+  const [copiedHtml, setCopiedHtml] = useState(false);
+  const [previewTab, setPreviewTab] = useState<'email' | 'telegram' | 'htmlCode'>('email');
   const [showConfig, setShowConfig] = useState(false);
 
   // The recipient emails are: 1. Owner user account email, 2. School settings email
@@ -132,6 +135,23 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
     setCopiedText(true);
     toast.success('Текст отчета скопирован в буфер обмена!');
     setTimeout(() => setCopiedText(false), 2000);
+  };
+
+  const handleCopyHtml = () => {
+    if (!report) return;
+    navigator.clipboard.writeText(report.emailHtml);
+    setCopiedHtml(true);
+    toast.success('HTML-код отчета скопирован в буфер обмена!');
+    setTimeout(() => setCopiedHtml(false), 2000);
+  };
+
+  const handleOpenHtmlNewTab = () => {
+    if (!report) return;
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(report.emailHtml);
+      win.document.close();
+    }
   };
 
   const handleSendTelegram = async () => {
@@ -218,7 +238,7 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -348,21 +368,142 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                 </div>
               )}
 
-              {/* Message preview */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-700">Текст отчета для отправки (Telegram / Email):</span>
-                  <button
-                    onClick={handleCopyText}
-                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold"
-                  >
-                    {copiedText ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                    {copiedText ? 'Скопировано!' : 'Скопировать текст'}
-                  </button>
+              {/* Format Switcher & Preview */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTab('email')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        previewTab === 'email'
+                          ? 'bg-white text-blue-700 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Mail size={14} className={previewTab === 'email' ? 'text-blue-600' : 'text-slate-400'} />
+                      <span>HTML-письмо (Email отчет)</span>
+                      <span className="rounded bg-blue-100 px-1 py-0.2 text-[9px] font-extrabold text-blue-800">
+                        HTML
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTab('telegram')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        previewTab === 'telegram'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Send size={13} className={previewTab === 'telegram' ? 'text-sky-600' : 'text-slate-400'} />
+                      <span>Telegram (Текст)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTab('htmlCode')}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        previewTab === 'htmlCode'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Code size={13} className={previewTab === 'htmlCode' ? 'text-purple-600' : 'text-slate-400'} />
+                      <span>HTML-код</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {previewTab === 'email' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleOpenHtmlNewTab}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors"
+                          title="Открыть превью HTML-письма в новой вкладке"
+                        >
+                          <ExternalLink size={13} />
+                          Во весь экран
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCopyHtml}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
+                        >
+                          {copiedHtml ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                          {copiedHtml ? 'HTML скопирован!' : 'Скопировать HTML'}
+                        </button>
+                      </>
+                    )}
+
+                    {previewTab === 'telegram' && (
+                      <button
+                        type="button"
+                        onClick={handleCopyText}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
+                      >
+                        {copiedText ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                        {copiedText ? 'Текст скопирован!' : 'Скопировать текст'}
+                      </button>
+                    )}
+
+                    {previewTab === 'htmlCode' && (
+                      <button
+                        type="button"
+                        onClick={handleCopyHtml}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1.5 rounded-lg border border-purple-200 transition-colors"
+                      >
+                        {copiedHtml ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                        {copiedHtml ? 'HTML скопирован!' : 'Скопировать код'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="rounded-xl bg-slate-900 text-slate-100 p-4 font-mono text-xs whitespace-pre-wrap leading-relaxed shadow-inner">
-                  {report.telegramText}
-                </div>
+
+                {/* Tab 1: Rendered HTML Email Preview */}
+                {previewTab === 'email' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Интерактивное превью сверстанного HTML-письма с таблицами, метриками и градиентом:</span>
+                      <span className="font-semibold text-slate-700">Формат: HTML Email (Responsive)</span>
+                    </div>
+                    <div className="rounded-xl border border-slate-300 bg-slate-100 p-2 shadow-inner">
+                      <iframe
+                        srcDoc={report.emailHtml}
+                        title="HTML Email Report Preview"
+                        className="w-full h-[480px] rounded-lg bg-white border-0 shadow-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Telegram Monospace Text */}
+                {previewTab === 'telegram' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Форматированный текст для Telegram-бота / чата администратора:</span>
+                      <span className="font-semibold text-slate-700">Формат: Markdown</span>
+                    </div>
+                    <div className="rounded-xl bg-slate-900 text-slate-100 p-4 font-mono text-xs whitespace-pre-wrap leading-relaxed shadow-inner max-h-[480px] overflow-y-auto">
+                      {report.telegramText}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Raw HTML Code */}
+                {previewTab === 'htmlCode' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Полный исходный HTML-код с инлайн-стилями для почтовых клиентов:</span>
+                      <span className="font-semibold text-slate-700">HTML Source</span>
+                    </div>
+                    <div className="rounded-xl bg-slate-900 text-emerald-400 p-4 font-mono text-[11px] whitespace-pre-wrap leading-relaxed shadow-inner max-h-[480px] overflow-y-auto select-all">
+                      {report.emailHtml}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Settings Accordion (Bot token & Chat ID) */}
