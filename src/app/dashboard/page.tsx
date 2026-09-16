@@ -45,8 +45,10 @@ import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskRe
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
-import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData, INITIAL_GROUPS } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -2161,6 +2163,20 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
 // 3. TEACHER DASHBOARD (Свои занятия, журнал, группы, посещаемость)
 // ─────────────────────────────────────────────────────────────────────────────
 function TeacherDashboard() {
+  const [lessons, setLessons] = useState<FullLessonData[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+
+  useEffect(() => {
+    const allLessons = getStoredLessons();
+    const allGroups = getStoredGroups();
+    setLessons(allLessons.filter((l) => l.teacherId === 't1' || l.teacherName.includes('Мария') || !l.teacherId));
+    setGroups(allGroups);
+  }, []);
+
+  const todayLessons = lessons.filter((l) => l.date === '2026-09-03' || l.date === '2026-09-01' || l.date === '2026-09-02');
+  const displayLessons = todayLessons.length > 0 ? todayLessons : lessons.slice(0, 3);
+  const totalStudents = groups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -2211,10 +2227,10 @@ function TeacherDashboard() {
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            2 занятия
+            {displayLessons.length} {displayLessons.length === 1 ? 'занятие' : 'занятия'}
           </p>
           <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Ближайший в 15:30
+            {displayLessons[0] ? `Ближайший в ${displayLessons[0].startTime}` : 'Занятий нет'}
           </p>
         </div>
 
@@ -2226,10 +2242,10 @@ function TeacherDashboard() {
             </IconContainer>
           </div>
           <p className="md-display-small" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--md-on-surface)' }}>
-            3 группы
+            {groups.length} {groups.length === 1 ? 'группа' : 'группы'}
           </p>
           <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Всего 19 учеников
+            Всего {totalStudents || 19} учеников
           </p>
         </div>
 
@@ -2249,7 +2265,7 @@ function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Teacher's Lessons Today with Attendance Mark Button */}
+      {/* Teacher's Lessons Today with Clickable Lesson Cards */}
       <div className="md-card-elevated" style={{ padding: '20px' }}>
         <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
           <div className="flex items-center gap-2">
@@ -2264,28 +2280,10 @@ function TeacherDashboard() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[
-            {
-              time: '15:30 - 17:00',
-              group: 'Английский Kids (Группа A)',
-              room: 'Кабинет 3',
-              topic: 'Unit 4: Animals & Their Habitats',
-              studentsCount: 7,
-              onlineUrl: 'https://zoom.us/j/123456789',
-              attendanceMarked: false,
-            },
-            {
-              time: '17:30 - 19:00',
-              group: 'Английский Teens (Группа B)',
-              room: 'Кабинет 3',
-              topic: 'Past Perfect Continuous & Storytelling',
-              studentsCount: 6,
-              onlineUrl: null,
-              attendanceMarked: true,
-            },
-          ].map((lesson, idx) => (
+          {displayLessons.map((lesson) => (
             <div
-              key={idx}
+              key={lesson.id}
+              className="hover:border-blue-300 transition-all hover:shadow-xs group"
               style={{
                 padding: '16px',
                 backgroundColor: 'var(--md-surface-container-low)',
@@ -2293,10 +2291,15 @@ function TeacherDashboard() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
+                border: '1px solid var(--md-outline-variant)',
               }}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <Link
+                  href={`/calendar/lessons/${lesson.id}`}
+                  className="flex-1 cursor-pointer"
+                  title="Нажмите, чтобы открыть карточку урока"
+                >
                   <div className="flex items-center gap-2">
                     <span
                       className="md-label-medium"
@@ -2308,40 +2311,40 @@ function TeacherDashboard() {
                         fontWeight: 700,
                       }}
                     >
-                      {lesson.time}
+                      {lesson.startTime} – {lesson.endTime}
                     </span>
-                    <h4 className="md-title-small" style={{ color: 'var(--md-on-surface)' }}>
-                      {lesson.group}
+                    <h4 className="md-title-small group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>
+                      {lesson.groupName} ↗
                     </h4>
                   </div>
                   <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-                    Тема: {lesson.topic}
+                    Тема: {lesson.topic || 'Учебный план'}
                   </p>
                   <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    Место: {lesson.room} • Учеников: {lesson.studentsCount}
+                    Место: {lesson.room} • Учеников: {lesson.students?.length || 7}
                   </p>
-                </div>
+                </Link>
 
-                <div className="flex items-center gap-2">
-                  {lesson.onlineUrl && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {lesson.onlineMeetingUrl && (
                     <a
-                      href={lesson.onlineUrl}
+                      href={lesson.onlineMeetingUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="md-btn md-btn-outlined md-btn-sm"
                       style={{ gap: '6px' }}
                     >
                       <Video size={14} />
-                      Ссылка на урок
+                      Ссылка
                     </a>
                   )}
                   <Link
-                    href="/teacher/attendance"
-                    className={`md-btn md-btn-sm ${lesson.attendanceMarked ? 'md-btn-tonal' : 'md-btn-filled'}`}
+                    href={`/calendar/lessons/${lesson.id}`}
+                    className={`md-btn md-btn-sm ${lesson.status === 'completed' ? 'md-btn-tonal' : 'md-btn-filled'}`}
                     style={{ gap: '6px' }}
                   >
                     <CheckCircle size={14} />
-                    {lesson.attendanceMarked ? 'Посещаемость отмечена' : 'Отметить посещаемость'}
+                    {lesson.status === 'completed' ? 'Журнал урока' : 'Карточка урока'}
                   </Link>
                 </div>
               </div>
@@ -2350,7 +2353,7 @@ function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Teacher Groups */}
+      {/* Teacher Groups with Clickable Links to Group Cards */}
       <div className="md-card-elevated" style={{ padding: '20px' }}>
         <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
           <div className="flex items-center gap-2">
@@ -2365,23 +2368,34 @@ function TeacherDashboard() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { name: 'Kids-A', course: 'Английский для детей', count: 7, days: 'Пн, Ср 15:30' },
-            { name: 'Teens-B', course: 'Английский для подростков', count: 6, days: 'Вт, Чт 17:30' },
-            { name: 'Kids-C', course: 'Английский начальный', count: 6, days: 'Сб 11:00' },
-          ].map((g, idx) => (
-            <div
-              key={idx}
-              className="md-card-outlined"
-              style={{ padding: '14px', borderRadius: '12px' }}
+          {groups.map((g) => (
+            <Link
+              key={g.id}
+              href={`/groups/${g.id}`}
+              className="md-card-outlined hover:border-blue-400 hover:shadow-xs transition-all group block"
+              style={{ padding: '14px', borderRadius: '12px', textDecoration: 'none' }}
+              title={`Открыть карточку группы ${g.name}`}
             >
-              <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{g.name}</p>
-              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{g.course}</p>
-              <div className="flex justify-between items-center" style={{ marginTop: '10px' }}>
-                <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{g.days}</span>
-                <span className="md-label-small" style={{ color: 'var(--md-primary)', fontWeight: 600 }}>{g.count} уч.</span>
+              <div className="flex items-center justify-between">
+                <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)', fontWeight: 700 }}>
+                  {g.name} ↗
+                </p>
+                <span className="md-label-small" style={{ color: 'var(--md-primary)', fontWeight: 600 }}>
+                  {g.students?.length || 0} уч.
+                </span>
               </div>
-            </div>
+              <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '2px' }}>
+                {g.courseName}
+              </p>
+              <div className="flex justify-between items-center" style={{ marginTop: '10px' }}>
+                <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
+                  {g.schedule || 'Пн, Ср 15:30'}
+                </span>
+                <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+                  {g.status === 'active' ? 'Идут занятия' : 'Набор'}
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
       </div>

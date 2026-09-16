@@ -12,8 +12,10 @@ import {
   UserCheck,
   CheckCircle2,
   ChevronRight,
+  Mail,
 } from 'lucide-react';
 import { FullLessonData, LessonRescheduleInfo } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
 
@@ -109,6 +111,56 @@ export function RescheduleLessonModal({
     };
 
     onReschedule(rescheduleInfo);
+
+    // Send email notification to parents via Resend if checked
+    if (notifyParents) {
+      try {
+        const allStudents = getStoredStudents();
+        const recipients: any[] = [];
+        (lesson.students || []).forEach((st) => {
+          const full = allStudents.find((s) => s.id === st.id);
+          if (full && full.parents && full.parents.length > 0) {
+            full.parents.forEach((p) => {
+              if (p.email && p.email.includes('@')) {
+                recipients.push({
+                  studentId: full.id,
+                  studentName: `${full.firstName} ${full.lastName}`,
+                  parentName: `${p.firstName} ${p.lastName}`,
+                  email: p.email,
+                });
+              }
+            });
+          }
+        });
+
+        if (recipients.length > 0) {
+          fetch('/api/lessons/notify/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'reschedule',
+              groupName: lesson.groupName,
+              courseName: lesson.courseName,
+              lessonDate: formattedNewDate,
+              lessonTime: `${newStartTime} – ${newEndTime}`,
+              room: newRoom,
+              teacherName: authorName,
+              rescheduleInfo: {
+                previousDate: lesson.dateFormatted || lesson.date,
+                previousTime: `${lesson.startTime} – ${lesson.endTime}`,
+                newDate: formattedNewDate,
+                newTime: `${newStartTime} – ${newEndTime}`,
+                reason: fullReason,
+              },
+              recipients,
+            }),
+          }).catch((err) => console.warn('Reschedule email notification warning:', err));
+        }
+      } catch (err) {
+        console.warn('Failed to send reschedule notification:', err);
+      }
+    }
+
     onClose();
   };
 

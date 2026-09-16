@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { recordLessonAttendanceBatch, getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 
 interface StudentAttendanceItem {
@@ -76,6 +77,18 @@ export default function TeacherMobileDashboard() {
   };
 
   const handleSaveAttendance = () => {
+    recordLessonAttendanceBatch({
+      lessonId: selectedLessonId,
+      topic: lessonTopic,
+      homework,
+      teacherName: 'Мария Иванова',
+      studentRecords: studentsList.map((s) => ({
+        studentId: s.id,
+        studentName: s.name,
+        status: s.status,
+        note: s.note,
+      })),
+    });
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 4000);
   };
@@ -151,7 +164,16 @@ export default function TeacherMobileDashboard() {
                 >
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-blue-600">{lesson.startTime} – {lesson.endTime}</span>
-                    <span className="text-slate-500">{lesson.room}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">{lesson.room}</span>
+                      <Link
+                        href={`/calendar/lessons/${lesson.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[11px] font-bold text-blue-600 hover:underline bg-white px-2 py-0.5 rounded-md border border-blue-200 shadow-2xs"
+                      >
+                        Карточка урока ↗
+                      </Link>
+                    </div>
                   </div>
                   <h3 className="text-base font-extrabold text-slate-900 mt-1">{lesson.groupName}</h3>
                   <p className="text-xs text-slate-500 mt-0.5">{lesson.courseName}</p>
@@ -169,9 +191,17 @@ export default function TeacherMobileDashboard() {
                   <span className="text-[10px] font-bold uppercase text-blue-600">Журнал занятия</span>
                   <h3 className="text-base font-extrabold text-slate-900">{currentLesson.groupName}</h3>
                 </div>
-                <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
-                  {currentLesson.startTime} – {currentLesson.endTime}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
+                    {currentLesson.startTime} – {currentLesson.endTime}
+                  </span>
+                  <Link
+                    href={`/calendar/lessons/${currentLesson.id}`}
+                    className="text-xs font-bold text-blue-600 hover:underline bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs"
+                  >
+                    Карточка урока ↗
+                  </Link>
+                </div>
               </div>
 
               {/* Topic and Homework */}
