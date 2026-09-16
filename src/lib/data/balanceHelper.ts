@@ -1,7 +1,6 @@
-'use client';
-
 import { getStoredStudents } from './studentStorage';
 import { FullStudentData, FullLeadData } from './mockData';
+import { calculateMultiCurrencyTotals, getEurRubRate, convertEurToRub, convertRubToEur } from './currencyHelper';
 
 export function normalizeContact(contact?: string): string {
   if (!contact) return '';
@@ -9,13 +8,17 @@ export function normalizeContact(contact?: string): string {
 }
 
 export interface UnifiedFinancialSummary {
-  deposit: number;
-  debt: number;
-  netBalance: number; // deposit - debt
+  deposit: number; // total in EUR
+  depositRub: number; // total in RUB
+  debt: number; // total in EUR
+  debtRub: number; // total in RUB
+  netBalance: number; // total in EUR (deposit - debt)
+  netBalanceRub: number; // total in RUB (depositRub - debtRub)
   isNegative: boolean; // netBalance < 0 or debt > 0
-  formattedNet: string; // e.g. "-5 000 ₽" or "+3 000 ₽" or "0 ₽"
-  formattedDebt: string; // e.g. "-5 000 ₽"
-  formattedDeposit: string; // e.g. "+3 000 ₽"
+  formattedNet: string; // e.g. "+85 € (≈ +8 500 ₽)" or "-84 € (≈ -8 400 ₽)" or "0 €"
+  formattedDebt: string; // e.g. "-84 € (≈ -8 400 ₽)" or "0 €"
+  formattedDeposit: string; // e.g. "+85 € (≈ +8 500 ₽)" or "0 €"
+  breakdownSummary: string; // e.g. "85 € в евро (курс 100 ₽/€)"
   currency: string;
   linkedStudent?: {
     id: string;
@@ -32,53 +35,98 @@ export interface UnifiedFinancialSummary {
 }
 
 /**
- * Calculates unified financial summary for a student.
+ * Calculates unified financial summary for a student in primary EUR with converted RUB.
  */
 export function getStudentFinancialSummary(
   studentId: string,
   studentsList?: FullStudentData[]
 ): UnifiedFinancialSummary {
+  const rate = getEurRubRate();
   const allStudents = studentsList || (typeof window !== 'undefined' ? getStoredStudents() : []);
   const student = allStudents.find((s) => s.id === studentId);
 
   if (!student) {
     return {
       deposit: 0,
+      depositRub: 0,
       debt: 0,
+      debtRub: 0,
       netBalance: 0,
+      netBalanceRub: 0,
       isNegative: false,
-      formattedNet: '0 ₽',
-      formattedDebt: '0 ₽',
-      formattedDeposit: '0 ₽',
-      currency: '₽',
+      formattedNet: '0 € (0 ₽)',
+      formattedDebt: '0 € (0 ₽)',
+      formattedDeposit: '0 € (0 ₽)',
+      breakdownSummary: `0 € (курс ${rate} ₽/€)`,
+      currency: '€',
     };
   }
 
-  const deposit = student.finance?.deposit?.balance || 0;
-  const overduePayments = (student.finance?.payments || []).filter((p) => p.status === 'overdue');
-  const debt = overduePayments.reduce((sum, p) => {
-    const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-    return sum + num;
-  }, 0);
+  // 1. Calculate Deposit in EUR & RUB
+  const rawDep = student.finance?.deposit?.balance || 0;
+  const isDepEur = student.finance?.deposit?.currency === 'EUR' || rawDep <= 500;
+  const depositEur = isDepEur ? rawDep : Math.round((rawDep / rate) * 100) / 100;
+  const depositRub = isDepEur ? Math.round(rawDep * rate) : rawDep;
 
-  const netBalance = deposit - debt;
-  const isNegative = debt > 0 || netBalance < 0;
-  const currency = student.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+  // 2. Calculate Overdue Debt in EUR & RUB
+  const overduePayments = (student.finance?.payments || []).filter((p) => p.status === 'overdue');
+  const debtTotals = calculateMultiCurrencyTotals(
+    overduePayments.map((p: any) => ({
+      amount: p.amount,
+      currency: p.currency || (typeof p.amount === 'string' && p.amount.includes('€') ? 'EUR' : undefined),
+    })),
+    rate
+  );
+
+  const debtEur = debtTotals.totalEur;
+  const debtRub = debtTotals.totalRub;
+
+  // 3. Net balance
+  const netBalanceEur = Math.round((depositEur - debtEur) * 100) / 100;
+  const netBalanceRub = depositRub - debtRub;
+  const isNegative = debtEur > 0 || netBalanceEur < 0;
+
+  const formattedNet =
+    netBalanceEur < 0
+      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} € (≈ -${Math.abs(netBalanceRub).toLocaleString('ru-RU')} ₽)`
+      : netBalanceEur > 0
+      ? `+${netBalanceEur.toLocaleString('ru-RU')} € (≈ +${netBalanceRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDebt =
+    debtEur > 0
+      ? `-${debtEur.toLocaleString('ru-RU')} € (≈ -${debtRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDeposit =
+    depositEur > 0
+      ? `+${depositEur.toLocaleString('ru-RU')} € (≈ +${depositRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  let breakdownSummary = '';
+  if (depositEur > 0 && isDepEur) {
+    breakdownSummary = `${depositEur.toLocaleString('ru-RU')} € в евро (≈ ${depositRub.toLocaleString('ru-RU')} ₽)`;
+  } else if (depositEur > 0) {
+    breakdownSummary = `${depositEur.toLocaleString('ru-RU')} € (сконвертировано из ${depositRub.toLocaleString('ru-RU')} ₽ по курсу ${rate} ₽/€)`;
+  } else if (debtEur > 0) {
+    breakdownSummary = `Долг: ${debtTotals.breakdownSummary}`;
+  } else {
+    breakdownSummary = `0 € (курс ${rate} ₽/€)`;
+  }
 
   return {
-    deposit,
-    debt,
-    netBalance,
+    deposit: depositEur,
+    depositRub,
+    debt: debtEur,
+    debtRub,
+    netBalance: netBalanceEur,
+    netBalanceRub,
     isNegative,
-    formattedNet:
-      netBalance < 0
-        ? `-${Math.abs(netBalance).toLocaleString('ru-RU')} ${currency}`
-        : netBalance > 0
-        ? `+${netBalance.toLocaleString('ru-RU')} ${currency}`
-        : `0 ${currency}`,
-    formattedDebt: debt > 0 ? `-${debt.toLocaleString('ru-RU')} ${currency}` : `0 ${currency}`,
-    formattedDeposit: deposit > 0 ? `+${deposit.toLocaleString('ru-RU')} ${currency}` : `0 ${currency}`,
-    currency,
+    formattedNet,
+    formattedDebt,
+    formattedDeposit,
+    breakdownSummary,
+    currency: '€',
   };
 }
 
@@ -89,6 +137,7 @@ export function getParentFinancialSummary(
   parentId: string,
   studentsList?: FullStudentData[]
 ): UnifiedFinancialSummary & { childrenSummaries: Array<{ id: string; name: string; debt: number; deposit: number }> } {
+  const rate = getEurRubRate();
   const allStudents = studentsList || (typeof window !== 'undefined' ? getStoredStudents() : []);
 
   // Find all children that have this parent
@@ -96,14 +145,18 @@ export function getParentFinancialSummary(
     s.parents?.some((p) => p.id === parentId)
   );
 
-  let totalDeposit = 0;
-  let totalDebt = 0;
+  let totalDepositEur = 0;
+  let totalDepositRub = 0;
+  let totalDebtEur = 0;
+  let totalDebtRub = 0;
   const childrenSummaries: Array<{ id: string; name: string; debt: number; deposit: number }> = [];
 
   for (const child of familyChildren) {
     const sSummary = getStudentFinancialSummary(child.id, allStudents);
-    totalDeposit += sSummary.deposit;
-    totalDebt += sSummary.debt;
+    totalDepositEur += sSummary.deposit;
+    totalDepositRub += sSummary.depositRub;
+    totalDebtEur += sSummary.debt;
+    totalDebtRub += sSummary.debtRub;
     childrenSummaries.push({
       id: child.id,
       name: `${child.firstName} ${child.lastName}`,
@@ -112,35 +165,52 @@ export function getParentFinancialSummary(
     });
   }
 
-  const netBalance = totalDeposit - totalDebt;
-  const isNegative = totalDebt > 0 || netBalance < 0;
+  const netBalanceEur = Math.round((totalDepositEur - totalDebtEur) * 100) / 100;
+  const netBalanceRub = totalDepositRub - totalDebtRub;
+  const isNegative = totalDebtEur > 0 || netBalanceEur < 0;
+
+  const formattedNet =
+    netBalanceEur < 0
+      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} € (≈ -${Math.abs(netBalanceRub).toLocaleString('ru-RU')} ₽)`
+      : netBalanceEur > 0
+      ? `+${netBalanceEur.toLocaleString('ru-RU')} € (≈ +${netBalanceRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDebt =
+    totalDebtEur > 0
+      ? `-${totalDebtEur.toLocaleString('ru-RU')} € (≈ -${totalDebtRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDeposit =
+    totalDepositEur > 0
+      ? `+${totalDepositEur.toLocaleString('ru-RU')} € (≈ +${totalDepositRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
 
   return {
-    deposit: totalDeposit,
-    debt: totalDebt,
-    netBalance,
+    deposit: totalDepositEur,
+    depositRub: totalDepositRub,
+    debt: totalDebtEur,
+    debtRub: totalDebtRub,
+    netBalance: netBalanceEur,
+    netBalanceRub,
     isNegative,
-    formattedNet:
-      netBalance < 0
-        ? `-${Math.abs(netBalance).toLocaleString('ru-RU')} ₽`
-        : netBalance > 0
-        ? `+${netBalance.toLocaleString('ru-RU')} ₽`
-        : '0 ₽',
-    formattedDebt: totalDebt > 0 ? `-${totalDebt.toLocaleString('ru-RU')} ₽` : '0 ₽',
-    formattedDeposit: totalDeposit > 0 ? `+${totalDeposit.toLocaleString('ru-RU')} ₽` : '0 ₽',
-    currency: '₽',
+    formattedNet,
+    formattedDebt,
+    formattedDeposit,
+    breakdownSummary: `Баланс семьи: ${formattedNet} (курс ${rate} ₽/€)`,
+    currency: '€',
     childrenSummaries,
   };
 }
 
 /**
  * Calculates end-to-end unified financial summary for a lead.
- * Seamlessly resolves linked student or linked parent and cascades balances & debts!
  */
 export function getLeadFinancialSummary(
   lead: FullLeadData | { id: string; contact?: string; telegram?: string; studentName?: string; name?: string; convertedStudentId?: string; convertedParentId?: string; finance?: any; offerAmount?: string },
   studentsList?: FullStudentData[]
 ): UnifiedFinancialSummary {
+  const rate = getEurRubRate();
   const allStudents = studentsList || (typeof window !== 'undefined' ? getStoredStudents() : []);
 
   const leadContactNorm = normalizeContact(lead.contact);
@@ -192,26 +262,36 @@ export function getLeadFinancialSummary(
   }
 
   // 3. Compute direct lead payments / deposits
-  const directLeadDeposit = lead.finance?.deposit?.balance || 0;
-  const directLeadPayments = lead.finance?.payments || [];
-  const directLeadDebt = directLeadPayments
-    .filter((p: any) => p.status === 'overdue')
-    .reduce((sum: number, p: any) => {
-      const num = parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-      return sum + num;
-    }, 0);
+  const directLeadDepositRaw = lead.finance?.deposit?.balance || 0;
+  const isDepEur = lead.finance?.deposit?.currency === 'EUR' || directLeadDepositRaw <= 500;
+  const directLeadDepositEur = isDepEur ? directLeadDepositRaw : Math.round((directLeadDepositRaw / rate) * 100) / 100;
+  const directLeadDepositRub = isDepEur ? Math.round(directLeadDepositRaw * rate) : directLeadDepositRaw;
 
-  // 4. Combine with linked Student / Parent
-  let combinedDeposit = directLeadDeposit;
-  let combinedDebt = directLeadDebt;
+  const directLeadPayments = lead.finance?.payments || [];
+  const directDebtTotals = calculateMultiCurrencyTotals(
+    directLeadPayments
+      .filter((p: any) => p.status === 'overdue')
+      .map((p: any) => ({
+        amount: p.amount,
+        currency: p.currency || (typeof p.amount === 'string' && p.amount.includes('€') ? 'EUR' : undefined),
+      })),
+    rate
+  );
+
+  let combinedDepositEur = directLeadDepositEur;
+  let combinedDepositRub = directLeadDepositRub;
+  let combinedDebtEur = directDebtTotals.totalEur;
+  let combinedDebtRub = directDebtTotals.totalRub;
 
   let linkedStudentInfo: { id: string; name: string; debt: number; deposit: number } | undefined;
   let linkedParentInfo: { id: string; name: string; totalFamilyDebt: number; totalFamilyDeposit: number } | undefined;
 
   if (linkedStudent) {
     const sSummary = getStudentFinancialSummary(linkedStudent.id, allStudents);
-    combinedDeposit = Math.max(combinedDeposit, sSummary.deposit);
-    combinedDebt = Math.max(combinedDebt, sSummary.debt);
+    combinedDepositEur = Math.max(combinedDepositEur, sSummary.deposit);
+    combinedDepositRub = Math.max(combinedDepositRub, sSummary.depositRub);
+    combinedDebtEur = Math.max(combinedDebtEur, sSummary.debt);
+    combinedDebtRub = Math.max(combinedDebtRub, sSummary.debtRub);
     linkedStudentInfo = {
       id: linkedStudent.id,
       name: `${linkedStudent.firstName} ${linkedStudent.lastName}`,
@@ -222,8 +302,10 @@ export function getLeadFinancialSummary(
 
   if (linkedParent) {
     const pSummary = getParentFinancialSummary(linkedParent.id, allStudents);
-    combinedDeposit = Math.max(combinedDeposit, pSummary.deposit);
-    combinedDebt = Math.max(combinedDebt, pSummary.debt);
+    combinedDepositEur = Math.max(combinedDepositEur, pSummary.deposit);
+    combinedDepositRub = Math.max(combinedDepositRub, pSummary.depositRub);
+    combinedDebtEur = Math.max(combinedDebtEur, pSummary.debt);
+    combinedDebtRub = Math.max(combinedDebtRub, pSummary.debtRub);
     linkedParentInfo = {
       id: linkedParent.id,
       name: linkedParent.name,
@@ -232,24 +314,42 @@ export function getLeadFinancialSummary(
     };
   }
 
-  const netBalance = combinedDeposit - combinedDebt;
-  const isNegative = combinedDebt > 0 || netBalance < 0;
+  const netBalanceEur = Math.round((combinedDepositEur - combinedDebtEur) * 100) / 100;
+  const netBalanceRub = combinedDepositRub - combinedDebtRub;
+  const isNegative = combinedDebtEur > 0 || netBalanceEur < 0;
+
+  const formattedNet =
+    netBalanceEur < 0
+      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} € (≈ -${Math.abs(netBalanceRub).toLocaleString('ru-RU')} ₽)`
+      : netBalanceEur > 0
+      ? `+${netBalanceEur.toLocaleString('ru-RU')} € (≈ +${netBalanceRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDebt =
+    combinedDebtEur > 0
+      ? `-${combinedDebtEur.toLocaleString('ru-RU')} € (≈ -${combinedDebtRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
+
+  const formattedDeposit =
+    combinedDepositEur > 0
+      ? `+${combinedDepositEur.toLocaleString('ru-RU')} € (≈ +${combinedDepositRub.toLocaleString('ru-RU')} ₽)`
+      : '0 € (0 ₽)';
 
   return {
-    deposit: combinedDeposit,
-    debt: combinedDebt,
-    netBalance,
+    deposit: combinedDepositEur,
+    depositRub: combinedDepositRub,
+    debt: combinedDebtEur,
+    debtRub: combinedDebtRub,
+    netBalance: netBalanceEur,
+    netBalanceRub,
     isNegative,
-    formattedNet:
-      netBalance < 0
-        ? `-${Math.abs(netBalance).toLocaleString('ru-RU')} ₽`
-        : netBalance > 0
-        ? `+${netBalance.toLocaleString('ru-RU')} ₽`
-        : '0 ₽',
-    formattedDebt: combinedDebt > 0 ? `-${combinedDebt.toLocaleString('ru-RU')} ₽` : '0 ₽',
-    formattedDeposit: combinedDeposit > 0 ? `+${combinedDeposit.toLocaleString('ru-RU')} ₽` : '0 ₽',
-    currency: '₽',
+    formattedNet,
+    formattedDebt,
+    formattedDeposit,
+    breakdownSummary: `Баланс лида: ${formattedNet} (курс ${rate} ₽/€)`,
+    currency: '€',
     linkedStudent: linkedStudentInfo,
     linkedParent: linkedParentInfo,
   };
 }
+

@@ -6,6 +6,7 @@ import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/da
 import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit, settleFamilyDebtsFromFamilyDeposit } from '@/lib/data/studentStorage';
 import { savePaymentToStorage, settleOverduePayments, getStoredPayments } from '@/lib/data/paymentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/currencyHelper';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
 
@@ -29,13 +30,14 @@ export function RecordPaymentModal({
   lockStudent,
 }: RecordPaymentModalProps) {
   const { success } = useToast();
+  const rate = getEurRubRate();
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
 
   const defaultId = initialStudentId || allowedStudents?.[0]?.id || allStudents[0]?.id || '1';
   const [studentId, setStudentId] = useState(defaultId);
-  const [currency, setCurrency] = useState<'RUB' | 'EUR'>('RUB');
+  const [currency, setCurrency] = useState<'RUB' | 'EUR'>('EUR');
   const [paymentType, setPaymentType] = useState<'subscription' | 'prepayment' | 'one_time'>('subscription');
-  const [amount, setAmount] = useState('7600');
+  const [amount, setAmount] = useState('85');
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [periodLabel, setPeriodLabel] = useState(() => {
     return new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
@@ -117,7 +119,10 @@ export function RecordPaymentModal({
       return;
     }
 
-    const formattedAmount = `${numAmount.toLocaleString('ru-RU')} ${currencySymbol}`;
+    const formattedAmount =
+      currency === 'EUR'
+        ? `${numAmount.toLocaleString('ru-RU')} € (≈ ${(numAmount * rate).toLocaleString('ru-RU')} ₽)`
+        : `${numAmount.toLocaleString('ru-RU')} ₽ (≈ ${Math.round((numAmount / rate) * 100) / 100} €)`;
     const formattedDate = new Date(paymentDate).toLocaleDateString('ru-RU');
 
     const methodLabels: Record<string, string> = {
@@ -454,18 +459,6 @@ export function RecordPaymentModal({
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => handleCurrencyChange('RUB')}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                      currency === 'RUB'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    )}
-                  >
-                    ₽ Руб
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => handleCurrencyChange('EUR')}
                     className={cn(
                       'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
@@ -474,7 +467,19 @@ export function RecordPaymentModal({
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     )}
                   >
-                    € Евро
+                    € Евро (базовая)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCurrencyChange('RUB')}
+                    className={cn(
+                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
+                      currency === 'RUB'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    )}
+                  >
+                    ₽ Рубли
                   </button>
                 </div>
               </div>
@@ -488,6 +493,36 @@ export function RecordPaymentModal({
                 placeholder={currency === 'EUR' ? '85' : '7600'}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
+
+              {/* Dynamic conversion preview */}
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
+                <span>
+                  {currency === 'EUR' ? (
+                    <>
+                      ≈ <strong className="text-emerald-700 font-bold">{((parseFloat(amount) || 0) * rate).toLocaleString('ru-RU')} ₽</strong>
+                    </>
+                  ) : (
+                    <>
+                      ≈ <strong className="text-emerald-700 font-bold">{Math.round(((parseFloat(amount) || 0) / (rate || 100)) * 100) / 100} €</strong>
+                    </>
+                  )}
+                </span>
+                <span className="text-[10px] text-slate-400">курс 1 € = {rate} ₽</span>
+              </div>
+
+              {/* Quick amount presets */}
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {(currency === 'EUR' ? ['65', '75', '85', '120', '150'] : ['6800', '7600', '8400', '12000']).map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setAmount(val)}
+                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                  >
+                    {val} {currencySymbol}
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-slate-700">

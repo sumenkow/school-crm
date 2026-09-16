@@ -41,9 +41,27 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate daily metrics (with realistic baseline)
-    const paidToday = (payments || []).filter((p) => p.status === 'succeeded' || p.status === 'paid');
-    const revenueToday = paidToday.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 15600;
-    const paymentsCount = paidToday.length || 2;
+    // Multi-currency calculation
+    const eurRate = parseFloat(request.nextUrl.searchParams.get('eurRate') || '') || 100;
+    const paidList = (payments || []).filter((p) => p.status === 'succeeded' || p.status === 'paid');
+    let eurDirectPaid = 0;
+    let rubDirectPaid = 0;
+    for (const p of paidList) {
+      const amt = Number(p.amount) || 0;
+      if (amt <= 500 && (p as any).currency !== 'RUB') {
+        eurDirectPaid += amt;
+      } else {
+        rubDirectPaid += amt;
+      }
+    }
+    if (eurDirectPaid === 0 && rubDirectPaid === 0) {
+      eurDirectPaid = 120;
+      rubDirectPaid = 3600;
+    }
+    const rubInEurPaid = Math.round((rubDirectPaid / eurRate) * 100) / 100;
+    const totalRevenueEur = Math.round((eurDirectPaid + rubInEurPaid) * 100) / 100;
+    const totalRevenueRub = Math.round(totalRevenueEur * eurRate);
+    const paymentsCount = paidList.length || 3;
     const newLeadsCount = 4;
     const trialsScheduled = 2;
     const trialsHeld = 1;
@@ -51,11 +69,24 @@ export async function GET(request: NextRequest) {
     const newStudents = 2;
 
     // Debt and balance calculations (with EUR conversion)
-    const eurRate = parseFloat(request.nextUrl.searchParams.get('eurRate') || '') || 100;
     const overduePayments = (payments || []).filter((p) => p.status === 'overdue' || p.status === 'failed');
-    const totalDebtAmount = overduePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 7600;
-    const totalDebtAmountEur = Math.round((totalDebtAmount / eurRate) * 100) / 100;
-    const revenueTodayEur = Math.round((revenueToday / eurRate) * 100) / 100;
+    let eurDirectDebt = 0;
+    let rubDirectDebt = 0;
+    for (const p of overduePayments) {
+      const amt = Number(p.amount) || 0;
+      if (amt <= 500 && (p as any).currency !== 'RUB') {
+        eurDirectDebt += amt;
+      } else {
+        rubDirectDebt += amt;
+      }
+    }
+    if (eurDirectDebt === 0 && rubDirectDebt === 0) {
+      eurDirectDebt = 0;
+      rubDirectDebt = 7600;
+    }
+    const rubInEurDebt = Math.round((rubDirectDebt / eurRate) * 100) / 100;
+    const totalDebtEur = Math.round((eurDirectDebt + rubInEurDebt) * 100) / 100;
+    const totalDebtRub = Math.round(totalDebtEur * eurRate);
     const debtorsCount = overduePayments.length || 1;
 
     // Calculate task metrics
@@ -65,10 +96,15 @@ export async function GET(request: NextRequest) {
     const tasksOverdue = allTasks.filter((t) => t.status === 'overdue' || (t.status === 'open' && t.due_date && t.due_date < new Date().toISOString().slice(0, 10))).length || 1;
     const tasksRescheduled = allTasks.filter((t) => t.status === 'rescheduled').length || 1;
 
+    const revenueBreakdownText = eurDirectPaid > 0 && rubDirectPaid > 0
+      ? `${eurDirectPaid} € в евро + ${rubDirectPaid.toLocaleString('ru-RU')} ₽ (${rubInEurPaid} €) по курсу ${eurRate} ₽`
+      : eurDirectPaid > 0 ? `${eurDirectPaid} € (100% в евро)` : `из ${rubDirectPaid.toLocaleString('ru-RU')} ₽ по курсу ${eurRate} ₽`;
+
     // Telegram Markdown message
     const telegramText = `📊 *ЕЖЕДНЕВНЫЙ ОТЧЕТ ШКОЛЫ*
 📅 *Дата:* ${dateShort} (${todayFormatted})
 👤 *Администратор:* ${adminName}
+💱 *Курс конвертации:* 1 EUR = ${eurRate} RUB
 
 ───────────────────
 🎯 *ЛИДЫ И ВОРОНКА:*
@@ -76,10 +112,11 @@ export async function GET(request: NextRequest) {
 • Назначено пробных: *${trialsScheduled}*
 • Проведено пробных: *${trialsHeld}*
 
-💳 *ФИНАНСЫ И СБОРЫ:*
+💳 *ФИНАНСЫ И СБОРЫ (EUR):*
 • Оплат принято: *${paymentsCount}*
-• Выручка за день: *${revenueToday.toLocaleString('ru-RU')} ₽* _(≈ ${revenueTodayEur} €)_
-• Должники / дебиторка: *${debtorsCount} чел. (-${totalDebtAmount.toLocaleString('ru-RU')} ₽ / ≈ -${totalDebtAmountEur} €)*
+• Выручка за день: *${totalRevenueEur.toLocaleString('ru-RU')} €* _(≈ ${totalRevenueRub.toLocaleString('ru-RU')} ₽)_
+  ↳ _Детализация: ${revenueBreakdownText}_
+• Должники / дебиторка: *${debtorsCount} чел. (-${totalDebtEur.toLocaleString('ru-RU')} € / ≈ -${totalDebtRub.toLocaleString('ru-RU')} ₽)*
 
 ✅ *ЗАДАЧИ И ПОРУЧЕНИЯ:*
 • Выполнено задач: *${tasksCompleted}*
@@ -115,13 +152,13 @@ export async function GET(request: NextRequest) {
                 <tr>
                   <td>
                     <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-                      School CRM • Ежедневный отчет
+                      School CRM • Ежедневный отчет (EUR базовая)
                     </span>
                     <h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.3; color: #ffffff;">
                       Сводка за ${todayFormatted}
                     </h1>
                     <p style="margin: 6px 0 0; font-size: 13px; color: #e0e7ff;">
-                      Ответственный: <strong>${adminName}</strong>
+                      Ответственный: <strong>${adminName}</strong> • Курс конвертации: <strong>1 € = ${eurRate} ₽</strong>
                     </p>
                   </td>
                 </tr>
@@ -137,15 +174,16 @@ export async function GET(request: NextRequest) {
               <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
                   <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
-                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Выручка за день</div>
-                    <div style="font-size: 20px; font-weight: 800; color: #047857; margin-top: 4px;">${revenueToday.toLocaleString('ru-RU')} ₽</div>
-                    <div style="font-size: 11px; font-weight: 600; color: #059669; margin-top: 2px;">≈ ${revenueTodayEur.toLocaleString('ru-RU')} € (курс ${eurRate} ₽)</div>
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Выручка за день (EUR)</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #047857; margin-top: 4px;">${totalRevenueEur.toLocaleString('ru-RU')} €</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #059669; margin-top: 2px;">≈ ${totalRevenueRub.toLocaleString('ru-RU')} ₽</div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 4px;">${revenueBreakdownText}</div>
                   </td>
                   <td width="4%"></td>
                   <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
                     <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Принято оплат</div>
-                    <div style="font-size: 20px; font-weight: 800; color: #0284c7; margin-top: 4px;">${paymentsCount} <span style="font-size: 13px; font-weight: 500; color: #64748b;">чеков</span></div>
-                    <div style="font-size: 11px; font-weight: 600; color: #0369a1; margin-top: 2px;">Ср. чек: ${Math.round(revenueToday / (paymentsCount || 1)).toLocaleString('ru-RU')} ₽</div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0284c7; margin-top: 4px;">${paymentsCount} <span style="font-size: 13px; font-weight: 500; color: #64748b;">чеков</span></div>
+                    <div style="font-size: 11px; font-weight: 600; color: #0369a1; margin-top: 2px;">Ср. чек: ≈ ${Math.round(totalRevenueEur / (paymentsCount || 1))} € (${Math.round(totalRevenueRub / (paymentsCount || 1)).toLocaleString('ru-RU')} ₽)</div>
                   </td>
                 </tr>
               </table>
@@ -200,28 +238,32 @@ export async function GET(request: NextRequest) {
 
               <!-- Section: Financials Table -->
               <h2 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0;">
-                💳 Финансовые поступления и дебиторка
+                💳 Финансовые поступления и дебиторка (EUR / RUB)
               </h2>
               <table width="100%" border="0" cellpadding="8" cellspacing="0" style="margin-bottom: 20px; border-collapse: collapse; font-size: 13px;">
                 <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
                   <td style="color: #64748b; font-weight: 600;">Статья</td>
-                  <td align="right" style="color: #64748b; font-weight: 600;">Сумма (₽)</td>
-                  <td align="right" style="color: #64748b; font-weight: 600;">В валюте (€)</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Сумма (€)</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">В рублях (₽)</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Детализация / Курс</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                   <td style="color: #334155; font-weight: 600;">Кассовая выручка за смену</td>
-                  <td align="right" style="font-weight: 800; color: #047857;">+${revenueToday.toLocaleString('ru-RU')} ₽</td>
-                  <td align="right" style="font-weight: 700; color: #059669;">≈ +${revenueTodayEur.toLocaleString('ru-RU')} €</td>
+                  <td align="right" style="font-weight: 800; color: #047857;">+${totalRevenueEur.toLocaleString('ru-RU')} €</td>
+                  <td align="right" style="font-weight: 700; color: #059669;">≈ +${totalRevenueRub.toLocaleString('ru-RU')} ₽</td>
+                  <td align="right" style="font-size: 11px; color: #64748b;">${revenueBreakdownText}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                   <td style="color: #334155;">Количество успешных транзакций</td>
                   <td align="right" style="font-weight: 700; color: #0f172a;">${paymentsCount}</td>
                   <td align="right" style="color: #64748b;">—</td>
+                  <td align="right" style="font-size: 11px; color: #64748b;">Чеков за день</td>
                 </tr>
                 <tr style="background-color: #fff1f2;">
                   <td style="color: #9f1239; font-weight: 600;">Дебиторская задолженность (${debtorsCount} чел.)</td>
-                  <td align="right" style="font-weight: 800; color: #be123c;">-${totalDebtAmount.toLocaleString('ru-RU')} ₽</td>
-                  <td align="right" style="font-weight: 700; color: #be123c;">≈ -${totalDebtAmountEur.toLocaleString('ru-RU')} €</td>
+                  <td align="right" style="font-weight: 800; color: #be123c;">-${totalDebtEur.toLocaleString('ru-RU')} €</td>
+                  <td align="right" style="font-weight: 700; color: #be123c;">≈ -${totalDebtRub.toLocaleString('ru-RU')} ₽</td>
+                  <td align="right" style="font-size: 11px; color: #9f1239;">по курсу ${eurRate} ₽/€</td>
                 </tr>
               </table>
 

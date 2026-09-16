@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import {
@@ -653,13 +654,10 @@ export default function StudentDetailsPage() {
     };
   }, [studentId]);
 
-  const studentDeposit = student.finance?.deposit?.balance || 0;
-  const overduePayments = (student.finance?.payments || []).filter((p) => p.status === 'overdue');
-  const studentOverdueDebt = overduePayments.reduce((sum, p) => {
-    const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-    return sum + num;
-  }, 0);
-  const currencySymbol = student.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+  const finSummary = getStudentFinancialSummary(student.id);
+  const studentDeposit = finSummary.deposit;
+  const studentOverdueDebt = finSummary.debt;
+  const currencySymbol = '€';
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
@@ -722,17 +720,17 @@ export default function StudentDetailsPage() {
                 {studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
                     <Wallet className="h-3 w-3 text-emerald-600" />
-                    Депозит: +{studentDeposit.toLocaleString('ru-RU')} {currencySymbol}
+                    Депозит: {finSummary.formattedDeposit}
                   </span>
                 ) : studentOverdueDebt > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                     <AlertTriangle className="h-3 w-3 text-rose-600" />
-                    Долг: -{studentOverdueDebt.toLocaleString('ru-RU')} {currencySymbol}
+                    Долг: {finSummary.formattedDebt}
                   </span>
                 ) : (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
                     <Clock className="h-3 w-3 text-amber-600" />
-                    Баланс: 0 {currencySymbol} (требуется пополнение)
+                    Баланс: 0 € (требуется пополнение)
                   </span>
                 )}
               </div>
@@ -910,23 +908,15 @@ export default function StudentDetailsPage() {
               studentOverdueDebt > 0 && "text-rose-700",
               studentDeposit === 0 && studentOverdueDebt === 0 && "text-slate-900"
             )}>
-              {studentDeposit > 0
-                ? `+${studentDeposit.toLocaleString('ru-RU')} ${currencySymbol}`
-                : studentOverdueDebt > 0
-                ? `-${studentOverdueDebt.toLocaleString('ru-RU')} ${currencySymbol}`
-                : `0 ${currencySymbol}`}
+              {finSummary.formattedNet}
             </p>
             <p className={cn(
-              "text-[10px] font-medium leading-tight",
+              "text-[10px] font-medium leading-tight line-clamp-1",
               studentDeposit > 0 && "text-emerald-600",
               studentOverdueDebt > 0 && "text-rose-600 font-semibold",
               studentDeposit === 0 && studentOverdueDebt === 0 && "text-amber-800 font-semibold"
-            )}>
-              {studentDeposit > 0
-                ? 'Депозит активен'
-                : studentOverdueDebt > 0
-                ? 'Просрочен счет'
-                : 'Баланс нулевой • пополните'}
+            )} title={finSummary.breakdownSummary}>
+              {finSummary.breakdownSummary}
             </p>
           </div>
         </div>

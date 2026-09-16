@@ -47,6 +47,7 @@ import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/Tas
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
+import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { cn } from '@/lib/utils';
 
@@ -328,21 +329,18 @@ function OwnerDashboard({
     };
   }, []);
 
+  const rate = getEurRubRate();
+
   // Dynamic overdue stats matching stored payments & actual client debts
   const overduePayments = allPayments.filter((p: FullPaymentData) => p.status === 'overdue');
-  const totalOverdueAmount = overduePayments.reduce((sum: number, p: FullPaymentData) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
+  const overdueTotals = calculateMultiCurrencyTotals(overduePayments, rate);
   const overdueStudentsCount = new Set(overduePayments.map((p: FullPaymentData) => p.studentId)).size;
 
   // Dynamic actual revenue (Фактическая выручка)
-  const baseMonthlyRevenue = 480000;
-  const initialPaidBaseline = 14400; // sum of initial mock paid records
-  const dynamicPaidTotal = allPayments
-    .filter((p) => p.status === 'paid' && p.amount > 0)
-    .reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
-  const additionalRevenue = Math.max(0, dynamicPaidTotal - initialPaidBaseline);
-  const actualRevenue = baseMonthlyRevenue + additionalRevenue;
-  const monthlyPlan = 600000;
-  const planPercent = Math.min(100, Math.round((actualRevenue / monthlyPlan) * 100));
+  const paidPayments = allPayments.filter((p) => p.status === 'paid' && p.amount > 0);
+  const paidTotals = calculateMultiCurrencyTotals(paidPayments, rate);
+  const monthlyPlanEur = 6000;
+  const planPercent = Math.min(100, Math.round((paidTotals.totalEur / monthlyPlanEur) * 100));
 
   const recentPaidList = allPayments
     .filter((p) => p.status === 'paid' && p.amount > 0)
@@ -382,7 +380,7 @@ function OwnerDashboard({
             </span>
           </div>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Финансовые результаты, воронка продаж и команда • {currentMonth}
+            Финансовые результаты в EUR / RUB • {currentMonth} • Курс 1 € = {rate} ₽
           </p>
         </div>
 
@@ -457,10 +455,10 @@ function OwnerDashboard({
             <p className="md-title-medium" style={{ color: 'var(--md-error)', marginTop: '2px' }}>
               {overdueStudentsCount === 0
                 ? 'Нет долгов'
-                : `${overdueStudentsCount} ${overdueStudentsCount === 1 ? 'ученик' : overdueStudentsCount < 5 ? 'ученика' : 'учеников'} • ${totalOverdueAmount.toLocaleString('ru-RU')} ₽`}
+                : `${overdueStudentsCount} ${overdueStudentsCount === 1 ? 'ученик' : overdueStudentsCount < 5 ? 'ученика' : 'учеников'} • ${overdueTotals.formattedTotalEur}`}
             </p>
             <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>
-              {overdueStudentsCount === 0 ? 'Все счета оплачены ✓' : 'Напомнить →'}
+              {overdueStudentsCount === 0 ? 'Все счета оплачены ✓' : `≈ ${overdueTotals.formattedTotalRub} →`}
             </span>
           </Link>
           <Link href="/crm?filter=thinking" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
@@ -484,18 +482,19 @@ function OwnerDashboard({
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Фактическая выручка"
+          title="Фактическая выручка (EUR)"
           href="/finance"
           linkLabel="Платежи"
           icon={<CreditCard size={22} />}
           bg="var(--md-secondary-container)"
           iconColor="var(--md-primary)"
-          value={`${actualRevenue.toLocaleString('ru-RU')} ₽`}
-          subtext={`+${Math.round((additionalRevenue / baseMonthlyRevenue) * 100 + 14)}% к прошлому месяцу`}
+          value={paidTotals.formattedTotalEur}
+          subtext={`≈ ${paidTotals.formattedTotalRub}`}
           rows={[
-            { label: 'План на месяц', value: '600 000 ₽' },
+            { label: 'План на месяц', value: '6 000 € (≈ 600 000 ₽)' },
             { label: 'Выполнение плана', value: `${planPercent}%`, color: 'var(--md-success)' },
-            { label: 'Касса (поступления)', value: `${dynamicPaidTotal.toLocaleString('ru-RU')} ₽` },
+            { label: 'Поступления EUR', value: `${paidTotals.eurDirect.toLocaleString('ru-RU')} €` },
+            { label: 'Поступления RUB', value: `${paidTotals.rubDirect.toLocaleString('ru-RU')} ₽ (${paidTotals.rubInEur} €)` },
           ]}
         />
         <KpiCard

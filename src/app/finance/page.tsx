@@ -21,12 +21,14 @@ import {
 import { cn } from '@/lib/utils';
 import { INITIAL_PAYMENTS, INITIAL_SUBSCRIPTIONS, FullPaymentData, FullSubscriptionData } from '@/lib/data/mockData';
 import { getStoredPayments, savePaymentToStorage } from '@/lib/data/paymentStorage';
+import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
 
 function FinanceContent() {
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
+  const rate = getEurRubRate();
 
   const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions' | 'debts'>(
     filterParam === 'overdue' ? 'debts' : 'payments'
@@ -81,19 +83,19 @@ function FinanceContent() {
     );
   };
 
-  // KPIs
-  const totalPaid = payments
-    .filter((p) => p.status === 'paid')
-    .reduce((sum, p) => sum + p.amount, 0);
-
-  const totalExpected = payments
-    .filter((p) => p.status === 'expected')
-    .reduce((sum, p) => sum + p.amount, 0);
-
-  const totalOverdue = payments
-    .filter((p) => p.status === 'overdue')
-    .reduce((sum, p) => sum + p.amount, 0);
-
+  // Multi-Currency KPIs
+  const paidTotals = calculateMultiCurrencyTotals(
+    payments.filter((p) => p.status === 'paid'),
+    rate
+  );
+  const expectedTotals = calculateMultiCurrencyTotals(
+    payments.filter((p) => p.status === 'expected'),
+    rate
+  );
+  const overdueTotals = calculateMultiCurrencyTotals(
+    payments.filter((p) => p.status === 'overdue'),
+    rate
+  );
   const overduePayments = payments.filter((p) => p.status === 'overdue');
 
   const filteredPayments = payments.filter((p) => {
@@ -108,21 +110,21 @@ function FinanceContent() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Финансы и Абонементы</h1>
           <p className="text-sm text-slate-500">
-            Раздельный учет фактических оплат (касса) и периодов обучения (абонементы)
+            Мультивалютный учет (EUR / RUB), касса и периоды обучения • Курс 1 € = {rate} ₽
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsPaymentModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Внести оплату
           </button>
           <button
             onClick={() => setIsSubModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Оформить абонемент
@@ -139,8 +141,9 @@ function FinanceContent() {
               <CreditCard className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-slate-900">{totalPaid.toLocaleString('ru-RU')} ₽</p>
-          <p className="text-xs text-emerald-600 mt-1">Оплаченные счета за текущий период</p>
+          <p className="mt-1 text-2xl font-extrabold text-slate-900">{paidTotals.formattedTotalEur}</p>
+          <p className="text-xs text-emerald-700 font-semibold mt-0.5">≈ {paidTotals.formattedTotalRub}</p>
+          <p className="text-[11px] text-slate-500 mt-1">{paidTotals.breakdownSummary}</p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
@@ -150,8 +153,9 @@ function FinanceContent() {
               <Clock className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-slate-900">{totalExpected.toLocaleString('ru-RU')} ₽</p>
-          <p className="text-xs text-slate-500 mt-1">Выставленные счета до наступления срока</p>
+          <p className="mt-1 text-2xl font-extrabold text-slate-900">{expectedTotals.formattedTotalEur}</p>
+          <p className="text-xs text-blue-700 font-semibold mt-0.5">≈ {expectedTotals.formattedTotalRub}</p>
+          <p className="text-[11px] text-slate-500 mt-1">{expectedTotals.breakdownSummary}</p>
         </div>
 
         <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
@@ -161,9 +165,10 @@ function FinanceContent() {
               <AlertCircle className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-rose-700">{totalOverdue.toLocaleString('ru-RU')} ₽</p>
-          <p className="text-xs text-rose-600 mt-1 font-medium">
-            {overduePayments.length} клиентов с просрочкой
+          <p className="mt-1 text-2xl font-extrabold text-rose-700">{overdueTotals.formattedTotalEur}</p>
+          <p className="text-xs text-rose-800 font-semibold mt-0.5">≈ {overdueTotals.formattedTotalRub}</p>
+          <p className="text-[11px] text-rose-600 mt-1 font-medium">
+            {overduePayments.length} клиентов с долгом • {overdueTotals.breakdownSummary}
           </p>
         </div>
       </div>

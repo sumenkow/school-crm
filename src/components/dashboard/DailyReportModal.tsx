@@ -322,15 +322,13 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                   <p className="text-lg font-bold text-emerald-700 mt-0.5">{report.metrics.paymentsCount}</p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Выручка за день</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Выручка за день (EUR)</span>
                   <p className="text-lg font-bold text-emerald-700 mt-0.5">
-                    {report.metrics.revenueToday.toLocaleString('ru-RU')} ₽
+                    {(report.metrics.revenueTodayEur || Math.round((report.metrics.revenueToday / 100) * 100) / 100).toLocaleString('ru-RU')} €
                   </p>
-                  {typeof report.metrics.revenueTodayEur === 'number' && (
-                    <p className="text-[11px] font-semibold text-emerald-600">
-                      ≈ {report.metrics.revenueTodayEur.toLocaleString('ru-RU')} €
-                    </p>
-                  )}
+                  <p className="text-[11px] font-semibold text-emerald-600">
+                    ≈ {report.metrics.revenueToday.toLocaleString('ru-RU')} ₽
+                  </p>
                 </div>
               </div>
 
@@ -362,8 +360,8 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                     <span className="font-bold text-rose-900">Задолженность по оплатам (дебиторка):</span>
                   </div>
                   <span className="font-extrabold text-rose-700">
-                    {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽
-                    {typeof report.metrics.totalDebtAmountEur === 'number' && ` / ≈ -${report.metrics.totalDebtAmountEur.toLocaleString('ru-RU')} €`})
+                    {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmountEur || Math.round(((report.metrics.totalDebtAmount || 0) / 100) * 100) / 100).toLocaleString('ru-RU')} €
+                    {` / ≈ -${(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽`})
                   </span>
                 </div>
               )}

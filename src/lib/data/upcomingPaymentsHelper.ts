@@ -1,8 +1,7 @@
-'use client';
-
 import { getStoredStudents } from './studentStorage';
 import { getStoredPayments } from './paymentStorage';
 import { INITIAL_LEADS, FullLeadData, FullStudentData } from './mockData';
+import { getEurRubRate, formatDualCurrency } from './currencyHelper';
 
 export interface UpcomingPaymentItem {
   id: string;
@@ -18,6 +17,7 @@ export interface UpcomingPaymentItem {
   groupName?: string;
   amount: number;
   amountFormatted: string;
+  currency?: 'EUR' | 'RUB';
   dueDate: string;
   daysRemaining: number;
   isUrgent: boolean;
@@ -48,6 +48,7 @@ function calculateDaysDifference(targetDate: Date): number {
  */
 export function getUpcomingPayments(): UpcomingPaymentItem[] {
   const result: UpcomingPaymentItem[] = [];
+  const rate = getEurRubRate();
   const students = typeof window !== 'undefined' ? getStoredStudents() : [];
   const payments = typeof window !== 'undefined' ? getStoredPayments() : [];
 
@@ -62,7 +63,10 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
         const daysRemaining = calculateDaysDifference(renewalDateObj);
         // Include if renewal is within 14 days or slightly past due (0..14 days)
         if (daysRemaining >= -2 && daysRemaining <= 14) {
-          const rawPrice = sub.price ? parseFloat(String(sub.price).replace(/[^\d.,]/g, '').replace(',', '.')) || 7600 : 7600;
+          const rawPrice = sub.price ? parseFloat(String(sub.price).replace(/[^\d.,]/g, '').replace(',', '.')) || 85 : 85;
+          const isEur = rawPrice <= 500 || String(sub.price).includes('€');
+          const finalEur = isEur ? rawPrice : Math.round((rawPrice / rate) * 100) / 100;
+          const finalRub = isEur ? Math.round(rawPrice * rate) : rawPrice;
           const parent = student.parents?.[0];
 
           result.push({
@@ -76,8 +80,9 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
             parentWhatsapp: parent?.whatsapp || parent?.phone,
             courseName: student.groups?.[0]?.courseName || 'Основной курс',
             groupName: student.groups?.[0]?.name,
-            amount: rawPrice,
-            amountFormatted: `${rawPrice.toLocaleString('ru-RU')} ₽`,
+            amount: finalEur,
+            currency: 'EUR',
+            amountFormatted: `${finalEur.toLocaleString('ru-RU')} € (≈ ${finalRub.toLocaleString('ru-RU')} ₽)`,
             dueDate: sub.renewalDate,
             daysRemaining,
             isUrgent: daysRemaining <= 3,
@@ -98,6 +103,34 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
     if (pay.status === 'expected') {
       const payDateObj = parseRussianDate(pay.paymentDate);
       const daysRemaining = payDateObj ? calculateDaysDifference(payDateObj) : 3;
+      const isEur = pay.currency === 'EUR' || pay.amount <= 500;
+      const finalEur = isEur ? pay.amount : Math.round((pay.amount / rate) * 100) / 100;
+      const finalRub = isEur ? Math.round(pay.amount * rate) : pay.amount;
+
+      result.push({
+        id: `upcoming_pay_${pay.id}`,
+        type: 'expected_payment',
+        studentId: pay.studentId,
+        studentName: pay.studentName,
+        parentId: pay.parentId,
+        parentName: pay.parentName,
+        courseName: pay.courseName || pay.groupName || 'Курс школы',
+        groupName: pay.groupName,
+        amount: finalEur,
+        currency: 'EUR',
+        amountFormatted: `${finalEur.toLocaleString('ru-RU')} € (≈ ${finalRub.toLocaleString('ru-RU')} ₽)`,
+        dueDate: pay.paymentDate,
+        daysRemaining,
+        isUrgent: daysRemaining <= 3,
+        statusLabel:
+          daysRemaining <= 0
+            ? 'Счет ожидает оплаты'
+            : daysRemaining === 1
+            ? 'Оплата завтра'
+            : `Ожидается через ${daysRemaining} дн.`,
+      });
+    }
+  }
 
       // Avoid duplicates if already added via student
       if (!result.some((r) => r.studentId === pay.studentId && r.type === 'subscription')) {

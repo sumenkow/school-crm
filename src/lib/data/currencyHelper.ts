@@ -158,3 +158,98 @@ export function formatExecutiveDualCurrency(
     fullLabel: `${eurFormatted} (${rubFormatted})`,
   };
 }
+
+export interface MultiCurrencyTotals {
+  totalEur: number;
+  totalRub: number;
+  eurDirect: number;
+  rubDirect: number;
+  rubInEur: number;
+  eurInRub: number;
+  rate: number;
+  count: number;
+  eurCount: number;
+  rubCount: number;
+  formattedTotalEur: string;
+  formattedTotalRub: string;
+  formattedPrimaryWithSecondary: string;
+  breakdownSummary: string;
+}
+
+/**
+ * Calculates unified EUR primary totals with converted RUB and breakdown.
+ */
+export function calculateMultiCurrencyTotals(
+  items: Array<{ amount: number | string; currency?: string }>,
+  customRate?: number
+): MultiCurrencyTotals {
+  const rate = customRate || getEurRubRate();
+
+  let eurDirect = 0;
+  let rubDirect = 0;
+  let eurCount = 0;
+  let rubCount = 0;
+
+  for (const item of items) {
+    const rawVal = typeof item.amount === 'number'
+      ? item.amount
+      : parseFloat(String(item.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    
+    if (rawVal <= 0) continue;
+
+    const curr = (item.currency || '').toUpperCase();
+    if (curr === 'EUR' || curr === '€') {
+      eurDirect += rawVal;
+      eurCount++;
+    } else {
+      // By default consider numbers > 500 as RUB, or if currency is RUB
+      if (rawVal <= 500 && curr !== 'RUB' && curr !== '₽') {
+        // likely EUR amount
+        eurDirect += rawVal;
+        eurCount++;
+      } else {
+        rubDirect += rawVal;
+        rubCount++;
+      }
+    }
+  }
+
+  const rubInEur = rate > 0 ? Math.round((rubDirect / rate) * 100) / 100 : 0;
+  const eurInRub = Math.round(eurDirect * rate);
+
+  const totalEur = Math.round((eurDirect + rubInEur) * 100) / 100;
+  const totalRub = rubDirect + eurInRub;
+
+  const formattedTotalEur = `${totalEur.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+  const formattedTotalRub = `${totalRub.toLocaleString('ru-RU')} ₽`;
+  const formattedPrimaryWithSecondary = `${formattedTotalEur} (≈ ${formattedTotalRub})`;
+
+  let breakdownSummary = '';
+  if (eurDirect > 0 && rubDirect > 0) {
+    breakdownSummary = `${eurDirect.toLocaleString('ru-RU')} € в евро + ${rubDirect.toLocaleString('ru-RU')} ₽ (${rubInEur.toLocaleString('ru-RU')} € по курсу ${rate} ₽/€)`;
+  } else if (eurDirect > 0) {
+    breakdownSummary = `${eurDirect.toLocaleString('ru-RU')} € (100% в евро)`;
+  } else if (rubDirect > 0) {
+    breakdownSummary = `${rubInEur.toLocaleString('ru-RU')} € (сконвертировано из ${rubDirect.toLocaleString('ru-RU')} ₽ по курсу ${rate} ₽/€)`;
+  } else {
+    breakdownSummary = `0 € (курс ${rate} ₽/€)`;
+  }
+
+  return {
+    totalEur,
+    totalRub,
+    eurDirect,
+    rubDirect,
+    rubInEur,
+    eurInRub,
+    rate,
+    count: items.length,
+    eurCount,
+    rubCount,
+    formattedTotalEur,
+    formattedTotalRub,
+    formattedPrimaryWithSecondary,
+    breakdownSummary,
+  };
+}
+
