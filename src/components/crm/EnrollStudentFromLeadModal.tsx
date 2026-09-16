@@ -301,7 +301,6 @@ export function EnrollStudentFromLeadModal({
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
-            </div>
           </div>
 
           {/* Section 2: Parent / Family */}
