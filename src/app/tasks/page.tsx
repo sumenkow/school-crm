@@ -24,10 +24,12 @@ import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function TasksPage() {
   const { userName } = useRole();
   const toast = useToast();
+  const { t } = useLanguage();
   const [tasks, setTasks] = useState<FullTaskData[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'overdue' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
@@ -105,9 +107,9 @@ export default function TasksPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Задачи и поручения</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('tasks.title', 'Задачи и поручения')}</h1>
           <p className="text-sm text-slate-500">
-            Контроль договоренностей с родителями, горящих лидов и рабочих дел команды
+            {t('tasks.subtitle', 'Контроль договоренностей с родителями, горящих лидов и рабочих дел команды')}
           </p>
         </div>
         <button
@@ -115,22 +117,22 @@ export default function TasksPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Новая задача
+          {t('tasks.newTask', 'Новая задача')}
         </button>
       </div>
 
       {/* Overview stats strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Открытые задачи:</span>
+          <span className="text-xs text-slate-500 font-medium">{t('tasks.filterOpen', 'Открытые задачи')}:</span>
           <p className="text-2xl font-bold text-slate-900 mt-1">{openTasksCount}</p>
         </div>
         <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 shadow-xs">
-          <span className="text-xs text-rose-700 font-medium">Просрочено:</span>
+          <span className="text-xs text-rose-700 font-medium">{t('tasks.filterOverdue', 'Просрочено')}:</span>
           <p className="text-2xl font-bold text-rose-700 mt-1">{overdueCount}</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Выполнено:</span>
+          <span className="text-xs text-slate-500 font-medium">{t('tasks.filterCompleted', 'Выполнено')}:</span>
           <p className="text-2xl font-bold text-emerald-600 mt-1">{tasks.filter((t) => t.status === 'done').length}</p>
         </div>
       </div>
@@ -141,11 +143,11 @@ export default function TasksPage() {
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
             {[
-              { key: 'all', label: 'Все' },
-              { key: 'open', label: 'К выполнению' },
-              { key: 'overdue', label: `Просроченные (${overdueCount})` },
-              { key: 'in_progress', label: 'В работе' },
-              { key: 'done', label: 'Выполненные' },
+              { key: 'all', label: t('action.all', 'Все') },
+              { key: 'open', label: t('tasks.filterOpen', 'К выполнению') },
+              { key: 'overdue', label: `${t('tasks.filterOverdue', 'Просроченные')} (${overdueCount})` },
+              { key: 'in_progress', label: t('tasks.filterInProgress', 'В работе') },
+              { key: 'done', label: t('tasks.filterCompleted', 'Выполненные') },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -165,16 +167,16 @@ export default function TasksPage() {
           {/* Quick Filters */}
           <div className="flex items-center gap-3 text-xs">
             <div className="flex items-center gap-1 text-slate-500">
-              <span>Приоритет:</span>
+              <span>{t('tasks.priority', 'Приоритет')}:</span>
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-800 focus:outline-none"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none"
               >
-                <option value="all">Все</option>
-                <option value="high">Срочные (High)</option>
-                <option value="medium">Средние</option>
-                <option value="low">Низкие</option>
+                <option value="all">{t('action.all', 'Все')}</option>
+                <option value="high">{t('tasks.priorityHigh', 'Срочные (High)')}</option>
+                <option value="medium">{t('tasks.priorityMedium', 'Средние')}</option>
+                <option value="low">{t('tasks.priorityLow', 'Низкие')}</option>
               </select>
             </div>
 
@@ -185,7 +187,7 @@ export default function TasksPage() {
                 assigneeFilter === 'my' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
               )}
             >
-              Только мои
+              {t('tasks.myTasks', 'Только мои')}
             </button>
           </div>
         </div>
@@ -194,7 +196,7 @@ export default function TasksPage() {
         <div className="divide-y divide-slate-100">
           {filteredTasks.length === 0 ? (
             <div className="py-12 text-center text-xs text-slate-400">
-              Нет задач, соответствующих выбранным фильтрам
+              {t('tasks.empty', 'Нет задач, соответствующих выбранным фильтрам')}
             </div>
           ) : (
             filteredTasks.map((task) => {

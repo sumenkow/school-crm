@@ -23,6 +23,7 @@ import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHel
 import { recordLessonAttendanceBatch, getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface StudentAttendanceItem {
   id: string;
@@ -33,6 +34,7 @@ interface StudentAttendanceItem {
 }
 
 export default function TeacherMobileDashboard() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
   const [selectedLessonId, setSelectedLessonId] = useState<string>('l5'); // Today's lesson (03.09.2026)
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -201,7 +203,7 @@ export default function TeacherMobileDashboard() {
             <div className="border-b border-slate-100 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-blue-600">Журнал занятия</span>
+                  <span className="text-[10px] font-bold uppercase text-blue-600">{t('teacher.lessonDetails', 'Журнал занятия')}</span>
                   <h3 className="text-base font-extrabold text-slate-900">{currentLesson.groupName}</h3>
                 </div>
                 <div className="flex items-center gap-2">
@@ -212,7 +214,7 @@ export default function TeacherMobileDashboard() {
                     href={`/calendar/lessons/${currentLesson.id}`}
                     className="text-xs font-bold text-blue-600 hover:underline bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs"
                   >
-                    Карточка урока ↗
+                    {t('action.viewCard', 'Карточка урока')} ↗
                   </Link>
                 </div>
               </div>
@@ -220,22 +222,22 @@ export default function TeacherMobileDashboard() {
               {/* Topic and Homework */}
               <div className="mt-3 space-y-2">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-600">Тема занятия:</label>
+                  <label className="text-[11px] font-semibold text-slate-600">{t('hero.topic', 'Тема занятия')}:</label>
                   <input
                     type="text"
                     value={lessonTopic}
                     onChange={(e) => setLessonTopic(e.target.value)}
-                    placeholder="Тема урока..."
+                    placeholder={t('teacher.topicPlaceholder', 'Тема урока...')}
                     className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-600">Домашнее задание:</label>
+                  <label className="text-[11px] font-semibold text-slate-600">{t('hero.homework', 'Домашнее задание')}:</label>
                   <input
                     type="text"
                     value={homework}
                     onChange={(e) => setHomework(e.target.value)}
-                    placeholder="Задание на дом..."
+                    placeholder={t('teacher.homeworkPlaceholder', 'Задание на дом...')}
                     className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -248,7 +250,7 @@ export default function TeacherMobileDashboard() {
                     className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-2xs"
                   >
                     <Mail className="h-3.5 w-3.5 text-indigo-600" />
-                    Разослать ДЗ родителям на Email
+                    {t('action.sendHomework', 'Разослать ДЗ родителям')}
                   </button>
                 </div>
               </div>
@@ -256,11 +258,11 @@ export default function TeacherMobileDashboard() {
 
             {/* Attendance summary pill */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">Отмечено:</span>
+              <span className="text-slate-500 font-medium">{t('teacher.markAttendance', 'Отмечено')}:</span>
               <div className="flex items-center gap-3 font-bold text-xs">
-                <span className="text-emerald-700">Был: {presentCount}</span>
-                <span className="text-rose-700">Не был: {absentCount}</span>
-                <span className="text-amber-700">Перенос: {rescheduledCount}</span>
+                <span className="text-emerald-700">{t('status.present', 'Был')}: {presentCount}</span>
+                <span className="text-rose-700">{t('status.absent', 'Не был')}: {absentCount}</span>
+                <span className="text-amber-700">{t('status.rescheduled', 'Перенос')}: {rescheduledCount}</span>
               </div>
             </div>
 
@@ -312,7 +314,7 @@ export default function TeacherMobileDashboard() {
                         )}
                       >
                         <Check className="h-3.5 w-3.5" />
-                        Был
+                        {t('status.present', 'Был')}
                       </button>
 
                       <button
@@ -326,14 +328,14 @@ export default function TeacherMobileDashboard() {
                         )}
                       >
                         <X className="h-3.5 w-3.5" />
-                        Н/Б
+                        {t('status.absent', 'Н/Б')}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setStudentStatus(student.id, 'rescheduled')}
                         className={cn(
-                          'flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold transition-all',
+                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all',
                           student.status === 'rescheduled'
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'

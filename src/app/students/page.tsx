@@ -199,7 +199,7 @@ function StudentsContent() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Поиск по имени ученика, родителю или группе..."
+            placeholder={t('students.search', 'Поиск по имени ученика, родителю или группе...')}
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -207,7 +207,7 @@ function StudentsContent() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 text-xs text-slate-500">
             <Filter className="h-3.5 w-3.5" />
-            <span>Фильтр:</span>
+            <span>{t('action.filter', 'Фильтр')}:</span>
           </div>
           <select
             value={statusFilter}
@@ -219,13 +219,13 @@ function StudentsContent() {
             }}
             className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="all">Все ученики ({students.length})</option>
-            <option value="absences">Риск оттока: 3+ пропуска ({churnRiskCount})</option>
-            <option value="active">Активные</option>
-            <option value="trial">Пробные</option>
-            <option value="paused">На паузе</option>
-            <option value="school_student">Школьники (с родителями)</option>
-            <option value="adult_student">Студенты 18+ (самостоятельные)</option>
+            <option value="all">{t('students.filterAll', 'Все ученики')} ({students.length})</option>
+            <option value="absences">{t('students.filterAbsences', 'Риск оттока: 3+ пропуска')} ({churnRiskCount})</option>
+            <option value="active">{t('status.active', 'Активные')}</option>
+            <option value="trial">{t('status.trial', 'Пробные')}</option>
+            <option value="paused">{t('status.paused', 'На паузе')}</option>
+            <option value="school_student">{t('students.filterSchool', 'Школьники (с родителями)')}</option>
+            <option value="adult_student">{t('students.filterAdult', 'Студенты 18+ (самостоятельные)')}</option>
           </select>
         </div>
       </div>

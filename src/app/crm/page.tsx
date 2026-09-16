@@ -29,11 +29,13 @@ import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function CrmPage() {
   const router = useRouter();
   const toast = useToast();
   const { userName } = useRole();
+  const { t } = useLanguage();
   const [leads, setLeads] = useState<FullLeadData[]>(INITIAL_LEADS);
   const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,14 +90,14 @@ export default function CrmPage() {
 
   // Regulated 8 statuses from Section 12
   const columns = [
-    { key: 'new', label: 'Новые', badgeColor: 'bg-blue-100 text-blue-800' },
-    { key: 'contacted', label: 'В работе', badgeColor: 'bg-amber-100 text-amber-800' },
-    { key: 'trial_scheduled', label: 'Пробное назначено', badgeColor: 'bg-purple-100 text-purple-800' },
-    { key: 'trial_held', label: 'Пробное проведено', badgeColor: 'bg-indigo-100 text-indigo-800' },
-    { key: 'thinking', label: 'Думают / Счёт', badgeColor: 'bg-teal-100 text-teal-800' },
-    { key: 'paid', label: 'Оплачено (Успех)', badgeColor: 'bg-emerald-100 text-emerald-800' },
-    { key: 'lost', label: 'Потерян', badgeColor: 'bg-rose-100 text-rose-800' },
-    { key: 'no_response', label: 'Не отвечает', badgeColor: 'bg-slate-200 text-slate-700' },
+    { key: 'new', label: t('crm.stageNew', 'Новые'), badgeColor: 'bg-blue-100 text-blue-800' },
+    { key: 'contacted', label: t('crm.stageContacted', 'В работе'), badgeColor: 'bg-amber-100 text-amber-800' },
+    { key: 'trial_scheduled', label: t('crm.stageTrialScheduled', 'Пробное назначено'), badgeColor: 'bg-purple-100 text-purple-800' },
+    { key: 'trial_held', label: t('crm.stageTrialCompleted', 'Пробное проведено'), badgeColor: 'bg-indigo-100 text-indigo-800' },
+    { key: 'thinking', label: t('crm.stageThinking', 'Думают / Счёт'), badgeColor: 'bg-teal-100 text-teal-800' },
+    { key: 'paid', label: t('crm.stagePaid', 'Оплачено (Успех)'), badgeColor: 'bg-emerald-100 text-emerald-800' },
+    { key: 'lost', label: t('crm.stageLost', 'Потерян'), badgeColor: 'bg-rose-100 text-rose-800' },
+    { key: 'no_response', label: t('crm.stageNoResponse', 'Не отвечает'), badgeColor: 'bg-slate-200 text-slate-700' },
   ] as const;
 
   const handleLeadCreated = (newLead: FullLeadData) => {
@@ -194,9 +196,9 @@ export default function CrmPage() {
       {/* Title & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">CRM Лиды и Воронка</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('crm.title', 'CRM Лиды и Воронка')}</h1>
           <p className="text-sm text-slate-500">
-            Управление обращениями, пробными уроками и конверсией в постоянных учеников
+            {t('crm.subtitle', 'Управление обращениями, пробными уроками и конверсией в постоянных учеников')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -205,7 +207,7 @@ export default function CrmPage() {
             className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Новый лид
+            {t('action.createLead', 'Новый лид')}
           </button>
         </div>
       </div>
@@ -218,7 +220,7 @@ export default function CrmPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Поиск лида по имени, телефону или ученику..."
+            placeholder={t('crm.search', 'Поиск лида по имени, телефону или ученику...')}
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
           />
         </div>
@@ -226,13 +228,13 @@ export default function CrmPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <Filter className="h-3.5 w-3.5" />
-            <span>Курс:</span>
+            <span>{t('crm.filterCourse', 'Курс:')}</span>
             <select
               value={directionFilter}
               onChange={(e) => setDirectionFilter(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none"
             >
-              <option value="all">Все направления</option>
+              <option value="all">{t('crm.allDirections', 'Все направления')}</option>
               <option value="Английский язык">Английский язык</option>
               <option value="Робототехника">Робототехника</option>
               <option value="Олимпиадная математика">Математика</option>
@@ -242,36 +244,36 @@ export default function CrmPage() {
           <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
             <button
               onClick={() => setViewMode('grid')}
-              title="Уместить все 8 этапов на одном листе (сетка 4х2, прокрутка вниз)"
+              title={t('crm.viewGrid', 'Сетка (На одном листе)')}
               className={cn(
                 'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
                 viewMode === 'grid' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <LayoutGrid className="h-3.5 w-3.5 text-purple-600" />
-              <span>Сетка (На одном листе)</span>
+              <span>{t('crm.viewGrid', 'Сетка (На одном листе)')}</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
-              title="Классическая широкая доска с горизонтальной прокруткой"
+              title={t('crm.viewBoard', 'Доска (Горизонтально)')}
               className={cn(
                 'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
                 viewMode === 'kanban' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <Columns className="h-3.5 w-3.5 text-blue-600" />
-              <span>Доска (Горизонтально)</span>
+              <span>{t('crm.viewBoard', 'Доска (Горизонтально)')}</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              title="Табличный вид"
+              title={t('crm.viewTable', 'Таблица')}
               className={cn(
                 'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all',
                 viewMode === 'table' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <List className="h-3.5 w-3.5" />
-              <span>Таблица</span>
+              <span>{t('crm.viewTable', 'Таблица')}</span>
             </button>
           </div>
         </div>
@@ -410,14 +412,14 @@ export default function CrmPage() {
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
               <tr>
-                <th className="py-3.5 pl-4 pr-3">Лид / Контакт</th>
-                <th className="px-3 py-3.5">Ученик</th>
-                <th className="px-3 py-3.5">Курс</th>
-                <th className="px-3 py-3.5">Баланс</th>
-                <th className="px-3 py-3.5">Статус воронки</th>
-                <th className="px-3 py-3.5">Следующее действие</th>
-                <th className="px-3 py-3.5">Ответственный</th>
-                <th className="py-3.5 pl-3 pr-4 text-right">Карточка</th>
+                <th className="py-3.5 pl-4 pr-3">{t('crm.tableLeadContact', 'Лид / Контакт')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableStudent', 'Ученик')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableCourse', 'Курс')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableBalance', 'Баланс')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableStage', 'Статус воронки')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableNextAction', 'Следующее действие')}</th>
+                <th className="px-3 py-3.5">{t('crm.tableAssignee', 'Ответственный')}</th>
+                <th className="py-3.5 pl-3 pr-4 text-right">{t('crm.tableCard', 'Карточка')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -478,7 +480,7 @@ export default function CrmPage() {
                     <td className="px-3 py-3 text-slate-600">{lead.assignedTo}</td>
                     <td className="py-3 pl-3 pr-4 text-right">
                       <span className="text-xs font-semibold text-purple-600 hover:underline inline-flex items-center">
-                        Открыть <ChevronRight className="h-3.5 w-3.5" />
+                        {t('action.openProfile', 'Открыть')} <ChevronRight className="h-3.5 w-3.5" />
                       </span>
                     </td>
                   </tr>
@@ -512,6 +514,7 @@ interface LeadCardProps {
 }
 
 function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: LeadCardProps) {
+  const { t } = useLanguage();
   const finSummary = getLeadFinancialSummary(lead);
 
   return (
@@ -530,18 +533,18 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
           <span className="text-[10px] text-slate-400 flex-shrink-0">{lead.source}</span>
         </div>
         <p className="text-[11px] font-semibold text-purple-700 mt-0.5 truncate">{lead.directionOrCourse}</p>
-        <p className="text-[10px] text-slate-500 truncate">Ученик: {lead.studentName}</p>
+        <p className="text-[10px] text-slate-500 truncate">{t('crm.leadStudent', 'Ученик')}: {lead.studentName}</p>
 
         {/* Unified End-to-end Balance Badge */}
         {finSummary.isNegative ? (
           <div className="flex items-center gap-1 text-rose-700 font-bold text-[10px] bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5 mt-1.5 animate-pulse">
             <AlertTriangle className="h-2.5 w-2.5 text-rose-600 shrink-0" />
-            <span>Баланс: {finSummary.formattedNet} (Долг: {finSummary.formattedDebt})</span>
+            <span>{t('hero.balance', 'Баланс')}: {finSummary.formattedNet} ({t('hero.debt', 'Долг')}: {finSummary.formattedDebt})</span>
           </div>
         ) : finSummary.deposit > 0 ? (
           <div className="flex items-center gap-1 text-emerald-700 font-semibold text-[10px] bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 mt-1.5">
             <Wallet className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-            <span>Депозит: {finSummary.formattedDeposit}</span>
+            <span>{t('hero.deposit', 'Депозит')}: {finSummary.formattedDeposit}</span>
           </div>
         ) : null}
 
@@ -555,7 +558,7 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
               <button
                 onClick={onCopyPhone}
                 className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                title="Скопировать телефон"
+                title={t('crm.copyPhone', 'Скопировать телефон')}
               >
                 <Copy size={11} />
               </button>
@@ -564,14 +567,14 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
                 target="_blank"
                 rel="noreferrer"
                 className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors text-[9px]"
-                title="Написать в WhatsApp"
+                title={t('crm.writeWhatsapp', 'Написать в WhatsApp')}
               >
                 WA
               </a>
               <a
                 href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
                 className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-                title="Позвонить"
+                title={t('crm.call', 'Позвонить')}
               >
                 <Phone size={11} />
               </a>
@@ -580,7 +583,7 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
           {lead.trialDate && (
             <div className="flex items-center gap-1 text-purple-700 font-medium text-[10px]">
               <Calendar className="h-2.5 w-2.5 text-purple-500" />
-              <span>Пробное: {lead.trialDate}</span>
+              <span>{t('crm.leadTrial', 'Пробное')}: {lead.trialDate}</span>
             </div>
           )}
           {lead.offerAmount && (
@@ -599,7 +602,7 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
             </p>
             {lead.nextActionDate && (
               <p className="text-amber-700 text-[9px] mt-0.5 font-semibold">
-                Срок: {lead.nextActionDate}
+                {t('crm.leadDue', 'Срок')}: {lead.nextActionDate}
               </p>
             )}
           </div>
@@ -611,7 +614,7 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
         className="mt-2 flex items-center justify-between border-t border-slate-100 pt-1.5 text-[10px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-slate-400 font-medium">Этап:</span>
+        <span className="text-slate-400 font-medium">{t('crm.leadStage', 'Этап')}:</span>
         <select
           value={lead.status}
           onChange={(e) => onQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}

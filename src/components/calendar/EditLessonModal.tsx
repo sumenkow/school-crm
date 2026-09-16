@@ -8,6 +8,7 @@ import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export interface EditLessonModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export interface EditLessonModalProps {
 export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLessonModalProps) {
   const toast = useToast();
   const { userName } = useRole();
+  const { t } = useLanguage();
 
   const [date, setDate] = useState(lesson.date);
   const [startTime, setStartTime] = useState(lesson.startTime);
@@ -131,7 +133,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
               <Edit3 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-white tracking-tight">Редактирование занятия</h2>
+              <h2 className="text-base font-extrabold text-white tracking-tight">{t('modal.editLesson.title', 'Редактирование занятия')}</h2>
               <p className="text-xs text-blue-100">{lesson.groupName} ({lesson.courseName})</p>
             </div>
           </div>
@@ -146,7 +148,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Дата *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('modal.lessonDate', 'Дата')} *</label>
               <input
                 type="date"
                 required
@@ -156,7 +158,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Начало *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.startTime', 'Начало')} *</label>
               <input
                 type="time"
                 required
@@ -166,7 +168,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Окончание *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.endTime', 'Окончание')} *</label>
               <input
                 type="time"
                 required
@@ -179,26 +181,26 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Тема занятия
+              {t('hero.topic', 'Тема занятия')}
             </label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Введите тему урока..."
+              placeholder={t('teacher.topicPlaceholder', 'Введите тему урока...')}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Домашнее задание
+              {t('hero.homework', 'Домашнее задание')}
             </label>
             <textarea
               rows={3}
               value={homework}
               onChange={(e) => setHomework(e.target.value)}
-              placeholder="Опишите домашнее задание..."
+              placeholder={t('teacher.homeworkPlaceholder', 'Опишите домашнее задание...')}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed shadow-2xs"
             />
           </div>
@@ -206,7 +208,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Преподаватель
+                {t('hero.teacher', 'Преподаватель')}
               </label>
               <input
                 type="text"
@@ -217,24 +219,24 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
             </div>
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Статус урока
+                {t('common.status', 'Статус урока')}
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
               >
-                <option value="scheduled">Запланировано</option>
-                <option value="completed">Проведено (Завершено)</option>
-                <option value="rescheduled">Перенесено</option>
-                <option value="cancelled">Отменено</option>
+                <option value="scheduled">{t('status.scheduled', 'Запланировано')}</option>
+                <option value="completed">{t('status.completed', 'Проведено (Завершено)')}</option>
+                <option value="rescheduled">{t('status.rescheduled', 'Перенесено')}</option>
+                <option value="cancelled">{t('status.cancelled', 'Отменено')}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Аудитория / Локация
+              {t('lesson.roomFormat', 'Аудитория / Локация')}
             </label>
             <input
               type="text"
@@ -247,7 +249,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Ссылка на онлайн-класс (Zoom / Google Meet)
+              {t('lesson.onlineRoom', 'Ссылка на онлайн-класс (Zoom / Google Meet)')}
             </label>
             <input
               type="url"
@@ -265,7 +267,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
             >
-              Отмена
+              {t('action.cancel', 'Отмена')}
             </button>
             <button
               type="submit"
@@ -273,7 +275,7 @@ export function EditLessonModal({ isOpen, onClose, lesson, onSaved }: EditLesson
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
+              {isSubmitting ? t('common.saving', 'Сохранение...') : t('action.saveChanges', 'Сохранить изменения')}
             </button>
           </div>
         </form>

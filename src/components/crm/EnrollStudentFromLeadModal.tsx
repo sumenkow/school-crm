@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { FullLeadData, INITIAL_GROUPS, INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 import { saveStudentToStorage, settleDebtsFromDeposit } from '@/lib/data/studentStorage';
+import { qualifyAndConvertLead } from '@/lib/data/leadStorage';
+import { cn } from '@/lib/utils';
 
 interface EnrollStudentFromLeadModalProps {
   isOpen: boolean;
@@ -41,6 +43,7 @@ export function EnrollStudentFromLeadModal({
   const defaultParentFirstName = parentParts[0] || '';
   const defaultParentLastName = parentParts.slice(1).join(' ') || defaultStudentLastName;
 
+  const [studentType, setStudentType] = useState<'school_student' | 'adult_student'>('school_student');
   const [parentFirstName, setParentFirstName] = useState(defaultParentFirstName);
   const [parentLastName, setParentLastName] = useState(defaultParentLastName);
   const [parentPhone, setParentPhone] = useState(lead.contact || '');
@@ -71,15 +74,28 @@ export function EnrollStudentFromLeadModal({
     e.preventDefault();
 
     const newStudentId = `std_${Date.now()}`;
-    const newParentId = `prnt_${Date.now()}`;
+    const newParentId = studentType === 'adult_student' ? '' : `prnt_${Date.now()}`;
     const targetGroup = INITIAL_GROUPS.find((g) => g.id === selectedGroupId) || INITIAL_GROUPS[0];
 
-    // 1. Create student in INITIAL_STUDENTS
+    const parentsList = studentType === 'adult_student' ? [] : [
+      {
+        id: newParentId,
+        firstName: parentFirstName.trim() || 'Родитель',
+        lastName: parentLastName.trim() || studentLastName.trim(),
+        phone: parentPhone,
+        telegram: parentTelegram,
+        preferredChannel: 'telegram' as const,
+        relationshipType,
+        isPrimary: true,
+      }
+    ];
+
+    // 1. Create student in INITIAL_STUDENTS and unified storage
     const newStudent: FullStudentData = {
       id: newStudentId,
       firstName: studentFirstName.trim() || 'Ученик',
       lastName: studentLastName.trim() || 'Новый',
-      studentType: 'school_student',
+      studentType: studentType,
       status: 'active',
       phone: lead.contact,
       telegram: lead.telegram,
@@ -88,18 +104,7 @@ export function EnrollStudentFromLeadModal({
       notes: studentAge ? `Возраст: ${studentAge}` : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      parents: [
-        {
-          id: newParentId,
-          firstName: parentFirstName.trim() || 'Родитель',
-          lastName: parentLastName.trim() || studentLastName.trim(),
-          phone: parentPhone,
-          telegram: parentTelegram,
-          preferredChannel: 'telegram',
-          relationshipType,
-          isPrimary: true,
-        }
-      ],
+      parents: parentsList,
       groups: [
         {
           id: targetGroup.id,
@@ -163,17 +168,19 @@ export function EnrollStudentFromLeadModal({
           channel: 'other',
           type: 'initial_contact',
           author: 'Система CRM',
-          content: `Ученик успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».${lead.finance?.deposit?.balance ? ` Сохранен депозит с этапа лида: ${lead.finance.deposit.balanceFormatted}.` : ''}`,
+          content: `Ученик (${studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}) успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».${lead.finance?.deposit?.balance ? ` Сохранен депозит с этапа лида: ${lead.finance.deposit.balanceFormatted}.` : ''}`,
           result: 'Зачисление завершено'
         }
       ]
     };
 
-    INITIAL_STUDENTS.unshift(newStudent);
     saveStudentToStorage(newStudent);
     settleDebtsFromDeposit(newStudentId);
 
-    // 2. Add student to target group
+    // 2. Mark lead as qualified/enrolled in Supabase and storage
+    qualifyAndConvertLead(lead.id, newStudentId, newParentId);
+
+    // 3. Add student to target group
     targetGroup.students.push({
       id: newStudentId,
       name: `${studentFirstName.trim()} ${studentLastName.trim()}`,
@@ -237,16 +244,44 @@ export function EnrollStudentFromLeadModal({
           <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-800 flex items-center gap-1.5">
-                <GraduationCap size={15} /> 1. Профиль ученика
+                <GraduationCap size={15} /> 1. Профиль учащегося
               </span>
               <span className="text-[11px] text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">
                 Создается карточка
               </span>
             </div>
 
+            {/* Student Type Selector */}
+            <div className="flex rounded-xl bg-slate-200/80 p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setStudentType('school_student')}
+                className={cn(
+                  'flex-1 py-1.5 rounded-lg transition-all cursor-pointer text-center',
+                  studentType === 'school_student'
+                    ? 'bg-white shadow-xs text-blue-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Школьник (с родителями)
+              </button>
+              <button
+                type="button"
+                onClick={() => setStudentType('adult_student')}
+                className={cn(
+                  'flex-1 py-1.5 rounded-lg transition-all cursor-pointer text-center',
+                  studentType === 'adult_student'
+                    ? 'bg-white shadow-xs text-purple-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Студент 18+ (Самостоятельный)
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700">Имя ребенка *</label>
+                <label className="text-xs font-semibold text-slate-700">Имя учащегося *</label>
                 <input
                   type="text"
                   required
@@ -257,7 +292,7 @@ export function EnrollStudentFromLeadModal({
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700">Фамилия ребенка *</label>
+                <label className="text-xs font-semibold text-slate-700">Фамилия учащегося *</label>
                 <input
                   type="text"
                   required
@@ -276,103 +311,114 @@ export function EnrollStudentFromLeadModal({
                   type="text"
                   value={studentAge}
                   onChange={(e) => setStudentAge(e.target.value)}
-                  placeholder="12 лет"
+                  placeholder={studentType === 'adult_student' ? '24 года' : '12 лет'}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-700">Класс</label>
+                <label className="text-xs font-semibold text-slate-700">Класс / Уровень</label>
                 <input
                   type="text"
                   value={studentGrade}
                   onChange={(e) => setStudentGrade(e.target.value)}
-                  placeholder="6 класс / 8 класс"
+                  placeholder={studentType === 'adult_student' ? 'B1 Intermediate' : '6 класс'}
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
             </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Направление / Курс</label>
-                <input
-                  type="text"
-                  value={course}
-                  onChange={(e) => setCourse(e.target.value)}
-                  placeholder="Английский язык"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-          </div>
-
-          {/* Section 2: Parent / Family */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                <Users size={15} /> 2. Законный представитель (Родитель)
-              </span>
-              <span className="text-[11px] text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
-                Семейный профиль
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Имя родителя *</label>
-                <input
-                  type="text"
-                  required
-                  value={parentFirstName}
-                  onChange={(e) => setParentFirstName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Фамилия родителя</label>
-                <input
-                  type="text"
-                  value={parentLastName}
-                  onChange={(e) => setParentLastName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Кем приходится</label>
-                <select
-                  value={relationshipType}
-                  onChange={(e) => setRelationshipType(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                >
-                  <option value="Мама">Мама</option>
-                  <option value="Папа">Папа</option>
-                  <option value="Бабушка">Бабушка</option>
-                  <option value="Дедушка">Дедушка</option>
-                  <option value="Опекун">Опекун</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Телефон *</label>
-                <input
-                  type="tel"
-                  required
-                  value={parentPhone}
-                  onChange={(e) => setParentPhone(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Telegram</label>
-                <input
-                  type="text"
-                  value={parentTelegram}
-                  onChange={(e) => setParentTelegram(e.target.value)}
-                  placeholder="@username"
-                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Направление / Курс</label>
+              <input
+                type="text"
+                value={course}
+                onChange={(e) => setCourse(e.target.value)}
+                placeholder="Английский язык"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              />
             </div>
           </div>
+
+          {/* Section 2: Parent / Family (Only for School Students) */}
+          {studentType === 'school_student' ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <Users size={15} /> 2. Законный представитель (Родитель)
+                </span>
+                <span className="text-[11px] text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                  Семейный профиль
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Имя родителя *</label>
+                  <input
+                    type="text"
+                    required
+                    value={parentFirstName}
+                    onChange={(e) => setParentFirstName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Фамилия родителя</label>
+                  <input
+                    type="text"
+                    value={parentLastName}
+                    onChange={(e) => setParentLastName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Кем приходится</label>
+                  <select
+                    value={relationshipType}
+                    onChange={(e) => setRelationshipType(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="Мама">Мама</option>
+                    <option value="Отец">Отец</option>
+                    <option value="Опекун">Опекун</option>
+                    <option value="Бабушка / Дедушка">Бабушка / Дедушка</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Телефон родителя *</label>
+                  <input
+                    type="text"
+                    required
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Telegram родителя</label>
+                  <input
+                    type="text"
+                    value={parentTelegram}
+                    onChange={(e) => setParentTelegram(e.target.value)}
+                    placeholder="@username"
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-purple-200 bg-purple-50/30 p-3.5 flex items-center gap-3 text-xs text-purple-900">
+              <GraduationCap className="h-5 w-5 text-purple-600 shrink-0" />
+              <div>
+                <span className="font-bold">Самостоятельный взрослый студент (18+)</span>
+                <p className="text-purple-700 text-[11px] mt-0.5">
+                  Уведомления, ссылки и расчеты будут направляться напрямую на контакты студента ({lead.contact || 'контакт указан'}).
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Section 3: Group & Schedule */}
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">

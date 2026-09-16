@@ -155,9 +155,18 @@ export function saveStudentToStorage(student: FullStudentData): void {
     });
   }
 
-  // 4. Direct Supabase Cloud DB write
+  // 4. Direct localStorage and Supabase Cloud DB write
   if (typeof window !== 'undefined') {
     try {
+      const currentStudents = getStoredStudents();
+      const sIdx = currentStudents.findIndex((s) => s.id === studentToSave.id);
+      if (sIdx !== -1) {
+        currentStudents[sIdx] = studentToSave;
+      } else {
+        currentStudents.unshift(studentToSave);
+      }
+      localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(currentStudents));
+
       import('@/lib/supabase/client').then(({ createClient }) => {
         try {
           const supabase = createClient();
@@ -175,6 +184,7 @@ export function saveStudentToStorage(student: FullStudentData): void {
             } catch {}
           }
 
+          // 1. Upsert Student
           supabase.from('students').upsert({
             id: studentToSave.id,
             first_name: firstName,
@@ -187,6 +197,26 @@ export function saveStudentToStorage(student: FullStudentData): void {
             updated_at: new Date().toISOString(),
             is_mock_data: false,
           }).then(() => {}, (err) => console.warn('Supabase student upsert error:', err));
+
+          // 2. Upsert Parents if present
+          if (studentToSave.parents && studentToSave.parents.length > 0) {
+            for (const pr of studentToSave.parents) {
+              if (pr.id) {
+                supabase.from('parents').upsert({
+                  id: pr.id,
+                  first_name: pr.firstName || 'Родитель',
+                  last_name: pr.lastName || lastName,
+                  phone: pr.phone || null,
+                  email: pr.email || null,
+                  telegram: pr.telegram || null,
+                  whatsapp: pr.whatsapp || null,
+                  preferred_channel: pr.preferredChannel || 'telegram',
+                  updated_at: new Date().toISOString(),
+                  is_mock_data: false,
+                }).then(() => {}, () => {});
+              }
+            }
+          }
         } catch (e) {
           console.warn('Supabase client error:', e);
         }

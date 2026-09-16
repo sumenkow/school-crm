@@ -49,14 +49,9 @@ export function LessonQuickViewModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [currentLesson, setCurrentLesson] = useState<FullLessonData | null>(lesson);
 
-  React.useEffect(() => {
-    setCurrentLesson(lesson);
-  }, [lesson]);
-
-  if (!isOpen || !currentLesson) return null;
-  const activeLesson = currentLesson;
+  if (!isOpen || !lesson) return null;
+  const activeLesson = lesson;
 
   const handleCopyLink = () => {
     if (lesson.onlineMeetingUrl) {
@@ -71,10 +66,10 @@ export function LessonQuickViewModal({
     label: string;
     activeClass: string;
   }> = [
-    { status: 'present', label: 'Был', activeClass: 'bg-emerald-600 text-white font-semibold shadow-xs' },
-    { status: 'excused', label: 'Болел', activeClass: 'bg-blue-600 text-white font-semibold shadow-xs' },
-    { status: 'absent', label: 'Пропуск', activeClass: 'bg-rose-600 text-white font-semibold shadow-xs' },
-    { status: 'rescheduled', label: 'Отработка', activeClass: 'bg-amber-600 text-white font-semibold shadow-xs' },
+    { status: 'present', label: t('status.present', 'Был'), activeClass: 'bg-emerald-600 text-white font-semibold shadow-xs' },
+    { status: 'excused', label: t('status.excused', 'Болел'), activeClass: 'bg-blue-600 text-white font-semibold shadow-xs' },
+    { status: 'absent', label: t('status.absent', 'Пропуск'), activeClass: 'bg-rose-600 text-white font-semibold shadow-xs' },
+    { status: 'rescheduled', label: t('status.rescheduled', 'Отработка'), activeClass: 'bg-amber-600 text-white font-semibold shadow-xs' },
   ];
 
   return (
@@ -112,12 +107,12 @@ export function LessonQuickViewModal({
                   : activeLesson.status === 'rescheduled'
                   ? t('status.rescheduled', 'Перенесён')
                   : activeLesson.status === 'cancelled'
-                  ? 'Отменён'
+                  ? t('status.cancelled', 'Отменён')
                   : t('status.scheduled', 'Запланирован')}
               </span>
-              {(activeLesson.isTrial || (activeLesson.trialStudentsCount && activeLesson.trialStudentsCount > 0) || activeLesson.students.some((s) => s.isTrial)) && (
+              {(activeLesson.isTrial || (activeLesson.trialStudentsCount && activeLesson.trialStudentsCount > 0) || activeLesson.students.some((s: { isTrial?: boolean }) => s.isTrial)) && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                  🎯 {t('status.trial', 'Пробное занятие')} — {activeLesson.trialStudentsCount || activeLesson.students.filter((s) => s.isTrial).length || 1} чел.
+                  🎯 {t('status.trial', 'Пробное занятие')} — {activeLesson.trialStudentsCount || activeLesson.students.filter((s: { isTrial?: boolean }) => s.isTrial).length || 1} чел.
                 </span>
               )}
             </div>
@@ -153,20 +148,20 @@ export function LessonQuickViewModal({
           {/* Teacher and Room info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
-              <span className="text-[11px] font-medium text-slate-500">Преподаватель</span>
+              <span className="text-[11px] font-medium text-slate-500">{t('hero.teacher', 'Преподаватель')}</span>
               <div className="mt-1 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">{lesson.teacherName}</span>
                 <Link
                   href={`/teachers/${lesson.teacherId}`}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 hover:underline"
                 >
-                  Профиль <ExternalLink className="w-3 h-3" />
+                  {t('action.openProfile', 'Профиль')} <ExternalLink className="w-3 h-3" />
                 </Link>
               </div>
             </div>
 
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between">
-              <span className="text-[11px] font-medium text-slate-500">Формат / Онлайн-класс</span>
+              <span className="text-[11px] font-medium text-slate-500">{t('lesson.roomFormat', 'Формат / Онлайн-класс')}</span>
               <div className="mt-1 flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-900">{lesson.room}</span>
                 {lesson.groupId && (
@@ -174,7 +169,7 @@ export function LessonQuickViewModal({
                     href={`/groups/${lesson.groupId}`}
                     className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-0.5 hover:underline"
                   >
-                    Группа <ExternalLink className="w-3 h-3" />
+                    {t('nav.groups', 'Группа')} <ExternalLink className="w-3 h-3" />
                   </Link>
                 )}
               </div>
@@ -189,7 +184,7 @@ export function LessonQuickViewModal({
                   <Video className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-indigo-950">Онлайн-комната занятия</p>
+                  <p className="text-xs font-bold text-indigo-950">{t('lesson.onlineRoom', 'Онлайн-комната занятия')}</p>
                   <p className="text-[11px] text-indigo-700 truncate">{lesson.onlineMeetingUrl}</p>
                 </div>
               </div>
@@ -198,10 +193,10 @@ export function LessonQuickViewModal({
                   type="button"
                   onClick={handleCopyLink}
                   className="p-1.5 rounded-lg border border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-50 transition-colors text-xs flex items-center gap-1"
-                  title="Скопировать ссылку"
+                  title={t('lesson.copyLink', 'Скопировать ссылку')}
                 >
                   {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span className="hidden sm:inline">{copiedLink ? 'Скопировано' : 'Копия'}</span>
+                  <span className="hidden sm:inline">{copiedLink ? t('common.copied', 'Скопировано') : t('common.copy', 'Копия')}</span>
                 </button>
                 <a
                   href={lesson.onlineMeetingUrl}
@@ -209,7 +204,7 @@ export function LessonQuickViewModal({
                   rel="noopener noreferrer"
                   className="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-semibold flex items-center gap-1 transition-colors"
                 >
-                  Войти <ExternalLink className="w-3 h-3" />
+                  {t('action.join', 'Войти')} <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
             </div>
@@ -219,14 +214,14 @@ export function LessonQuickViewModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Список учеников и посещаемость ({lesson.students.length})
+                {t('lesson.studentsAndAttendance', 'Список учеников и посещаемость')} ({lesson.students.length})
               </h3>
-              <span className="text-[11px] text-slate-400">Быстрая отметка в 1 клик</span>
+              <span className="text-[11px] text-slate-400">{t('lesson.quickMark', 'Быстрая отметка в 1 клик')}</span>
             </div>
 
             <div className="space-y-2 border border-slate-200 rounded-xl p-2 bg-slate-50/30">
               {lesson.students.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-4">В группе пока нет учеников</p>
+                <p className="text-xs text-slate-400 text-center py-4">{t('group.noStudents', 'В группе пока нет учеников')}</p>
               ) : (
                 lesson.students.map((student) => (
                   <div
@@ -290,10 +285,10 @@ export function LessonQuickViewModal({
           <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
             <div>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
-                Домашнее задание
+                {t('hero.homework', 'Домашнее задание')}
               </span>
               <p className="text-xs text-slate-700">
-                {lesson.homework || 'Домашнее задание пока не заполнено'}
+                {lesson.homework || t('lesson.noHomeworkYet', 'Домашнее задание пока не заполнено')}
               </p>
             </div>
             <button
@@ -302,7 +297,7 @@ export function LessonQuickViewModal({
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 text-xs font-bold hover:bg-blue-100 transition-colors shrink-0 shadow-2xs"
             >
               <Mail className="h-3.5 w-3.5 text-blue-600" />
-              Разослать ДЗ на Email
+              {t('action.sendHomework', 'Разослать ДЗ')}
             </button>
           </div>
         </div>
@@ -314,7 +309,7 @@ export function LessonQuickViewModal({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
           >
             <BookOpen className="w-4 h-4" />
-            Перейти в полный журнал урока →
+            {t('lesson.goToFullJournal', 'Перейти в полный журнал урока →')}
           </Link>
           <div className="flex items-center gap-2">
             <button
@@ -323,13 +318,13 @@ export function LessonQuickViewModal({
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-2xs"
             >
               <Mail className="w-3.5 h-3.5 text-indigo-600" />
-              Рассылка ДЗ
+              {t('action.sendHomework', 'Рассылка ДЗ')}
             </button>
             <button
               onClick={onClose}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
             >
-              Закрыть
+              {t('action.close', 'Закрыть')}
             </button>
           </div>
         </div>

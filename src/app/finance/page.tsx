@@ -24,8 +24,10 @@ import { getStoredPayments, savePaymentToStorage } from '@/lib/data/paymentStora
 import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
+import { useLanguage } from '@/context/LanguageContext';
 
 function FinanceContent() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
   const rate = getEurRubRate();
@@ -108,9 +110,9 @@ function FinanceContent() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Финансы и Абонементы</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('finance.title', 'Финансы и Абонементы')}</h1>
           <p className="text-sm text-slate-500">
-            Мультивалютный учет (EUR / RUB), касса и периоды обучения • Курс 1 € = {rate} ₽
+            {t('finance.subtitle', 'Мультивалютный учет (EUR / RUB), касса и периоды обучения')} • 1 € = {rate} ₽
           </p>
         </div>
 
@@ -120,14 +122,14 @@ function FinanceContent() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Внести оплату
+            {t('finance.recordPayment', 'Внести оплату')}
           </button>
           <button
             onClick={() => setIsSubModalOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Оформить абонемент
+            {t('finance.newSubscription', 'Оформить абонемент')}
           </button>
         </div>
       </div>
@@ -136,7 +138,7 @@ function FinanceContent() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Фактическая выручка (Касса)</span>
+            <span className="text-xs font-medium text-slate-500">{t('finance.totalRevenue', 'Фактическая выручка (Касса)')}</span>
             <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
               <CreditCard className="h-4 w-4" />
             </div>
@@ -148,7 +150,7 @@ function FinanceContent() {
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Ожидается к поступлению</span>
+            <span className="text-xs font-medium text-slate-500">{t('finance.expectedRevenue', 'Ожидается к поступлению')}</span>
             <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
               <Clock className="h-4 w-4" />
             </div>
@@ -160,7 +162,7 @@ function FinanceContent() {
 
         <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-800">Просроченная задолженность</span>
+            <span className="text-xs font-semibold text-rose-800">{t('finance.overdueDebt', 'Просроченная задолженность')}</span>
             <div className="rounded-lg bg-rose-100 p-2 text-rose-700">
               <AlertCircle className="h-4 w-4" />
             </div>
@@ -168,7 +170,7 @@ function FinanceContent() {
           <p className="mt-1 text-2xl font-extrabold text-rose-700">{overdueTotals.formattedTotalEur}</p>
           <p className="text-xs text-rose-800 font-semibold mt-0.5">≈ {overdueTotals.formattedTotalRub}</p>
           <p className="text-[11px] text-rose-600 mt-1 font-medium">
-            {overduePayments.length} клиентов с долгом • {overdueTotals.breakdownSummary}
+            {overduePayments.length} • {overdueTotals.breakdownSummary}
           </p>
         </div>
       </div>
@@ -184,7 +186,7 @@ function FinanceContent() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          История платежей ({payments.length})
+          {t('finance.tabPayments', 'История платежей')} ({payments.length})
         </button>
         <button
           onClick={() => setActiveTab('subscriptions')}
@@ -195,7 +197,7 @@ function FinanceContent() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          Абонементы ({subscriptions.length})
+          {t('finance.tabSubscriptions', 'Абонементы')} ({subscriptions.length})
         </button>
         <button
           onClick={() => setActiveTab('debts')}
@@ -206,7 +208,7 @@ function FinanceContent() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          <span>Долги и просрочки</span>
+          <span>{t('finance.tabDebts', 'Долги и задолженности')}</span>
           <span className="rounded-full bg-rose-100 text-rose-800 px-1.5 py-0.2 text-[10px] font-bold">
             {overduePayments.length}
           </span>

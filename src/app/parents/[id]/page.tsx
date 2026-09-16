@@ -45,11 +45,13 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForParent } from '@/lib/data/upcomingPaymentsHelper';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ParentDetailsPage() {
   const params = useParams();
   const { success, error: toastError } = useToast();
   const { userName } = useRole();
+  const { t } = useLanguage();
   const parentId = params.id as string;
 
   // Active tab state
@@ -879,7 +881,7 @@ export default function ParentDetailsPage() {
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Link href="/parents" className="inline-flex items-center gap-1 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к списку родителей
+          {t('action.back', 'Назад')} {t('parents.title', 'к списку родителей')}
         </Link>
         <span>/</span>
         <span className="text-slate-800 font-semibold">{parent.firstName} {parent.lastName}</span>
@@ -898,24 +900,24 @@ export default function ParentDetailsPage() {
                   {parent.firstName} {parent.lastName}
                 </h1>
                 <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
-                  Канал: {parent.preferredChannel}
+                  {t('hero.preferredChannel', 'Канал')}: {parent.preferredChannel}
                 </span>
 
                 {/* Hero Family Balance Badge */}
                 {familyFinancialSummary.deposit > 0 ? (
                   <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
                     <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                    Депозит: {familyFinancialSummary.formattedDeposit}
+                    {t('parents.familyDeposit', 'Депозит')}: {familyFinancialSummary.formattedDeposit}
                   </span>
                 ) : familyFinancialSummary.debt > 0 ? (
                   <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                     <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-                    Долг: {familyFinancialSummary.formattedDebt}
+                    {t('parents.familyDebt', 'Долг')}: {familyFinancialSummary.formattedDebt}
                   </span>
                 ) : (
                   <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
                     <Clock className="h-3.5 w-3.5 text-amber-600" />
-                    Баланс: 0 € (0 ₽)
+                    {t('hero.balance', 'Баланс')}: 0 € (0 ₽)
                   </span>
                 )}
               </div>
@@ -958,7 +960,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               <CreditCard className="h-3.5 w-3.5" />
-              Добавить платёж
+              {t('action.addPayment', 'Добавить платёж')}
             </button>
             <button
               type="button"
@@ -966,7 +968,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <CheckSquare className="h-3.5 w-3.5 text-purple-600" />
-              Создать задачу
+              {t('action.createTask', 'Создать задачу')}
             </button>
             <button
               type="button"
@@ -974,7 +976,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-              Добавить действие
+              {t('action.addAction', 'Добавить действие')}
             </button>
             <button
               type="button"
@@ -982,7 +984,7 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/70 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
             >
               <Plus className="h-3.5 w-3.5 text-blue-600" />
-              Добавить ребенка
+              {t('parents.addChild', 'Добавить ребенка')}
             </button>
             <button
               type="button"
@@ -990,16 +992,16 @@ export default function ParentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <Edit className="h-3.5 w-3.5 text-blue-600" />
-              Изменить
+              {t('action.edit', 'Изменить')}
             </button>
           </div>
         </div>
 
-        {/* Quick summary strip (identical layout to Student page) */}
+        {/* Quick summary strip */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3 border-t border-slate-100 pt-4 text-xs">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Дети ({parent.children.length}):</span>
+              <span className="text-slate-400">{t('parents.childrenCount', 'Дети')} ({parent.children.length}):</span>
               <button
                 type="button"
                 onClick={() => setIsAddChildModalOpen(true)}
@@ -1007,11 +1009,11 @@ export default function ParentDetailsPage() {
                 title="Добавить ребенка"
               >
                 <Plus className="h-3 w-3" />
-                Добавить
+                {t('common.add', 'Добавить')}
               </button>
             </div>
             {parent.children.length === 0 ? (
-              <p className="font-semibold text-slate-400 mt-0.5">Нет привязанных</p>
+              <p className="font-semibold text-slate-400 mt-0.5">{t('parents.emptyChildren', 'Нет привязанных')}</p>
             ) : (
               <div className="flex flex-wrap gap-1 mt-1">
                 {parent.children.map((ch) => (
@@ -1027,19 +1029,19 @@ export default function ParentDetailsPage() {
             )}
           </div>
           <div>
-            <span className="text-slate-400">Курсы и группы:</span>
+            <span className="text-slate-400">{t('students.colGroup', 'Курсы и группы')}:</span>
             <p className="font-semibold text-slate-800 mt-0.5 truncate">
               {parent.children.map((c) => c.group || c.course).filter(Boolean).join(', ') || 'Онлайн'}
             </p>
           </div>
           <div>
-            <span className="text-slate-400">Открытых задач:</span>
+            <span className="text-slate-400">{t('tasks.filterOpen', 'Открытых задач')}:</span>
             <p className="font-semibold text-purple-600 mt-0.5">
-              {familyTasks.filter((t) => t.status === 'open').length} задач
+              {familyTasks.filter((t) => t.status === 'open').length}
             </p>
           </div>
           <div>
-            <span className="text-slate-400">Предпочтительный канал:</span>
+            <span className="text-slate-400">{t('hero.preferredChannel', 'Предпочтительный канал')}:</span>
             <p className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1">
               {parent.preferredChannel}
             </p>
@@ -1061,7 +1063,7 @@ export default function ParentDetailsPage() {
                 ) : (
                   <Clock className="h-3 w-3 text-amber-600" />
                 )}
-                Баланс семьи:
+                {t('hero.balance', 'Баланс семьи')}:
               </span>
               {familyFinancialSummary.debt > 0 ? (
                 <button
@@ -1076,7 +1078,7 @@ export default function ParentDetailsPage() {
                   }}
                   className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
                 >
-                  Погасить
+                  {t('action.settleDebt', 'Погасить')}
                 </button>
               ) : (
                 <button
@@ -1087,7 +1089,7 @@ export default function ParentDetailsPage() {
                   }}
                   className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
                 >
-                  Пополнить
+                  {t('action.pay', 'Пополнить')}
                 </button>
               )}
             </div>
@@ -1121,7 +1123,7 @@ export default function ParentDetailsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-blue-900">
-                      Следующее занятие ({upcomingLesson.childName}):
+                      {t('hero.nextLessonChildren', 'Следующее занятие')} ({upcomingLesson.childName}):
                     </span>
                     <span className="rounded-md bg-blue-100/90 px-2 py-0.5 text-xs font-bold text-blue-800 border border-blue-200/60">
                       {upcomingLesson.lesson.date} • {upcomingLesson.lesson.startTime} – {upcomingLesson.lesson.endTime}
@@ -1132,17 +1134,17 @@ export default function ParentDetailsPage() {
                   </div>
                   <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {upcomingLesson.lesson.topic && (
-                      <span><strong>Тема:</strong> {upcomingLesson.lesson.topic}</span>
+                      <span><strong>{t('hero.topic', 'Тема')}:</strong> {upcomingLesson.lesson.topic}</span>
                     )}
                     {upcomingLesson.lesson.teacherName && (
-                      <span><strong>Преподаватель:</strong> {upcomingLesson.lesson.teacherName}</span>
+                      <span><strong>{t('hero.teacher', 'Преподаватель')}:</strong> {upcomingLesson.lesson.teacherName}</span>
                     )}
                     {upcomingLesson.lesson.room && (
-                      <span><strong>Место:</strong> {upcomingLesson.lesson.room}</span>
+                      <span><strong>{t('hero.room', 'Место')}:</strong> {upcomingLesson.lesson.room}</span>
                     )}
                     {upcomingLesson.lesson.homework && (
                       <span className="text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200">
-                        <strong>Д/З:</strong> {upcomingLesson.lesson.homework}
+                        <strong>{t('hero.homework', 'Д/З')}:</strong> {upcomingLesson.lesson.homework}
                       </span>
                     )}
                   </div>
@@ -1165,7 +1167,7 @@ export default function ParentDetailsPage() {
                   href={`/calendar/lessons/${upcomingLesson.lesson.id}`}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-2xs"
                 >
-                  Карточка урока →
+                  {t('action.viewCard', 'Карточка урока')} →
                 </Link>
               </div>
             </div>
@@ -1173,14 +1175,14 @@ export default function ParentDetailsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2.5 text-xs text-slate-600">
                 <Calendar className="h-4 w-4 text-slate-400" />
-                <span>Нет запланированных занятий для детей в расписании</span>
+                <span>{t('hero.noLessons', 'Нет запланированных занятий для детей в расписании')}</span>
               </div>
               <Link
                 href="/calendar"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
               >
                 <Calendar className="h-3.5 w-3.5" />
-                Календарь занятий
+                {t('nav.calendar', 'Календарь занятий')}
               </Link>
             </div>
           )}
@@ -1204,14 +1206,14 @@ export default function ParentDetailsPage() {
         );
       })()}
 
-      {/* Tabs navigation (consistent with Student Card) */}
+      {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
-          { key: 'profile', label: 'Профиль и Семья' },
-          { key: 'children', label: `Дети и Обучение (${parent.children.length})` },
-          { key: 'finance', label: `Финансы и Абонементы (${filteredPayments.length})` },
+          { key: 'profile', label: `${t('students.tabFamily', 'Профиль и Семья')}` },
+          { key: 'children', label: `${t('students.tabAcademic', 'Дети и Обучение')} (${parent.children.length})` },
+          { key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')} (${filteredPayments.length})` },
           { key: 'timeline', label: `Timeline (${interactions.length})` },
-          { key: 'tasks', label: `Задачи (${familyTasks.filter((t) => t.status === 'open').length})` },
+          { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${familyTasks.filter((t) => t.status === 'open').length})` },
         ].map((tab) => (
           <button
             key={tab.key}

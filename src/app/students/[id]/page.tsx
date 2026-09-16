@@ -44,6 +44,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
@@ -59,6 +60,7 @@ export default function StudentDetailsPage() {
   const router = useRouter();
   const toast = useToast();
   const { role, userName } = useRole();
+  const { t } = useLanguage();
   const studentId = params.id as string;
 
   const [student, setStudent] = useState<FullStudentData>(() => {
@@ -705,7 +707,7 @@ export default function StudentDetailsPage() {
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Link href="/students" className="inline-flex items-center gap-1 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к списку учеников
+          {t('action.back', 'Назад')} {t('students.title', 'к списку учеников')}
         </Link>
         <span>/</span>
         <span className="text-slate-800 font-semibold">{student.firstName} {student.lastName}</span>
@@ -731,9 +733,9 @@ export default function StudentDetailsPage() {
                     student.status === 'paused' && 'bg-amber-50 text-amber-700 border-amber-200'
                   )}
                 >
-                  {student.status === 'active' && 'Активен'}
-                  {student.status === 'trial' && 'Пробный'}
-                  {student.status === 'paused' && 'На паузе'}
+                  {student.status === 'active' && t('status.active', 'Активен')}
+                  {student.status === 'trial' && t('status.trial', 'Пробный')}
+                  {student.status === 'paused' && t('status.paused', 'На паузе')}
                 </span>
 
                 <span
@@ -747,16 +749,16 @@ export default function StudentDetailsPage() {
                   {student.studentType === 'adult_student' ? (
                     <>
                       <GraduationCap className="h-3 w-3" />
-                      Студент (18+)
+                      {t('students.filterAdult', 'Студент (18+)')}
                     </>
                   ) : (
                     <>
-                      <span>Школьник</span>
+                      <span>{t('students.filterSchool', 'Школьник')}</span>
                     </>
                   )}
                 </span>
 
-                {/* Hero Balance Badge (Shows status only for teachers, full financial balance for admin/owner) */}
+                {/* Hero Balance Badge */}
                 {role === 'teacher' ? (
                   <span
                     className={cn(
@@ -769,17 +771,17 @@ export default function StudentDetailsPage() {
                 ) : studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
                     <Wallet className="h-3 w-3 text-emerald-600" />
-                    Депозит: {finSummary.formattedDeposit}
+                    {t('hero.deposit', 'Депозит')}: {finSummary.formattedDeposit}
                   </span>
                 ) : studentOverdueDebt > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1 shadow-2xs animate-pulse">
                     <AlertTriangle className="h-3 w-3 text-rose-600" />
-                    Долг: {finSummary.formattedDebt}
+                    {t('hero.debt', 'Долг')}: {finSummary.formattedDebt}
                   </span>
                 ) : (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
                     <Clock className="h-3 w-3 text-amber-600" />
-                    Баланс: 0 € (требуется пополнение)
+                    {t('hero.balance', 'Баланс')}: 0 €
                   </span>
                 )}
               </div>
@@ -827,12 +829,12 @@ export default function StudentDetailsPage() {
                 title="Ученик достиг совершеннолетия: перевести на самостоятельное взаимодействие с сохранением данных родителей"
               >
                 <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                Конвертировать в студента (18+)
+                {t('student.convertType', 'Конвертировать в студента (18+)')}
               </button>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50/80 px-3 py-1.5 text-xs font-medium text-purple-700 border border-purple-200/80">
                 <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                Студент (18+)
+                {t('students.filterAdult', 'Студент (18+)')}
               </span>
             )}
             <button
@@ -840,21 +842,21 @@ export default function StudentDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <Edit className="h-3.5 w-3.5 text-blue-600" />
-              Изменить
+              {t('action.edit', 'Изменить')}
             </button>
             <button
               onClick={() => setIsCreateTaskModalOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <CheckSquare className="h-3.5 w-3.5 text-purple-600" />
-              Создать задачу
+              {t('action.createTask', 'Создать задачу')}
             </button>
             <button
               onClick={() => setActiveTab('timeline')}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-              Добавить действие
+              {t('action.addAction', 'Добавить действие')}
             </button>
             {role !== 'teacher' && (
               <button
@@ -862,7 +864,7 @@ export default function StudentDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
               >
                 <CreditCard className="h-3.5 w-3.5" />
-                Добавить платёж
+                {t('action.addPayment', 'Добавить платёж')}
               </button>
             )}
           </div>
@@ -872,7 +874,7 @@ export default function StudentDetailsPage() {
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3 border-t border-slate-100 pt-4 text-xs">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Группы ({student.groups.length}):</span>
+              <span className="text-slate-400">{t('nav.groups', 'Группы')} ({student.groups.length}):</span>
               <button
                 type="button"
                 onClick={() => setIsEnrollGroupModalOpen(true)}
@@ -880,11 +882,11 @@ export default function StudentDetailsPage() {
                 title="Зачислить в группу"
               >
                 <Plus className="h-3 w-3" />
-                Зачислить
+                {t('common.add', 'Зачислить')}
               </button>
             </div>
             {student.groups.length === 0 ? (
-              <p className="font-semibold text-slate-400 mt-0.5">Не зачислен</p>
+              <p className="font-semibold text-slate-400 mt-0.5">{t('group.noStudents', 'Не зачислен')}</p>
             ) : (
               <div className="flex flex-wrap gap-1 mt-1">
                 {student.groups.map((grp) => (
@@ -899,11 +901,11 @@ export default function StudentDetailsPage() {
             )}
           </div>
           <div>
-            <span className="text-slate-400">Посещаемость:</span>
+            <span className="text-slate-400">{t('dashboard.attendance', 'Посещаемость')}:</span>
             <p className="font-semibold text-emerald-600 mt-0.5">{student.attendanceStats.attendanceRate}</p>
           </div>
           <div>
-            <span className="text-slate-400">Абонемент до:</span>
+            <span className="text-slate-400">{t('finance.subscriptionEnd', 'Абонемент до')}:</span>
             <p className="font-semibold text-blue-600 mt-0.5">{student.finance.activeSubscription?.renewalDate || '—'}</p>
           </div>
           <div
@@ -911,7 +913,7 @@ export default function StudentDetailsPage() {
             className="cursor-pointer hover:bg-slate-50/80 p-1 rounded-lg transition-colors group"
             title="Нажмите, чтобы открыть карточку родителя"
           >
-            <span className="text-slate-400">Основной контакт:</span>
+            <span className="text-slate-400">{t('students.colParent', 'Основной контакт')}:</span>
             <p className="font-semibold text-slate-900 group-hover:text-blue-600 mt-0.5 flex items-center gap-1">
               {student.parents[0]?.firstName} ({student.parents[0]?.relationshipType}) ↗
             </p>
@@ -928,7 +930,7 @@ export default function StudentDetailsPage() {
             )}>
               <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-blue-600" />
-                Статус оплаты:
+                {t('students.colBalance', 'Статус оплаты')}:
               </span>
               <p className="font-extrabold text-xs mt-1">
                 <span className={cn('px-2 py-0.5 rounded-md text-[11px] border font-bold inline-block', getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass)}>
@@ -936,7 +938,7 @@ export default function StudentDetailsPage() {
                 </span>
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">
-                {student.status === 'trial' ? 'Пробный урок' : 'Регулярные занятия'}
+                {student.status === 'trial' ? t('status.trial', 'Пробный урок') : t('status.active', 'Регулярные занятия')}
               </p>
             </div>
           ) : (
@@ -955,7 +957,7 @@ export default function StudentDetailsPage() {
                   ) : (
                     <Clock className="h-3 w-3 text-amber-600" />
                   )}
-                  Баланс:
+                  {t('hero.balance', 'Баланс')}:
                 </span>
                 {studentOverdueDebt > 0 ? (
                   <button
@@ -963,7 +965,7 @@ export default function StudentDetailsPage() {
                     onClick={() => setIsPaymentModalOpen(true)}
                     className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
                   >
-                    Погасить
+                    {t('action.settleDebt', 'Погасить')}
                   </button>
                 ) : (
                   <button
@@ -971,7 +973,7 @@ export default function StudentDetailsPage() {
                     onClick={() => setIsPaymentModalOpen(true)}
                     className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
                   >
-                    Пополнить
+                    {t('action.pay', 'Пополнить')}
                   </button>
                 )}
               </div>
@@ -1006,7 +1008,7 @@ export default function StudentDetailsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-blue-900">
-                      Следующее занятие:
+                      {t('hero.nextLesson', 'Следующее занятие')}:
                     </span>
                     <span className="rounded-md bg-blue-100/90 px-2 py-0.5 text-xs font-bold text-blue-800 border border-blue-200/60">
                       {upcomingLesson.date} • {upcomingLesson.startTime} – {upcomingLesson.endTime}
@@ -1017,17 +1019,17 @@ export default function StudentDetailsPage() {
                   </div>
                   <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {upcomingLesson.topic && (
-                      <span><strong>Тема:</strong> {upcomingLesson.topic}</span>
+                      <span><strong>{t('hero.topic', 'Тема')}:</strong> {upcomingLesson.topic}</span>
                     )}
                     {upcomingLesson.teacherName && (
-                      <span><strong>Преподаватель:</strong> {upcomingLesson.teacherName}</span>
+                      <span><strong>{t('hero.teacher', 'Преподаватель')}:</strong> {upcomingLesson.teacherName}</span>
                     )}
                     {upcomingLesson.room && (
-                      <span><strong>Место:</strong> {upcomingLesson.room}</span>
+                      <span><strong>{t('hero.room', 'Место')}:</strong> {upcomingLesson.room}</span>
                     )}
                     {upcomingLesson.homework && (
                       <span className="text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200">
-                        <strong>Д/З:</strong> {upcomingLesson.homework}
+                        <strong>{t('hero.homework', 'Д/З')}:</strong> {upcomingLesson.homework}
                       </span>
                     )}
                   </div>
@@ -1050,7 +1052,7 @@ export default function StudentDetailsPage() {
                   href={`/calendar/lessons/${upcomingLesson.id}`}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-2xs"
                 >
-                  Карточка урока →
+                  {t('action.viewCard', 'Карточка урока')} →
                 </Link>
               </div>
             </div>
@@ -1058,7 +1060,7 @@ export default function StudentDetailsPage() {
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2.5 text-xs text-slate-600">
                 <Calendar className="h-4 w-4 text-slate-400" />
-                <span>Нет запланированных занятий в расписании</span>
+                <span>{t('hero.noLessons', 'Нет запланированных занятий в расписании')}</span>
               </div>
               <button
                 type="button"
@@ -1066,14 +1068,14 @@ export default function StudentDetailsPage() {
                 className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Запланировать занятие
+                {t('action.scheduleLesson', 'Запланировать занятие')}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* UPCOMING PAYMENT DEADLINE ALERT (Раздел 2 ТЗ) */}
+      {/* UPCOMING PAYMENT DEADLINE ALERT */}
       <UpcomingPaymentAlert
         item={getUpcomingPaymentForStudent(student.id)}
         onPaymentRecorded={() => {
@@ -1085,13 +1087,13 @@ export default function StudentDetailsPage() {
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
-          { key: 'profile', label: 'Профиль и Семья' },
-          { key: 'education', label: 'Обучение и Группы' },
-          { key: 'attendance', label: `Посещаемость (${student.attendanceStats.attendanceRate})` },
-          { key: 'teacher_comments', label: `Комментарии учителя (${(student.teacherComments || []).length})` },
-          { key: 'finance', label: 'Финансы и Абонементы' },
+          { key: 'profile', label: `${t('students.tabFamily', 'Профиль и Семья')}` },
+          { key: 'education', label: `${t('students.tabAcademic', 'Обучение и Группы')}` },
+          { key: 'attendance', label: `${t('students.tabAttendance', 'Посещаемость')} (${student.attendanceStats.attendanceRate})` },
+          { key: 'teacher_comments', label: `${t('teacher.teacherComments', 'Комментарии учителя')} (${(student.teacherComments || []).length})` },
+          { key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')}` },
           { key: 'timeline', label: `Timeline (${student.interactions.length})` },
-          { key: 'tasks', label: `Задачи (${student.tasks.filter((t) => t.status === 'open').length})` },
+          { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${student.tasks.filter((t) => t.status === 'open').length})` },
         ].map((tab) => (
           <button
             key={tab.key}

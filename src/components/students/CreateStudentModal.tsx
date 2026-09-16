@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { saveStudentToStorage, settleDebtsFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { qualifyAndConvertLead } from '@/lib/data/leadStorage';
 
 export interface NewStudentData {
   id: string;
@@ -286,8 +287,13 @@ export function CreateStudentModal({
     reconcileAllStudentDepositsAndDebts();
     combinedInteractions.forEach((i) => saveInteractionToStorage(i));
 
+    if (initialData?.sourceLeadId) {
+      qualifyAndConvertLead(initialData.sourceLeadId, newStudentId, parentId);
+    }
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
+      window.dispatchEvent(new CustomEvent('crm-leads-changed'));
       window.dispatchEvent(new CustomEvent('crm-payments-changed'));
     }
 

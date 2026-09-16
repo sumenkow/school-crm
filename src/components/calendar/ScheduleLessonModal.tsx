@@ -9,6 +9,7 @@ import { saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface ScheduleLessonModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function ScheduleLessonModal({
 }: ScheduleLessonModalProps) {
   const toast = useToast();
   const { userName } = useRole();
+  const { t } = useLanguage();
 
   const [groups, setGroups] = useState(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
   const [groupId, setGroupId] = useState(defaultGroupId || '1');
@@ -232,8 +234,8 @@ export function ScheduleLessonModal({
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-white tracking-tight">Запланировать занятие</h2>
-              <p className="text-xs text-blue-100">Создание нового урока с синхронизацией в расписании</p>
+              <h2 className="text-base font-extrabold text-white tracking-tight">{t('modal.scheduleLesson.title', 'Запланировать занятие')}</h2>
+              <p className="text-xs text-blue-100">{t('calendar.subtitle', 'Создание нового урока с синхронизацией в расписании')}</p>
             </div>
           </div>
           <button
@@ -247,7 +249,7 @@ export function ScheduleLessonModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Учебная группа *
+              {t('modal.selectGroup', 'Учебная группа')} *
             </label>
             <select
               value={groupId}
@@ -260,7 +262,7 @@ export function ScheduleLessonModal({
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.courseName || 'Курс'}) • {g.teacherName || 'Преподаватель'}
+                  {g.name} ({g.courseName || t('calendar.filterCourse', 'Курс')}) • {g.teacherName || t('hero.teacher', 'Преподаватель')}
                 </option>
               ))}
             </select>
@@ -268,7 +270,7 @@ export function ScheduleLessonModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Дата *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('modal.lessonDate', 'Дата')} *</label>
               <input
                 type="date"
                 required
@@ -278,7 +280,7 @@ export function ScheduleLessonModal({
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Начало *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.startTime', 'Начало')} *</label>
               <input
                 type="time"
                 required
@@ -288,7 +290,7 @@ export function ScheduleLessonModal({
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">Окончание *</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.endTime', 'Окончание')} *</label>
               <input
                 type="time"
                 required
@@ -301,7 +303,7 @@ export function ScheduleLessonModal({
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Тема занятия
+              {t('hero.topic', 'Тема занятия')}
             </label>
             <input
               type="text"
@@ -314,7 +316,7 @@ export function ScheduleLessonModal({
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Домашнее задание (если задано заранее)
+              {t('hero.homework', 'Домашнее задание')}
             </label>
             <input
               type="text"
@@ -327,7 +329,7 @@ export function ScheduleLessonModal({
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              Аудитория / Локация
+              {t('lesson.roomFormat', 'Аудитория / Локация')}
             </label>
             <input
               type="text"
@@ -347,7 +349,7 @@ export function ScheduleLessonModal({
                 className="h-4 w-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-xs font-bold text-slate-800">
-                🌐 Онлайн-занятие (подключение по видеосвязи)
+                🌐 {t('lesson.onlineRoom', 'Онлайн-занятие (подключение по видеосвязи)')}
               </span>
             </label>
 
@@ -371,7 +373,7 @@ export function ScheduleLessonModal({
                 className="h-4 w-4 rounded-md border-slate-300 text-purple-600 focus:ring-purple-500"
               />
               <span className="text-xs font-bold text-slate-800">
-                🎯 Пробный урок для новых учеников
+                🎯 {t('status.trial', 'Пробный урок для новых учеников')}
               </span>
             </label>
 
@@ -383,7 +385,7 @@ export function ScheduleLessonModal({
                 className="h-4 w-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               <span className="text-xs font-semibold text-slate-700">
-                ✉️ Разослать дату и время родителям (Email / Telegram)
+                ✉️ {t('modal.notifyParents', 'Разослать дату и время родителям (Email / Telegram)')}
               </span>
             </label>
           </div>
@@ -395,7 +397,7 @@ export function ScheduleLessonModal({
               disabled={isSubmitting}
               className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
             >
-              Отмена
+              {t('action.cancel', 'Отмена')}
             </button>
             <button
               type="submit"
@@ -403,7 +405,7 @@ export function ScheduleLessonModal({
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              {isSubmitting ? 'Сохранение...' : 'Запланировать занятие'}
+              {isSubmitting ? t('common.saving', 'Сохранение...') : t('action.scheduleLesson', 'Запланировать занятие')}
             </button>
           </div>
         </form>

@@ -8,9 +8,11 @@ import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, FullGroupData } from '@/lib/data/mockData';
 import { getStoredGroups, saveGroupToStorage } from '@/lib/data/groupStorage';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function GroupsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [groups, setGroups] = useState<FullGroupData[]>(() => {
     return typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
   });
@@ -45,9 +47,9 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Группы школы</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('groups.title', 'Группы школы')}</h1>
           <p className="text-sm text-slate-500">
-            Управление группами, расписанием и автоматический расчет свободных мест (One Source of Truth)
+            {t('groups.subtitle', 'Управление группами, расписанием и расчет свободных мест')}
           </p>
         </div>
         <button
@@ -55,20 +57,20 @@ export default function GroupsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Создать группу
+          {t('groups.createGroup', 'Создать группу')}
         </button>
       </div>
 
       {/* Filter Bar */}
       <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xs text-xs">
         <Filter className="h-3.5 w-3.5 text-slate-400" />
-        <span className="text-slate-500 font-medium">Фильтр по курсу:</span>
+        <span className="text-slate-500 font-medium">{t('groups.filterCourse', 'Фильтр по курсу:')}</span>
         <select
           value={filterCourse}
           onChange={(e) => setFilterCourse(e.target.value)}
           className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          <option value="all">Все курсы</option>
+          <option value="all">{t('groups.allCourses', 'Все курсы')}</option>
           <option value="Английский язык">Английский язык</option>
           <option value="Робототехника">Робототехника</option>
           <option value="Математика">Математика</option>
@@ -104,7 +106,7 @@ export default function GroupsPage() {
                       group.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
                     )}
                   >
-                    {group.status === 'active' ? 'Идут занятия' : 'Набор'}
+                    {group.status === 'active' ? t('status.active', 'Идут занятия') : t('status.trial', 'Набор')}
                   </span>
                 </div>
 
@@ -115,7 +117,7 @@ export default function GroupsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-slate-400" />
-                    <span>Преподаватель: <strong className="text-slate-800">{group.teacherName}</strong></span>
+                    <span>{t('groups.teacher', 'Преподаватель')}: <strong className="text-slate-800">{group.teacherName}</strong></span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Video className="h-4 w-4 text-blue-500" />
@@ -131,13 +133,13 @@ export default function GroupsPage() {
                 <div className="mt-5 rounded-xl bg-slate-50 p-3 border border-slate-100">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-600 font-medium">
-                      Заполненность: <strong className="text-slate-900">{enrolledCount} из {group.capacity}</strong> учеников
+                      {t('groups.capacity', 'Наполняемость')}: <strong className="text-slate-900">{enrolledCount} / {group.capacity}</strong>
                     </span>
                     <span className={cn(
                       'font-bold text-[11px]',
                       freeSpots === 0 ? 'text-rose-600' : freeSpots <= 2 ? 'text-amber-600' : 'text-emerald-600'
                     )}>
-                      {freeSpots === 0 ? 'Группа заполнена' : `Свободно: ${freeSpots} мест`}
+                      {freeSpots === 0 ? t('groups.full', 'Группа заполнена') : `${t('groups.freeSpots', 'Свободно')}: ${freeSpots} ${t('groups.spots', 'мест')}`}
                     </span>
                   </div>
                   <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
@@ -155,7 +157,7 @@ export default function GroupsPage() {
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <span className="text-slate-400">Старт: {group.startDate}</span>
                 <span className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700">
-                  Открыть карточку группы <ArrowRight className="h-3.5 w-3.5" />
+                  {t('action.openProfile', 'Открыть карточку группы')} <ArrowRight className="h-3.5 w-3.5" />
                 </span>
               </div>
             </div>
