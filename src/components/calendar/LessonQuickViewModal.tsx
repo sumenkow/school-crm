@@ -98,6 +98,11 @@ export function LessonQuickViewModal({
                   ? 'Отменён'
                   : 'Запланирован'}
               </span>
+              {(lesson.isTrial || (lesson.trialStudentsCount && lesson.trialStudentsCount > 0) || lesson.students.some((s) => s.isTrial)) && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
+                  🎯 Пробное занятие — {lesson.trialStudentsCount || lesson.students.filter((s) => s.isTrial).length || 1} чел.
+                </span>
+              )}
             </div>
             <h2 className="text-lg font-bold text-slate-900 leading-snug">
               {lesson.groupName}
@@ -211,6 +216,11 @@ export function LessonQuickViewModal({
                         {student.name}
                         <ExternalLink className="w-2.5 h-2.5 opacity-40 hover:opacity-100" />
                       </Link>
+                      {student.isTrial && (
+                        <span className="rounded-full bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[10px] font-bold border border-purple-200">
+                          🎯 Пробник
+                        </span>
+                      )}
                     </div>
 
                     {/* Attendance Status Buttons */}

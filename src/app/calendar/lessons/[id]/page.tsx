@@ -284,6 +284,11 @@ export default function LessonDetailsPage() {
                 {status === 'cancelled' && 'Отменено'}
                 {status === 'rescheduled' && 'Перенесено'}
               </span>
+              {(lesson.isTrial || (lesson.trialStudentsCount && lesson.trialStudentsCount > 0) || lesson.students.some((s) => s.isTrial)) && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">
+                  🎯 Пробное занятие — {lesson.trialStudentsCount || lesson.students.filter((s) => s.isTrial).length || 1} чел.
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-1">
@@ -555,12 +560,19 @@ export default function LessonDetailsPage() {
                     {student.name.split(' ').map((n) => n[0]).join('')}
                   </div>
                   <div>
-                    <Link
-                      href={`/students/${student.id}`}
-                      className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors"
-                    >
-                      {student.name}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/students/${student.id}`}
+                        className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors"
+                      >
+                        {student.name}
+                      </Link>
+                      {student.isTrial && (
+                        <span className="rounded-full bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[10px] font-bold border border-purple-200">
+                          🎯 Пробник
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"

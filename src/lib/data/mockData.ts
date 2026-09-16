@@ -1009,11 +1009,14 @@ export interface FullLessonData {
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   rescheduleInfo?: LessonRescheduleInfo;
   timelineEvents?: LessonTimelineEvent[];
+  isTrial?: boolean;
+  trialStudentsCount?: number;
   students: Array<{
     id: string;
     name: string;
     attendanceStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
     notes?: string;
+    isTrial?: boolean;
   }>;
 }
 
@@ -1112,9 +1115,10 @@ export const INITIAL_LESSONS: FullLessonData[] = [
     topic: 'Основы Arduino: сборка первого механического манипулятора',
     homework: 'Повторить схему подключения сервопривода',
     status: 'completed',
+    trialStudentsCount: 1,
     students: [
       { id: '2', name: 'Мария Кузнецова', attendanceStatus: 'present' },
-      { id: 's15', name: 'Арсений Павлов', attendanceStatus: 'present' },
+      { id: 's15', name: 'Арсений Павлов (Пробное)', attendanceStatus: 'present', isTrial: true },
       { id: 's16', name: 'Глеб Воронов', attendanceStatus: 'present' },
       { id: 's17', name: 'Кирилл Медведев', attendanceStatus: 'present' },
     ],
@@ -1158,7 +1162,9 @@ export const INITIAL_LESSONS: FullLessonData[] = [
     topic: 'Modal verbs of deduction (must / might / can’t)',
     onlineMeetingUrl: 'https://meet.google.com/xyz-uvwx-rst',
     status: 'scheduled',
+    trialStudentsCount: 1,
     students: [
+      { id: 'lead2', name: 'Павлов Артем (Пробное)', attendanceStatus: 'not_marked', isTrial: true },
       { id: '1', name: 'Иван Смирнов', attendanceStatus: 'not_marked' },
       { id: '4', name: 'Сергей Попов', attendanceStatus: 'not_marked' },
       { id: 's5', name: 'Алина Белова', attendanceStatus: 'not_marked' },
@@ -1794,7 +1800,7 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
   },
   {
     id: 'pay6',
-    studentId: '5',
+    studentId: 's18',
     studentName: 'Артём Кузнецов',
     parentId: 'p3',
     parentName: 'Дмитрий Кузнецов',

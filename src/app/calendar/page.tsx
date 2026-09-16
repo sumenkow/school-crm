@@ -241,6 +241,20 @@ export default function CalendarPage() {
                             <p className="mt-1 font-bold text-slate-900 leading-snug">{lesson.groupName.split('(')[0]}</p>
                             <p className="mt-0.5 text-[11px] text-slate-500">{lesson.teacherName}</p>
 
+                            {(() => {
+                              const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
+                              if (trialCount > 0) {
+                                return (
+                                  <div className="mt-1.5 flex items-center gap-1">
+                                    <span className="rounded-md bg-purple-100 text-purple-900 font-bold px-1.5 py-0.5 text-[10px] border border-purple-200 flex items-center gap-1">
+                                      <span>🎯 Пробное занятие — {trialCount} {trialCount === 1 ? 'человек' : trialCount < 5 ? 'человека' : 'человек'}</span>
+                                    </span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+
                             <div className="mt-2 flex items-center justify-between border-t border-slate-200/50 pt-1.5 text-[10px] text-slate-500">
                               <span>{lesson.room}</span>
                               <span className="font-semibold text-slate-700">
@@ -327,8 +341,21 @@ export default function CalendarPage() {
                         <span className="text-[10px] font-normal text-blue-600">{lesson.endTime}</span>
                       </div>
                       <div>
-                        <h3 className="font-bold text-slate-900 text-sm">{lesson.groupName}</h3>
-                        <p className="text-xs text-slate-500">{lesson.teacherName} • {lesson.room}</p>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-slate-900 text-sm">{lesson.groupName}</h3>
+                          {(() => {
+                            const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
+                            if (trialCount > 0) {
+                              return (
+                                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">
+                                  🎯 Пробное занятие — {trialCount} {trialCount === 1 ? 'человек' : trialCount < 5 ? 'человека' : 'человек'}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{lesson.teacherName} • {lesson.room}</p>
                         <p className="text-xs text-blue-600 font-medium mt-0.5">Тема: {lesson.topic}</p>
                       </div>
                     </div>

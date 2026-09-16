@@ -122,15 +122,51 @@ function SmartActionHub() {
     return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
   });
 
+  const [leads, setLeads] = useState<FullLeadData[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const parsed: FullLeadData[] = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const parsedIds = new Set(parsed.map((l) => l.id));
+            return [...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))];
+          }
+        }
+      } catch {}
+    }
+    return INITIAL_LEADS;
+  });
+
   useEffect(() => {
     const sync = () => {
       setPayments(getStoredPayments());
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('crm_leads_v2');
+          if (stored) {
+            const parsed: FullLeadData[] = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const parsedIds = new Set(parsed.map((l) => l.id));
+              setLeads([...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))]);
+              return;
+            }
+          }
+        } catch {}
+      }
+      setLeads([...INITIAL_LEADS]);
     };
     sync();
     window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('crm-leads-changed', sync);
+    window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('crm-names-synced', sync);
     window.addEventListener('focus', sync);
     return () => {
       window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('crm-leads-changed', sync);
+      window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('crm-names-synced', sync);
       window.removeEventListener('focus', sync);
     };
   }, []);
@@ -151,7 +187,7 @@ function SmartActionHub() {
         phone: '+79992345678',
         waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
         profileUrl: `/students/${firstOverdue.studentId}`,
-        actionLabel: 'Открыть карточку ученика',
+        actionLabel: `Открыть карточку ученика (${firstOverdue.studentName})`,
         description: 'Истек срок действия абонемента. Занятия посещаются регулярно, требуется согласовать оплату нового периода.',
       }
     : {
@@ -169,6 +205,47 @@ function SmartActionHub() {
         actionLabel: 'В раздел финансов',
         description: 'У всех учащихся на текущий момент отсутствуют просроченные платежи.',
       };
+
+  const activeAttentionLead = leads.find((l) => l.status === 'new' || l.status === 'trial_held' || l.status === 'thinking') || leads[0];
+
+  const leadTask = activeAttentionLead
+    ? {
+        id: `task_lead_${activeAttentionLead.id}`,
+        type: 'lead',
+        badge: activeAttentionLead.status === 'new' ? 'Новый лид (> 2ч)' : activeAttentionLead.status === 'trial_held' ? 'Завис после пробного' : 'Думают / Счёт',
+        badgeColor: 'bg-amber-50 text-amber-700 border border-amber-200',
+        title: activeAttentionLead.name,
+        deadline: activeAttentionLead.nextActionDate || 'Сегодня, до 15:00',
+        subtitle: activeAttentionLead.studentName
+          ? `Ребенок: ${activeAttentionLead.studentName} (${activeAttentionLead.directionOrCourse || 'Курс'})`
+          : (activeAttentionLead.directionOrCourse || 'Заявка на обучение'),
+        highlight: activeAttentionLead.status === 'new'
+          ? 'Ждет звонка для записи на пробное'
+          : activeAttentionLead.status === 'trial_held'
+          ? 'Пробный урок проведен • Ждет решения'
+          : 'Выставлен счет • Требуется дожим',
+        phone: activeAttentionLead.contact,
+        waUrl: activeAttentionLead.contact ? `https://wa.me/${activeAttentionLead.contact.replace(/\D/g, '')}?text=${encodeURIComponent(`Здравствуйте, ${activeAttentionLead.name}!`)}` : undefined,
+        profileUrl: `/crm/leads/${activeAttentionLead.id}`,
+        actionLabel: `Открыть карточку лида (${activeAttentionLead.name})`,
+        description: activeAttentionLead.comment || 'Заявка на обучение. Требуется связаться с клиентом для согласования следующего шага.',
+      }
+    : {
+        id: 'task_lead_default',
+        type: 'lead',
+        badge: 'Воронка в норме',
+        badgeColor: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        title: 'Новых заявок нет',
+        deadline: 'Порядок',
+        subtitle: 'Все лиды обработаны',
+        highlight: 'Воронка под контролем',
+        profileUrl: '/crm',
+        actionLabel: 'В раздел CRM',
+        description: 'Все входящие обращения оперативно обработаны менеджерами.',
+      };
+
+  const trialLessons = INITIAL_LESSONS.filter((l) => (l.trialStudentsCount && l.trialStudentsCount > 0) || l.students.some((s) => s.isTrial));
+  const totalTrialCount = trialLessons.reduce((sum, l) => sum + (l.trialStudentsCount || l.students.filter((s) => s.isTrial).length || 1), 0);
 
   interface UrgentActionTask {
     id: string;
@@ -188,36 +265,23 @@ function SmartActionHub() {
 
   const tasks: UrgentActionTask[] = [
     debtTask,
-    {
-      id: 'task_lead_1',
-      type: 'lead',
-      badge: 'Новый лид (> 2ч)',
-      badgeColor: 'bg-amber-50 text-amber-700 border border-amber-200',
-      title: 'Смирнова Ольга',
-      deadline: 'Сегодня, до 15:00',
-      subtitle: 'Ребенок: Анна (Kids English A1)',
-      highlight: 'Ждет звонка для записи на пробное',
-      phone: '+79991234567',
-      profileUrl: '/crm/leads/lead1',
-      actionLabel: 'Открыть карточку лида в CRM',
-      description: 'Заявка с сайта школы на курс английского для начинающих. Нужен звонок-квалификация и подбор слота на пробное занятие.',
-    },
+    leadTask,
     {
       id: 'task_trials_1',
       type: 'trial',
       badge: 'Пробные уроки',
       badgeColor: 'bg-purple-50 text-purple-700 border border-purple-200',
-      title: '2 пробных занятия сегодня',
+      title: `Пробные занятия сегодня (${totalTrialCount} чел.)`,
       deadline: 'Сегодня (15:00 и 18:45)',
       subtitle: '15:00 Робототехника • 18:45 Английский',
-      highlight: 'Денис С., Мария И.',
+      highlight: 'Арсений П., Артем П. (в расписании)',
       profileUrl: '/calendar',
-      actionLabel: 'Открыть в расписании школы',
-      description: 'Сегодня проводятся 2 пробных занятия с новыми учениками. Преподаватели предупреждены, материалы подготовлены.',
+      actionLabel: 'Открыть расписание на неделю',
+      description: 'Сегодня проводятся пробные занятия с новыми учениками. Преподаватели предупреждены, материалы подготовлены.',
     },
   ];
 
-  const urgentActionsCount = (firstOverdue ? 1 : 0) + 2;
+  const urgentActionsCount = (firstOverdue ? 1 : 0) + (activeAttentionLead ? 1 : 0) + 1;
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 p-5 shadow-xs space-y-3">
@@ -316,15 +380,49 @@ function OwnerDashboard({
     return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
   });
 
+  const [leads, setLeads] = useState<FullLeadData[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const parsed: FullLeadData[] = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const parsedIds = new Set(parsed.map((l) => l.id));
+            return [...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))];
+          }
+        }
+      } catch {}
+    }
+    return INITIAL_LEADS;
+  });
+
   useEffect(() => {
     const sync = () => {
       setAllPayments(getStoredPayments());
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('crm_leads_v2');
+          if (stored) {
+            const parsed: FullLeadData[] = JSON.parse(stored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const parsedIds = new Set(parsed.map((l) => l.id));
+              setLeads([...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))]);
+              return;
+            }
+          }
+        } catch {}
+      }
+      setLeads([...INITIAL_LEADS]);
     };
     sync();
     window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('crm-leads-changed', sync);
+    window.addEventListener('crm-students-changed', sync);
     window.addEventListener('focus', sync);
     return () => {
       window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('crm-leads-changed', sync);
+      window.removeEventListener('crm-students-changed', sync);
       window.removeEventListener('focus', sync);
     };
   }, []);
@@ -335,6 +433,7 @@ function OwnerDashboard({
   const overduePayments = allPayments.filter((p: FullPaymentData) => p.status === 'overdue');
   const overdueTotals = calculateMultiCurrencyTotals(overduePayments, rate);
   const overdueStudentsCount = new Set(overduePayments.map((p: FullPaymentData) => p.studentId)).size;
+  const stuckLeadsCount = leads.filter((l) => l.status === 'trial_held' || l.status === 'thinking').length;
 
   // Dynamic actual revenue (Фактическая выручка)
   const paidPayments = allPayments.filter((p) => p.status === 'paid' && p.amount > 0);
@@ -461,10 +560,14 @@ function OwnerDashboard({
               {overdueStudentsCount === 0 ? 'Все счета оплачены ✓' : `≈ ${overdueTotals.formattedTotalRub} →`}
             </span>
           </Link>
-          <Link href="/crm?filter=thinking" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
+          <Link href="/crm?filter=stuck_trial" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
             <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Зависли после пробного</p>
-            <p className="md-title-medium" style={{ color: 'var(--md-on-surface)', marginTop: '2px' }}>4 лида</p>
-            <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>Открыть воронку →</span>
+            <p className="md-title-medium" style={{ color: 'var(--md-warning)', marginTop: '2px' }}>
+              {stuckLeadsCount === 0 ? 'Нет зависших' : `${stuckLeadsCount} ${stuckLeadsCount === 1 ? 'лид' : stuckLeadsCount < 5 ? 'лида' : 'лидов'} • Риск потери`}
+            </p>
+            <span className="md-body-small" style={{ color: 'var(--md-primary)' }}>
+              {stuckLeadsCount === 0 ? 'Все обработаны ✓' : 'Открыть воронку (зависшие) →'}
+            </span>
           </Link>
           <Link href="/students?filter=absences" className="md-card-elevated" style={{ padding: '12px 16px', textDecoration: 'none' }}>
             <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Риск оттока (3+ пропуска)</p>
