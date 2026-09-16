@@ -6,6 +6,91 @@ import { getStoredStudents } from './studentStorage';
 const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
 
 /**
+ * Parses interaction date and time into a precise Unix timestamp (in milliseconds)
+ * to ensure strict chronological sorting (newest on top, oldest at the bottom).
+ */
+export function parseInteractionTimestamp(item: TimelineInteraction): number {
+  if (!item) return 0;
+
+  // 1. Check if ID embeds a Unix millisecond timestamp (e.g., int_1726485000000, int_deduct_1726485000000)
+  const idMatch = (item.id || '').match(/(\d{10,13})/);
+  const idTimestamp = idMatch ? parseInt(idMatch[1], 10) : null;
+  const idTimeMs = idTimestamp ? (idTimestamp < 10000000000 ? idTimestamp * 1000 : idTimestamp) : null;
+
+  // 2. Check explicit ISO/date fields if present
+  const explicitDate = (item as any).created_at || (item as any).date;
+  if (explicitDate && !isNaN(new Date(explicitDate).getTime())) {
+    return new Date(explicitDate).getTime();
+  }
+
+  const str = (item.occurredAt || '').trim();
+
+  // If "Только что", prefer the ID timestamp if created recently, otherwise current time
+  if (!str || str.toLowerCase().includes('только что') || str.toLowerCase().includes('just now')) {
+    return idTimeMs || Date.now();
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDate = now.getDate();
+
+  // Handle "Сегодня, HH:mm"
+  if (str.toLowerCase().startsWith('сегодня') || str.toLowerCase().startsWith('today')) {
+    const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
+    const hours = timeMatch ? parseInt(timeMatch[1], 10) : now.getHours();
+    const minutes = timeMatch ? parseInt(timeMatch[2], 10) : now.getMinutes();
+    const d = new Date(currentYear, currentMonth, currentDate, hours, minutes, 0, 0);
+    return d.getTime();
+  }
+
+  // Handle "Вчера, HH:mm"
+  if (str.toLowerCase().startsWith('вчера') || str.toLowerCase().startsWith('yesterday')) {
+    const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
+    const hours = timeMatch ? parseInt(timeMatch[1], 10) : 12;
+    const minutes = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+    const d = new Date(currentYear, currentMonth, currentDate - 1, hours, minutes, 0, 0);
+    return d.getTime();
+  }
+
+  // Handle "DD.MM.YYYY, HH:mm" or "DD.MM.YYYY" or "YYYY-MM-DD"
+  const ddmmyyyyMatch = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:,\s*(\d{1,2}):(\d{2}))?/);
+  if (ddmmyyyyMatch) {
+    const day = parseInt(ddmmyyyyMatch[1], 10);
+    const month = parseInt(ddmmyyyyMatch[2], 10) - 1;
+    const year = parseInt(ddmmyyyyMatch[3], 10);
+    const hours = ddmmyyyyMatch[4] ? parseInt(ddmmyyyyMatch[4], 10) : 12;
+    const minutes = ddmmyyyyMatch[5] ? parseInt(ddmmyyyyMatch[5], 10) : 0;
+    const d = new Date(year, month, day, hours, minutes, 0, 0);
+    return d.getTime();
+  }
+
+  // Fallback to Date.parse
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    return parsed;
+  }
+
+  // Fallback to id timestamp or 0
+  return idTimeMs || 0;
+}
+
+/**
+ * Sorts interactions in strictly chronological descending order (newest first, oldest last).
+ */
+export function sortTimelineChronologicalDesc(interactions: TimelineInteraction[]): TimelineInteraction[] {
+  return [...interactions].sort((a, b) => {
+    const timeA = parseInteractionTimestamp(a);
+    const timeB = parseInteractionTimestamp(b);
+    if (timeB !== timeA) {
+      return timeB - timeA;
+    }
+    // Tiebreaker by ID
+    return (b.id || '').localeCompare(a.id || '');
+  });
+}
+
+/**
  * Reads custom stored interactions from localStorage.
  */
 export function getStoredInteractions(): TimelineInteraction[] {
@@ -36,7 +121,7 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
       if (idx !== -1) {
         const studentInteractions = INITIAL_STUDENTS[idx].interactions || [];
         if (!studentInteractions.some((i) => i.id === item.id)) {
-          INITIAL_STUDENTS[idx].interactions = [item, ...studentInteractions];
+          INITIAL_STUDENTS[idx].interactions = sortTimelineChronologicalDesc([item, ...studentInteractions]);
         }
       }
     }
@@ -53,7 +138,7 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
           type: (item.type as any) || 'comment',
           title: (item as any).title || item.content?.slice(0, 50) || 'Заметка',
           description: item.content || (item as any).description || null,
-          created_at: item.occurredAt || (item as any).date || new Date().toISOString(),
+          created_at: (item as any).created_at || (item as any).date || new Date().toISOString(),
           is_mock_data: false,
         }).then(() => {}, () => {});
       } catch {}
@@ -67,7 +152,7 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
 }
 
 /**
- * Retrieves full unified timeline for a lead.
+ * Retrieves full unified timeline for a lead, sorted newest on top.
  */
 export function getCombinedLeadTimeline(
   leadId: string,
@@ -88,13 +173,11 @@ export function getCombinedLeadTimeline(
     }
   });
 
-  return Array.from(map.values()).sort((a, b) => {
-    return (b.id || '').localeCompare(a.id || '');
-  });
+  return sortTimelineChronologicalDesc(Array.from(map.values()));
 }
 
 /**
- * Retrieves full unified timeline for a student.
+ * Retrieves full unified timeline for a student, sorted newest on top.
  * Includes direct student interactions PLUS interactions with any of the student's parents.
  */
 export function getCombinedStudentTimeline(
@@ -103,8 +186,6 @@ export function getCombinedStudentTimeline(
   parentIds: string[] = []
 ): TimelineInteraction[] {
   const stored = getStoredInteractions();
-  
-  // Combine stored interactions + baseInteractions
   const map = new Map<string, TimelineInteraction>();
   
   // Base interactions
@@ -135,11 +216,11 @@ export function getCombinedStudentTimeline(
     }
   });
 
-  return Array.from(map.values());
+  return sortTimelineChronologicalDesc(Array.from(map.values()));
 }
 
 /**
- * Retrieves full unified timeline for a parent.
+ * Retrieves full unified timeline for a parent, sorted newest on top.
  * Includes direct parent interactions PLUS interactions with all of the parent's children.
  */
 export function getCombinedParentTimeline(
@@ -176,7 +257,7 @@ export function getCombinedParentTimeline(
     }
   });
 
-  return Array.from(map.values());
+  return sortTimelineChronologicalDesc(Array.from(map.values()));
 }
 
 export interface InteractionTargetInfo {

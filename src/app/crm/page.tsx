@@ -41,23 +41,42 @@ export default function CrmPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const kanbanRef = useRef<HTMLDivElement>(null);
 
-  // Sync leads from localStorage
+  // Sync leads from localStorage and in-memory stores
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('crm_leads_v2');
-        if (stored) {
-          const storedLeads: FullLeadData[] = JSON.parse(stored);
-          if (Array.isArray(storedLeads) && storedLeads.length > 0) {
-            const storedIds = new Set(storedLeads.map((l) => l.id));
-            const merged = [...storedLeads, ...INITIAL_LEADS.filter((l) => !storedIds.has(l.id))];
-            setLeads(merged);
+    const syncLeads = () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('crm_leads_v2');
+          if (stored) {
+            const storedLeads: FullLeadData[] = JSON.parse(stored);
+            if (Array.isArray(storedLeads) && storedLeads.length > 0) {
+              const storedIds = new Set(storedLeads.map((l) => l.id));
+              const merged = [...storedLeads, ...INITIAL_LEADS.filter((l) => !storedIds.has(l.id))];
+              setLeads(merged);
+              return;
+            }
           }
+          setLeads([...INITIAL_LEADS]);
+        } catch (e) {
+          console.error('Failed to parse leads from localStorage', e);
+          setLeads([...INITIAL_LEADS]);
         }
-      } catch (e) {
-        console.error('Failed to parse leads from localStorage', e);
       }
-    }
+    };
+
+    syncLeads();
+
+    window.addEventListener('crm-leads-changed', syncLeads);
+    window.addEventListener('crm-students-changed', syncLeads);
+    window.addEventListener('crm-names-synced', syncLeads);
+    window.addEventListener('focus', syncLeads);
+
+    return () => {
+      window.removeEventListener('crm-leads-changed', syncLeads);
+      window.removeEventListener('crm-students-changed', syncLeads);
+      window.removeEventListener('crm-names-synced', syncLeads);
+      window.removeEventListener('focus', syncLeads);
+    };
   }, []);
 
   const scrollKanban = (direction: 'left' | 'right') => {

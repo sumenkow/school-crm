@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
-import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
+import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo, sortTimelineChronologicalDesc } from '@/lib/data/timelineStorage';
+import { syncParentNameCascade } from '@/lib/data/nameCascadeSync';
 import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { useRole } from '@/context/RoleContext';
 import {
@@ -616,6 +617,16 @@ export default function ParentDetailsPage() {
         }
         saveStudentToStorage(student);
       }
+    });
+
+    // Cascade parent name to payments, tasks, timeline, leads
+    syncParentNameCascade(parent.id, {
+      firstName: editForm.firstName.trim() || parent.firstName,
+      lastName: editForm.lastName.trim() || parent.lastName,
+      phone: editForm.phone.trim() || parent.phone,
+      email: editForm.email.trim() || parent.email,
+      telegram: editForm.telegram.trim() || parent.telegram,
+      whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
     });
 
     window.dispatchEvent(new CustomEvent('crm-students-changed'));
@@ -1390,7 +1401,7 @@ export default function ParentDetailsPage() {
         </form>
 
         <div className="space-y-3 pt-2">
-          {interactions.map((int) => {
+          {sortTimelineChronologicalDesc(interactions).map((int) => {
             const target = getInteractionTargetInfo(int, undefined, parent);
             const isParentAction = target.role === 'parent';
 

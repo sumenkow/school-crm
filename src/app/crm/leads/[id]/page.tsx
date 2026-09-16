@@ -34,7 +34,8 @@ import { FullLeadData, INITIAL_LEADS, TimelineInteraction, INITIAL_STUDENTS, Ful
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getTasksForLead, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
-import { getCombinedLeadTimeline } from '@/lib/data/timelineStorage';
+import { getCombinedLeadTimeline, sortTimelineChronologicalDesc } from '@/lib/data/timelineStorage';
+import { syncLeadNameCascade } from '@/lib/data/nameCascadeSync';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
@@ -222,6 +223,12 @@ export default function LeadDetailsPage() {
     } catch (err) {
       console.error(err);
     }
+
+    // Cascade name changes across cards, student, parent, tasks, timeline, payments
+    syncLeadNameCascade(lead.id, {
+      contactName: effectiveName,
+      studentName: effectiveStudentName,
+    });
 
     toast.success('Данные лида успешно обновлены!');
     setIsEditModalOpen(false);
@@ -1400,7 +1407,7 @@ export default function LeadDetailsPage() {
 
         {/* Timeline Records */}
         <div className="space-y-3 pt-2">
-          {lead.interactions.map((int) => {
+          {sortTimelineChronologicalDesc(lead.interactions).map((int) => {
             if (int.type === 'status_change') {
               return (
                 <div

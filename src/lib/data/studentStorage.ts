@@ -1,8 +1,9 @@
 'use client';
 
 import { FullStudentData, INITIAL_STUDENTS, TimelineInteraction } from './mockData';
-import { saveInteractionToStorage } from './timelineStorage';
+import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timelineStorage';
 import { savePaymentToStorage } from './paymentStorage';
+import { syncStudentNameCascade, syncParentNameCascade } from './nameCascadeSync';
 
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
@@ -130,7 +131,31 @@ export function saveStudentToStorage(student: FullStudentData): void {
     INITIAL_STUDENTS.unshift(studentToSave);
   }
 
-  // 2. Direct Supabase Cloud DB write
+  // 2. Cascade student name update across payments, groups, tasks, timeline, leads
+  if (studentToSave.firstName || studentToSave.lastName) {
+    syncStudentNameCascade(studentToSave.id, {
+      firstName: studentToSave.firstName,
+      lastName: studentToSave.lastName,
+    });
+  }
+
+  // 3. Cascade parent names if updated
+  if (studentToSave.parents && studentToSave.parents.length > 0) {
+    studentToSave.parents.forEach((p) => {
+      if (p.id) {
+        syncParentNameCascade(p.id, {
+          firstName: p.firstName,
+          lastName: p.lastName,
+          phone: p.phone,
+          email: p.email,
+          telegram: p.telegram,
+          whatsapp: p.whatsapp,
+        });
+      }
+    });
+  }
+
+  // 4. Direct Supabase Cloud DB write
   if (typeof window !== 'undefined') {
     try {
       import('@/lib/supabase/client').then(({ createClient }) => {
