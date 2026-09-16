@@ -42,53 +42,73 @@ export function getStoredStudents(): FullStudentData[] {
   }
 }
 
-import { savePaymentToStorage } from './paymentStorage';
+/**
+ * Loads all students directly from Supabase cloud database and merges with in-memory state.
+ */
+export async function fetchStudentsFromSupabase(): Promise<FullStudentData[]> {
+  try {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    const { data: dbStudents, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && dbStudents && dbStudents.length > 0) {
+      for (const dbStudent of dbStudents) {
+        const existingIdx = INITIAL_STUDENTS.findIndex((s) => s.id === dbStudent.id);
+        const mappedStudent: Partial<FullStudentData> = {
+          id: dbStudent.id,
+          firstName: dbStudent.first_name,
+          lastName: dbStudent.last_name,
+          birthDate: dbStudent.birth_date ? new Date(dbStudent.birth_date).toLocaleDateString('ru-RU') : undefined,
+          phone: dbStudent.phone || undefined,
+          telegram: dbStudent.telegram || undefined,
+          status: (dbStudent.status as any) || 'active',
+          notes: dbStudent.notes || undefined,
+        };
+
+        if (existingIdx !== -1) {
+          INITIAL_STUDENTS[existingIdx] = { ...INITIAL_STUDENTS[existingIdx], ...mappedStudent };
+        } else {
+          INITIAL_STUDENTS.unshift({
+            id: dbStudent.id,
+            firstName: dbStudent.first_name,
+            lastName: dbStudent.last_name,
+            birthDate: dbStudent.birth_date ? new Date(dbStudent.birth_date).toLocaleDateString('ru-RU') : undefined,
+            grade: '1 класс',
+            phone: dbStudent.phone || undefined,
+            telegram: dbStudent.telegram || undefined,
+            status: (dbStudent.status as any) || 'active',
+            studentType: 'school_student',
+            notes: dbStudent.notes || undefined,
+            parents: [],
+            groups: [],
+            attendanceStats: { totalLessons: 0, attended: 0, missed: 0, excused: 0, attendanceRate: '100%' },
+            finance: { activeSubscription: null, deposit: { balance: 0, balanceFormatted: '0 ₽', currency: 'RUB', pricePerLesson: 1050, pricePerLessonFormatted: '1 050 ₽' }, payments: [] },
+            interactions: [],
+            comments: [],
+            tasks: [],
+            documents: [],
+            createdAt: dbStudent.created_at || new Date().toISOString(),
+            updatedAt: dbStudent.updated_at || new Date().toISOString(),
+          } as FullStudentData);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase students fetch warning:', err);
+  }
+
+  return getStoredStudents();
+}
 
 /**
- * Persists student data to localStorage and syncs in-memory INITIAL_STUDENTS.
+ * Persists student data to Supabase cloud database and in-memory store.
  * Dispatches a custom window event 'crm-students-changed' so all views sync in real time.
- * Safely preserves latest payments and deposit balances against accidental stale overwrites.
  */
 export function saveStudentToStorage(student: FullStudentData): void {
   let studentToSave = student;
-
-  // Safeguard: merge with stored version so payments/deposit are never wiped by a stale ref
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);
-      if (raw) {
-        const stored: FullStudentData[] = JSON.parse(raw);
-        const existing = stored.find((s) => s.id === student.id);
-        if (existing) {
-          const incomingPayments = student.finance?.payments || [];
-          const existingPayments = existing.finance?.payments || [];
-          const payMap = new Map();
-          for (const p of [...incomingPayments, ...existingPayments]) {
-            if (!payMap.has(p.id)) payMap.set(p.id, p);
-          }
-          const mergedPayments = Array.from(payMap.values());
-
-          const incomingDeposit = student.finance?.deposit;
-          const existingDeposit = existing.finance?.deposit;
-          let mergedDeposit = incomingDeposit;
-          if (!incomingDeposit && existingDeposit) {
-            mergedDeposit = existingDeposit;
-          }
-
-          studentToSave = {
-            ...student,
-            finance: {
-              ...student.finance,
-              payments: mergedPayments,
-              deposit: mergedDeposit || student.finance?.deposit,
-            },
-          };
-        }
-      }
-    } catch (e) {
-      // Ignore parse error, proceed with student
-    }
-  }
 
   // 1. Update in-memory INITIAL_STUDENTS
   const idx = INITIAL_STUDENTS.findIndex((s) => s.id === studentToSave.id);
@@ -98,41 +118,45 @@ export function saveStudentToStorage(student: FullStudentData): void {
     INITIAL_STUDENTS.unshift(studentToSave);
   }
 
-  // 2. Persist to localStorage
+  // 2. Direct Supabase Cloud DB write
   if (typeof window !== 'undefined') {
     try {
-      const all = getStoredStudents();
-      const existingIdx = all.findIndex((s) => s.id === studentToSave.id);
-      let updated: FullStudentData[];
-      if (existingIdx !== -1) {
-        updated = all.map((s) => (s.id === studentToSave.id ? studentToSave : s));
-      } else {
-        updated = [studentToSave, ...all];
-      }
-      localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(updated));
-
-      // Notify other views
-      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
-
-      // 3. Supabase dual-write (fire-and-forget)
       import('@/lib/supabase/client').then(({ createClient }) => {
         try {
           const supabase = createClient();
           const firstName = studentToSave.firstName || (studentToSave as any).name?.split(' ')[0] || '';
           const lastName = studentToSave.lastName || (studentToSave as any).name?.split(' ').slice(1).join(' ') || '';
           
+          let birthDateIso: string | null = null;
+          if (studentToSave.birthDate) {
+            try {
+              if (studentToSave.birthDate.includes('.')) {
+                birthDateIso = new Date(studentToSave.birthDate.split('.').reverse().join('-')).toISOString().slice(0, 10);
+              } else {
+                birthDateIso = new Date(studentToSave.birthDate).toISOString().slice(0, 10);
+              }
+            } catch {}
+          }
+
           supabase.from('students').upsert({
             id: studentToSave.id,
             first_name: firstName,
             last_name: lastName,
+            birth_date: birthDateIso,
+            phone: studentToSave.phone || null,
+            telegram: studentToSave.telegram || null,
             status: (studentToSave.status as any) || 'active',
-            student_type: 'school_student',
             notes: studentToSave.notes || (studentToSave as any).comment || null,
+            updated_at: new Date().toISOString(),
             is_mock_data: false,
-          }).then(() => {}, () => {});
-        } catch {}
+          }).then(() => {}, (err) => console.warn('Supabase student upsert error:', err));
+        } catch (e) {
+          console.warn('Supabase client error:', e);
+        }
       }).catch(() => {});
 
+      // Notify other views
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
     } catch (err) {
       console.error('Failed to save student to storage:', err);
     }

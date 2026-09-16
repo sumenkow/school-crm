@@ -71,54 +71,45 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
 }
 
 /**
- * Saves a task to localStorage (sync) and Supabase (fire-and-forget async)
+ * Saves a task directly to Supabase cloud database and updates in-memory cache.
  * Dispatches crm-tasks-changed event.
  */
 export function saveTaskToStorage(task: FullTaskData): void {
-  if (typeof window === 'undefined') return;
+  // 1. In-memory update
+  const existingIndex = INITIAL_TASKS.findIndex(t => t.id === task.id);
+  if (existingIndex >= 0) {
+    INITIAL_TASKS[existingIndex] = task;
+  } else {
+    INITIAL_TASKS.unshift(task);
+  }
 
-  // 1. Save to LocalStorage
-  try {
-    const saved = localStorage.getItem(TASKS_STORAGE_KEY);
-    let tasks: FullTaskData[] = saved ? JSON.parse(saved) : [];
-    
-    const existingIndex = tasks.findIndex(t => t.id === task.id);
-    if (existingIndex >= 0) {
-      tasks[existingIndex] = task;
-    } else {
-      tasks = [task, ...tasks];
+  // 2. Direct write to Supabase
+  if (typeof window !== 'undefined') {
+    try {
+      const supabase = createClient();
+      supabase.from('tasks').upsert({
+        id: task.id,
+        title: task.title,
+        task_type: task.taskType || 'other',
+        student_id: task.studentId || null,
+        parent_id: task.parentId || null,
+        lead_id: task.leadId || null,
+        due_date: task.dueDate || new Date().toISOString().slice(0, 10),
+        status: task.status,
+        priority: task.priority,
+        description: task.description || null,
+        assigned_to: task.assignedTo || null,
+        is_mock_data: false,
+      }).then(({ error }) => {
+        if (error) console.error('Error upserting task to Supabase:', error);
+      });
+    } catch (e) {
+      console.error('Error initializing Supabase client for task write:', e);
     }
-    
-    localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-  } catch (e) {
-    console.error('Error saving task to localStorage:', e);
-  }
 
-  // 2. Dual-write to Supabase (fire and forget)
-  try {
-    const supabase = createClient();
-    supabase.from('tasks').upsert({
-      id: task.id,
-      title: task.title,
-      task_type: task.taskType || 'other',
-      student_id: task.studentId || null,
-      parent_id: task.parentId || null,
-      lead_id: task.leadId || null,
-      due_date: task.dueDate || new Date().toISOString().slice(0, 10),
-      status: task.status,
-      priority: task.priority,
-      description: task.description || null,
-      assigned_to: task.assignedTo || null,
-      is_mock_data: false,
-    }).then(({ error }) => {
-      if (error) console.error('Error upserting task to Supabase:', error);
-    });
-  } catch (e) {
-    console.error('Error initializing Supabase client for task dual-write:', e);
+    // 3. Dispatch global event for immediate reactive updates in UI
+    try {
+      window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: task }));
+    } catch (e) {}
   }
-
-  // 3. Dispatch global event for immediate reactive updates in UI
-  try {
-    window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: task }));
-  } catch (e) {}
 }

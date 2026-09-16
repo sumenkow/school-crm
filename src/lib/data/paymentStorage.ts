@@ -42,8 +42,54 @@ export function getStoredPayments(): FullPaymentData[] {
 }
 
 /**
- * Persists payment to localStorage, syncs in-memory INITIAL_PAYMENTS,
- * and dispatches 'crm-payments-changed' event.
+ * Loads all payments from Supabase cloud database and merges with in-memory state.
+ */
+export async function fetchPaymentsFromSupabase(): Promise<FullPaymentData[]> {
+  try {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    const { data: dbPayments, error } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && dbPayments && dbPayments.length > 0) {
+      for (const p of dbPayments) {
+        const existingIdx = INITIAL_PAYMENTS.findIndex((ip) => ip.id === p.id);
+        const mappedPayment: FullPaymentData = {
+          id: p.id,
+          studentId: p.student_id || undefined,
+          parentId: p.parent_id || undefined,
+          amount: Number(p.amount) || 0,
+          paymentDate: p.payment_date ? new Date(p.payment_date).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU'),
+          periodLabel: p.period_label || 'Оплата',
+          status: p.status as any,
+          paymentMethod: (p.payment_method as any) || 'cash',
+          comment: p.comment || undefined,
+          student: 'Ученик',
+          course: 'Курс',
+          date: p.payment_date || new Date().toLocaleDateString('ru-RU'),
+          method: p.payment_method === 'card' ? 'Карта' : 'Наличные',
+          recordedBy: 'Администратор',
+        };
+
+        if (existingIdx !== -1) {
+          INITIAL_PAYMENTS[existingIdx] = { ...INITIAL_PAYMENTS[existingIdx], ...mappedPayment };
+        } else {
+          INITIAL_PAYMENTS.unshift(mappedPayment);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase payments fetch warning:', err);
+  }
+
+  return getStoredPayments();
+}
+
+/**
+ * Persists payment directly to Supabase cloud database and in-memory store.
+ * Dispatches 'crm-payments-changed' event.
  */
 export function savePaymentToStorage(payment: FullPaymentData): void {
   // 1. In-memory update
@@ -54,23 +100,9 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
     INITIAL_PAYMENTS.unshift(payment);
   }
 
-  // 2. LocalStorage update
+  // 2. Direct Supabase Cloud DB write
   if (typeof window !== 'undefined') {
     try {
-      const all = getStoredPayments();
-      const existingIdx = all.findIndex((p) => p.id === payment.id);
-      let updated: FullPaymentData[];
-      if (existingIdx !== -1) {
-        updated = all.map((p) => (p.id === payment.id ? payment : p));
-      } else {
-        updated = [payment, ...all];
-      }
-      localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(updated));
-
-      // Notify all views
-      window.dispatchEvent(new CustomEvent('crm-payments-changed', { detail: payment }));
-
-      // 3. Supabase dual-write (fire-and-forget)
       import('@/lib/supabase/client').then(({ createClient }) => {
         try {
           const supabase = createClient();
@@ -85,10 +117,14 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
             payment_method: (payment.paymentMethod as any) || 'cash',
             comment: payment.comment || null,
             is_mock_data: false,
-          }).then(() => {}, () => {});
-        } catch {}
+          }).then(() => {}, (err) => console.warn('Supabase payment upsert error:', err));
+        } catch (e) {
+          console.warn('Supabase client error:', e);
+        }
       }).catch(() => {});
 
+      // Notify all views
+      window.dispatchEvent(new CustomEvent('crm-payments-changed', { detail: payment }));
     } catch (err) {
       console.error('Failed to save payment to storage:', err);
     }
