@@ -34,7 +34,8 @@ interface StudentAttendanceItem {
 }
 
 export default function TeacherMobileDashboard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
   const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
   const [selectedLessonId, setSelectedLessonId] = useState<string>('l5'); // Today's lesson (03.09.2026)
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -109,18 +110,18 @@ export default function TeacherMobileDashboard() {
       <div className="rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-700 p-5 text-white shadow-sm">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-blue-200">
-            Кабинет преподавателя
+            {t('role.teacherCabinet', 'Кабинет преподавателя')}
           </span>
           <Link
             href="/teacher/attendance"
             className="rounded-lg bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors"
           >
-            Сводный табель →
+            {t('teacher.summaryAttendance', 'Сводный табель')} →
           </Link>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
           <p className="text-xs text-blue-100">
-            Сегодня: <strong>Четверг, 3 сентября</strong> • {todayLessons.length} занятие
+            {t('teacher.todaySubtitle', 'Сегодня:')} <strong>3 {t('calendar.dateRangeSept', 'сентября')}</strong> • {todayLessons.length} {t('calendar.lessonsCount', 'занятие')}
           </p>
           <button
             type="button"
@@ -128,7 +129,7 @@ export default function TeacherMobileDashboard() {
             className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50 transition-colors cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
-            Запланировать занятие
+            {t('action.scheduleLesson', 'Запланировать занятие')}
           </button>
         </div>
       </div>
@@ -138,20 +139,20 @@ export default function TeacherMobileDashboard() {
         <button
           onClick={() => setActiveTab('today')}
           className={cn(
-            'flex-1 rounded-lg py-2 transition-all text-center',
+            'flex-1 rounded-lg py-2 transition-all text-center cursor-pointer',
             activeTab === 'today' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
           )}
         >
-          Сегодня ({todayLessons.length} урок)
+          {t('calendar.today', 'Сегодня')} ({todayLessons.length})
         </button>
         <button
           onClick={() => setActiveTab('week')}
           className={cn(
-            'flex-1 rounded-lg py-2 transition-all text-center',
+            'flex-1 rounded-lg py-2 transition-all text-center cursor-pointer',
             activeTab === 'week' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
           )}
         >
-          Моя неделя ({myLessons.length} уроков)
+          {t('teacher.myWeek', 'Моя неделя')} ({myLessons.length})
         </button>
       </div>
 
@@ -161,7 +162,7 @@ export default function TeacherMobileDashboard() {
           {/* Today Lessons selector */}
           <div className="space-y-2">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Выберите занятие для отметки:
+              {t('teacher.selectLessonToMark', 'Выберите занятие для отметки:')}
             </h2>
             {todayLessons.map((lesson) => {
               const isSelected = lesson.id === selectedLessonId;
@@ -186,7 +187,7 @@ export default function TeacherMobileDashboard() {
                         onClick={(e) => e.stopPropagation()}
                         className="text-[11px] font-bold text-blue-600 hover:underline bg-white px-2 py-0.5 rounded-md border border-blue-200 shadow-2xs"
                       >
-                        Карточка урока ↗
+                        {t('action.viewCard', 'Карточка урока')} ↗
                       </Link>
                     </div>
                   </div>
@@ -203,7 +204,7 @@ export default function TeacherMobileDashboard() {
             <div className="border-b border-slate-100 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-blue-600">{t('teacher.lessonDetails', 'Журнал занятия')}</span>
+                  <span className="text-[10px] font-bold uppercase text-blue-600">{t('teacher.lessonJournal', 'Журнал занятия')}</span>
                   <h3 className="text-base font-extrabold text-slate-900">{currentLesson.groupName}</h3>
                 </div>
                 <div className="flex items-center gap-2">
@@ -243,11 +244,11 @@ export default function TeacherMobileDashboard() {
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] text-slate-400">ДЗ сохраняется в карточку урока</span>
+                  <span className="text-[11px] text-slate-400">{t('teacher.hwSavedToCard', 'ДЗ сохраняется в карточку урока')}</span>
                   <button
                     type="button"
                     onClick={() => setIsHomeworkModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-2xs"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-2xs cursor-pointer"
                   >
                     <Mail className="h-3.5 w-3.5 text-indigo-600" />
                     {t('action.sendHomework', 'Разослать ДЗ родителям')}
@@ -258,7 +259,7 @@ export default function TeacherMobileDashboard() {
 
             {/* Attendance summary pill */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">{t('teacher.markAttendance', 'Отмечено')}:</span>
+              <span className="text-slate-500 font-medium">{t('teacher.marked', 'Отмечено')}:</span>
               <div className="flex items-center gap-3 font-bold text-xs">
                 <span className="text-emerald-700">{t('status.present', 'Был')}: {presentCount}</span>
                 <span className="text-rose-700">{t('status.absent', 'Не был')}: {absentCount}</span>
@@ -295,7 +296,7 @@ export default function TeacherMobileDashboard() {
                         {student.consecutiveAbsences && student.consecutiveAbsences >= 2 && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                             <AlertTriangle className="h-3 w-3" />
-                            {student.consecutiveAbsences} пропуска подряд!
+                            {student.consecutiveAbsences} {t('teacher.consecutiveMisses', 'пропуска подряд!')}
                           </span>
                         )}
                       </div>
@@ -307,7 +308,7 @@ export default function TeacherMobileDashboard() {
                         type="button"
                         onClick={() => setStudentStatus(student.id, 'present')}
                         className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all',
+                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
                           student.status === 'present'
                             ? 'bg-emerald-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700'
@@ -321,7 +322,7 @@ export default function TeacherMobileDashboard() {
                         type="button"
                         onClick={() => setStudentStatus(student.id, 'absent')}
                         className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all',
+                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
                           student.status === 'absent'
                             ? 'bg-rose-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700'
@@ -335,7 +336,7 @@ export default function TeacherMobileDashboard() {
                         type="button"
                         onClick={() => setStudentStatus(student.id, 'rescheduled')}
                         className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all',
+                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
                           student.status === 'rescheduled'
                             ? 'bg-amber-600 text-white shadow-xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
@@ -352,7 +353,7 @@ export default function TeacherMobileDashboard() {
                       type="text"
                       value={student.note || ''}
                       onChange={(e) => handleUpdateNote(student.id, e.target.value)}
-                      placeholder="Комментарии преподавателя..."
+                      placeholder={t('lesson.teacherNotePlaceholder', 'Комментарии преподавателя...')}
                       className="w-full rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -365,11 +366,11 @@ export default function TeacherMobileDashboard() {
               <div>
                 {saveSuccess ? (
                   <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 animate-fade-in">
-                    <CheckCircle2 className="h-4 w-4" /> Посещаемость сохранена и статистика обновлена!
+                    <CheckCircle2 className="h-4 w-4" /> {t('teacher.attendanceSaved', 'Посещаемость сохранена и статистика обновлена!')}
                   </span>
                 ) : (
                   <span className="text-[11px] text-slate-400">
-                    Статистика учеников и групп обновится автоматически
+                    {t('teacher.statsAutoUpdate', 'Статистика учеников и групп обновится автоматически')}
                   </span>
                 )}
               </div>
@@ -377,18 +378,18 @@ export default function TeacherMobileDashboard() {
                 <button
                   type="button"
                   onClick={() => setIsHomeworkModalOpen(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-100 transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-100 transition-all cursor-pointer"
                 >
                   <Mail className="h-4 w-4 text-indigo-600" />
-                  Разослать ДЗ на Email
+                  {t('lesson.sendHomeworkEmail', 'Разослать ДЗ на Email')}
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveAttendance}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-98 transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-98 transition-all cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
-                  Сохранить посещаемость
+                  {t('teacher.saveAttendance', 'Сохранить посещаемость')}
                 </button>
               </div>
             </div>
@@ -400,7 +401,7 @@ export default function TeacherMobileDashboard() {
       {activeTab === 'week' && (
         <div className="space-y-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Расписание занятий на текущую неделю:
+            {t('teacher.weeklyScheduleTitle', 'Расписание занятий на текущую неделю:')}
           </h2>
 
           <div className="space-y-3">
@@ -416,8 +417,8 @@ export default function TeacherMobileDashboard() {
                     <span className="font-semibold text-slate-800">{lesson.startTime} – {lesson.endTime}</span>
                   </div>
                   <h3 className="font-extrabold text-slate-900 text-sm mt-1">{lesson.groupName}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{lesson.room} • {lesson.students.length} учеников</p>
-                  <p className="text-xs text-slate-600 mt-1 font-medium">Тема: {lesson.topic}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{lesson.room} • {lesson.students.length} {t('calendar.studentsCount', 'учеников')}</p>
+                  <p className="text-xs text-slate-600 mt-1 font-medium">{t('hero.topic', 'Тема')}: {lesson.topic}</p>
                 </div>
 
                 <div className="text-right">
@@ -427,7 +428,7 @@ export default function TeacherMobileDashboard() {
                       lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                     )}
                   >
-                    {lesson.status === 'completed' ? 'Завершён' : 'Запланирован'}
+                    {lesson.status === 'completed' ? t('status.completed', 'Завершён') : t('status.scheduled', 'Запланирован')}
                   </span>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -435,19 +436,19 @@ export default function TeacherMobileDashboard() {
                         setSelectedLessonId(lesson.id);
                         setIsHomeworkModalOpen(true);
                       }}
-                      className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1"
+                      className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
                       <Mail size={12} />
-                      ДЗ →
+                      {t('hero.homework', 'ДЗ')} →
                     </button>
                     <button
                       onClick={() => {
                         setSelectedLessonId(lesson.id);
                         setActiveTab('today');
                       }}
-                      className="text-xs font-bold text-blue-600 hover:underline"
+                      className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                     >
-                      Журнал урока →
+                      {t('teacher.lessonJournal', 'Журнал урока')} →
                     </button>
                   </div>
                 </div>

@@ -40,14 +40,14 @@ export default function TeacherAttendanceJournalPage() {
 
   // Dates of lessons for this group in September
   const [lessonDates, setLessonDates] = useState([
-    { date: '01.09', day: 'Пн', isCompleted: true },
-    { date: '04.09', day: 'Чт', isCompleted: true },
-    { date: '08.09', day: 'Пн', isCompleted: false },
-    { date: '11.09', day: 'Чт', isCompleted: false },
-    { date: '15.09', day: 'Пн', isCompleted: false },
-    { date: '18.09', day: 'Чт', isCompleted: false },
-    { date: '22.09', day: 'Пн', isCompleted: false },
-    { date: '25.09', day: 'Чт', isCompleted: false },
+    { date: '01.09', dayKey: 'days.mon', defaultDay: 'Пн', isCompleted: true },
+    { date: '04.09', dayKey: 'days.thu', defaultDay: 'Чт', isCompleted: true },
+    { date: '08.09', dayKey: 'days.mon', defaultDay: 'Пн', isCompleted: false },
+    { date: '11.09', dayKey: 'days.thu', defaultDay: 'Чт', isCompleted: false },
+    { date: '15.09', dayKey: 'days.mon', defaultDay: 'Пн', isCompleted: false },
+    { date: '18.09', dayKey: 'days.thu', defaultDay: 'Чт', isCompleted: false },
+    { date: '22.09', dayKey: 'days.mon', defaultDay: 'Пн', isCompleted: false },
+    { date: '25.09', dayKey: 'days.thu', defaultDay: 'Чт', isCompleted: false },
   ]);
 
   const [activeLessonIdx, setActiveLessonIdx] = useState(2); // Current lesson: 08.09
@@ -271,7 +271,7 @@ export default function TeacherAttendanceJournalPage() {
                       title={t('teacher.legendHint', 'Нажмите, чтобы сделать урок активным')}
                     >
                       <div className={`font-bold ${isCurrent ? 'text-blue-700' : 'text-slate-800'}`}>{ld.date}</div>
-                      <div className="text-[10px] text-slate-400 font-normal">{ld.day}</div>
+                      <div className="text-[10px] text-slate-400 font-normal">{t(ld.dayKey, ld.defaultDay)}</div>
                     </th>
                   );
                 })}
@@ -456,7 +456,7 @@ export default function TeacherAttendanceJournalPage() {
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <span className="text-[11px] text-slate-400">
-                  Сохранится в таймлайн ученика
+                  {t('teacher.savedToStudentTimeline', 'Сохранится в таймлайн ученика')}
                 </span>
                 <div className="flex gap-2">
                   <button

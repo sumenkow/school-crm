@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { TimelineInteraction } from '@/lib/data/mockData';
@@ -60,11 +61,12 @@ export default function SendHomeworkModal({
   onSentSuccess,
 }: SendHomeworkModalProps) {
   const toast = useToast();
+  const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form');
   const [topic, setTopic] = useState(lesson.topic || '');
   const [homework, setHomework] = useState(lesson.homework || '');
-  const [deadline, setDeadline] = useState('К следующему занятию');
+  const [deadline, setDeadline] = useState(t('homework.deadlineDefault', 'К следующему занятию'));
   const [teacherComment, setTeacherComment] = useState('');
   const [recipients, setRecipients] = useState<RecipientItem[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -81,7 +83,7 @@ export default function SendHomeworkModal({
 
     setTopic(lesson.topic || '');
     setHomework(lesson.homework || '');
-    setDeadline('К следующему занятию');
+    setDeadline(t('homework.deadlineDefault', 'К следующему занятию'));
     setTeacherComment('');
     setSendResult(null);
     setActiveTab('form');
@@ -323,10 +325,10 @@ export default function SendHomeworkModal({
               </div>
               <div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-200">
-                  Почтовая рассылка родителям
+                  {t('homework.sendModalTitle', 'Почтовая рассылка родителям')}
                 </span>
                 <h2 className="text-xl font-extrabold text-white tracking-tight">
-                  Домашнее задание: {lesson.groupName}
+                  {t('homework.modalHeading', 'Домашнее задание:')} {lesson.groupName}
                 </h2>
               </div>
             </div>
@@ -347,7 +349,7 @@ export default function SendHomeworkModal({
               {lesson.date} {lesson.startTime && `(${lesson.startTime} – ${lesson.endTime})`}
             </span>
             <span className="text-white/40">•</span>
-            <span>Преподаватель: <strong>{lesson.teacherName}</strong></span>
+            <span>{t('homework.teacher', 'Преподаватель:')} <strong>{lesson.teacherName}</strong></span>
           </div>
         </div>
 
@@ -364,7 +366,7 @@ export default function SendHomeworkModal({
             )}
           >
             <FileText size={14} />
-            Настройка рассылки ({selectedCount} получателей)
+            {t('homework.tabSetup', 'Настройка рассылки')} ({selectedCount})
           </button>
           <button
             type="button"
@@ -377,7 +379,7 @@ export default function SendHomeworkModal({
             )}
           >
             <Eye size={14} />
-            Предпросмотр письма
+            {t('homework.tabPreview', 'Предпросмотр письма')}
           </button>
         </div>
 
@@ -402,7 +404,7 @@ export default function SendHomeworkModal({
                 <p className="font-bold">{sendResult.message}</p>
                 {sendResult.success && (
                   <p className="mt-1 text-[11px] text-emerald-700">
-                    Факт отправки зафиксирован в Timeline истории учеников и родителей.
+                    {t('homework.timelineSaved', 'Факт отправки зафиксирован в Timeline истории учеников и родителей.')}
                   </p>
                 )}
               </div>
@@ -415,13 +417,13 @@ export default function SendHomeworkModal({
               <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">
-                    Тема прошедшего занятия:
+                    {t('homework.topicPrevLesson', 'Тема прошедшего занятия:')}
                   </label>
                   <input
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Например: Past Simple vs Present Perfect"
+                    placeholder={t('homework.topicPlaceholder', 'Например: Past Simple vs Present Perfect')}
                     className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -429,16 +431,16 @@ export default function SendHomeworkModal({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block font-bold text-slate-800">
-                      📝 Текст домашнего задания: <span className="text-rose-500">*</span>
+                      {t('homework.textLabel', '📝 Текст домашнего задания:')} <span className="text-rose-500">*</span>
                     </label>
-                    <span className="text-[11px] text-slate-400">Обязательное поле</span>
+                    <span className="text-[11px] text-slate-400">{t('homework.requiredField', 'Обязательное поле')}</span>
                   </div>
                   <textarea
                     rows={4}
                     required
                     value={homework}
                     onChange={(e) => setHomework(e.target.value)}
-                    placeholder="Подробно опишите задание (номера страниц, упражнения, ссылки на материалы)..."
+                    placeholder={t('homework.textPlaceholder', 'Подробно опишите задание (номера страниц, упражнения, ссылки на материалы)...')}
                     className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
                   />
                 </div>
@@ -446,26 +448,26 @@ export default function SendHomeworkModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      ⏰ Срок выполнения (дедлайн):
+                      {t('homework.deadlineLabel', '⏰ Срок выполнения (дедлайн):')}
                     </label>
                     <input
                       type="text"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
-                      placeholder="К следующему уроку (18.09.2026)"
+                      placeholder={t('homework.deadlinePlaceholder', 'К следующему уроку (18.09.2026)')}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      💡 Дополнительные рекомендации:
+                      {t('homework.recommendationLabel', '💡 Дополнительные рекомендации:')}
                     </label>
                     <input
                       type="text"
                       value={teacherComment}
                       onChange={(e) => setTeacherComment(e.target.value)}
-                      placeholder="Например: обратить внимание на неправильные глаголы"
+                      placeholder={t('homework.recommendationPlaceholder', 'Например: обратить внимание на неправильные глаголы')}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
@@ -478,7 +480,7 @@ export default function SendHomeworkModal({
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-blue-600" />
                     <h3 className="font-bold text-slate-900 text-sm">
-                      Получатели (Родители и Студенты)
+                      {t('homework.recipientsTitle', 'Получатели (Родители и Студенты)')}
                     </h3>
                   </div>
 
@@ -488,7 +490,7 @@ export default function SendHomeworkModal({
                       onClick={() => handleSelectAll(true)}
                       className="text-[11px] font-bold text-blue-600 hover:underline"
                     >
-                      Выбрать всех ({recipients.length})
+                      {t('homework.selectAll', 'Выбрать всех')} ({recipients.length})
                     </button>
                     <span className="text-slate-300">|</span>
                     <button
@@ -496,7 +498,7 @@ export default function SendHomeworkModal({
                       onClick={() => handleSelectAll(false)}
                       className="text-[11px] font-medium text-slate-500 hover:text-slate-800"
                     >
-                      Снять выбор
+                      {t('homework.deselectAll', 'Снять выбор')}
                     </button>
                   </div>
                 </div>
@@ -505,7 +507,7 @@ export default function SendHomeworkModal({
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex items-center gap-2 text-amber-900">
                     <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
                     <span>
-                      У <strong>{missingEmailCount}</strong> получателей не указан email. Вы можете ввести его прямо в строке ниже.
+                      {t('homework.noEmailWarning', `У ${missingEmailCount} получателей не указан email. Вы можете ввести его прямо в строке ниже.`).replace('{count}', String(missingEmailCount))}
                     </span>
                   </div>
                 )}
@@ -536,7 +538,7 @@ export default function SendHomeworkModal({
                                 {item.studentName}
                               </span>
                               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-                                {item.parentRelationship}: {item.parentName || 'Сам ученик'}
+                                {item.parentRelationship}: {item.parentName || t('homework.selfStudent', 'Сам ученик')}
                               </span>
                             </div>
                           </div>
@@ -568,67 +570,67 @@ export default function SendHomeworkModal({
             <div className="rounded-2xl border border-slate-200 bg-slate-100/70 p-4">
               <div className="mb-3 flex items-center justify-between text-slate-500">
                 <span className="font-bold uppercase tracking-wider text-[10px] text-slate-600">
-                  Так будет выглядеть письмо в почтовом ящике родителя:
+                  {t('homework.previewSubheading', 'Так будет выглядеть письмо в почтовом ящике родителя:')}
                 </span>
                 <span className="text-[11px]">
-                  Тема: <strong>📖 Домашнее задание: {topic || lesson.groupName} ({lesson.date})</strong>
+                  {t('homework.previewEmailSubject', 'Тема:')} <strong>📖 {t('homework.modalHeading', 'Домашнее задание:')} {topic || lesson.groupName} ({lesson.date})</strong>
                 </span>
               </div>
 
               <div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden max-w-xl mx-auto">
                 <div className="bg-gradient-to-r from-blue-700 to-blue-600 p-5 text-white">
                   <div className="text-[10px] font-bold uppercase text-blue-200">
-                    Образовательный центр
+                    {t('homework.emailSchoolCenter', 'Образовательный центр')}
                   </div>
-                  <h3 className="text-lg font-extrabold mt-0.5">📖 Домашнее задание</h3>
+                  <h3 className="text-lg font-extrabold mt-0.5">📖 {t('homework.modalHeading', 'Домашнее задание:')}</h3>
                   <div className="text-xs text-blue-100 mt-0.5">
-                    Группа: <strong>{lesson.groupName}</strong>
+                    {t('teacher.group', 'Группа:')} <strong>{lesson.groupName}</strong>
                   </div>
                 </div>
 
                 <div className="p-5 space-y-4 text-xs text-slate-700">
-                  <p className="font-semibold text-slate-900">Здравствуйте, Ольга Смирнова!</p>
+                  <p className="font-semibold text-slate-900">{t('homework.emailGreeting', 'Здравствуйте!')}</p>
                   <p className="text-slate-600">
-                    Направляем информацию по прошедшему занятию ученика <strong>Иван Смирнов</strong> и задание для самостоятельной подготовки.
+                    {t('homework.emailIntro', 'Направляем информацию по прошедшему занятию и задание для самостоятельной подготовки.')}
                   </p>
 
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">📅 Дата урока:</span>
+                      <span className="text-slate-400">{t('homework.emailLessonDate', '📅 Дата урока:')}</span>
                       <span className="font-bold text-slate-900">{lesson.date}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">👨‍🏫 Преподаватель:</span>
+                      <span className="text-slate-400">{t('homework.emailTeacher', '👨‍🏫 Преподаватель:')}</span>
                       <span className="font-semibold text-slate-800">{lesson.teacherName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">🎯 Тема занятия:</span>
-                      <span className="font-bold text-blue-700">{topic || 'Тема не указана'}</span>
+                      <span className="text-slate-400">{t('homework.emailTopic', '🎯 Тема занятия:')}</span>
+                      <span className="font-bold text-blue-700">{topic || '—'}</span>
                     </div>
                   </div>
 
                   <div className="bg-blue-50 border border-blue-200 border-l-4 border-l-blue-600 rounded-xl p-3.5 space-y-2">
-                    <div className="font-bold text-blue-900">📝 Задание на дом:</div>
+                    <div className="font-bold text-blue-900">{t('homework.emailHomework', '📝 Задание на дом:')}</div>
                     <p className="text-slate-800 whitespace-pre-line leading-relaxed font-medium">
-                      {homework || 'Домашнее задание пока не заполнено.'}
+                      {homework || '—'}
                     </p>
                     {deadline && (
                       <div className="pt-2 border-t border-blue-200 text-blue-800 font-semibold">
-                        ⏰ Срок сдачи: {deadline}
+                        {t('homework.emailDeadline', '⏰ Срок сдачи:')} {deadline}
                       </div>
                     )}
                   </div>
 
                   {teacherComment && (
                     <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1">
-                      <div className="font-bold text-purple-900">💡 Рекомендация преподавателя:</div>
+                      <div className="font-bold text-purple-900">{t('homework.emailTeacherRec', '💡 Рекомендация преподавателя:')}</div>
                       <p className="text-purple-950">{teacherComment}</p>
                     </div>
                   )}
                 </div>
 
                 <div className="bg-slate-50 p-3 text-center text-[10px] text-slate-400 border-t border-slate-100">
-                  Сформировано автоматически через School CRM
+                  {t('homework.emailAutoFooter', 'Сформировано автоматически через School CRM')}
                 </div>
               </div>
             </div>
@@ -638,7 +640,7 @@ export default function SendHomeworkModal({
         {/* Footer Actions */}
         <div className="border-t border-slate-200 bg-slate-50/90 p-4 px-6 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500">
-            Выбрано получателей: <strong className="text-slate-900 font-bold">{selectedCount}</strong> из {recipients.length}
+            {t('homework.selectedCountLabel', 'Выбрано получателей:')} <strong className="text-slate-900 font-bold">{selectedCount}</strong> {t('homework.of', 'из')} {recipients.length}
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -648,7 +650,7 @@ export default function SendHomeworkModal({
               disabled={isSending}
               className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
-              Закрыть
+              {t('action.close', 'Закрыть')}
             </button>
 
             <button
@@ -665,12 +667,12 @@ export default function SendHomeworkModal({
               {isSending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Отправка через Resend...
+                  {t('homework.sendingBtn', 'Отправка через Resend...')}
                 </>
               ) : (
                 <>
                   <Send className="h-4 w-4" />
-                  Отправить {selectedCount > 0 ? `(${selectedCount})` : ''}
+                  {t('homework.sendBtn', 'Отправить')} {selectedCount > 0 ? `(${selectedCount})` : ''}
                 </>
               )}
             </button>
