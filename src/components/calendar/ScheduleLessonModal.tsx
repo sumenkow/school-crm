@@ -28,7 +28,8 @@ export function ScheduleLessonModal({
 }: ScheduleLessonModalProps) {
   const toast = useToast();
   const { userName } = useRole();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
 
   const [groups, setGroups] = useState(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
   const [groupId, setGroupId] = useState(defaultGroupId || '1');
@@ -79,7 +80,7 @@ export function ScheduleLessonModal({
     setIsSubmitting(true);
 
     try {
-      const dateFormatted = new Date(date).toLocaleDateString('ru-RU', {
+      const dateFormatted = new Date(date).toLocaleDateString(locale, {
         day: '2-digit',
         month: 'short',
         year: 'numeric',

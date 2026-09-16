@@ -112,7 +112,7 @@ export function LessonQuickViewModal({
               </span>
               {(activeLesson.isTrial || (activeLesson.trialStudentsCount && activeLesson.trialStudentsCount > 0) || activeLesson.students.some((s: { isTrial?: boolean }) => s.isTrial)) && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
-                  🎯 {t('status.trial', 'Пробное занятие')} — {activeLesson.trialStudentsCount || activeLesson.students.filter((s: { isTrial?: boolean }) => s.isTrial).length || 1} чел.
+                  🎯 {t('status.trial', 'Пробное занятие')} — {activeLesson.trialStudentsCount || activeLesson.students.filter((s: { isTrial?: boolean }) => s.isTrial).length || 1} {t('calendar.studentsShort', 'чел.')}
                 </span>
               )}
             </div>

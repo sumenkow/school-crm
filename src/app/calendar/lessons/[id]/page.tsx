@@ -44,12 +44,14 @@ import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage'
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function LessonDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const lessonId = params.id as string;
   const { role, userName } = useRole();
+  const { t, language } = useLanguage();
 
   const [lesson, setLesson] = useState<FullLessonData>(() => {
     const stored = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
@@ -68,11 +70,12 @@ export default function LessonDetailsPage() {
 
   const currentRoleTitle =
     role === 'owner'
-      ? 'Владелец школы'
+      ? t('role.owner', 'Владелец школы')
       : role === 'admin'
-      ? 'Администратор'
-      : 'Преподаватель';
+      ? t('role.admin', 'Администратор')
+      : t('role.teacher', 'Преподаватель');
   const authorName = userName || (role === 'teacher' ? lesson.teacherName : 'Елена Менеджер');
+  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
 
   const handleCopyMeetingUrl = () => {
     if (lesson.onlineMeetingUrl) {
@@ -90,14 +93,14 @@ export default function LessonDetailsPage() {
     }
 
     const statusLabels: Record<string, string> = {
-      completed: 'Занятие отмечено как проведенное',
-      scheduled: 'Занятие возвращено в статус запланированного',
-      cancelled: 'Занятие отменено',
+      completed: t('status.completed', 'Проведено'),
+      scheduled: t('status.scheduled', 'Запланировано'),
+      cancelled: t('status.cancelled', 'Отменено'),
     };
 
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('ru-RU', {
+      timestamp: new Date().toLocaleDateString(locale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -107,7 +110,7 @@ export default function LessonDetailsPage() {
       author: authorName,
       role: currentRoleTitle,
       type: newStatus === 'completed' ? 'completed' : newStatus === 'cancelled' ? 'cancelled' : 'status_change',
-      comment: statusLabels[newStatus] || `Статус изменен на ${newStatus}`,
+      comment: statusLabels[newStatus] || `${t('common.status', 'Статус')}: ${newStatus}`,
     };
 
     setStatus(newStatus);
@@ -126,7 +129,7 @@ export default function LessonDetailsPage() {
       author: info.changedBy,
       role: info.changedRole,
       type: 'rescheduled',
-      comment: `Занятие перенесено с ${info.previousDate} (${info.previousTime}) на ${info.newDate} (${info.newTime}) в ${info.room}. Причина: ${info.reason}`,
+      comment: `${t('lesson.rescheduledNotice', 'Занятие перенесено')} ${info.previousDate} (${info.previousTime}) → ${info.newDate} (${info.newTime}) [${info.room}]. ${t('lesson.rescheduleReason', 'Причина')}: ${info.reason}`,
     };
 
     setStatus('rescheduled');
@@ -144,7 +147,7 @@ export default function LessonDetailsPage() {
 
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('ru-RU', {
+      timestamp: new Date().toLocaleDateString(locale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -154,7 +157,7 @@ export default function LessonDetailsPage() {
       author: authorName,
       role: currentRoleTitle,
       type: 'status_change',
-      comment: `Обновлен учебный план: "${topic}". ДЗ: "${homework || 'не задано'}"`,
+      comment: `${t('lesson.curriculumAndHomework', 'Учебный план')}: "${topic}". ${t('hero.homework', 'ДЗ')}: "${homework || '-'}"`,
     };
 
     const updatedLesson: FullLessonData = {
@@ -171,7 +174,7 @@ export default function LessonDetailsPage() {
     // Save timeline interactions for all students and their parents
     const allStudents = getStoredStudents();
     const now = new Date();
-    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const timeFormatted = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
     for (const st of lesson.students || []) {
       const fullStudent = allStudents.find((s) => s.id === st.id);
@@ -186,11 +189,11 @@ export default function LessonDetailsPage() {
         studentName: st.name,
         parentId,
         parentName,
-        occurredAt: `Сегодня, ${timeFormatted}`,
+        occurredAt: `${timeFormatted}`,
         author: authorName,
         channel: 'other',
         type: 'organizational',
-        content: `Обновлен учебный план занятия «${lesson.groupName}» (${lesson.dateFormatted}): Тема «${topic}», ДЗ: «${homework || 'не задано'}».`,
+        content: `«${lesson.groupName}» (${lesson.dateFormatted}): ${t('hero.topic', 'Тема')} «${topic}», ${t('hero.homework', 'ДЗ')}: «${homework || '-'}».`,
       };
 
       saveInteractionToStorage(interaction);
@@ -227,7 +230,7 @@ export default function LessonDetailsPage() {
   const handleMarkAllPresent = () => {
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('ru-RU', {
+      timestamp: new Date().toLocaleDateString(locale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -237,7 +240,7 @@ export default function LessonDetailsPage() {
       author: authorName,
       role: currentRoleTitle,
       type: 'attendance_marked',
-      comment: `Массовая отметка: все ученики (${lesson.students.length} чел.) отмечены присутствующими`,
+      comment: `${t('lesson.markAllPresent', 'Все ученики отмечены присутствующими')} (${lesson.students.length})`,
     };
 
     setLesson((prev) => ({
@@ -261,7 +264,7 @@ export default function LessonDetailsPage() {
 
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
-      timestamp: new Date().toLocaleDateString('ru-RU', {
+      timestamp: new Date().toLocaleDateString(locale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -300,7 +303,7 @@ export default function LessonDetailsPage() {
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Link href="/calendar" className="inline-flex items-center gap-1 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к календарю
+          {t('lesson.backToCalendar', 'Назад к календарю')}
         </Link>
         <span>/</span>
         <span className="text-slate-800 font-semibold">
@@ -325,14 +328,14 @@ export default function LessonDetailsPage() {
                   status === 'rescheduled' && 'bg-amber-50 text-amber-800 border-amber-300'
                 )}
               >
-                {status === 'completed' && 'Завершено (Проведено)'}
-                {status === 'scheduled' && 'Запланировано'}
-                {status === 'cancelled' && 'Отменено'}
-                {status === 'rescheduled' && 'Перенесено'}
+                {status === 'completed' && t('status.completed', 'Завершено (Проведено)')}
+                {status === 'scheduled' && t('status.scheduled', 'Запланировано')}
+                {status === 'cancelled' && t('status.cancelled', 'Отменено')}
+                {status === 'rescheduled' && t('status.rescheduled', 'Перенесено')}
               </span>
               {(lesson.isTrial || (lesson.trialStudentsCount && lesson.trialStudentsCount > 0) || lesson.students.some((s) => s.isTrial)) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">
-                  🎯 Пробное занятие — {lesson.trialStudentsCount || lesson.students.filter((s) => s.isTrial).length || 1} чел.
+                  🎯 {t('calendar.trialLessonCount', 'Пробное занятие')} — {lesson.trialStudentsCount || lesson.students.filter((s) => s.isTrial).length || 1} {t('calendar.studentsShort', 'чел.')}
                 </span>
               )}
             </div>
@@ -352,7 +355,7 @@ export default function LessonDetailsPage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <Users className="h-3.5 w-3.5 text-slate-400" />
-                Преподаватель:{' '}
+                {t('hero.teacher', 'Преподаватель')}:{' '}
                 <Link href={`/teachers`} className="font-semibold text-blue-600 hover:underline">
                   {lesson.teacherName}
                 </Link>
@@ -369,12 +372,12 @@ export default function LessonDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition-colors cursor-pointer"
               >
                 <Edit className="h-3.5 w-3.5 text-blue-600" />
-                Изменить параметры урока
+                {t('lesson.editParams', 'Изменить параметры урока')}
               </button>
             </div>
             
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-slate-500">Статус:</span>
+              <span className="text-[11px] font-semibold text-slate-500">{t('common.status', 'Статус')}:</span>
               <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
                 <button
                   type="button"
@@ -386,7 +389,7 @@ export default function LessonDetailsPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  Запланировано
+                  {t('status.scheduled', 'Запланировано')}
                 </button>
                 <button
                   type="button"
@@ -398,7 +401,7 @@ export default function LessonDetailsPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  Проведено
+                  {t('status.completed', 'Проведено')}
                 </button>
                 <button
                   type="button"
@@ -411,7 +414,7 @@ export default function LessonDetailsPage() {
                   )}
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
-                  Перенести
+                  {t('lesson.reschedule', 'Перенести')}
                 </button>
                 <button
                   type="button"
@@ -423,7 +426,7 @@ export default function LessonDetailsPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  Отмена
+                  {t('action.cancel', 'Отмена')}
                 </button>
               </div>
             </div>
@@ -438,15 +441,15 @@ export default function LessonDetailsPage() {
                 <div className="flex items-center gap-2 font-bold text-amber-900">
                   <CalendarClock className="h-4 w-4 text-amber-600" />
                   <span>
-                    Занятие перенесено на <strong>{lesson.rescheduleInfo.newDate}</strong> (
+                    {t('lesson.rescheduledNotice', 'Занятие перенесено')} → <strong>{lesson.rescheduleInfo.newDate}</strong> (
                     {lesson.rescheduleInfo.newTime}) в {lesson.rescheduleInfo.room}
                   </span>
                 </div>
                 <p className="text-amber-800">
-                  Причина переноса: <strong>{lesson.rescheduleInfo.reason}</strong>
+                  {t('lesson.rescheduleReason', 'Причина переноса')}: <strong>{lesson.rescheduleInfo.reason}</strong>
                 </p>
                 <p className="text-[11px] text-amber-700">
-                  Инициатор: {lesson.rescheduleInfo.changedBy} ({lesson.rescheduleInfo.changedRole}) •{' '}
+                  {t('lesson.rescheduleInitiator', 'Инициатор переноса:')} {lesson.rescheduleInfo.changedBy} ({lesson.rescheduleInfo.changedRole}) •{' '}
                   {lesson.rescheduleInfo.changedAt}
                 </p>
               </div>
@@ -456,7 +459,7 @@ export default function LessonDetailsPage() {
                 onClick={() => setIsRescheduleModalOpen(true)}
                 className="inline-flex items-center gap-1 self-start rounded-lg bg-white px-3 py-1.5 font-bold text-amber-800 border border-amber-300 shadow-2xs hover:bg-amber-100/50 transition-colors"
               >
-                Изменить параметры переноса
+                {t('lesson.editRescheduleParams', 'Изменить параметры переноса')}
               </button>
             </div>
           </div>
@@ -468,7 +471,7 @@ export default function LessonDetailsPage() {
             <div className="flex items-center gap-2 text-indigo-900 font-medium">
               <Video className="h-4 w-4 text-indigo-600" />
               <span>
-                Ссылка на онлайн-занятие: <strong className="font-mono">{lesson.onlineMeetingUrl}</strong>
+                {t('lesson.onlineLink', 'Ссылка на онлайн-занятие:')} <strong className="font-mono">{lesson.onlineMeetingUrl}</strong>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -477,7 +480,7 @@ export default function LessonDetailsPage() {
                 className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-semibold text-indigo-700 border border-indigo-200 shadow-xs hover:bg-indigo-50"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? 'Скопировано' : 'Копировать'}
+                {copied ? t('common.copied', 'Скопировано') : t('common.copy', 'Копировать')}
               </button>
               <a
                 href={lesson.onlineMeetingUrl}
@@ -485,7 +488,7 @@ export default function LessonDetailsPage() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1 font-semibold text-white shadow-xs hover:bg-indigo-700"
               >
-                Подключиться <ExternalLink className="h-3 w-3" />
+                {t('action.connect', 'Подключиться')} <ExternalLink className="h-3 w-3" />
               </a>
             </div>
           </div>
@@ -497,34 +500,34 @@ export default function LessonDetailsPage() {
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-blue-600" />
-            Учебный план и домашнее задание
+            {t('lesson.curriculumAndHomework', 'Учебный план и домашнее задание')}
           </h2>
           {savedSuccess && (
             <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 animate-fade-in">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Сохранено в карточке и таймлайне!
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t('lesson.savedSuccessNotice', 'Сохранено в карточке и таймлайне!')}
             </span>
           )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-semibold text-slate-700">Тема занятия</label>
+            <label className="text-xs font-semibold text-slate-700">{t('lesson.topicLabel', 'Тема занятия')}</label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Например: Unit 4. Past Simple vs Present Perfect..."
+              placeholder="Unit 4. Past Simple vs Present Perfect..."
               className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-700">Домашнее задание к следующему уроку</label>
+            <label className="text-xs font-semibold text-slate-700">{t('lesson.homeworkLabel', 'Домашнее задание к следующему уроку')}</label>
             <input
               type="text"
               value={homework}
               onChange={(e) => setHomework(e.target.value)}
-              placeholder="Что задано ученикам на дом..."
+              placeholder="..."
               className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
@@ -537,7 +540,7 @@ export default function LessonDetailsPage() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 text-xs font-bold hover:bg-indigo-100 shadow-2xs transition-colors"
           >
             <Mail className="h-3.5 w-3.5 text-indigo-600" />
-            Разослать ДЗ родителям на Email
+            {t('lesson.sendHomeworkEmail', 'Разослать ДЗ родителям на Email')}
           </button>
 
           <button
@@ -545,7 +548,7 @@ export default function LessonDetailsPage() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
           >
             <Save className="h-3.5 w-3.5" />
-            Сохранить тему и статус урока
+            {t('lesson.saveTopicStatus', 'Сохранить тему и статус урока')}
           </button>
         </div>
       </form>
@@ -556,10 +559,10 @@ export default function LessonDetailsPage() {
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <UserCheck className="h-5 w-5 text-emerald-600" />
-              Журнал посещаемости занятия
+              {t('lesson.attendanceJournal', 'Журнал посещаемости занятия')}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Интерактивная фиксация присутствия учеников, причин отсутствия и заметок преподавателя
+              {t('lesson.attendanceJournalSubtitle', 'Интерактивная фиксация присутствия учеников, причин отсутствия и заметок преподавателя')}
             </p>
           </div>
 
@@ -571,16 +574,16 @@ export default function LessonDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
             >
               <Check className="h-4 w-4" />
-              Отметить всех присутствующими
+              {t('lesson.markAllPresent', 'Отметить всех присутствующими')}
             </button>
             <button
               type="button"
               onClick={handleResetAttendance}
               className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
-              title="Сбросить все статусы"
+              title={t('lesson.reset', 'Сбросить все статусы')}
             >
               <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
-              Сброс
+              {t('lesson.reset', 'Сброс')}
             </button>
           </div>
         </div>
@@ -588,29 +591,29 @@ export default function LessonDetailsPage() {
         {/* Attendance KPI Summary Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
-            <div className="text-slate-500 text-[11px] font-medium">Присутствуют</div>
+            <div className="text-slate-500 text-[11px] font-medium">{t('lesson.kpiPresent', 'Присутствуют')}</div>
             <div className="text-lg font-bold text-emerald-700 mt-0.5">
               {presentCount} <span className="text-xs font-normal text-emerald-600">({attendanceRate}%)</span>
             </div>
           </div>
 
           <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-            <div className="text-slate-500 text-[11px] font-medium">Болел / Уважительная</div>
+            <div className="text-slate-500 text-[11px] font-medium">{t('lesson.kpiExcused', 'Болел / Уважительная')}</div>
             <div className="text-lg font-bold text-amber-800 mt-0.5">{excusedCount}</div>
           </div>
 
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3">
-            <div className="text-slate-500 text-[11px] font-medium">Пропуск без причины</div>
+            <div className="text-slate-500 text-[11px] font-medium">{t('lesson.kpiAbsent', 'Пропуск без причины')}</div>
             <div className="text-lg font-bold text-rose-700 mt-0.5">{absentCount}</div>
           </div>
 
           <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3">
-            <div className="text-slate-500 text-[11px] font-medium">Перенос / Отработка</div>
+            <div className="text-slate-500 text-[11px] font-medium">{t('lesson.kpiRescheduled', 'Перенос / Отработка')}</div>
             <div className="text-lg font-bold text-purple-700 mt-0.5">{rescheduledCount}</div>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <div className="text-slate-500 text-[11px] font-medium">Не отмечено</div>
+            <div className="text-slate-500 text-[11px] font-medium">{t('lesson.kpiNotMarked', 'Не отмечено')}</div>
             <div className="text-lg font-bold text-slate-700 mt-0.5">{notMarkedCount}</div>
           </div>
         </div>
@@ -652,7 +655,7 @@ export default function LessonDetailsPage() {
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder="Комментарии преподавателя..."
+                        placeholder={t('lesson.teacherNotePlaceholder', 'Комментарии преподавателя...')}
                         value={student.notes || ''}
                         onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-700 placeholder:text-slate-400 w-64 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -674,7 +677,7 @@ export default function LessonDetailsPage() {
                     )}
                   >
                     <Check className="h-3.5 w-3.5" />
-                    Был
+                    {t('lesson.studentAttendanceWas', 'Был')}
                   </button>
 
                   <button
@@ -688,7 +691,7 @@ export default function LessonDetailsPage() {
                     )}
                   >
                     <AlertCircle className="h-3.5 w-3.5" />
-                    Болел / Уважит.
+                    {t('lesson.studentAttendanceExcused', 'Болел / Уважит.')}
                   </button>
 
                   <button
@@ -702,7 +705,7 @@ export default function LessonDetailsPage() {
                     )}
                   >
                     <XCircle className="h-3.5 w-3.5" />
-                    Пропуск
+                    {t('lesson.studentAttendanceAbsent', 'Пропуск')}
                   </button>
 
                   <button
@@ -716,7 +719,7 @@ export default function LessonDetailsPage() {
                     )}
                   >
                     <CalendarClock className="h-3.5 w-3.5" />
-                    Отработка
+                    {t('lesson.studentAttendanceRescheduled', 'Отработка')}
                   </button>
 
                   {/* WhatsApp Notify Button if absent */}
@@ -728,10 +731,10 @@ export default function LessonDetailsPage() {
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 px-2 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 transition-colors ml-1"
-                      title="Написать родителю в WhatsApp"
+                      title={t('lesson.writeToParent', 'Написать родителю')}
                     >
                       <MessageSquare className="h-3 w-3 text-emerald-600" />
-                      Написать родителю
+                      {t('lesson.writeToParent', 'Написать родителю')}
                     </a>
                   )}
                 </div>
@@ -747,10 +750,10 @@ export default function LessonDetailsPage() {
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <History className="h-5 w-5 text-indigo-600" />
-              Таймлайн и история событий занятия
+              {t('lesson.timelineTitle', 'Таймлайн и история событий занятия')}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Хронология создания, переносов, завершения и записей педагогов с отражением в истории учеников
+              {t('lesson.timelineSubtitle', 'Хронология создания, переносов, завершения и записей педагогов с отражением в истории учеников')}
             </p>
           </div>
         </div>
@@ -758,7 +761,7 @@ export default function LessonDetailsPage() {
         {/* Timeline Events Feed */}
         <div className="space-y-3 pt-2">
           {(!lesson.timelineEvents || lesson.timelineEvents.length === 0) ? (
-            <p className="text-xs text-slate-400 py-2">События пока не зафиксированы.</p>
+            <p className="text-xs text-slate-400 py-2">{t('lesson.timelineEmpty', 'События пока не зафиксированы.')}</p>
           ) : (
             lesson.timelineEvents.map((ev) => (
               <div
@@ -808,7 +811,7 @@ export default function LessonDetailsPage() {
             type="text"
             value={newTimelineComment}
             onChange={(e) => setNewTimelineComment(e.target.value)}
-            placeholder="Добавить комментарий или служебную отметку в таймлайн урока..."
+            placeholder={t('lesson.timelinePlaceholder', 'Добавить комментарий или служебную отметку в таймлайн урока...')}
             className="flex-1 rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <button
@@ -817,7 +820,7 @@ export default function LessonDetailsPage() {
             className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-40 transition-colors"
           >
             <Send className="h-3.5 w-3.5" />
-            Зафиксировать
+            {t('lesson.timelineSubmit', 'Зафиксировать')}
           </button>
         </form>
       </div>

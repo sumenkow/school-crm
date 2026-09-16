@@ -17,6 +17,7 @@ import {
 import { FullLessonData, LessonRescheduleInfo } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { cn } from '@/lib/utils';
 
 interface RescheduleLessonModalProps {
@@ -26,22 +27,6 @@ interface RescheduleLessonModalProps {
   onReschedule: (info: LessonRescheduleInfo) => void;
 }
 
-const PRESET_REASONS = [
-  'По просьбе родителей / группы',
-  'Болезнь преподавателя',
-  'Праздничный день / школьные каникулы',
-  'Технические неполадки / смена онлайн-комнаты',
-  'Другая причина',
-];
-
-const ROOM_OPTIONS = [
-  'Онлайн (Google Meet)',
-  'Онлайн (Zoom)',
-  'Онлайн-комната 1 (Интерактивная доска)',
-  'Онлайн-комната 2',
-  'Индивидуальная комната преподавателя',
-];
-
 export function RescheduleLessonModal({
   isOpen,
   onClose,
@@ -49,6 +34,23 @@ export function RescheduleLessonModal({
   onReschedule,
 }: RescheduleLessonModalProps) {
   const { role, userName } = useRole();
+  const { t, language } = useLanguage();
+
+  const PRESET_REASON_KEYS = [
+    { key: 'lesson.reasonGroupRequest', fallback: 'По просьбе родителей / группы' },
+    { key: 'lesson.reasonTeacherSick', fallback: 'Болезнь преподавателя' },
+    { key: 'lesson.reasonHoliday', fallback: 'Праздничный день / школьные каникулы' },
+    { key: 'lesson.reasonTechIssue', fallback: 'Технические неполадки / смена онлайн-комнаты' },
+    { key: 'lesson.reasonOther', fallback: 'Другая причина' },
+  ];
+
+  const ROOM_OPTIONS = [
+    'Онлайн (Google Meet)',
+    'Онлайн (Zoom)',
+    'Онлайн-комната 1 (Интерактивная доска)',
+    'Онлайн-комната 2',
+    'Индивидуальная комната преподавателя',
+  ];
 
   // Next day default or +2 days
   const [newDate, setNewDate] = useState(() => {
@@ -60,36 +62,41 @@ export function RescheduleLessonModal({
   const [newStartTime, setNewStartTime] = useState(lesson.startTime || '18:45');
   const [newEndTime, setNewEndTime] = useState(lesson.endTime || '20:15');
   const [newRoom, setNewRoom] = useState(lesson.room || 'Онлайн (Zoom)');
-  const [selectedReason, setSelectedReason] = useState(PRESET_REASONS[0]);
+  const [selectedReasonKey, setSelectedReasonKey] = useState(PRESET_REASON_KEYS[0].key);
   const [customComment, setCustomComment] = useState('');
   const [notifyParents, setNotifyParents] = useState(true);
 
   if (!isOpen) return null;
 
+  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
+
   const roleTitle =
     role === 'owner'
-      ? 'Владелец школы'
+      ? t('role.owner', 'Владелец школы')
       : role === 'admin'
-      ? 'Администратор'
-      : 'Преподаватель';
+      ? t('role.admin', 'Администратор')
+      : t('role.teacher', 'Преподаватель');
 
   const authorName = userName || (role === 'teacher' ? lesson.teacherName : 'Елена Менеджер');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const formattedNewDate = new Date(newDate).toLocaleDateString('ru-RU', {
+    const formattedNewDate = new Date(newDate).toLocaleDateString(locale, {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
     });
 
+    const activeReasonObj = PRESET_REASON_KEYS.find((r) => r.key === selectedReasonKey) || PRESET_REASON_KEYS[0];
+    const selectedReasonText = t(activeReasonObj.key, activeReasonObj.fallback);
+
     const fullReason =
-      selectedReason === 'Другая причина'
-        ? customComment || 'По решению руководства'
+      selectedReasonKey === 'lesson.reasonOther'
+        ? customComment || selectedReasonText
         : customComment
-        ? `${selectedReason} (${customComment})`
-        : selectedReason;
+        ? `${selectedReasonText} (${customComment})`
+        : selectedReasonText;
 
     const rescheduleInfo: LessonRescheduleInfo = {
       previousDate: lesson.dateFormatted || lesson.date,
@@ -100,7 +107,7 @@ export function RescheduleLessonModal({
       reason: fullReason,
       changedBy: authorName,
       changedRole: roleTitle,
-      changedAt: new Date().toLocaleDateString('ru-RU', {
+      changedAt: new Date().toLocaleDateString(locale, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -174,13 +181,13 @@ export function RescheduleLessonModal({
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Перенос занятия</h2>
+              <h2 className="text-base font-bold text-slate-900">{t('lesson.rescheduleTitle', 'Перенос занятия')}</h2>
               <p className="text-xs text-slate-500">{lesson.groupName} • {lesson.courseName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -188,7 +195,7 @@ export function RescheduleLessonModal({
 
         {/* Current Lesson Info Banner */}
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-xs text-slate-600 space-y-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Текущие параметры урока:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t('lesson.currentParams', 'Текущие параметры урока:')}</span>
           <div className="flex flex-wrap items-center justify-between gap-2 font-medium text-slate-900">
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5 text-blue-600" />
@@ -198,7 +205,7 @@ export function RescheduleLessonModal({
               <Video className="h-3.5 w-3.5 text-blue-500" />
               {lesson.room}
             </span>
-            <span>Преподаватель: <b>{lesson.teacherName}</b></span>
+            <span>{t('hero.teacher', 'Преподаватель')}: <b>{lesson.teacherName}</b></span>
           </div>
         </div>
 
@@ -207,12 +214,12 @@ export function RescheduleLessonModal({
           <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-4 space-y-3">
             <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-amber-600" />
-              Новые дата и время проведения
+              {t('lesson.newDateTime', 'Новые дата и время проведения')}
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-1">
-                <label className="text-[11px] font-semibold text-slate-700">Новая дата</label>
+                <label className="text-[11px] font-semibold text-slate-700">{t('lesson.newDate', 'Новая дата')}</label>
                 <input
                   type="date"
                   required
@@ -223,7 +230,7 @@ export function RescheduleLessonModal({
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700">Время начала</label>
+                <label className="text-[11px] font-semibold text-slate-700">{t('lesson.startTime', 'Время начала')}</label>
                 <input
                   type="time"
                   required
@@ -234,7 +241,7 @@ export function RescheduleLessonModal({
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700">Время окончания</label>
+                <label className="text-[11px] font-semibold text-slate-700">{t('lesson.endTime', 'Время окончания')}</label>
                 <input
                   type="time"
                   required
@@ -247,7 +254,7 @@ export function RescheduleLessonModal({
 
             {/* Room selection */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-700">Формат / Онлайн-комната</label>
+              <label className="text-[11px] font-semibold text-slate-700">{t('lesson.roomFormat', 'Формат / Онлайн-комната')}</label>
               <select
                 value={newRoom}
                 onChange={(e) => setNewRoom(e.target.value)}
@@ -264,28 +271,28 @@ export function RescheduleLessonModal({
 
           {/* Reason Section */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700">Причина переноса</label>
+            <label className="text-xs font-semibold text-slate-700">{t('lesson.rescheduleReason', 'Причина переноса')}</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {PRESET_REASONS.map((reason) => (
+              {PRESET_REASON_KEYS.map((item) => (
                 <button
                   type="button"
-                  key={reason}
-                  onClick={() => setSelectedReason(reason)}
+                  key={item.key}
+                  onClick={() => setSelectedReasonKey(item.key)}
                   className={cn(
-                    'text-left rounded-xl p-2.5 text-xs font-medium border transition-all',
-                    selectedReason === reason
+                    'text-left rounded-xl p-2.5 text-xs font-medium border transition-all cursor-pointer',
+                    selectedReasonKey === item.key
                       ? 'border-amber-500 bg-amber-50/60 text-amber-950 font-bold shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  {reason}
+                  {t(item.key, item.fallback)}
                 </button>
               ))}
             </div>
 
             <textarea
               rows={2}
-              placeholder="Дополнительный комментарий к причине (будет отражен в таймлайне учеников)..."
+              placeholder={t('lesson.rescheduleReasonPlaceholder', 'Дополнительный комментарий к причине (будет отражен в таймлайне учеников)...')}
               value={customComment}
               onChange={(e) => setCustomComment(e.target.value)}
               className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -295,7 +302,7 @@ export function RescheduleLessonModal({
           {/* Role & Notifications Strip */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">Инициатор переноса:</span>
+              <span className="text-slate-500">{t('lesson.rescheduleInitiator', 'Инициатор переноса:')}</span>
               <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
                 <ShieldCheck className="h-4 w-4 text-indigo-600" />
                 {authorName} <span className="rounded bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5">{roleTitle}</span>
@@ -312,10 +319,12 @@ export function RescheduleLessonModal({
                 />
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
                   <Bell className="h-3.5 w-3.5 text-slate-500" />
-                  Уведомить родителей и учеников (Telegram / WhatsApp)
+                  {t('lesson.notifyParentsChannel', 'Уведомить родителей и учеников (Telegram / WhatsApp)')}
                 </span>
               </label>
-              <span className="text-[10px] text-slate-400">Группа: {lesson.students?.length || 7} чел.</span>
+              <span className="text-[10px] text-slate-400">
+                {t('dashboard.myGroups', 'Группа')}: {lesson.students?.length || 7} {t('calendar.studentsShort', 'чел.')}
+              </span>
             </div>
           </div>
 
@@ -324,16 +333,16 @@ export function RescheduleLessonModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              Отмена
+              {t('action.cancel', 'Отмена')}
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-amber-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition-colors flex items-center gap-1.5"
+              className="rounded-xl bg-amber-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-700 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="h-4 w-4" />
-              Подтвердить перенос занятия
+              {t('lesson.confirmReschedule', 'Подтвердить перенос занятия')}
             </button>
           </div>
         </form>

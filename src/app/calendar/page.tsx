@@ -68,13 +68,13 @@ export default function CalendarPage() {
   };
 
   const daysOfWeek = [
-    { name: 'Пн', date: '01 сен', fullDate: '2026-09-01', dayIndex: 0 },
-    { name: 'Вт', date: '02 сен', fullDate: '2026-09-02', dayIndex: 1 },
-    { name: 'Ср', date: '03 сен', fullDate: '2026-09-03', dayIndex: 2, isToday: true },
-    { name: 'Чт', date: '04 сен', fullDate: '2026-09-04', dayIndex: 3 },
-    { name: 'Пт', date: '05 сен', fullDate: '2026-09-05', dayIndex: 4 },
-    { name: 'Сб', date: '06 сен', fullDate: '2026-09-06', dayIndex: 5 },
-    { name: 'Вс', date: '07 сен', fullDate: '2026-09-07', dayIndex: 6 },
+    { name: t('days.mon', 'Пн'), date: '01.09', fullDate: '2026-09-01', dayIndex: 0 },
+    { name: t('days.tue', 'Вт'), date: '02.09', fullDate: '2026-09-02', dayIndex: 1 },
+    { name: t('days.wed', 'Ср'), date: '03.09', fullDate: '2026-09-03', dayIndex: 2, isToday: true },
+    { name: t('days.thu', 'Чт'), date: '04.09', fullDate: '2026-09-04', dayIndex: 3 },
+    { name: t('days.fri', 'Пт'), date: '05.09', fullDate: '2026-09-05', dayIndex: 4 },
+    { name: t('days.sat', 'Сб'), date: '06.09', fullDate: '2026-09-06', dayIndex: 5 },
+    { name: t('days.sun', 'Вс'), date: '07.09', fullDate: '2026-09-07', dayIndex: 6 },
   ];
 
   const handleOpenScheduleForDate = (dateStr: string) => {
@@ -119,7 +119,7 @@ export default function CalendarPage() {
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="text-sm font-semibold text-slate-800 px-2">
-            1 сентября – 7 сентября 2026
+            {t('calendar.dateRangeSept', '1 сентября – 7 сентября 2026')}
           </span>
           <button className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600">
             <ChevronRight className="h-4 w-4" />
@@ -142,7 +142,7 @@ export default function CalendarPage() {
               onChange={(e) => setSelectedTeacher(e.target.value)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="all">{t('action.all', 'Все')} {t('calendar.filterTeacher', 'преподаватели').toLowerCase()}</option>
+              <option value="all">{t('calendar.allTeachers', 'Все преподаватели')}</option>
               <option value="t1">Мария Иванова (English)</option>
               <option value="t2">Денис Смирнов (Robotics)</option>
               <option value="t3">Ольга Соколова (Math)</option>
@@ -192,7 +192,7 @@ export default function CalendarPage() {
                   <div
                     onClick={() => handleOpenScheduleForDate(day.fullDate)}
                     className="cursor-pointer group flex items-center gap-1.5"
-                    title="Нажмите, чтобы создать занятие на этот день"
+                    title={t('calendar.createLessonDayHint', 'Нажмите, чтобы создать занятие на этот день')}
                   >
                     <span className={cn('text-xs font-bold uppercase group-hover:text-blue-600 transition-colors', day.isToday ? 'text-blue-600' : 'text-slate-500')}>
                       {day.name}
@@ -203,8 +203,8 @@ export default function CalendarPage() {
                   </div>
                   <button
                     onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                    title="Создать занятие"
-                    className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    title={t('calendar.createLessonTitle', 'Создать занятие')}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -219,7 +219,7 @@ export default function CalendarPage() {
                     >
                       <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors mb-1" />
                       <span className="text-[11px] text-slate-400 group-hover:text-blue-600 font-medium">
-                        + Добавить занятие
+                        + {t('calendar.addLesson', 'Добавить занятие')}
                       </span>
                     </div>
                   ) : (
@@ -245,7 +245,7 @@ export default function CalendarPage() {
                               <div className="flex items-center gap-1">
                                 {lesson.status === 'rescheduled' && (
                                   <span className="rounded bg-amber-200/70 text-amber-900 px-1 py-0.2 text-[9px] font-bold">
-                                    Перенос
+                                    {t('status.rescheduled', 'Перенос')}
                                   </span>
                                 )}
                                 {lesson.onlineMeetingUrl && (
@@ -264,7 +264,7 @@ export default function CalendarPage() {
                                 return (
                                   <div className="mt-1.5 flex items-center gap-1">
                                     <span className="rounded-md bg-purple-100 text-purple-900 font-bold px-1.5 py-0.5 text-[10px] border border-purple-200 flex items-center gap-1">
-                                      <span>🎯 Пробное занятие — {trialCount} {trialCount === 1 ? 'человек' : trialCount < 5 ? 'человека' : 'человек'}</span>
+                                      <span>🎯 {t('calendar.trialLessonCount', 'Пробное занятие')} — {trialCount}</span>
                                     </span>
                                   </div>
                                 );
@@ -275,7 +275,7 @@ export default function CalendarPage() {
                             <div className="mt-2 flex items-center justify-between border-t border-slate-200/50 pt-1.5 text-[10px] text-slate-500">
                               <span>{lesson.room}</span>
                               <span className="font-semibold text-slate-700">
-                                {lesson.students.length} уч.
+                                {lesson.students.length} {t('calendar.studentsShort', 'уч.')}
                               </span>
                             </div>
                           </div>
@@ -283,9 +283,9 @@ export default function CalendarPage() {
                       </div>
                       <button
                         onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                        className="w-full mt-2 py-1.5 rounded-lg border border-dashed border-slate-200 text-[11px] font-medium text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all flex items-center justify-center gap-1"
+                        className="w-full mt-2 py-1.5 rounded-lg border border-dashed border-slate-200 text-[11px] font-medium text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
                       >
-                        <Plus className="h-3 w-3" /> Ещё занятие
+                        <Plus className="h-3 w-3" /> {t('calendar.moreLessons', 'Ещё занятие')}
                       </button>
                     </>
                   )}
@@ -306,7 +306,7 @@ export default function CalendarPage() {
                 key={day.dayIndex}
                 onClick={() => setSelectedDayIndex(day.dayIndex)}
                 className={cn(
-                  'rounded-xl px-3.5 py-2 text-xs font-semibold transition-all',
+                  'rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer',
                   selectedDayIndex === day.dayIndex
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -321,26 +321,26 @@ export default function CalendarPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-sm font-bold text-slate-900">
-                Занятия на {daysOfWeek[selectedDayIndex].date}:
+                {t('calendar.lessonsOn', 'Занятия на')} {daysOfWeek[selectedDayIndex].date}:
               </h2>
               <button
                 onClick={() => handleOpenScheduleForDate(daysOfWeek[selectedDayIndex].fullDate)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Запланировать на {daysOfWeek[selectedDayIndex].name}
+                {t('calendar.scheduleFor', 'Запланировать на')} {daysOfWeek[selectedDayIndex].name}
               </button>
             </div>
 
             {filteredLessons.filter((l) => l.dayOfWeek === selectedDayIndex).length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-xs text-slate-400 mb-3">На этот день занятий не запланировано</p>
+                <p className="text-xs text-slate-400 mb-3">{t('calendar.noLessonsDay', 'На этот день занятий не запланировано')}</p>
                 <button
                   onClick={() => handleOpenScheduleForDate(daysOfWeek[selectedDayIndex].fullDate)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100/60 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100/60 transition-colors cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Добавить занятие
+                  {t('calendar.addLesson', 'Добавить занятие')}
                 </button>
               </div>
             ) : (
@@ -365,7 +365,7 @@ export default function CalendarPage() {
                             if (trialCount > 0) {
                               return (
                                 <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">
-                                  🎯 Пробное занятие — {trialCount} {trialCount === 1 ? 'человек' : trialCount < 5 ? 'человека' : 'человек'}
+                                  🎯 {t('calendar.trialLessonCount', 'Пробное занятие')} — {trialCount}
                                 </span>
                               );
                             }
@@ -373,7 +373,7 @@ export default function CalendarPage() {
                           })()}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{lesson.teacherName} • {lesson.room}</p>
-                        <p className="text-xs text-blue-600 font-medium mt-0.5">Тема: {lesson.topic}</p>
+                        <p className="text-xs text-blue-600 font-medium mt-0.5">{t('hero.topic', 'Тема')}: {lesson.topic}</p>
                       </div>
                     </div>
                     <div className="text-right text-xs">
@@ -388,14 +388,14 @@ export default function CalendarPage() {
                           : 'bg-blue-100 text-blue-800'
                       )}>
                         {lesson.status === 'completed'
-                          ? 'Завершён'
+                          ? t('status.completed', 'Завершён')
                           : lesson.status === 'rescheduled'
-                          ? 'Перенесён'
+                          ? t('status.rescheduled', 'Перенесён')
                           : lesson.status === 'cancelled'
-                          ? 'Отменён'
-                          : 'Запланирован'}
+                          ? t('status.cancelled', 'Отменён')
+                          : t('status.scheduled', 'Запланирован')}
                       </span>
-                      <p className="text-slate-400 text-[11px] mt-1">{lesson.students.length} учеников</p>
+                      <p className="text-slate-400 text-[11px] mt-1">{lesson.students.length} {t('calendar.studentsCount', 'учеников')}</p>
                     </div>
                   </div>
                 ))
@@ -408,12 +408,12 @@ export default function CalendarPage() {
       {viewMode === 'month' && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-900">Сетка месяца (Сентябрь 2026)</h3>
-            <span className="text-xs text-slate-500">Нажмите на любую дату, чтобы запланировать занятие</span>
+            <h3 className="text-sm font-bold text-slate-900">{t('calendar.monthGridTitle', 'Сетка месяца (Сентябрь 2026)')}</h3>
+            <span className="text-xs text-slate-500">{t('calendar.monthGridHint', 'Нажмите на любую дату, чтобы запланировать занятие')}</span>
           </div>
           <div className="grid grid-cols-7 gap-2 text-center text-xs">
-            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
-              <div key={d} className="font-bold text-slate-400 uppercase py-1">{d}</div>
+            {[t('days.mon', 'Пн'), t('days.tue', 'Вт'), t('days.wed', 'Ср'), t('days.thu', 'Чт'), t('days.fri', 'Пт'), t('days.sat', 'Сб'), t('days.sun', 'Вс')].map((d, di) => (
+              <div key={di} className="font-bold text-slate-400 uppercase py-1">{d}</div>
             ))}
             {Array.from({ length: 30 }).map((_, i) => {
               const dayNum = i + 1;
@@ -424,7 +424,7 @@ export default function CalendarPage() {
                 <div
                   key={i}
                   onClick={() => handleOpenScheduleForDate(dateStr)}
-                  title={`Запланировать занятие на ${dayNum} сентября`}
+                  title={`${t('calendar.scheduleFor', 'Запланировать на')} ${dayNum}`}
                   className={cn(
                     'group h-20 rounded-xl border p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer',
                     dayNum === 3
@@ -441,7 +441,7 @@ export default function CalendarPage() {
                   {hasLessons && (
                     <div className="space-y-0.5">
                       <span className="block rounded bg-blue-100 px-1 py-0.5 text-[9px] font-semibold text-blue-800 truncate">
-                        2 урока
+                        2 {t('calendar.lessonsCount', 'урока')}
                       </span>
                     </div>
                   )}
