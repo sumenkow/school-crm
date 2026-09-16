@@ -121,11 +121,13 @@ export default function GroupsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Video className="h-4 w-4 text-blue-500" />
-                    <span className="text-blue-700 font-medium">Формат: Онлайн (Zoom / веб-класс)</span>
+                    <span className="text-blue-700 font-medium">{t('groups.onlineClass', 'Онлайн (Zoom / платформа)')}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                    <span>Тариф: <strong className="text-slate-800">{group.pricing?.pricePerLessonFormatted || '1 050 ₽'} / урок</strong></span>
-                    <span>Абонемент: <strong className="text-slate-800">{group.pricing?.pricePerMonthFormatted || '7 600 ₽/мес'}</strong></span>
+                    <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      {t('groups.paymentStatus', 'Оплата занятий')}: {t('status.paid', 'Оплачено')}
+                    </span>
                   </div>
                 </div>
 
@@ -155,7 +157,7 @@ export default function GroupsPage() {
               </div>
 
               <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Старт: {group.startDate}</span>
+                <span className="text-slate-400">{t('status.scheduled', 'Старт')}: {group.startDate}</span>
                 <span className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:text-blue-700">
                   {t('action.openProfile', 'Открыть карточку группы')} <ArrowRight className="h-3.5 w-3.5" />
                 </span>

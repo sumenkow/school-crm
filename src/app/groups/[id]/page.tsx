@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   getStoredGroups,
   saveGroupToStorage,
@@ -40,6 +41,7 @@ export default function GroupDetailsPage() {
   const params = useParams();
   const { success } = useToast();
   const { role, userName } = useRole();
+  const { t } = useLanguage();
   const groupId = params.id as string;
 
   const [group, setGroup] = useState<FullGroupData>(() => {
@@ -219,7 +221,7 @@ export default function GroupDetailsPage() {
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Link href="/groups" className="inline-flex items-center gap-1 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к списку групп
+          {t('groups.backToList', 'Назад к списку групп')}
         </Link>
         <span>/</span>
         <span className="text-slate-800 font-semibold">{group.name}</span>
@@ -235,7 +237,7 @@ export default function GroupDetailsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
-                  Курс: {group.courseName}
+                  {t('groups.course', 'Курс:')} {group.courseName}
                 </span>
                 <span
                   className={cn(
@@ -243,7 +245,7 @@ export default function GroupDetailsPage() {
                     group.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
                   )}
                 >
-                  {group.status === 'active' ? 'Идут занятия' : 'Идет набор'}
+                  {group.status === 'active' ? t('groups.statusActive', 'Идут занятия') : t('groups.statusEnrolling', 'Идет набор')}
                 </span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-1">
@@ -257,11 +259,11 @@ export default function GroupDetailsPage() {
                 </span>
                 <span className="flex items-center gap-1 font-medium text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200/60">
                   <Video className="h-3.5 w-3.5 text-blue-600" />
-                  Онлайн-класс (Zoom / платформа)
+                  {t('groups.onlineClass', 'Онлайн-класс (Zoom / платформа)')}
                 </span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5 text-slate-400" />
-                  Преподаватель: <Link href={`/teachers`} className="font-semibold text-blue-600 hover:underline">{group.teacherName}</Link>
+                  {t('groups.teacher', 'Преподаватель')}: <Link href={`/teachers`} className="font-semibold text-blue-600 hover:underline">{group.teacherName}</Link>
                 </span>
               </div>
             </div>
@@ -275,17 +277,17 @@ export default function GroupDetailsPage() {
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
-              title="Открыть WhatsApp рассылку для родителей группы"
+              title="WhatsApp"
             >
               <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
-              WhatsApp группы
+              {t('groups.groupWhatsapp', 'WhatsApp группы')}
             </a>
             <Link
               href={`/calendar?group=${encodeURIComponent(group.name)}`}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
             >
               <Calendar className="h-3.5 w-3.5" />
-              Ближайший урок в календаре →
+              {t('groups.nearestLesson', 'Ближайший урок в календаре →')}
             </Link>
             <button
               type="button"
@@ -293,7 +295,7 @@ export default function GroupDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
             >
               <Edit className="h-3.5 w-3.5 text-slate-500" />
-              Изменить
+              {t('action.edit', 'Изменить')}
             </button>
           </div>
         </div>
@@ -303,12 +305,9 @@ export default function GroupDetailsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
             <div>
               <span className="text-slate-600 font-medium">
-                Заполненность группы (автоматический расчет):{' '}
-                <strong className="text-slate-900 text-sm">{enrolledCount} из {group.capacity} мест</strong>
+                {t('groups.capacity', 'Наполняемость')}:{' '}
+                <strong className="text-slate-900 text-sm">{enrolledCount} {t('action.all', 'из')} {group.capacity} {t('groups.spots', 'мест')}</strong>
               </span>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Заполненность вычисляется на основе активных зачислений (Enrollments)
-              </p>
             </div>
             <div>
               <span
@@ -321,7 +320,7 @@ export default function GroupDetailsPage() {
                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 )}
               >
-                {freeSpots === 0 ? 'Группа полностью заполнена' : `Свободно мест: ${freeSpots}`}
+                {freeSpots === 0 ? t('groups.full', 'Группа заполнена') : `${t('groups.spotsLeft', 'Осталось мест:')} ${freeSpots}`}
               </span>
             </div>
           </div>
@@ -336,42 +335,18 @@ export default function GroupDetailsPage() {
           </div>
         </div>
 
-        {/* Course Pricing & Tariff Strip (Only visible for admin & owner) */}
-        {role !== 'teacher' && (
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 text-xs">
-            <div className="flex items-center justify-between rounded-xl bg-blue-50/60 p-3 border border-blue-100/80">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
-                  Стоимость 1 онлайн-занятия
-                </span>
-                <p className="text-base font-bold text-slate-900 mt-0.5">
-                  {group.pricing?.pricePerLessonFormatted || '1 050 ₽'}
-                </p>
-              </div>
-              <span className="text-[11px] text-blue-600 bg-white px-2 py-1 rounded-md border border-blue-200/50 shadow-2xs font-medium">
-                Для списаний с депозита
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between rounded-xl bg-emerald-50/60 p-3 border border-emerald-100/80">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                  Стоимость абонемента
-                </span>
-                <p className="text-base font-bold text-slate-900 mt-0.5">
-                  {group.pricing?.pricePerMonthFormatted || '7 600 ₽ / месяц'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenEdit}
-                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
-              >
-                Настроить тариф →
-              </button>
-            </div>
+        {/* Group Payment Status Strip (Clean status instead of raw tariffs) */}
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-emerald-50/70 p-3.5 border border-emerald-200/80 text-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="font-semibold text-emerald-900">
+              {t('groups.paymentSummary', 'Оплата занятий: Все оплачено / Без долгов')}
+            </span>
           </div>
-        )}
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-200 shadow-2xs">
+            {t('status.paid', 'Оплачено')}
+          </span>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -383,7 +358,7 @@ export default function GroupDetailsPage() {
             activeTab === 'students' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'
           )}
         >
-          Состав группы ({enrolledCount} уч.)
+          {t('groups.tabRoster', 'Состав группы')} ({enrolledCount})
         </button>
         <button
           onClick={() => setActiveTab('lessons')}
@@ -392,7 +367,7 @@ export default function GroupDetailsPage() {
             activeTab === 'lessons' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'
           )}
         >
-          Занятия и Журнал ({group.recentLessons.length})
+          {t('groups.tabLessons', 'Занятия и Журнал')} ({group.recentLessons.length})
         </button>
       </div>
 
@@ -404,7 +379,7 @@ export default function GroupDetailsPage() {
             <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-800">Зачислить ученика:</span>
+                  <span className="text-xs font-bold text-slate-800">{t('groups.enrollStudent', 'Зачислить ученика:')}</span>
                   <div className="flex rounded-lg bg-white p-0.5 border border-slate-200 text-xs">
                     <button
                       type="button"
@@ -414,7 +389,7 @@ export default function GroupDetailsPage() {
                         enrollMode === 'db' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                       )}
                     >
-                      Из базы школы ({availableStudentsFromDb.length})
+                      {t('groups.fromSchoolDb', 'Из базы школы')} ({availableStudentsFromDb.length})
                     </button>
                     <button
                       type="button"
@@ -424,12 +399,12 @@ export default function GroupDetailsPage() {
                         enrollMode === 'new' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                       )}
                     >
-                      Новый ученик
+                      {t('groups.newStudent', 'Новый ученик')}
                     </button>
                   </div>
                 </div>
                 <span className="text-[11px] font-semibold text-blue-700">
-                  Осталось мест: <strong>{freeSpots}</strong>
+                  {t('groups.spotsLeft', 'Осталось мест:')} <strong>{freeSpots}</strong>
                 </span>
               </div>
 
@@ -444,13 +419,13 @@ export default function GroupDetailsPage() {
                       >
                         {availableStudentsFromDb.map((s) => (
                           <option key={s.id} value={s.id}>
-                            {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? 'Студент (18+)' : 'Школьник'} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
+                            {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? t('students.filterAdult', 'Студент (18+)') : t('students.filterSchool', 'Школьник')} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
                           </option>
                         ))}
                       </select>
                     ) : (
                       <p className="text-xs text-slate-500 italic p-2 bg-white rounded-xl border border-slate-200">
-                        Все действующие ученики школы уже состоят в этой группе.
+                        {t('parents.emptyChildren', 'Все действующие ученики школы уже состоят в этой группе.')}
                       </p>
                     )}
                   </div>
@@ -471,7 +446,7 @@ export default function GroupDetailsPage() {
                         type="tel"
                         value={newStudentPhone}
                         onChange={(e) => setNewStudentPhone(e.target.value)}
-                        placeholder="Телефон родителя..."
+                        placeholder={t('groups.parentPhone', 'Телефон родителя')}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
@@ -484,14 +459,14 @@ export default function GroupDetailsPage() {
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Plus className="h-4 w-4" />
-                  Зачислить в группу
+                  {t('groups.enrollAction', 'Зачислить в группу')}
                 </button>
               </form>
             </div>
           ) : (
             <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-              <span>Лимит мест исчерпан ({group.capacity} из {group.capacity}). Чтобы добавить ученика, увеличьте лимит мест группы.</span>
+              <span>{t('groups.limitReached', 'Лимит мест исчерпан. Чтобы добавить ученика, увеличьте лимит мест группы.')}</span>
             </div>
           )}
 
@@ -500,13 +475,13 @@ export default function GroupDetailsPage() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
                 <tr>
-                  <th className="py-3.5 pl-4 pr-3">Ученик</th>
-                  <th className="px-3 py-3.5">Статус в группе</th>
-                  <th className="px-3 py-3.5">Оплата занятий</th>
-                  <th className="px-3 py-3.5">Телефон родителя</th>
-                  <th className="px-3 py-3.5">Дата зачисления</th>
-                  <th className="px-3 py-3.5 text-center">Посещаемость</th>
-                  <th className="py-3.5 pl-3 pr-4 text-right">Действия</th>
+                  <th className="py-3.5 pl-4 pr-3">{t('students.colStudent', 'Ученик')}</th>
+                  <th className="px-3 py-3.5">{t('groups.studentStatus', 'Статус в группе')}</th>
+                  <th className="px-3 py-3.5">{t('groups.paymentStatus', 'Оплата занятий')}</th>
+                  <th className="px-3 py-3.5">{t('groups.parentPhone', 'Телефон родителя')}</th>
+                  <th className="px-3 py-3.5">{t('groups.enrolledDate', 'Дата зачисления')}</th>
+                  <th className="px-3 py-3.5 text-center">{t('students.colAttendance', 'Посещаемость')}</th>
+                  <th className="py-3.5 pl-3 pr-4 text-right">{t('students.colActions', 'Действия')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -526,9 +501,9 @@ export default function GroupDetailsPage() {
                           student.status === 'trial' && 'bg-purple-100 text-purple-800',
                           student.status === 'paused' && 'bg-amber-100 text-amber-800'
                         )}>
-                          {student.status === 'active' && 'Активен'}
-                          {student.status === 'trial' && 'Пробный'}
-                          {student.status === 'paused' && 'На паузе'}
+                          {student.status === 'active' && t('status.active', 'Активен')}
+                          {student.status === 'trial' && t('status.trial', 'Пробный')}
+                          {student.status === 'paused' && t('status.paused', 'На паузе')}
                         </span>
                       </td>
                       <td className="px-3 py-3">
@@ -544,7 +519,7 @@ export default function GroupDetailsPage() {
                           onClick={() => handleRemoveStudent(student.id)}
                           className="text-xs text-rose-500 hover:text-rose-700 hover:underline"
                         >
-                          Исключить
+                          {t('groups.exclude', 'Исключить')}
                         </button>
                       </td>
                     </tr>
@@ -560,10 +535,10 @@ export default function GroupDetailsPage() {
       {activeTab === 'lessons' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Уроки группы</h3>
+            <h3 className="text-sm font-bold text-slate-900">{t('groups.groupLessons', 'Уроки группы')}</h3>
             <button className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700">
               <Plus className="h-3.5 w-3.5" />
-              Добавить урок
+              {t('groups.addLesson', 'Добавить урок')}
             </button>
           </div>
 
@@ -575,18 +550,18 @@ export default function GroupDetailsPage() {
                     <span className="font-bold text-slate-900 text-sm">{lesson.date}</span>
                     <span className="text-xs text-slate-500">• {lesson.time}</span>
                   </div>
-                  <p className="text-xs text-slate-700 font-medium">Тема: {lesson.topic}</p>
+                  <p className="text-xs text-slate-700 font-medium">{t('hero.topic', 'Тема')}: {lesson.topic}</p>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-slate-500">
-                    Присутствовало: <strong>{lesson.presentCount} из {enrolledCount}</strong>
+                    {t('groups.presentCount', 'Присутствовало')}: <strong>{lesson.presentCount} {t('action.all', 'из')} {enrolledCount}</strong>
                   </span>
                   <span className={cn(
                     'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
                     lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                   )}>
-                    {lesson.status === 'completed' ? 'Завершён' : 'Запланирован'}
+                    {lesson.status === 'completed' ? t('status.completed', 'Завершён') : t('status.scheduled', 'Запланирован')}
                   </span>
                 </div>
               </div>
@@ -605,8 +580,8 @@ export default function GroupDetailsPage() {
                   <Edit className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Изменение параметров группы</h3>
-                  <p className="text-xs text-slate-500">Название, курс, преподаватель, расписание и места</p>
+                  <h3 className="font-bold text-slate-900 text-base">{t('groups.editParams', 'Изменение параметров группы')}</h3>
+                  <p className="text-xs text-slate-500">{t('groups.subtitle', 'Название, курс, преподаватель, расписание и места')}</p>
                 </div>
               </div>
               <button
@@ -620,7 +595,7 @@ export default function GroupDetailsPage() {
 
             <form onSubmit={handleSaveGroup} className="mt-4 space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Название группы</label>
+                <label className="block font-semibold text-slate-700 mb-1">{t('groups.groupName', 'Название группы')}</label>
                 <input
                   type="text"
                   value={editForm.name}
@@ -633,7 +608,7 @@ export default function GroupDetailsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Курс / Направление</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('crm.tableCourse', 'Курс / Направление')}</label>
                   <input
                     type="text"
                     value={editForm.courseName}
@@ -644,7 +619,7 @@ export default function GroupDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Преподаватель</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('groups.teacher', 'Преподаватель')}</label>
                   <input
                     type="text"
                     value={editForm.teacherName}
@@ -658,7 +633,7 @@ export default function GroupDetailsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Расписание занятий</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('groups.schedule', 'Расписание занятий')}</label>
                   <input
                     type="text"
                     value={editForm.schedule}
@@ -669,7 +644,7 @@ export default function GroupDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Формат / Кабинет (онлайн)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('hero.room', 'Формат / Кабинет (онлайн)')}</label>
                   <input
                     type="text"
                     value={editForm.room}
@@ -683,7 +658,7 @@ export default function GroupDetailsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Вместимость (макс. мест)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('groups.capacity', 'Вместимость (макс. мест)')}</label>
                   <input
                     type="number"
                     min={1}
@@ -695,92 +670,21 @@ export default function GroupDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Статус группы</label>
+                  <label className="block font-semibold text-slate-700 mb-1">{t('crm.leadStage', 'Статус группы')}</label>
                   <select
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
                   >
-                    <option value="active">Идут занятия (Активна)</option>
-                    <option value="recruiting">Идет набор</option>
-                    <option value="completed">Завершена</option>
+                    <option value="active">{t('groups.statusActive', 'Идут занятия (Активна)')}</option>
+                    <option value="recruiting">{t('groups.statusEnrolling', 'Идет набор')}</option>
+                    <option value="completed">{t('status.finished', 'Завершена')}</option>
                   </select>
                 </div>
               </div>
 
-              {/* Course Pricing Settings */}
-              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">
-                    Тариф и стоимость курса
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditForm({ ...editForm, currency: 'RUB' })}
-                      className={cn(
-                        'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                        editForm.currency === 'RUB'
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'bg-white text-slate-600 border border-slate-200'
-                      )}
-                    >
-                      ₽ Рубли
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditForm({ ...editForm, currency: 'EUR' })}
-                      className={cn(
-                        'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                        editForm.currency === 'EUR'
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'bg-white text-slate-600 border border-slate-200'
-                      )}
-                    >
-                      € Евро
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Стоимость 1 занятия ({editForm.currency === 'EUR' ? '€' : '₽'})
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0.01"
-                      value={editForm.pricePerLesson}
-                      onChange={(e) => setEditForm({ ...editForm, pricePerLesson: parseFloat(e.target.value) || 0 })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
-                      placeholder={editForm.currency === 'EUR' ? '15' : '1050'}
-                      required
-                    />
-                    <p className="text-[10px] text-slate-500 mt-0.5">Для списаний с депозита</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Абонемент в месяц ({editForm.currency === 'EUR' ? '€' : '₽'})
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0.01"
-                      value={editForm.pricePerMonth}
-                      onChange={(e) => setEditForm({ ...editForm, pricePerMonth: parseFloat(e.target.value) || 0 })}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
-                      placeholder={editForm.currency === 'EUR' ? '85' : '7600'}
-                      required
-                    />
-                    <p className="text-[10px] text-slate-500 mt-0.5">Фиксированный тариф</p>
-                  </div>
-                </div>
-              </div>
-
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Заметки и особенности группы</label>
+                <label className="block font-semibold text-slate-700 mb-1">{t('students.tabNotes', 'Заметки и особенности группы')}</label>
                 <textarea
                   rows={3}
                   value={editForm.notes}
@@ -796,14 +700,14 @@ export default function GroupDetailsPage() {
                   onClick={() => setIsEditModalOpen(false)}
                   className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                 >
-                  Отмена
+                  {t('action.cancel', 'Отмена')}
                 </button>
                 <button
                   type="submit"
                   className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  Сохранить изменения
+                  {t('action.saveChanges', 'Сохранить изменения')}
                 </button>
               </div>
             </form>
