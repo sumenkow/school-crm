@@ -597,7 +597,7 @@ export default function LessonDetailsPage() {
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"
-                        placeholder="Заметка к уроку (опоздал, работал активно...)"
+                        placeholder="Комментарии преподавателя..."
                         value={student.notes || ''}
                         onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-700 placeholder:text-slate-400 w-64 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"

@@ -301,13 +301,13 @@ export default function TeacherMobileDashboard() {
                     </div>
                   </div>
 
-                  {/* Optional Note on Student */}
+                  {/* Optional Note / Teacher Comment on Student */}
                   <div>
                     <input
                       type="text"
                       value={student.note || ''}
                       onChange={(e) => handleUpdateNote(student.id, e.target.value)}
-                      placeholder="Заметка к отсутствию (например: заболел, семейные обстоятельства)..."
+                      placeholder="Комментарии преподавателя..."
                       className="w-full rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
