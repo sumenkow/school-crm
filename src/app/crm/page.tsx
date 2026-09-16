@@ -19,10 +19,13 @@ import {
   UserCheck,
   Copy,
   ExternalLink,
-  Columns
+  Columns,
+  AlertTriangle,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
+import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -391,6 +394,7 @@ export default function CrmPage() {
                 <th className="py-3.5 pl-4 pr-3">Лид / Контакт</th>
                 <th className="px-3 py-3.5">Ученик</th>
                 <th className="px-3 py-3.5">Курс</th>
+                <th className="px-3 py-3.5">Баланс</th>
                 <th className="px-3 py-3.5">Статус воронки</th>
                 <th className="px-3 py-3.5">Следующее действие</th>
                 <th className="px-3 py-3.5">Ответственный</th>
@@ -398,51 +402,69 @@ export default function CrmPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredLeads.map((lead) => (
-                <tr
-                  key={lead.id}
-                  onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                  className="hover:bg-slate-50/80 cursor-pointer"
-                >
-                  <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
-                    <div>{lead.name}</div>
-                    <div className="text-[11px] text-slate-400 font-normal">{lead.contact}</div>
-                  </td>
-                  <td className="px-3 py-3">{lead.studentName}</td>
-                  <td className="px-3 py-3 font-medium text-purple-700">{lead.directionOrCourse}</td>
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <select
-                      value={lead.status}
-                      onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
-                      className={cn(
-                        'rounded-lg px-2 py-1 font-semibold text-[11px] border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-400',
-                        lead.status === 'paid' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                        lead.status === 'trial_held' && 'bg-indigo-50 text-indigo-800 border-indigo-200',
-                        lead.status === 'trial_scheduled' && 'bg-purple-50 text-purple-800 border-purple-200',
-                        lead.status === 'thinking' && 'bg-teal-50 text-teal-800 border-teal-200',
-                        lead.status === 'new' && 'bg-blue-50 text-blue-800 border-blue-200',
-                        lead.status === 'lost' && 'bg-rose-50 text-rose-800 border-rose-200',
-                        lead.status === 'contacted' && 'bg-amber-50 text-amber-800 border-amber-200',
-                        lead.status === 'no_response' && 'bg-slate-100 text-slate-700 border-slate-300'
+              {filteredLeads.map((lead) => {
+                const finSummary = getLeadFinancialSummary(lead);
+                return (
+                  <tr
+                    key={lead.id}
+                    onClick={() => router.push(`/crm/leads/${lead.id}`)}
+                    className="hover:bg-slate-50/80 cursor-pointer"
+                  >
+                    <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
+                      <div>{lead.name}</div>
+                      <div className="text-[11px] text-slate-400 font-normal">{lead.contact}</div>
+                    </td>
+                    <td className="px-3 py-3">{lead.studentName}</td>
+                    <td className="px-3 py-3 font-medium text-purple-700">{lead.directionOrCourse}</td>
+                    <td className="px-3 py-3">
+                      {finSummary.isNegative ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-bold text-rose-700 animate-pulse">
+                          <AlertTriangle className="h-3 w-3 text-rose-600" />
+                          {finSummary.formattedNet}
+                        </span>
+                      ) : finSummary.deposit > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          <Wallet className="h-3 w-3 text-emerald-600" />
+                          {finSummary.formattedDeposit}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">0 ₽</span>
                       )}
-                    >
-                      {columns.map((c) => (
-                        <option key={c.key} value={c.key}>{c.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-3">
-                    <p className="font-medium text-slate-800">{lead.nextAction || '—'}</p>
-                    <p className="text-[10px] text-amber-700 font-semibold">{lead.nextActionDate}</p>
-                  </td>
-                  <td className="px-3 py-3 text-slate-600">{lead.assignedTo}</td>
-                  <td className="py-3 pl-3 pr-4 text-right">
-                    <span className="text-xs font-semibold text-purple-600 hover:underline inline-flex items-center">
-                      Открыть <ChevronRight className="h-3.5 w-3.5" />
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value={lead.status}
+                        onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
+                        className={cn(
+                          'rounded-lg px-2 py-1 font-semibold text-[11px] border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-400',
+                          lead.status === 'paid' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                          lead.status === 'trial_held' && 'bg-indigo-50 text-indigo-800 border-indigo-200',
+                          lead.status === 'trial_scheduled' && 'bg-purple-50 text-purple-800 border-purple-200',
+                          lead.status === 'thinking' && 'bg-teal-50 text-teal-800 border-teal-200',
+                          lead.status === 'new' && 'bg-blue-50 text-blue-800 border-blue-200',
+                          lead.status === 'lost' && 'bg-rose-50 text-rose-800 border-rose-200',
+                          lead.status === 'contacted' && 'bg-amber-50 text-amber-800 border-amber-200',
+                          lead.status === 'no_response' && 'bg-slate-100 text-slate-700 border-slate-300'
+                        )}
+                      >
+                        {columns.map((c) => (
+                          <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-3">
+                      <p className="font-medium text-slate-800">{lead.nextAction || '—'}</p>
+                      <p className="text-[10px] text-amber-700 font-semibold">{lead.nextActionDate}</p>
+                    </td>
+                    <td className="px-3 py-3 text-slate-600">{lead.assignedTo}</td>
+                    <td className="py-3 pl-3 pr-4 text-right">
+                      <span className="text-xs font-semibold text-purple-600 hover:underline inline-flex items-center">
+                        Открыть <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -471,10 +493,15 @@ interface LeadCardProps {
 }
 
 function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: LeadCardProps) {
+  const finSummary = getLeadFinancialSummary(lead);
+
   return (
     <div
       onClick={onOpen}
-      className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between"
+      className={cn(
+        "rounded-xl border bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between",
+        finSummary.isNegative ? "border-rose-300 ring-1 ring-rose-200/60" : "border-slate-200"
+      )}
     >
       <div>
         <div className="flex items-start justify-between gap-1">
@@ -485,6 +512,19 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone }: L
         </div>
         <p className="text-[11px] font-semibold text-purple-700 mt-0.5 truncate">{lead.directionOrCourse}</p>
         <p className="text-[10px] text-slate-500 truncate">Ученик: {lead.studentName}</p>
+
+        {/* Unified End-to-end Balance Badge */}
+        {finSummary.isNegative ? (
+          <div className="flex items-center gap-1 text-rose-700 font-bold text-[10px] bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5 mt-1.5 animate-pulse">
+            <AlertTriangle className="h-2.5 w-2.5 text-rose-600 shrink-0" />
+            <span>Баланс: {finSummary.formattedNet} (Долг: {finSummary.formattedDebt})</span>
+          </div>
+        ) : finSummary.deposit > 0 ? (
+          <div className="flex items-center gap-1 text-emerald-700 font-semibold text-[10px] bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5 mt-1.5">
+            <Wallet className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+            <span>Депозит: {finSummary.formattedDeposit}</span>
+          </div>
+        ) : null}
 
         <div className="mt-2 space-y-1 text-[11px] text-slate-600 border-t border-slate-100 pt-1.5">
           <div className="flex items-center justify-between gap-1 text-slate-700">

@@ -3,9 +3,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
+import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { useRole } from '@/context/RoleContext';
 import {
   ArrowLeft,
@@ -280,6 +281,50 @@ export default function ParentDetailsPage() {
   }, [parent.children, refreshTrigger]);
 
   const [paymentModalStudentId, setPaymentModalStudentId] = useState<string | undefined>(undefined);
+
+  // Tasks for family & children
+  const [familyTasks, setFamilyTasks] = useState<FullTaskData[]>([]);
+
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        const tasks = await getTasksForParent(parentId);
+        setFamilyTasks(tasks);
+      } catch (e) {
+        console.error('Failed to load family tasks:', e);
+      }
+    }
+    loadTasks();
+
+    const handleSync = () => {
+      loadTasks();
+    };
+
+    window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, [parentId, parent.children]);
+
+  const handleToggleParentTask = async (taskId: string) => {
+    const currentTask = familyTasks.find((t) => t.id === taskId);
+    const newStatus = currentTask?.status === 'done' ? 'open' : 'done';
+
+    setFamilyTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+
+    try {
+      await updateUnifiedTaskStatus(taskId, newStatus, {
+        performedBy: userName || 'Администратор',
+      });
+      success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
+    } catch (err) {
+      console.error('Failed to update task:', err);
+    }
+  };
 
   // Edit modal child management states
   const [editChildren, setEditChildren] = useState(parent.children);
@@ -823,6 +868,100 @@ export default function ParentDetailsPage() {
           <p className="mt-4 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
             💡 <strong>Заметка о родителе:</strong> {parent.notes}
           </p>
+        )}
+      </div>
+
+      {/* Предстоящие задачи по семье и детям */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CheckSquare className="h-4 w-4 text-purple-600" />
+              Предстоящие задачи по семье и детям ({familyTasks.filter((t) => t.status === 'open').length})
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Сквозной список задач по родителю и всем привязанным детям семьи
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateTaskModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Поставить задачу
+          </button>
+        </div>
+
+        {familyTasks.length === 0 ? (
+          <div className="text-center py-6 bg-slate-50/70 rounded-xl border border-slate-200/80 text-xs text-slate-500">
+            <p className="font-semibold">Нет запланированных задач по этой семье</p>
+            <button
+              type="button"
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="mt-1.5 inline-flex items-center gap-1 text-purple-600 font-bold hover:underline"
+            >
+              + Создать задачу для администратора
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
+            {familyTasks.map((task) => (
+              <div
+                key={task.id}
+                className={cn(
+                  "p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors text-xs",
+                  task.status === 'done' ? "bg-slate-50/50" : "bg-white"
+                )}
+              >
+                <div className="flex items-start gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleParentTask(task.id)}
+                    className="mt-0.5 text-slate-400 hover:text-purple-600 transition-colors cursor-pointer shrink-0"
+                    title={task.status === 'done' ? 'Открыть заново' : 'Отметить как выполненную'}
+                  >
+                    {task.status === 'done' ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    ) : (
+                      <div className="h-4 w-4 rounded border-2 border-slate-300 hover:border-purple-500" />
+                    )}
+                  </button>
+                  <div className="min-w-0">
+                    <p className={cn("font-bold text-slate-900", task.status === 'done' && "line-through text-slate-400")}>
+                      {task.title}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                      <span>Срок: <strong className="text-slate-700">{task.dueDateFormatted || task.dueDate}</strong></span>
+                      <span>Ответственный: <strong className="text-slate-700">{task.assignedTo}</strong></span>
+                      {task.studentName && (
+                        <span className="rounded bg-blue-50 px-1.5 py-0.2 text-blue-700 font-medium">
+                          Ученик: {task.studentName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                    task.priority === 'high' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                    task.priority === 'medium' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-slate-50 text-slate-600 border-slate-200"
+                  )}>
+                    {task.priority === 'high' ? 'Срочно' : task.priority === 'medium' ? 'Средний' : 'Обычный'}
+                  </span>
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                    task.status === 'done' ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
+                  )}>
+                    {task.status === 'done' ? 'Выполнено' : 'В работе'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -1565,10 +1704,16 @@ export default function ParentDetailsPage() {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
-        defaultStudentId={parent.children[0]?.id}
+        defaultParentId={parentId}
+        parentScope={{
+          id: parent.id,
+          name: `${parent.firstName} ${parent.lastName}`.trim() || parent.name,
+          children: parent.children.map((c) => ({ id: c.id, name: c.name })),
+        }}
         onCreated={(newTask) => {
           setIsCreateTaskModalOpen(false);
-          success(`Задача «${newTask.title}» добавлена в очередь!`);
+          setFamilyTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
+          success(`Задача «${newTask.title}» добавлена в очередь семьи!`);
         }}
       />
 

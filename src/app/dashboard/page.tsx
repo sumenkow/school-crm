@@ -41,6 +41,7 @@ import {
 import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
+import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskReportModal';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
@@ -297,7 +298,13 @@ function SmartActionHub() {
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. OWNER DASHBOARD (Финансовая аналитика, масштабирование, управление командой)
 // ─────────────────────────────────────────────────────────────────────────────
-function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
+function OwnerDashboard({
+  onOpenReport,
+  onOpenExecutiveReport,
+}: {
+  onOpenReport: () => void;
+  onOpenExecutiveReport?: () => void;
+}) {
   const router = useRouter();
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
@@ -407,6 +414,16 @@ function OwnerDashboard({ onOpenReport }: { onOpenReport: () => void }) {
             <FileText size={16} />
             Отчет за день
           </button>
+          {onOpenExecutiveReport && (
+            <button
+              onClick={onOpenExecutiveReport}
+              className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+              style={{ backgroundColor: '#FAF5FF', color: '#7E22CE', fontWeight: 600, border: '1px solid #E9D5FF' }}
+            >
+              <Shield size={16} />
+              Аудит задач
+            </button>
+          )}
         </div>
       </div>
 
@@ -2241,6 +2258,7 @@ function TeacherDashboard() {
 export default function DashboardPage() {
   const { role } = useRole();
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [executiveModalOpen, setExecutiveModalOpen] = useState(false);
 
   return (
     <>
@@ -2249,13 +2267,23 @@ export default function DashboardPage() {
       ) : role === 'admin' ? (
         <AdminDashboard onOpenReport={() => setReportModalOpen(true)} />
       ) : (
-        <OwnerDashboard onOpenReport={() => setReportModalOpen(true)} />
+        <OwnerDashboard
+          onOpenReport={() => setReportModalOpen(true)}
+          onOpenExecutiveReport={() => setExecutiveModalOpen(true)}
+        />
       )}
 
       <DailyReportModal
         isOpen={reportModalOpen}
         onClose={() => setReportModalOpen(false)}
       />
+
+      {(role === 'owner' || role === 'developer') && (
+        <ExecutiveTaskReportModal
+          isOpen={executiveModalOpen}
+          onClose={() => setExecutiveModalOpen(false)}
+        />
+      )}
     </>
   );
 }

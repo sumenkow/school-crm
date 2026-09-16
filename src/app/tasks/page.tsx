@@ -19,10 +19,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullTaskData } from '@/lib/data/mockData';
-import { getStoredTasks, saveTaskToStorage } from '@/lib/data/taskStorage';
+import { getStoredTasks } from '@/lib/data/taskStorage';
+import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 
 export default function TasksPage() {
+  const { userName } = useRole();
+  const toast = useToast();
   const [tasks, setTasks] = useState<FullTaskData[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'overdue' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
@@ -31,32 +36,48 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<FullTaskData | null>(null);
   const [selectedTask, setSelectedTask] = useState<FullTaskData | null>(null);
 
+  const loadTasks = async () => {
+    const list = await getStoredTasks();
+    setTasks(list);
+  };
+
   useEffect(() => {
-    getStoredTasks().then(setTasks);
+    loadTasks();
+
+    const handleSync = () => {
+      loadTasks();
+    };
+
+    window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
   }, []);
 
   const handleTaskCreated = (newTask: FullTaskData) => {
-    setTasks((prev) => [newTask, ...prev]);
-    saveTaskToStorage(newTask);
+    setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);
   };
 
-  const handleToggleStatus = (taskId: string) => {
-    let updatedTask: FullTaskData | undefined;
+  const handleToggleStatus = async (taskId: string) => {
+    const currentTask = tasks.find((t) => t.id === taskId);
+    const newStatus = currentTask?.status === 'done' ? 'open' : 'done';
+
     setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const newStatus = t.status === 'done' ? 'open' : 'done';
-        updatedTask = { ...t, status: newStatus };
-        return updatedTask;
-      })
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
     );
     setSelectedTask((prev) =>
-      prev && prev.id === taskId
-        ? { ...prev, status: prev.status === 'done' ? 'open' : 'done' }
-        : prev
+      prev && prev.id === taskId ? { ...prev, status: newStatus } : prev
     );
-    if (updatedTask) {
-      saveTaskToStorage(updatedTask);
+
+    try {
+      await updateUnifiedTaskStatus(taskId, newStatus, {
+        performedBy: userName || 'Администратор',
+      });
+      toast.success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
+    } catch (err) {
+      console.error('Failed to update task:', err);
     }
   };
 

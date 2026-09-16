@@ -31,6 +31,9 @@ import {
   MinusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FullLeadData, INITIAL_LEADS, TimelineInteraction, INITIAL_STUDENTS, splitFullName, buildFullName } from '@/lib/data/mockData';
+import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
@@ -359,6 +362,10 @@ export default function LeadDetailsPage() {
   const totalLeadPaid = leadPayments
     .filter((p) => !p.amount.startsWith('-') && p.status === 'paid')
     .reduce((sum, p) => sum + (p.numAmount || parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
+
+  const leadFinSummary = useMemo(() => {
+    return getLeadFinancialSummary(lead);
+  }, [lead]);
 
   const handleRecordLeadPayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -750,10 +757,15 @@ export default function LeadDetailsPage() {
 
               {/* Financial status badges */}
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {leadDeposit > 0 ? (
+                {leadFinSummary.isNegative ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-rose-50 text-rose-700 border border-rose-300 inline-flex items-center gap-1.5 shadow-2xs animate-pulse">
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                    Баланс: {leadFinSummary.formattedNet} (Долг: {leadFinSummary.formattedDebt})
+                  </span>
+                ) : leadFinSummary.deposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
                     <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                    Депозит лида: +{leadDeposit.toLocaleString('ru-RU')} ₽
+                    Депозит: {leadFinSummary.formattedDeposit}
                   </span>
                 ) : totalLeadPaid > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1.5 shadow-2xs">
@@ -773,6 +785,41 @@ export default function LeadDetailsPage() {
                   </span>
                 )}
               </div>
+
+              {/* End-to-end linked student/parent debt or deposit alert banner */}
+              {leadFinSummary.linkedStudent && (
+                <div className={cn(
+                  "mt-3 rounded-xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border text-xs",
+                  leadFinSummary.linkedStudent.debt > 0 ? "bg-rose-50/90 border-rose-200 text-rose-900" : "bg-blue-50/70 border-blue-200 text-slate-800"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <User className={cn("h-4 w-4 shrink-0", leadFinSummary.linkedStudent.debt > 0 ? "text-rose-600" : "text-blue-600")} />
+                    <div>
+                      <span className="font-bold">Связанный ученик: {leadFinSummary.linkedStudent.name}</span>
+                      {leadFinSummary.linkedStudent.debt > 0 ? (
+                        <span className="ml-2 font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                          Задолженность: -{leadFinSummary.linkedStudent.debt.toLocaleString('ru-RU')} ₽
+                        </span>
+                      ) : leadFinSummary.linkedStudent.deposit > 0 ? (
+                        <span className="ml-2 font-semibold text-emerald-700">
+                          Депозит: +{leadFinSummary.linkedStudent.deposit.toLocaleString('ru-RU')} ₽
+                        </span>
+                      ) : (
+                        <span className="ml-2 text-slate-500">Баланс: 0 ₽</span>
+                      )}
+                    </div>
+                  </div>
+                  <Link
+                    href={`/students/${leadFinSummary.linkedStudent.id}`}
+                    className={cn(
+                      "font-bold hover:underline inline-flex items-center gap-1 shrink-0 text-xs",
+                      leadFinSummary.linkedStudent.debt > 0 ? "text-rose-700" : "text-blue-700"
+                    )}
+                  >
+                    Карточка ученика →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
@@ -936,14 +983,33 @@ export default function LeadDetailsPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className={cn(
+            "rounded-xl border p-3.5",
+            leadFinSummary.isNegative ? "border-rose-300 bg-rose-50/80" : leadFinSummary.deposit > 0 ? "border-emerald-200 bg-emerald-50/60" : "border-slate-200 bg-slate-50/70"
+          )}>
+            <span className={cn("text-[11px] font-medium", leadFinSummary.isNegative ? "text-rose-700" : "text-slate-500")}>
+              Сквозной баланс (лид + семья):
+            </span>
+            <p className={cn("text-xl font-black mt-0.5", leadFinSummary.isNegative ? "text-rose-700" : leadFinSummary.deposit > 0 ? "text-emerald-700" : "text-slate-900")}>
+              {leadFinSummary.formattedNet}
+            </p>
+            <p className={cn("text-[11px] mt-0.5 font-semibold", leadFinSummary.isNegative ? "text-rose-600" : leadFinSummary.deposit > 0 ? "text-emerald-600" : "text-slate-500")}>
+              {leadFinSummary.isNegative
+                ? `Задолженность: ${leadFinSummary.formattedDebt}`
+                : leadFinSummary.deposit > 0
+                ? `Доступно: ${leadFinSummary.formattedDeposit}`
+                : 'Баланс нулевой'}
+            </p>
+          </div>
+
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
             <span className="text-slate-500 text-[11px] font-medium">Текущий депозит лида:</span>
             <p className="text-xl font-black text-emerald-700 mt-0.5">
               +{leadDeposit.toLocaleString('ru-RU')} ₽
             </p>
             <p className="text-[11px] text-emerald-600 mt-0.5 font-medium">
-              {leadDeposit > 0 ? 'Доступно для списания или переноса в группу' : 'Депозит нулевой • требуется пополнение'}
+              {leadDeposit > 0 ? 'Доступно для списания' : 'Депозит нулевой'}
             </p>
           </div>
 
@@ -972,7 +1038,7 @@ export default function LeadDetailsPage() {
               )}
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              {lead.status === 'paid' ? 'Готов к конвертации в ученика' : 'Оплата может быть зафиксирована в любой момент'}
+              {lead.status === 'paid' ? 'Готов к зачислению' : 'Оплата до зачисления'}
             </p>
           </div>
         </div>

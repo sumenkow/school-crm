@@ -37,6 +37,8 @@ interface ParentRecord {
   balanceStatus: string;
   depositFormatted?: string;
   depositBalance?: number;
+  debtFormatted?: string;
+  debtBalance?: number;
 }
 
 const INITIAL_PARENTS: ParentRecord[] = [
@@ -172,10 +174,11 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
-  // 4. Compute true dynamic finances (total paid, active deposit, balance status) from children
+  // 4. Compute true dynamic finances (total paid, active deposit, balance status, debt) from children
   for (const parent of map.values()) {
     let paidSum = 0;
     let depositSum = 0;
+    let debtSum = 0;
     let hasOverdue = false;
     let currencySymbol = '₽';
 
@@ -194,6 +197,8 @@ function getMergedParents(): ParentRecord[] {
               if (p.amount.includes('€')) currencySymbol = '€';
             } else if (p.status === 'overdue') {
               hasOverdue = true;
+              const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+              debtSum += num;
             }
           }
         }
@@ -203,9 +208,11 @@ function getMergedParents(): ParentRecord[] {
     if (paidSum > 0) {
       parent.totalPaid = `${paidSum.toLocaleString('ru-RU')} ${currencySymbol}`;
     }
-    parent.balanceStatus = hasOverdue ? 'overdue' : 'paid';
+    parent.balanceStatus = hasOverdue || debtSum > 0 ? 'overdue' : 'paid';
     parent.depositBalance = depositSum;
     parent.depositFormatted = depositSum > 0 ? `${depositSum.toLocaleString('ru-RU')} ${currencySymbol}` : undefined;
+    parent.debtBalance = debtSum;
+    parent.debtFormatted = debtSum > 0 ? `-${debtSum.toLocaleString('ru-RU')} ${currencySymbol}` : undefined;
   }
 
   return Array.from(map.values());
@@ -476,11 +483,15 @@ export default function ParentsPage() {
                 <span className="text-slate-500">
                   Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
                 </span>
-                {p.depositFormatted && (
+                {p.debtFormatted ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5 animate-pulse">
+                    <AlertTriangle className="h-3 w-3 text-rose-600" /> Долг семьи: {p.debtFormatted}
+                  </span>
+                ) : p.depositFormatted ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
                     <Wallet className="h-3 w-3" /> Депозит семьи: {p.depositFormatted}
                   </span>
-                )}
+                ) : null}
               </div>
               <Link
                 href={`/parents/${p.id}`}

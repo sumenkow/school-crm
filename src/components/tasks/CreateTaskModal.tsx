@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { X, CheckSquare, Calendar, Clock, User, Check, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { createUnifiedTask } from '@/lib/data/taskManager';
+import { useRole } from '@/context/RoleContext';
 
 export interface StudentTaskScope {
   id: string;
@@ -16,13 +19,24 @@ export interface StudentTaskScope {
   }>;
 }
 
+export interface ParentTaskScope {
+  id: string;
+  name: string;
+  children?: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
 interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: (newTask: FullTaskData) => void;
   defaultStudentId?: string;
+  defaultParentId?: string;
   defaultLeadId?: string;
   studentScope?: StudentTaskScope;
+  parentScope?: ParentTaskScope;
 }
 
 export function CreateTaskModal({
@@ -30,30 +44,38 @@ export function CreateTaskModal({
   onClose,
   onCreated,
   defaultStudentId,
+  defaultParentId,
   defaultLeadId,
   studentScope,
+  parentScope,
 }: CreateTaskModalProps) {
+  const { role, userName } = useRole();
   const [title, setTitle] = useState('');
   const [taskType, setTaskType] = useState<FullTaskData['taskType']>('Retention');
   const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
   const [priority, setPriority] = useState<FullTaskData['priority']>('medium');
-  const [dueDate, setDueDate] = useState('2026-09-12');
+  const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueTime, setDueTime] = useState('15:00');
   const [scopedTarget, setScopedTarget] = useState<string>('student');
-  const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'none'>(
-    defaultStudentId ? 'student' : defaultLeadId ? 'lead' : 'student'
+  const [scopedChildTarget, setScopedChildTarget] = useState<string>('family');
+  const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'parent' | 'none'>(
+    defaultStudentId ? 'student' : defaultParentId ? 'parent' : defaultLeadId ? 'lead' : 'student'
   );
-  const [selectedEntityId, setSelectedEntityId] = useState(defaultStudentId || defaultLeadId || '1');
+  const [selectedEntityId, setSelectedEntityId] = useState(defaultStudentId || defaultParentId || defaultLeadId || '1');
   const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       alert('Укажите название задачи');
       return;
     }
+
+    setIsSubmitting(true);
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
 
     let studentId: string | undefined;
     let studentName: string | undefined;
@@ -72,36 +94,58 @@ export function CreateTaskModal({
           parentName = `${parent.firstName} ${parent.lastName}`.trim();
         }
       }
+    } else if (parentScope) {
+      parentId = parentScope.id;
+      parentName = parentScope.name;
+      if (scopedChildTarget !== 'family') {
+        const child = parentScope.children?.find((c) => c.id === scopedChildTarget);
+        if (child) {
+          studentId = child.id;
+          studentName = child.name;
+        }
+      }
     } else if (relatedEntity === 'student') {
-      const st = INITIAL_STUDENTS.find((s) => s.id === selectedEntityId);
+      const st = allStudents.find((s) => s.id === selectedEntityId) || INITIAL_STUDENTS.find((s) => s.id === selectedEntityId);
       studentId = selectedEntityId;
-      studentName = st ? `${st.firstName} ${st.lastName}` : 'Иван Смирнов';
+      studentName = st ? `${st.firstName} ${st.lastName}` : undefined;
+      if (st?.parents && st.parents.length > 0) {
+        parentId = st.parents[0].id;
+        parentName = `${st.parents[0].firstName} ${st.parents[0].lastName}`.trim();
+      }
+    } else if (relatedEntity === 'parent') {
+      parentId = selectedEntityId;
     } else if (relatedEntity === 'lead') {
       const ld = INITIAL_LEADS.find((l) => l.id === selectedEntityId);
       leadId = selectedEntityId;
-      leadName = ld ? ld.name : 'Светлана Морозова';
+      leadName = ld ? ld.name : undefined;
     }
 
-    const newTask: FullTaskData = {
-      id: `t_${Date.now()}`,
-      title,
-      taskType,
-      studentId,
-      studentName,
-      parentId,
-      parentName,
-      leadId,
-      leadName,
-      assignedTo,
-      dueDate,
-      dueDateFormatted: `${new Date(dueDate).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}, ${dueTime}`,
-      status: 'open',
-      priority,
-      description,
-    };
+    try {
+      const newTask = await createUnifiedTask({
+        title,
+        taskType,
+        priority,
+        dueDate,
+        dueDateFormatted: `${new Date(dueDate).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })}, ${dueTime}`,
+        description,
+        assignedTo,
+        studentId,
+        studentName,
+        parentId,
+        parentName,
+        leadId,
+        leadName,
+        createdByRole: role,
+        createdByName: userName || 'Руководитель',
+      });
 
-    onCreated(newTask);
-    onClose();
+      onCreated(newTask);
+      onClose();
+    } catch (err) {
+      console.error('Failed to create task:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -244,6 +288,48 @@ export function CreateTaskModal({
                 Задача будет создана в карточке {studentScope.name}
                 {scopedTarget !== 'student' ? ' с привязкой к родителю' : ''}. Выбор других учеников заблокирован.
               </p>
+            </div>
+          ) : parentScope ? (
+            <div className="space-y-2 border-t border-slate-100 pt-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  Связать задачу с семьей:
+                </label>
+                <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700">
+                  Семья: {parentScope.name}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setScopedChildTarget('family')}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors',
+                    scopedChildTarget === 'family'
+                      ? 'bg-purple-50 border-purple-400 text-purple-800 shadow-xs ring-1 ring-purple-300'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  )}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Вся семья ({parentScope.name})
+                </button>
+                {(parentScope.children || []).map((ch) => (
+                  <button
+                    key={ch.id}
+                    type="button"
+                    onClick={() => setScopedChildTarget(ch.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors',
+                      scopedChildTarget === ch.id
+                        ? 'bg-blue-50 border-blue-400 text-blue-800 shadow-xs ring-1 ring-blue-300'
+                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    )}
+                  >
+                    <User className="h-3.5 w-3.5" />
+                    Ребенок: {ch.name}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="space-y-2 border-t border-slate-100 pt-3">

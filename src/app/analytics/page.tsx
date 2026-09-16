@@ -55,7 +55,7 @@ export default function AnalyticsPage() {
   const [leads, setLeads] = useState<FullLeadData[]>(INITIAL_LEADS);
   const [statusMenuOpenLeadId, setStatusMenuOpenLeadId] = useState<string | null>(null);
 
-  if (role !== 'owner') {
+  if (role !== 'owner' && role !== 'developer') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">

@@ -10,6 +10,7 @@ import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { useToast } from '@/context/ToastContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 
 export interface StudentListItem {
   id: string;
@@ -29,6 +30,8 @@ export interface StudentListItem {
   subscriptionEnd: string;
   depositBalance?: number;
   depositFormatted?: string;
+  debtFormatted?: string;
+  netBalanceFormatted?: string;
 }
 
 export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
@@ -56,16 +59,16 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   const absentLessons = s.attendanceStats?.absentCount ?? 0;
   const isChurnRisk = absentLessons >= 3;
   const churnRiskReason = isChurnRisk ? `${absentLessons} пропуска подряд, риск оттока` : undefined;
-  const depositBalance = s.finance?.deposit?.balance;
-  const depositFormatted = s.finance?.deposit?.balanceFormatted;
-  const rawPaymentStatus = (s.finance?.payments?.[0]?.status as any) || 'paid';
-  const paymentStatus = (depositBalance !== undefined && depositBalance > 0)
-    ? 'paid'
-    : rawPaymentStatus === 'overdue'
+
+  const finSummary = getStudentFinancialSummary(s.id);
+  const paymentStatus: 'paid' | 'overdue' | 'expected' = finSummary.isNegative
     ? 'overdue'
-    : rawPaymentStatus === 'expected'
+    : finSummary.deposit > 0
+    ? 'paid'
+    : (s.finance?.payments?.[0]?.status as any) === 'expected'
     ? 'expected'
     : 'paid';
+
   const subscriptionEnd = s.finance?.activeSubscription?.renewalDate || '30.09.2026';
 
   const validStatus: 'active' | 'trial' | 'paused' | 'archived' =
@@ -89,8 +92,10 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     churnRiskReason,
     paymentStatus,
     subscriptionEnd,
-    depositBalance,
-    depositFormatted,
+    depositBalance: finSummary.deposit,
+    depositFormatted: finSummary.formattedDeposit,
+    debtFormatted: finSummary.formattedDebt,
+    netBalanceFormatted: finSummary.formattedNet,
   };
 }
 
@@ -375,8 +380,9 @@ function StudentsContent() {
                           </span>
                         )}
                         {student.paymentStatus === 'overdue' && (
-                          <span className="inline-flex items-center gap-1 text-rose-600 font-semibold">
-                            <AlertCircle className="h-3.5 w-3.5" /> Долг
+                          <span className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[11px] font-bold text-rose-700 animate-pulse">
+                            <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+                            Долг: {student.debtFormatted || 'Есть долг'}
                           </span>
                         )}
                         {student.paymentStatus === 'expected' && (

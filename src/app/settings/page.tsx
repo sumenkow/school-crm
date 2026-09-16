@@ -13,7 +13,9 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
-  Edit3
+  Edit3,
+  Bot,
+  Send
 } from 'lucide-react';
 import {
   SchoolProfileModal,
@@ -27,11 +29,12 @@ import {
   RolesSecurityModal,
   RolePermissions
 } from '@/components/settings/RolesSecurityModal';
+import { TelegramSettingsModal } from '@/components/settings/TelegramSettingsModal';
 import { useRole } from '@/context/RoleContext';
 
 export default function SettingsPage() {
   const { role } = useRole();
-  const [activeModal, setActiveModal] = useState<'school' | 'courses' | 'roles' | null>(null);
+  const [activeModal, setActiveModal] = useState<'school' | 'courses' | 'roles' | 'telegram' | null>(null);
 
   // 1. School Profile State
   const [schoolProfile, setSchoolProfile] = useState<SchoolProfileData>({
@@ -118,7 +121,7 @@ export default function SettingsPage() {
     },
   });
 
-  if (role !== 'owner') {
+  if (role !== 'owner' && role !== 'developer') {
     return (
       <div className="flex flex-col gap-6 max-w-4xl mx-auto py-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Настройки школы</h1>
@@ -214,8 +217,8 @@ export default function SettingsPage() {
         </Link>
       </div>
 
-      {/* 3 EDITABLE SETTING CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* 4 EDITABLE SETTING CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Профиль школы */}
         <div
           onClick={() => setActiveModal('school')}
@@ -347,6 +350,47 @@ export default function SettingsPage() {
             <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
+
+        {/* Card 4: Telegram-бот и уведомления */}
+        <div
+          onClick={() => setActiveModal('telegram')}
+          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-sky-400 transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-xl bg-sky-50 p-2.5 text-sky-600 group-hover:bg-sky-100 transition-colors">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm group-hover:text-sky-600 transition-colors">
+                    Telegram-бот
+                  </h3>
+                  <p className="text-xs text-slate-500">Уведомления и аудит</p>
+                </div>
+              </div>
+              <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-sky-600 group-hover:bg-sky-50 transition-colors">
+                <Edit3 className="h-3.5 w-3.5" />
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-1.5 text-xs text-slate-600">
+              <p>
+                Каналы: <strong>Администратор, Руководитель</strong>
+              </p>
+              <div className="flex items-center gap-2 pt-1">
+                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
+                  <Send className="h-3 w-3" /> Push-оповещения
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-sky-600 font-semibold">
+            <span>Настроить бота</span>
+            <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </div>
       </div>
 
       {/* MODALS */}
@@ -369,6 +413,11 @@ export default function SettingsPage() {
         onClose={() => setActiveModal(null)}
         permissions={rolePermissions}
         onSave={setRolePermissions}
+      />
+
+      <TelegramSettingsModal
+        isOpen={activeModal === 'telegram'}
+        onClose={() => setActiveModal(null)}
       />
     </div>
   );

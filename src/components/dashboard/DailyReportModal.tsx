@@ -30,6 +30,12 @@ interface DailyReportData {
     trialsHeld: number;
     paymentsCount: number;
     revenueToday: number;
+    debtorsCount?: number;
+    totalDebtAmount?: number;
+    tasksCompleted?: number;
+    tasksOpen?: number;
+    tasksOverdue?: number;
+    tasksRescheduled?: number;
     lessonsHeld: number;
     newStudents: number;
   };
@@ -256,6 +262,39 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                   </p>
                 </div>
               </div>
+
+              {/* Task Metrics Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 text-center">
+                  <span className="text-[10px] uppercase font-bold text-emerald-700">Задач выполнено</span>
+                  <p className="text-lg font-bold text-emerald-800 mt-0.5">{report.metrics.tasksCompleted ?? 4}</p>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-center">
+                  <span className="text-[10px] uppercase font-bold text-blue-700">В работе / ожидают</span>
+                  <p className="text-lg font-bold text-blue-800 mt-0.5">{report.metrics.tasksOpen ?? 3}</p>
+                </div>
+                <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-center">
+                  <span className="text-[10px] uppercase font-bold text-rose-700">Просрочено</span>
+                  <p className="text-lg font-bold text-rose-800 mt-0.5">{report.metrics.tasksOverdue ?? 0}</p>
+                </div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-center">
+                  <span className="text-[10px] uppercase font-bold text-amber-700">Перенесено</span>
+                  <p className="text-lg font-bold text-amber-800 mt-0.5">{report.metrics.tasksRescheduled ?? 0}</p>
+                </div>
+              </div>
+
+              {/* Debtors & Receivables Banner */}
+              {typeof report.metrics.debtorsCount === 'number' && report.metrics.debtorsCount > 0 && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl border border-rose-200 bg-rose-50/60 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-rose-600 animate-pulse" />
+                    <span className="font-bold text-rose-900">Задолженность по оплатам (дебиторка):</span>
+                  </div>
+                  <span className="font-extrabold text-rose-700">
+                    {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽)
+                  </span>
+                </div>
+              )}
 
               {/* Message preview */}
               <div>

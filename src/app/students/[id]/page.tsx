@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import type { Task } from '@/types';
 import type { FullTaskData } from '@/lib/data/mockData';
 
@@ -582,17 +583,47 @@ export default function StudentDetailsPage() {
     setNewFollowUpDate('');
   };
 
-  const handleToggleTask = (taskId: string) => {
+  const handleToggleTask = async (taskId: string) => {
+    const currentTask = (student.tasks || []).find((t) => t.id === taskId);
+    const newStatus = currentTask?.status === 'done' ? 'open' : 'done';
+
     setStudent((prev) => ({
       ...prev,
       tasks: prev.tasks.map((t) =>
-        t.id === taskId ? { ...t, status: t.status === 'done' ? 'open' : 'done' } : t
+        t.id === taskId ? { ...t, status: newStatus } : t
       ),
     }));
+
+    try {
+      await updateUnifiedTaskStatus(taskId, newStatus, {
+        performedBy: userName || 'Администратор',
+      });
+      toast.success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
+    } catch (err) {
+      console.error('Failed to update task status:', err);
+    }
   };
 
   useEffect(() => {
     reconcileAllStudentDepositsAndDebts();
+
+    // Sync tasks when changed elsewhere
+    const handleTasksSync = async () => {
+      try {
+        const studentTasks = await getTasksForStudent(studentId);
+        if (studentTasks && studentTasks.length > 0) {
+          setStudent((prev) => ({
+            ...prev,
+            tasks: studentTasks,
+          }));
+        }
+      } catch {}
+    };
+
+    window.addEventListener('crm-tasks-changed', handleTasksSync);
+    return () => {
+      window.removeEventListener('crm-tasks-changed', handleTasksSync);
+    };
   }, [studentId]);
 
   const studentDeposit = student.finance?.deposit?.balance || 0;
