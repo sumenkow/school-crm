@@ -13,12 +13,14 @@ import {
   ChevronRight,
   MessageSquare,
   BookOpen,
-  Users,
   Sparkles,
-  MapPin
+  MapPin,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 
 interface StudentAttendanceItem {
   id: string;
@@ -32,6 +34,7 @@ export default function TeacherMobileDashboard() {
   const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
   const [selectedLessonId, setSelectedLessonId] = useState<string>('l5'); // Today's lesson (03.09.2026)
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
 
   // Teacher's lessons
   const myLessons = INITIAL_LESSONS.filter((l) => l.teacherId === 't1');
@@ -193,6 +196,18 @@ export default function TeacherMobileDashboard() {
                     className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-400">ДЗ сохраняется в карточку урока</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsHomeworkModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-2xs"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-indigo-600" />
+                    Разослать ДЗ родителям на Email
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -222,13 +237,23 @@ export default function TeacherMobileDashboard() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm">{student.name}</h4>
-                      {/* Warning if student missed multiple lessons (Requirement 11 & Dashboard alert) */}
-                      {student.consecutiveAbsences && student.consecutiveAbsences >= 2 && (
-                        <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-bold text-rose-600">
-                          <AlertTriangle className="h-3 w-3" />
-                          Внимание: {student.consecutiveAbsences} пропуска подряд!
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        {(() => {
+                          const payStatus = getStudentLessonPaymentStatus(student.id);
+                          return (
+                            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border', payStatus.badgeClass)}>
+                              {payStatus.label}
+                            </span>
+                          );
+                        })()}
+                        {/* Warning if student missed multiple lessons (Requirement 11 & Dashboard alert) */}
+                        {student.consecutiveAbsences && student.consecutiveAbsences >= 2 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            <AlertTriangle className="h-3 w-3" />
+                            {student.consecutiveAbsences} пропуска подряд!
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* 1-Click Action Buttons */}
@@ -303,14 +328,24 @@ export default function TeacherMobileDashboard() {
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={handleSaveAttendance}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-98 transition-all"
-              >
-                <Check className="h-4 w-4" />
-                Сохранить посещаемость
-              </button>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsHomeworkModalOpen(true)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-100 transition-all"
+                >
+                  <Mail className="h-4 w-4 text-indigo-600" />
+                  Разослать ДЗ на Email
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAttendance}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-98 transition-all"
+                >
+                  <Check className="h-4 w-4" />
+                  Сохранить посещаемость
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -349,7 +384,17 @@ export default function TeacherMobileDashboard() {
                   >
                     {lesson.status === 'completed' ? 'Завершён' : 'Запланирован'}
                   </span>
-                  <div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedLessonId(lesson.id);
+                        setIsHomeworkModalOpen(true);
+                      }}
+                      className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1"
+                    >
+                      <Mail size={12} />
+                      ДЗ →
+                    </button>
                     <button
                       onClick={() => {
                         setSelectedLessonId(lesson.id);
@@ -365,6 +410,26 @@ export default function TeacherMobileDashboard() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* MODAL: Send Homework Email */}
+      {isHomeworkModalOpen && (
+        <SendHomeworkModal
+          isOpen={isHomeworkModalOpen}
+          onClose={() => setIsHomeworkModalOpen(false)}
+          lesson={{
+            id: currentLesson.id,
+            groupName: currentLesson.groupName,
+            courseName: currentLesson.courseName,
+            date: currentLesson.dateFormatted || currentLesson.date,
+            startTime: currentLesson.startTime,
+            endTime: currentLesson.endTime,
+            teacherName: currentLesson.teacherName,
+            topic: lessonTopic || currentLesson.topic,
+            homework: homework || currentLesson.homework,
+            students: studentsList.map((s) => ({ id: s.id, name: s.name })),
+          }}
+        />
       )}
     </div>
   );

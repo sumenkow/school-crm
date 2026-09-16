@@ -15,10 +15,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  RotateCcw
+  RotateCcw,
+  Mail,
 } from 'lucide-react';
 import { FullLessonData } from '@/lib/data/mockData';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
+import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 
 interface LessonQuickViewModalProps {
   isOpen: boolean;
@@ -38,6 +41,7 @@ export function LessonQuickViewModal({
   onUpdateAttendance,
 }: LessonQuickViewModalProps) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
 
   if (!isOpen || !lesson) return null;
 
@@ -205,7 +209,7 @@ export function LessonQuickViewModal({
                     key={student.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-white border border-slate-100 hover:border-slate-200 transition-all shadow-2xs"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
                       <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
                         {student.name.charAt(0)}
                       </div>
@@ -216,11 +220,19 @@ export function LessonQuickViewModal({
                         {student.name}
                         <ExternalLink className="w-2.5 h-2.5 opacity-40 hover:opacity-100" />
                       </Link>
-                      {student.isTrial && (
-                        <span className="rounded-full bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[10px] font-bold border border-purple-200">
-                          🎯 Пробник
-                        </span>
-                      )}
+                      {(() => {
+                        const payStatus = getStudentLessonPaymentStatus(student.id, student.isTrial);
+                        return (
+                          <span
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0',
+                              payStatus.badgeClass
+                            )}
+                          >
+                            {payStatus.label}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Attendance Status Buttons */}
@@ -250,15 +262,25 @@ export function LessonQuickViewModal({
             </div>
           </div>
 
-          {/* Homework if present */}
-          {lesson.homework && (
-            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+          {/* Homework if present or Add Homework button */}
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
                 Домашнее задание
               </span>
-              <p className="text-xs text-slate-700">{lesson.homework}</p>
+              <p className="text-xs text-slate-700">
+                {lesson.homework || 'Домашнее задание пока не заполнено'}
+              </p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setIsHomeworkModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 text-xs font-bold hover:bg-blue-100 transition-colors shrink-0 shadow-2xs"
+            >
+              <Mail className="h-3.5 w-3.5 text-blue-600" />
+              Разослать ДЗ на Email
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
@@ -270,14 +292,44 @@ export function LessonQuickViewModal({
             <BookOpen className="w-4 h-4" />
             Перейти в полный журнал урока →
           </Link>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
-          >
-            Закрыть
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsHomeworkModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-colors shadow-2xs"
+            >
+              <Mail className="w-3.5 h-3.5 text-indigo-600" />
+              Рассылка ДЗ
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-2xs"
+            >
+              Закрыть
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Homework Send Email Modal */}
+      {isHomeworkModalOpen && (
+        <SendHomeworkModal
+          isOpen={isHomeworkModalOpen}
+          onClose={() => setIsHomeworkModalOpen(false)}
+          lesson={{
+            id: lesson.id,
+            groupName: lesson.groupName,
+            courseName: lesson.courseName,
+            date: lesson.date,
+            startTime: lesson.startTime,
+            endTime: lesson.endTime,
+            teacherName: lesson.teacherName,
+            topic: lesson.topic,
+            homework: lesson.homework,
+            students: lesson.students.map((s) => ({ id: s.id, name: s.name })),
+          }}
+        />
+      )}
     </div>
   );
 }

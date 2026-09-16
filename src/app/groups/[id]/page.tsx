@@ -34,11 +34,12 @@ import {
   enrollStudentToGroup,
 } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 
 export default function GroupDetailsPage() {
   const params = useParams();
   const { success } = useToast();
-  const { userName } = useRole();
+  const { role, userName } = useRole();
   const groupId = params.id as string;
 
   const [group, setGroup] = useState<FullGroupData>(() => {
@@ -335,40 +336,42 @@ export default function GroupDetailsPage() {
           </div>
         </div>
 
-        {/* Course Pricing & Tariff Strip */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 text-xs">
-          <div className="flex items-center justify-between rounded-xl bg-blue-50/60 p-3 border border-blue-100/80">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
-                Стоимость 1 онлайн-занятия
+        {/* Course Pricing & Tariff Strip (Only visible for admin & owner) */}
+        {role !== 'teacher' && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t border-slate-100 text-xs">
+            <div className="flex items-center justify-between rounded-xl bg-blue-50/60 p-3 border border-blue-100/80">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                  Стоимость 1 онлайн-занятия
+                </span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  {group.pricing?.pricePerLessonFormatted || '1 050 ₽'}
+                </p>
+              </div>
+              <span className="text-[11px] text-blue-600 bg-white px-2 py-1 rounded-md border border-blue-200/50 shadow-2xs font-medium">
+                Для списаний с депозита
               </span>
-              <p className="text-base font-bold text-slate-900 mt-0.5">
-                {group.pricing?.pricePerLessonFormatted || '1 050 ₽'}
-              </p>
             </div>
-            <span className="text-[11px] text-blue-600 bg-white px-2 py-1 rounded-md border border-blue-200/50 shadow-2xs font-medium">
-              Для списаний с депозита
-            </span>
-          </div>
 
-          <div className="flex items-center justify-between rounded-xl bg-emerald-50/60 p-3 border border-emerald-100/80">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                Стоимость абонемента
-              </span>
-              <p className="text-base font-bold text-slate-900 mt-0.5">
-                {group.pricing?.pricePerMonthFormatted || '7 600 ₽ / месяц'}
-              </p>
+            <div className="flex items-center justify-between rounded-xl bg-emerald-50/60 p-3 border border-emerald-100/80">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                  Стоимость абонемента
+                </span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  {group.pricing?.pricePerMonthFormatted || '7 600 ₽ / месяц'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOpenEdit}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+              >
+                Настроить тариф →
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleOpenEdit}
-              className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
-            >
-              Настроить тариф →
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -499,6 +502,7 @@ export default function GroupDetailsPage() {
                 <tr>
                   <th className="py-3.5 pl-4 pr-3">Ученик</th>
                   <th className="px-3 py-3.5">Статус в группе</th>
+                  <th className="px-3 py-3.5">Оплата занятий</th>
                   <th className="px-3 py-3.5">Телефон родителя</th>
                   <th className="px-3 py-3.5">Дата зачисления</th>
                   <th className="px-3 py-3.5 text-center">Посещаемость</th>
@@ -506,38 +510,46 @@ export default function GroupDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {group.students.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50/70">
-                    <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
-                      <Link href={`/students/${student.id}`} className="hover:text-blue-600">
-                        {student.name}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={cn(
-                        'rounded-full px-2 py-0.5 font-semibold text-[10px]',
-                        student.status === 'active' && 'bg-emerald-100 text-emerald-800',
-                        student.status === 'trial' && 'bg-purple-100 text-purple-800',
-                        student.status === 'paused' && 'bg-amber-100 text-amber-800'
-                      )}>
-                        {student.status === 'active' && 'Активен'}
-                        {student.status === 'trial' && 'Пробный'}
-                        {student.status === 'paused' && 'На паузе'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">{student.parentPhone}</td>
-                    <td className="px-3 py-3 text-slate-500">{student.joinedAt}</td>
-                    <td className="px-3 py-3 text-center font-bold text-slate-800">{student.attendanceRate}</td>
-                    <td className="py-3 pl-3 pr-4 text-right">
-                      <button
-                        onClick={() => handleRemoveStudent(student.id)}
-                        className="text-xs text-rose-500 hover:text-rose-700 hover:underline"
-                      >
-                        Исключить
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {group.students.map((student) => {
+                  const payStatus = getStudentLessonPaymentStatus(student.id, student.status === 'trial');
+                  return (
+                    <tr key={student.id} className="hover:bg-slate-50/70">
+                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
+                        <Link href={`/students/${student.id}`} className="hover:text-blue-600">
+                          {student.name}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 font-semibold text-[10px]',
+                          student.status === 'active' && 'bg-emerald-100 text-emerald-800',
+                          student.status === 'trial' && 'bg-purple-100 text-purple-800',
+                          student.status === 'paused' && 'bg-amber-100 text-amber-800'
+                        )}>
+                          {student.status === 'active' && 'Активен'}
+                          {student.status === 'trial' && 'Пробный'}
+                          {student.status === 'paused' && 'На паузе'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={cn('rounded-full px-2 py-0.5 font-bold text-[10px] border', payStatus.badgeClass)}>
+                          {payStatus.label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-600">{student.parentPhone}</td>
+                      <td className="px-3 py-3 text-slate-500">{student.joinedAt}</td>
+                      <td className="px-3 py-3 text-center font-bold text-slate-800">{student.attendanceRate}</td>
+                      <td className="py-3 pl-3 pr-4 text-right">
+                        <button
+                          onClick={() => handleRemoveStudent(student.id)}
+                          className="text-xs text-rose-500 hover:text-rose-700 hover:underline"
+                        >
+                          Исключить
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

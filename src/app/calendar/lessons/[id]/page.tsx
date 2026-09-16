@@ -9,6 +9,7 @@ import {
   LessonRescheduleInfo,
   LessonTimelineEvent,
 } from '@/lib/data/mockData';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import {
   ArrowLeft,
   Calendar,
@@ -32,9 +33,11 @@ import {
   CalendarClock,
   ShieldCheck,
   Plus,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RescheduleLessonModal } from '@/components/calendar/RescheduleLessonModal';
+import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 import { useRole } from '@/context/RoleContext';
 
 export default function LessonDetailsPage() {
@@ -52,6 +55,7 @@ export default function LessonDetailsPage() {
   const [homework, setHomework] = useState(lesson.homework || '');
   const [status, setStatus] = useState<FullLessonData['status']>(lesson.status);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isSendHomeworkModalOpen, setIsSendHomeworkModalOpen] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [newTimelineComment, setNewTimelineComment] = useState('');
 
@@ -471,7 +475,16 @@ export default function LessonDetailsPage() {
           </div>
         </div>
 
-        <div className="flex justify-end pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setIsSendHomeworkModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 text-xs font-bold hover:bg-indigo-100 shadow-2xs transition-colors"
+          >
+            <Mail className="h-3.5 w-3.5 text-indigo-600" />
+            Разослать ДЗ родителям на Email
+          </button>
+
           <button
             type="submit"
             className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
@@ -560,18 +573,26 @@ export default function LessonDetailsPage() {
                     {student.name.split(' ').map((n) => n[0]).join('')}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Link
                         href={`/students/${student.id}`}
                         className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors"
                       >
                         {student.name}
                       </Link>
-                      {student.isTrial && (
-                        <span className="rounded-full bg-purple-100 text-purple-800 px-1.5 py-0.2 text-[10px] font-bold border border-purple-200">
-                          🎯 Пробник
-                        </span>
-                      )}
+                      {(() => {
+                        const payStatus = getStudentLessonPaymentStatus(student.id, student.isTrial);
+                        return (
+                          <span
+                            className={cn(
+                              'rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0',
+                              payStatus.badgeClass
+                            )}
+                          >
+                            {payStatus.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <input
@@ -753,6 +774,26 @@ export default function LessonDetailsPage() {
         lesson={lesson}
         onReschedule={handleRescheduleConfirmed}
       />
+
+      {/* MODAL: Send Homework Emails */}
+      {isSendHomeworkModalOpen && (
+        <SendHomeworkModal
+          isOpen={isSendHomeworkModalOpen}
+          onClose={() => setIsSendHomeworkModalOpen(false)}
+          lesson={{
+            id: lesson.id,
+            groupName: lesson.groupName,
+            courseName: lesson.courseName,
+            date: lesson.date,
+            startTime: lesson.startTime,
+            endTime: lesson.endTime,
+            teacherName: lesson.teacherName,
+            topic: topic || lesson.topic,
+            homework: homework || lesson.homework,
+            students: lesson.students.map((s) => ({ id: s.id, name: s.name })),
+          }}
+        />
+      )}
     </div>
   );
 }

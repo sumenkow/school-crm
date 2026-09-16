@@ -45,6 +45,7 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { formatAgeAndGrade, formatGradeRussian, formatBirthDate } from '@/lib/data/studentAgeHelper';
 import type { Task } from '@/types';
@@ -54,7 +55,7 @@ export default function StudentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const toast = useToast();
-  const { userName } = useRole();
+  const { role, userName } = useRole();
   const studentId = params.id as string;
 
   const [student, setStudent] = useState<FullStudentData>(() => {
@@ -716,8 +717,17 @@ export default function StudentDetailsPage() {
                   )}
                 </span>
 
-                {/* Hero Balance Badge */}
-                {studentDeposit > 0 ? (
+                {/* Hero Balance Badge (Shows status only for teachers, full financial balance for admin/owner) */}
+                {role === 'teacher' ? (
+                  <span
+                    className={cn(
+                      'rounded-full px-2.5 py-0.5 text-xs font-bold border inline-flex items-center gap-1 shadow-2xs',
+                      getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass
+                    )}
+                  >
+                    {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                  </span>
+                ) : studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
                     <Wallet className="h-3 w-3 text-emerald-600" />
                     Депозит: {finSummary.formattedDeposit}
@@ -807,13 +817,15 @@ export default function StudentDetailsPage() {
               <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
               Добавить действие
             </button>
-            <button
-              onClick={() => setIsPaymentModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              <CreditCard className="h-3.5 w-3.5" />
-              Добавить платёж
-            </button>
+            {role !== 'teacher' && (
+              <button
+                onClick={() => setIsPaymentModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                Добавить платёж
+              </button>
+            )}
           </div>
         </div>
 
@@ -866,59 +878,82 @@ export default function StudentDetailsPage() {
             </p>
           </div>
 
-          {/* 5th Column: Hero Balance Card */}
-          <div className={cn(
-            "rounded-xl p-2.5 border flex flex-col justify-between",
-            studentDeposit > 0 && "bg-emerald-50/70 border-emerald-200",
-            studentOverdueDebt > 0 && "bg-rose-50/80 border-rose-200",
-            studentDeposit === 0 && studentOverdueDebt === 0 && "bg-amber-50/70 border-amber-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
-                {studentDeposit > 0 ? (
-                  <Wallet className="h-3 w-3 text-emerald-600" />
-                ) : studentOverdueDebt > 0 ? (
-                  <AlertTriangle className="h-3 w-3 text-rose-600" />
-                ) : (
-                  <Clock className="h-3 w-3 text-amber-600" />
-                )}
-                Баланс:
-              </span>
-              {studentOverdueDebt > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(true)}
-                  className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
-                >
-                  Погасить
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(true)}
-                  className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
-                >
-                  Пополнить
-                </button>
-              )}
-            </div>
-            <p className={cn(
-              "font-extrabold text-sm mt-0.5",
-              studentDeposit > 0 && "text-emerald-700",
-              studentOverdueDebt > 0 && "text-rose-700",
-              studentDeposit === 0 && studentOverdueDebt === 0 && "text-slate-900"
+          {/* 5th Column: Payment Status Badge for teacher, Hero Balance Card for admin/owner */}
+          {role === 'teacher' ? (
+            <div className={cn(
+              "rounded-xl p-2.5 border flex flex-col justify-between",
+              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'unpaid' && "bg-rose-50/80 border-rose-200",
+              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'trial_unpaid' && "bg-amber-50/70 border-amber-200",
+              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'paid' && "bg-emerald-50/70 border-emerald-200",
+              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'trial_paid' && "bg-purple-50/70 border-purple-200"
             )}>
-              {finSummary.formattedNet}
-            </p>
-            <p className={cn(
-              "text-[10px] font-medium leading-tight line-clamp-1",
-              studentDeposit > 0 && "text-emerald-600",
-              studentOverdueDebt > 0 && "text-rose-600 font-semibold",
-              studentDeposit === 0 && studentOverdueDebt === 0 && "text-amber-800 font-semibold"
-            )} title={finSummary.breakdownSummary}>
-              {finSummary.breakdownSummary}
-            </p>
-          </div>
+              <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-blue-600" />
+                Статус оплаты:
+              </span>
+              <p className="font-extrabold text-xs mt-1">
+                <span className={cn('px-2 py-0.5 rounded-md text-[11px] border font-bold inline-block', getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass)}>
+                  {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                </span>
+              </p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {student.status === 'trial' ? 'Пробный урок' : 'Регулярные занятия'}
+              </p>
+            </div>
+          ) : (
+            <div className={cn(
+              "rounded-xl p-2.5 border flex flex-col justify-between",
+              studentDeposit > 0 && "bg-emerald-50/70 border-emerald-200",
+              studentOverdueDebt > 0 && "bg-rose-50/80 border-rose-200",
+              studentDeposit === 0 && studentOverdueDebt === 0 && "bg-amber-50/70 border-amber-200"
+            )}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  {studentDeposit > 0 ? (
+                    <Wallet className="h-3 w-3 text-emerald-600" />
+                  ) : studentOverdueDebt > 0 ? (
+                    <AlertTriangle className="h-3 w-3 text-rose-600" />
+                  ) : (
+                    <Clock className="h-3 w-3 text-amber-600" />
+                  )}
+                  Баланс:
+                </span>
+                {studentOverdueDebt > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    Погасить
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
+                  >
+                    Пополнить
+                  </button>
+                )}
+              </div>
+              <p className={cn(
+                "font-extrabold text-sm mt-0.5",
+                studentDeposit > 0 && "text-emerald-700",
+                studentOverdueDebt > 0 && "text-rose-700",
+                studentDeposit === 0 && studentOverdueDebt === 0 && "text-slate-900"
+              )}>
+                {finSummary.formattedNet}
+              </p>
+              <p className={cn(
+                "text-[10px] font-medium leading-tight line-clamp-1",
+                studentDeposit > 0 && "text-emerald-600",
+                studentOverdueDebt > 0 && "text-rose-600 font-semibold",
+                studentDeposit === 0 && studentOverdueDebt === 0 && "text-amber-800 font-semibold"
+              )} title={finSummary.breakdownSummary}>
+                {finSummary.breakdownSummary}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
