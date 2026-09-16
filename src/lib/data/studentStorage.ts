@@ -2,6 +2,7 @@
 
 import { FullStudentData, INITIAL_STUDENTS, TimelineInteraction } from './mockData';
 import { saveInteractionToStorage } from './timelineStorage';
+import { savePaymentToStorage } from './paymentStorage';
 
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
@@ -84,8 +85,19 @@ export async function fetchStudentsFromSupabase(): Promise<FullStudentData[]> {
             notes: dbStudent.notes || undefined,
             parents: [],
             groups: [],
-            attendanceStats: { totalLessons: 0, attended: 0, missed: 0, excused: 0, attendanceRate: '100%' },
-            finance: { activeSubscription: null, deposit: { balance: 0, balanceFormatted: '0 ₽', currency: 'RUB', pricePerLesson: 1050, pricePerLessonFormatted: '1 050 ₽' }, payments: [] },
+            attendanceStats: {
+              totalLessons: 0,
+              presentCount: 0,
+              absentCount: 0,
+              rescheduledCount: 0,
+              attendanceRate: '100%',
+              history: [],
+            },
+            finance: {
+              activeSubscription: null as any,
+              deposit: { balance: 0, balanceFormatted: '0 ₽', currency: 'RUB', pricePerLesson: 1050, pricePerLessonFormatted: '1 050 ₽' },
+              payments: [],
+            },
             interactions: [],
             comments: [],
             tasks: [],

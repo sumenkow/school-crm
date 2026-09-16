@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
         schoolEmail?: string;
       };
 
-      const ownerMail = recipientEmail?.trim() || process.env.OWNER_EMAIL || 'admin@smartacademy.ru';
-      const schoolMail = schoolEmail?.trim() || process.env.SCHOOL_EMAIL || 'hello@smartacademy.ru';
+      const ownerMail = recipientEmail?.trim() || process.env.OWNER_EMAIL || '';
+      const schoolMail = schoolEmail?.trim() || process.env.SCHOOL_EMAIL || '';
       
       const combinedList = Array.from(
         new Set(

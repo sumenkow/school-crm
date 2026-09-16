@@ -89,10 +89,10 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    userName: userName || 'Алексей Смирнов',
-    userEmail: userEmail || 'admin@smartacademy.ru',
-    userPhone: userPhone || '+7 (999) 123-45-67',
-    userTelegram: userTelegram || '@alex_smart',
+    userName: userName || 'Руководитель школы',
+    userEmail: userEmail || '',
+    userPhone: userPhone || '',
+    userTelegram: userTelegram || '',
     role: role || 'owner',
     currentPassword: '',
     newPassword: '',
@@ -109,10 +109,10 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
     if (isOpen) {
       setFormData((prev) => ({
         ...prev,
-        userName: userName || 'Алексей Смирнов',
-        userEmail: userEmail || 'admin@smartacademy.ru',
-        userPhone: userPhone || '+7 (999) 123-45-67',
-        userTelegram: userTelegram || '@alex_smart',
+        userName: userName || 'Руководитель школы',
+        userEmail: userEmail || '',
+        userPhone: userPhone || '',
+        userTelegram: userTelegram || '',
         role: role || 'owner',
       }));
       setIsEditing(false);
@@ -218,7 +218,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                       {currentRoleInfo.title.split(' ')[0]}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 font-medium mt-0.5">{userEmail || 'admin@smartacademy.ru'}</p>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">{userEmail || 'Почта не указана'}</p>
                   <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5 text-slate-400" />
                     <span>Smart Academy • Центральный филиал</span>

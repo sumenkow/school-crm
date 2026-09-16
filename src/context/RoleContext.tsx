@@ -34,10 +34,10 @@ interface RoleContextType {
 
 const DEFAULT_PROFILE: UserProfileData = {
   role: 'owner',
-  userName: 'Алексей Смирнов',
-  userEmail: 'admin@smartacademy.ru',
-  userPhone: '+7 (999) 123-45-67',
-  userTelegram: '@alex_smart',
+  userName: 'Руководитель школы',
+  userEmail: '',
+  userPhone: '',
+  userTelegram: '',
 };
 
 const STORAGE_KEY = 'crm_user_profile_v1';

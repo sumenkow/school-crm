@@ -56,21 +56,25 @@ export async function fetchPaymentsFromSupabase(): Promise<FullPaymentData[]> {
     if (!error && dbPayments && dbPayments.length > 0) {
       for (const p of dbPayments) {
         const existingIdx = INITIAL_PAYMENTS.findIndex((ip) => ip.id === p.id);
+        const amt = Number(p.amount) || 0;
         const mappedPayment: FullPaymentData = {
           id: p.id,
-          studentId: p.student_id || undefined,
+          studentId: p.student_id || '1',
+          studentName: 'Ученик',
           parentId: p.parent_id || undefined,
-          amount: Number(p.amount) || 0,
+          parentName: undefined,
+          courseName: 'Курс школы',
+          groupName: 'Основная группа',
+          amount: amt,
+          amountFormatted: `${amt.toLocaleString('ru-RU')} ₽`,
           paymentDate: p.payment_date ? new Date(p.payment_date).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU'),
           periodLabel: p.period_label || 'Оплата',
-          status: p.status as any,
+          status: (p.status as any) || 'paid',
           paymentMethod: (p.payment_method as any) || 'cash',
-          comment: p.comment || undefined,
-          student: 'Ученик',
-          course: 'Курс',
-          date: p.payment_date || new Date().toLocaleDateString('ru-RU'),
-          method: p.payment_method === 'card' ? 'Карта' : 'Наличные',
+          currency: 'RUB',
+          paymentType: 'subscription',
           recordedBy: 'Администратор',
+          comment: p.comment || undefined,
         };
 
         if (existingIdx !== -1) {
