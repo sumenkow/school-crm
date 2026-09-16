@@ -72,19 +72,21 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
 
       // 3. Supabase dual-write (fire-and-forget)
       import('@/lib/supabase/client').then(({ createClient }) => {
-        const supabase = createClient();
-        supabase.from('payments').upsert({
-          id: payment.id,
-          student_id: payment.studentId || null,
-          parent_id: payment.parentId || null,
-          amount: typeof payment.amount === 'number' ? payment.amount : parseFloat(String(payment.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-          payment_date: payment.paymentDate ? new Date(payment.paymentDate.split('.').reverse().join('-')).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-          period_label: payment.periodLabel || payment.period || 'Оплата',
-          status: payment.status as any || 'paid',
-          payment_method: (payment.paymentMethod as any) || 'cash',
-          comment: payment.comment || null,
-          is_mock_data: false,
-        }).then(() => {}).catch(() => {});
+        try {
+          const supabase = createClient();
+          supabase.from('payments').upsert({
+            id: payment.id,
+            student_id: payment.studentId || null,
+            parent_id: payment.parentId || null,
+            amount: typeof payment.amount === 'number' ? payment.amount : parseFloat(String(payment.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
+            payment_date: payment.paymentDate ? new Date(payment.paymentDate.split('.').reverse().join('-')).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+            period_label: payment.periodLabel || (payment as any).period || 'Оплата',
+            status: (payment.status as any) || 'paid',
+            payment_method: (payment.paymentMethod as any) || 'cash',
+            comment: payment.comment || null,
+            is_mock_data: false,
+          }).then(() => {}, () => {});
+        } catch {}
       }).catch(() => {});
 
     } catch (err) {

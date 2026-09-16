@@ -33,6 +33,18 @@ interface UserProfileModalProps {
 }
 
 const roleDescriptions: Record<UserRole, { title: string; subtitle: string; badgeClass: string; permissions: string[] }> = {
+  developer: {
+    title: 'Разработчик системы',
+    subtitle: 'Полный доступ ко всей системе, API, базе данных и настройкам',
+    badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    permissions: [
+      'Полный доступ ко всем финансовым данным, аналитике и кассе',
+      'Техническое управление базой данных и миграциями',
+      'Очистка тестовых данных и управление резервными копиями',
+      'Управление командой, ролями пользователей и правами',
+      'Полная воронка CRM, лиды, задачи, ученики и расписание',
+    ],
+  },
   owner: {
     title: 'Владелец школы (Суперадмин)',
     subtitle: 'Полный неограниченный доступ ко всем разделам и данным',

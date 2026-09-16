@@ -43,18 +43,20 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
 
     // Supabase dual-write (fire-and-forget)
     import('@/lib/supabase/client').then(({ createClient }) => {
-      const supabase = createClient();
-      supabase.from('interactions').upsert({
-        id: item.id,
-        student_id: item.studentId || null,
-        parent_id: item.parentId || null,
-        lead_id: item.leadId || null,
-        type: item.type || 'comment',
-        title: item.title,
-        description: item.description || null,
-        created_at: item.date || new Date().toISOString(),
-        is_mock_data: false,
-      }).then(() => {}).catch(() => {});
+      try {
+        const supabase = createClient();
+        supabase.from('interactions').upsert({
+          id: item.id,
+          student_id: item.studentId || null,
+          parent_id: item.parentId || null,
+          lead_id: (item as any).leadId || null,
+          type: (item.type as any) || 'comment',
+          title: (item as any).title || item.content?.slice(0, 50) || 'Заметка',
+          description: item.content || (item as any).description || null,
+          created_at: item.occurredAt || (item as any).date || new Date().toISOString(),
+          is_mock_data: false,
+        }).then(() => {}, () => {});
+      } catch {}
     }).catch(() => {});
 
   } catch (err) {

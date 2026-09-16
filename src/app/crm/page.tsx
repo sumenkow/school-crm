@@ -126,10 +126,12 @@ export default function CrmPage() {
 
     const updatedInteractions = [statusChangeInteraction, ...(targetLead.interactions || [])];
 
+    const updatedLead = { ...targetLead, status: newStatus, interactions: updatedInteractions };
+
     setLeads((prev) => {
       const updated = prev.map((l) =>
         l.id === leadId
-          ? { ...l, status: newStatus, interactions: updatedInteractions }
+          ? updatedLead
           : l
       );
       if (typeof window !== 'undefined') {

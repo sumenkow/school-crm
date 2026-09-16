@@ -1050,19 +1050,19 @@ export default function ParentDetailsPage() {
           <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
             <span className="text-[11px] font-semibold text-emerald-800">Всего оплачено</span>
             <p className="text-lg font-bold text-emerald-700 mt-0.5">
-              {totalPaidAmount.toLocaleString('ru-RU')} ₽
+              {familyTotalPaid.toLocaleString('ru-RU')} ₽
             </p>
           </div>
           <div
             className={cn(
               'rounded-xl border p-3',
-              totalDebtAmount > 0 ? 'border-rose-200 bg-rose-50/60' : 'border-slate-100 bg-slate-50/60'
+              familyTotalDebt > 0 ? 'border-rose-200 bg-rose-50/60' : 'border-slate-100 bg-slate-50/60'
             )}
           >
             <span
               className={cn(
                 'text-[11px] font-semibold',
-                totalDebtAmount > 0 ? 'text-rose-700' : 'text-slate-500'
+                familyTotalDebt > 0 ? 'text-rose-700' : 'text-slate-500'
               )}
             >
               Задолженность
@@ -1070,10 +1070,10 @@ export default function ParentDetailsPage() {
             <p
               className={cn(
                 'text-lg font-bold mt-0.5',
-                totalDebtAmount > 0 ? 'text-rose-700' : 'text-slate-700'
+                familyTotalDebt > 0 ? 'text-rose-700' : 'text-slate-700'
               )}
             >
-              {totalDebtAmount > 0 ? `${totalDebtAmount.toLocaleString('ru-RU')} ₽` : 'Нет задолженности'}
+              {familyTotalDebt > 0 ? `${familyTotalDebt.toLocaleString('ru-RU')} ₽` : 'Нет задолженности'}
             </p>
           </div>
           <div className="rounded-xl border border-teal-100 bg-teal-50/50 p-3">

@@ -33,6 +33,7 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
         dueDateFormatted: task.due_date ? new Date(task.due_date).toLocaleDateString('ru-RU') : '',
         status: task.status as 'open' | 'in_progress' | 'done' | 'cancelled',
         priority: task.priority as 'low' | 'medium' | 'high',
+        assignedTo: task.assigned_to || 'Елена Менеджер',
         description: task.description || undefined,
         isOverdue: task.status === 'open' && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0))
       }));

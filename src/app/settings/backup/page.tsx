@@ -18,7 +18,8 @@ import {
   Database,
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Trash2
 } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 
@@ -74,7 +75,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
 }`;
 
 export default function DatabaseBackupPage() {
-  const { isOwner } = useRole();
+  const { role, isOwner } = useRole();
   const [downloading, setDownloading] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [syncing, setSyncing] = useState(false);
