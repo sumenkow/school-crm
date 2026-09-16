@@ -47,12 +47,19 @@ const OWNER_EMAIL_KEY = 'crm_owner_email';
 export function getOwnerEmailFromStorage(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem(OWNER_EMAIL_KEY);
-    if (saved && saved.includes('@')) return saved;
+    if (saved && saved.includes('@') && !saved.includes('smartacademy.ru')) return saved;
+    if (saved && saved.includes('smartacademy.ru')) {
+      localStorage.removeItem(OWNER_EMAIL_KEY);
+    }
     try {
       const profileRaw = localStorage.getItem(STORAGE_KEY);
       if (profileRaw) {
         const p = JSON.parse(profileRaw);
-        if (p.userEmail && p.userEmail.includes('@')) return p.userEmail;
+        if (p.userEmail && p.userEmail.includes('@') && !p.userEmail.includes('smartacademy.ru')) return p.userEmail;
+        if (p.userEmail && p.userEmail.includes('smartacademy.ru')) {
+          p.userEmail = '';
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+        }
       }
     } catch {}
   }
@@ -73,9 +80,15 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [isOwner, setIsOwner] = useState(true);
   const [ownerEmail, setOwnerEmailState] = useState<string>(DEFAULT_PROFILE.userEmail);
 
-  // 1. Initial hydration from localStorage (guarantee persistent active role across the entire app)
+  // 1. Initial hydration & sanitization from storage
   useEffect(() => {
     try {
+      // Auto-purge any leftover legacy test emails
+      const oldOwner = localStorage.getItem(OWNER_EMAIL_KEY);
+      if (oldOwner && oldOwner.includes('smartacademy.ru')) {
+        localStorage.removeItem(OWNER_EMAIL_KEY);
+      }
+
       const explicitRole = localStorage.getItem(ROLE_KEY) as UserRole | null;
       const saved = localStorage.getItem(STORAGE_KEY);
       let initialRole: UserRole = DEFAULT_PROFILE.role;
@@ -97,16 +110,20 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<UserProfileData>;
-        if (parsed.userName) setUserNameState(parsed.userName);
-        if (parsed.userEmail) {
+        if (parsed.userName && !parsed.userName.includes('Смирнов')) setUserNameState(parsed.userName);
+        if (parsed.userEmail && !parsed.userEmail.includes('smartacademy.ru')) {
           setUserEmailState(parsed.userEmail);
           if (initialRole === 'owner') {
             setOwnerEmailState(parsed.userEmail);
             localStorage.setItem(OWNER_EMAIL_KEY, parsed.userEmail);
           }
+        } else if (parsed.userEmail && parsed.userEmail.includes('smartacademy.ru')) {
+          parsed.userEmail = '';
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          setUserEmailState('');
         }
-        if (parsed.userPhone) setUserPhoneState(parsed.userPhone);
-        if (parsed.userTelegram) setUserTelegramState(parsed.userTelegram);
+        if (parsed.userPhone && !parsed.userPhone.includes('999) 123')) setUserPhoneState(parsed.userPhone);
+        if (parsed.userTelegram && !parsed.userTelegram.includes('alex_smart')) setUserTelegramState(parsed.userTelegram);
       }
     } catch {
       // Fallback to default

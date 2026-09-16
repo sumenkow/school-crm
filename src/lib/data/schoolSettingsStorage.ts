@@ -21,16 +21,16 @@ export interface SchoolProfileData {
 }
 
 export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
-  name: 'Smart Academy',
+  name: 'Онлайн-школа',
   slogan: 'Центр детского развития, робототехники и языков',
-  legalEntity: 'ИП Смирнов Алексей Владимирович',
+  legalEntity: 'ИП Руководитель школы',
   inn: '770123456789',
   ogrn: '321774600123456',
   bankAccount: '40802810100000012345',
   bankName: 'АО «ТБанк», БИК 044525974',
   bik: '044525974',
   phone: '+7 (495) 777-11-22',
-  email: 'hello@smartacademy.ru',
+  email: '',
   branchName: 'Онлайн-школа (Основной аккаунт)',
   address: 'Онлайн (Zoom, Google Meet, интерактивная доска)',
   roomsDescription: 'Интерактивные онлайн-комнаты',
@@ -41,7 +41,7 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
 const SCHOOL_SETTINGS_STORAGE_KEY = 'crm_school_profile_v1';
 
 /**
- * Returns school profile settings from localStorage or fallback.
+ * Returns school profile settings from cloud DB / storage, filtering out legacy placeholder emails.
  */
 export function getSchoolSettings(): SchoolProfileData {
   if (typeof window === 'undefined') return DEFAULT_SCHOOL_PROFILE;
@@ -49,6 +49,10 @@ export function getSchoolSettings(): SchoolProfileData {
     const raw = localStorage.getItem(SCHOOL_SETTINGS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      if (parsed.email && parsed.email.includes('smartacademy.ru')) {
+        parsed.email = '';
+        localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(parsed));
+      }
       return { ...DEFAULT_SCHOOL_PROFILE, ...parsed };
     }
   } catch (err) {
@@ -140,19 +144,19 @@ export function getReportRecipientEmails(): {
   recipientList: string[];
 } {
   const schoolSettings = getSchoolSettings();
-  const schoolEmail = schoolSettings.email || 'hello@smartacademy.ru';
+  const schoolEmail = schoolSettings.email && !schoolSettings.email.includes('smartacademy.ru') ? schoolSettings.email : '';
   let ownerEmail = schoolEmail;
 
   if (typeof window !== 'undefined') {
     try {
       const explicit = localStorage.getItem('crm_owner_email');
-      if (explicit && explicit.includes('@')) {
+      if (explicit && explicit.includes('@') && !explicit.includes('smartacademy.ru')) {
         ownerEmail = explicit;
       } else {
         const userProf = localStorage.getItem('crm_user_profile_v1') || localStorage.getItem('crm_user_profile');
         if (userProf) {
           const parsed = JSON.parse(userProf);
-          if (parsed.userEmail && parsed.userEmail.includes('@')) {
+          if (parsed.userEmail && parsed.userEmail.includes('@') && !parsed.userEmail.includes('smartacademy.ru')) {
             ownerEmail = parsed.userEmail;
           }
         }
@@ -160,11 +164,13 @@ export function getReportRecipientEmails(): {
     } catch {}
   }
 
-  const recipientList = Array.from(new Set([ownerEmail, schoolEmail].filter((e) => e && e.includes('@'))));
+  const recipientList = Array.from(
+    new Set([ownerEmail, schoolEmail].filter((e) => Boolean(e && e.includes('@') && !e.includes('smartacademy.ru'))))
+  );
 
   return {
-    ownerEmail,
-    schoolEmail,
+    ownerEmail: ownerEmail || schoolEmail || '',
+    schoolEmail: schoolEmail || ownerEmail || '',
     recipientList,
   };
 }
