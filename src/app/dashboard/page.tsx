@@ -45,6 +45,7 @@ import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskRe
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
+import { CreateEmployeeModal } from '@/components/team/CreateEmployeeModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -359,6 +360,8 @@ function OwnerDashboard({
       recordedBy: p.recordedBy || 'Администратор',
     }));
 
+  const [isCreateEmployeeOpen, setIsCreateEmployeeOpen] = useState(false);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -366,7 +369,7 @@ function OwnerDashboard({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Сводка владельца
+              Сводка руководителя
             </h1>
             <span
               className="md-label-small"
@@ -378,7 +381,7 @@ function OwnerDashboard({
                 fontWeight: 600,
               }}
             >
-              Владелец школы
+              Руководитель школы
             </span>
           </div>
           <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
@@ -388,14 +391,15 @@ function OwnerDashboard({
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/settings/team?role=teacher" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
-            <GraduationCap size={16} />
-            + Преподаватель
-          </Link>
-          <Link href="/settings/team?role=admin" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
-            <Shield size={16} />
-            + Администратор
-          </Link>
+          <button
+            type="button"
+            onClick={() => setIsCreateEmployeeOpen(true)}
+            className="md-btn md-btn-filled md-btn-sm inline-flex items-center"
+            style={{ gap: '6px' }}
+          >
+            <UserPlus size={16} />
+            Создать учетную запись сотрудника
+          </button>
           <Link href="/crm" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
             <UserCheck size={16} />
             + Новый лид
@@ -772,6 +776,12 @@ function OwnerDashboard({
           </div>
         </div>
       )}
+
+      {/* Create Employee Account Modal */}
+      <CreateEmployeeModal
+        isOpen={isCreateEmployeeOpen}
+        onClose={() => setIsCreateEmployeeOpen(false)}
+      />
     </div>
   );
 }

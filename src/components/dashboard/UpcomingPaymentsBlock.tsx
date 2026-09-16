@@ -128,7 +128,7 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 6 }: Upcomin
           <div>
             <div className="flex items-center gap-2">
               <h3 className="md-title-medium font-bold text-slate-900">
-                Подходящие сроки оплаты и продления
+                Ближайшие оплаты
               </h3>
               {urgentCount > 0 && (
                 <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-900 border border-amber-300">
