@@ -50,6 +50,7 @@ export function EnrollStudentFromLeadModal({
   const [studentFirstName, setStudentFirstName] = useState(defaultStudentFirstName);
   const [studentLastName, setStudentLastName] = useState(defaultStudentLastName);
   const [studentAge, setStudentAge] = useState(lead.studentAge || '12 лет');
+  const [studentGrade, setStudentGrade] = useState(lead.studentGrade || lead.grade || '');
   const [course, setCourse] = useState(lead.directionOrCourse || 'Английский язык');
 
   // Groups list for selection
@@ -83,7 +84,8 @@ export function EnrollStudentFromLeadModal({
       phone: lead.contact,
       telegram: lead.telegram,
       birthDate: '2014-05-15',
-      notes: studentAge ? `Возраст/класс: ${studentAge}` : undefined,
+      grade: studentGrade.trim() || undefined,
+      notes: studentAge ? `Возраст: ${studentAge}` : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       parents: [
@@ -269,15 +271,26 @@ export function EnrollStudentFromLeadModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700">Возраст / Класс</label>
+                <label className="text-xs font-semibold text-slate-700">Возраст</label>
                 <input
                   type="text"
                   value={studentAge}
                   onChange={(e) => setStudentAge(e.target.value)}
-                  placeholder="12 лет (6 класс)"
+                  placeholder="12 лет"
                   className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Класс</label>
+                <input
+                  type="text"
+                  value={studentGrade}
+                  onChange={(e) => setStudentGrade(e.target.value)}
+                  placeholder="6 класс / 8 класс"
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700">Направление / Курс</label>
                 <input

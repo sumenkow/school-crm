@@ -51,12 +51,12 @@ export default function TeachersPage() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           <Link
-            href="/settings/team?role=teacher"
+            href="/settings/team"
             className="md-btn md-btn-filled md-btn-sm"
             style={{ gap: '6px' }}
           >
             <Plus size={16} />
-            + Добавить преподавателя
+            Создать учетную запись
           </Link>
         </div>
       </div>

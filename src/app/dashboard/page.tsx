@@ -45,7 +45,6 @@ import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskRe
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
-import { CreateEmployeeModal } from '@/components/team/CreateEmployeeModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -360,8 +359,6 @@ function OwnerDashboard({
       recordedBy: p.recordedBy || 'Администратор',
     }));
 
-  const [isCreateEmployeeOpen, setIsCreateEmployeeOpen] = useState(false);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
@@ -391,15 +388,6 @@ function OwnerDashboard({
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsCreateEmployeeOpen(true)}
-            className="md-btn md-btn-filled md-btn-sm inline-flex items-center"
-            style={{ gap: '6px' }}
-          >
-            <UserPlus size={16} />
-            Создать учетную запись сотрудника
-          </button>
           <Link href="/crm" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
             <UserCheck size={16} />
             + Новый лид
@@ -775,13 +763,6 @@ function OwnerDashboard({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Create Employee Account Modal */}
-      <CreateEmployeeModal
-        isOpen={isCreateEmployeeOpen}
-        onClose={() => setIsCreateEmployeeOpen(false)}
-      />
     </div>
   );
 }
@@ -1081,6 +1062,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   };
 
   // Today's lessons & selected lesson modal
+  const [selectedUrgentTask, setSelectedUrgentTask] = useState<UrgentTaskItem | null>(null);
   const [selectedLessonForModal, setSelectedLessonForModal] = useState<FullLessonData | null>(null);
   const [todayLessons, setTodayLessons] = useState<FullLessonData[]>(INITIAL_LESSONS.slice(0, 3));
 

@@ -91,6 +91,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Смирнов',
     studentType: 'school_student',
     birthDate: '2012-05-14',
+    grade: '8 класс',
     phone: '+7 (999) 111-22-33',
     telegram: '@ivan_smirnov',
     email: 'ivan.smirnov@example.com',
@@ -252,6 +253,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Кузнецова',
     studentType: 'school_student',
     birthDate: '2014-03-22',
+    grade: '6 класс',
     phone: '+7 (999) 222-33-44',
     status: 'active',
     notes: 'Занимается в паре с братом Артёмом.',
@@ -337,6 +339,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Кузнецов',
     studentType: 'school_student',
     birthDate: '2016-08-10',
+    grade: '4 класс',
     phone: '+7 (999) 234-56-78',
     telegram: '@dkuznetsov',
     status: 'active',
@@ -409,6 +412,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Васильева',
     studentType: 'school_student',
     birthDate: '2018-09-10',
+    grade: '1 класс',
     status: 'trial',
     notes: 'Только начинает знакомство с языком в игровой форме.',
     createdAt: '2026-08-30T10:00:00Z',
@@ -485,6 +489,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Попов',
     studentType: 'school_student',
     birthDate: '2012-07-19',
+    grade: '8 класс',
     phone: '+7 (999) 456-78-90',
     status: 'paused',
     notes: '4 пропуска подряд, статус «На паузе», риск оттока. Требуется звонок родителю.',
@@ -546,6 +551,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Захаров',
     studentType: 'school_student',
     birthDate: '2013-11-04',
+    grade: '7 класс',
     phone: '+7 (916) 777-33-22',
     status: 'active',
     notes: '3 пропуска подряд, нет реакции на домашние задания, задолженность.',
@@ -597,6 +603,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Морозова',
     studentType: 'school_student',
     birthDate: '2016-04-12',
+    grade: '4 класс',
     phone: '+7 (999) 567-89-01',
     status: 'active',
     notes: 'Отличные успехи в олимпиадной математике, победа в городском туре.',
@@ -648,6 +655,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     lastName: 'Соловьева',
     studentType: 'adult_student',
     birthDate: '2006-02-14',
+    grade: '2 курс',
     phone: '+7 (926) 555-12-34',
     telegram: '@daria_solovyeva',
     status: 'active',
@@ -1231,6 +1239,8 @@ export interface FullLeadData {
   telegram?: string;
   studentName?: string;
   studentAge?: string;
+  studentGrade?: string;
+  grade?: string;
   // Structured FIO fields for parent/primary contact
   parentLastName?: string;
   parentFirstName?: string;

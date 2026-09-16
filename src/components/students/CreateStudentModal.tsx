@@ -32,6 +32,7 @@ export interface CreateStudentInitialData {
   lastName?: string;
   studentType?: 'school_student' | 'adult_student';
   birthDate?: string;
+  grade?: string;
   phone?: string;
   telegram?: string;
   status?: string;
@@ -69,6 +70,7 @@ export function CreateStudentModal({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [grade, setGrade] = useState('');
   const [phone, setPhone] = useState('');
   const [telegram, setTelegram] = useState('');
   const [status, setStatus] = useState('active');
@@ -91,6 +93,7 @@ export function CreateStudentModal({
       setFirstName(initialData.firstName || '');
       setLastName(initialData.lastName || '');
       setBirthDate(initialData.birthDate || '');
+      setGrade(initialData.grade || '');
       setPhone(initialData.phone || '');
       setTelegram(initialData.telegram || '');
       setStatus(initialData.status || 'active');
@@ -108,6 +111,8 @@ export function CreateStudentModal({
       setStudentType('school_student');
       setFirstName('');
       setLastName('');
+      setBirthDate('');
+      setGrade('');
       setBirthDate('');
       setPhone('');
       setTelegram('');
@@ -193,6 +198,7 @@ export function CreateStudentModal({
       lastName: lastName.trim(),
       studentType,
       birthDate: birthDate || '2012-05-15',
+      grade: grade.trim() || undefined,
       phone: isAdult ? (phone.trim() || '—') : (phone.trim() || parentPhone || '—'),
       telegram: telegram.trim() || (isAdult ? undefined : parentTelegram) || undefined,
       status: (status as any) || 'active',
@@ -433,6 +439,16 @@ export function CreateStudentModal({
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">Класс / Ступень обучения</label>
+                <input
+                  type="text"
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  placeholder="Например: 5 класс или 8"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none bg-white"
                 />
               </div>
               <div>

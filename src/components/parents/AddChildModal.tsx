@@ -26,6 +26,7 @@ export interface AddedChildData {
   lastName: string;
   age: string;
   birthDate?: string;
+  grade?: string;
   gender?: 'male' | 'female';
   group: string;
   course: string;
@@ -109,6 +110,7 @@ export function AddChildModal({
   const [lastName, setLastName] = useState(parentLastName);
   const [birthDate, setBirthDate] = useState('');
   const [age, setAge] = useState('');
+  const [grade, setGrade] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [course, setCourse] = useState('Английский язык');
   const [level, setLevel] = useState('Начинающий (с нуля)');
@@ -178,6 +180,7 @@ export function AddChildModal({
       lastName: lastName.trim(),
       age: calculatedAge,
       birthDate: birthDate || undefined,
+      grade: grade.trim() || undefined,
       gender,
       group: group || 'Без группы',
       course,
@@ -344,14 +347,27 @@ export function AddChildModal({
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">
-                      Возраст / Класс
+                      Возраст
                     </label>
                     <input
                       type="text"
-                      placeholder="Например: 10 лет (4 класс)"
+                      placeholder="Например: 10 лет"
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Класс / Ступень обучения
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Например: 4 класс или 8"
+                      value={grade}
+                      onChange={(e) => setGrade(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-blue-500 bg-white"
                     />
                   </div>
 

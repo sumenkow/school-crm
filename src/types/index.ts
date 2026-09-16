@@ -23,6 +23,7 @@ export interface Student {
   firstName: string;
   lastName: string;
   birthDate?: string;
+  grade?: string;
   phone?: string;
   telegram?: string;
   email?: string;
@@ -138,6 +139,7 @@ export interface Lead {
   contact: string;
   parentName?: string;
   studentName?: string;
+  grade?: string;
   directionOrCourse: string;
   level?: string;
   source: string;

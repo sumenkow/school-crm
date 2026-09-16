@@ -31,6 +31,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
   // School student additional fields
   const [studentAge, setStudentAge] = useState('');
+  const [studentGrade, setStudentGrade] = useState('');
   const [parentNotes, setParentNotes] = useState('');
 
   // Adult student additional fields
@@ -89,6 +90,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       studentMiddleName: studentMiddleName.trim() || undefined,
       studentName: effectiveStudentName,
       studentAge: isAdult ? adultOccupation.trim() || undefined : studentAge.trim() || undefined,
+      studentGrade: isAdult ? undefined : (studentGrade.trim() || undefined),
+      grade: isAdult ? undefined : (studentGrade.trim() || undefined),
       directionOrCourse,
       source,
       assignedTo,
@@ -316,14 +319,24 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-700">Возраст / класс</label>
+                  <label className="text-xs font-medium text-slate-700">Возраст</label>
                   <input
                     type="text"
                     value={studentAge}
                     onChange={(e) => setStudentAge(e.target.value)}
-                    placeholder="9 лет (3 класс)"
+                    placeholder="9 лет или 14"
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700">Класс</label>
+                  <input
+                    type="text"
+                    value={studentGrade}
+                    onChange={(e) => setStudentGrade(e.target.value)}
+                    placeholder="3 класс / 8 класс"
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
                   />
                 </div>
@@ -333,7 +346,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                     type="text"
                     value={studentNotes}
                     onChange={(e) => setStudentNotes(e.target.value)}
-                    placeholder="Интересы, цели, особенности..."
+                    placeholder="Интересы, цели..."
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
                   />
                 </div>

@@ -405,39 +405,19 @@ function TeamContent() {
           </p>
         </div>
 
-        {/* Buttons with pre-assigned roles and generic creation */}
+        {/* Single Create Account Button */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => openCreateModalForRole('teacher')}
+            onClick={() => {
+              generatePassword();
+              setShowCreateModal(true);
+            }}
             className="md-btn md-btn-filled"
             style={{ gap: '8px' }}
           >
-            <GraduationCap size={18} />
-            + Преподаватель
+            <UserPlus size={18} />
+            Создать учетную запись
           </button>
-          {(isOwner || currentRole === 'owner') && (
-            <>
-              <button
-                onClick={() => openCreateModalForRole('admin')}
-                className="md-btn md-btn-tonal"
-                style={{ gap: '8px' }}
-              >
-                <Shield size={18} />
-                + Администратор
-              </button>
-              <button
-                onClick={() => {
-                  generatePassword();
-                  setShowCreateModal(true);
-                }}
-                className="md-btn md-btn-outlined"
-                style={{ gap: '8px' }}
-              >
-                <UserPlus size={18} />
-                Создать учетную запись
-              </button>
-            </>
-          )}
         </div>
       </div>
 

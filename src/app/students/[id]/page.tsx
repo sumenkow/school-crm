@@ -45,6 +45,7 @@ import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskMana
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
+import { formatAgeAndGrade, formatGradeRussian, formatBirthDate } from '@/lib/data/studentAgeHelper';
 import type { Task } from '@/types';
 import type { FullTaskData } from '@/lib/data/mockData';
 
@@ -128,6 +129,7 @@ export default function StudentDetailsPage() {
     firstName: student.firstName,
     lastName: student.lastName,
     birthDate: student.birthDate || '',
+    grade: student.grade || '',
     phone: student.phone || '',
     telegram: student.telegram || '',
     status: student.status,
@@ -260,6 +262,7 @@ export default function StudentDetailsPage() {
       firstName: student.firstName,
       lastName: student.lastName,
       birthDate: student.birthDate || '',
+      grade: student.grade || '',
       phone: student.phone || '',
       telegram: student.telegram || '',
       status: student.status,
@@ -275,6 +278,7 @@ export default function StudentDetailsPage() {
     const newFirstName = editStudentForm.firstName.trim() || student.firstName;
     const newLastName = editStudentForm.lastName.trim() || student.lastName;
     const newBirthDate = editStudentForm.birthDate.trim() || undefined;
+    const newGrade = editStudentForm.grade.trim() || undefined;
     const newPhone = editStudentForm.phone.trim() || undefined;
     const newTelegram = editStudentForm.telegram.trim() || undefined;
     const newStatus = editStudentForm.status;
@@ -294,6 +298,9 @@ export default function StudentDetailsPage() {
     }
     if (newBirthDate !== student.birthDate) {
       changes.push(`Дата рождения: ${student.birthDate || 'не указана'} → ${newBirthDate || 'не указана'}`);
+    }
+    if (newGrade !== student.grade) {
+      changes.push(`Класс: ${student.grade || 'не указан'} → ${newGrade || 'не указан'}`);
     }
     if (newStatus !== student.status) {
       changes.push(`Статус: ${student.status} → ${newStatus}`);
@@ -334,6 +341,7 @@ export default function StudentDetailsPage() {
       firstName: newFirstName,
       lastName: newLastName,
       birthDate: newBirthDate,
+      grade: newGrade,
       phone: newPhone,
       telegram: newTelegram,
       status: newStatus,
@@ -710,6 +718,14 @@ export default function StudentDetailsPage() {
                   )}
                 </span>
 
+                {/* Age & Grade Badge (через запятую: 14 лет, 8 класс) */}
+                {formatAgeAndGrade(student.birthDate, student.grade) && (
+                  <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 inline-flex items-center gap-1 shadow-2xs">
+                    <GraduationCap className="h-3 w-3 text-indigo-600" />
+                    {formatAgeAndGrade(student.birthDate, student.grade)}
+                  </span>
+                )}
+
                 {/* Hero Balance Badge */}
                 {studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
@@ -730,10 +746,16 @@ export default function StudentDetailsPage() {
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                {student.birthDate && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    Д/Р: {student.birthDate} {student.studentType === 'adult_student' ? '(18+ лет)' : '(14 лет)'}
+                {(student.birthDate || student.grade) && (
+                  <span className="flex items-center gap-1.5 font-medium text-slate-700 bg-slate-100/90 px-2.5 py-0.5 rounded-md border border-slate-200/60">
+                    <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                    {student.birthDate && <span>Д/Р: {formatBirthDate(student.birthDate)}</span>}
+                    {student.birthDate && formatAgeAndGrade(student.birthDate, student.grade) && <span className="text-slate-300">•</span>}
+                    {formatAgeAndGrade(student.birthDate, student.grade) && (
+                      <strong className="text-slate-900 font-bold">
+                        {formatAgeAndGrade(student.birthDate, student.grade)}
+                      </strong>
+                    )}
                   </span>
                 )}
                 {student.phone && (
