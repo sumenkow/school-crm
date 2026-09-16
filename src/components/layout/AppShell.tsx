@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { createClient } from '@/lib/supabase/client';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -69,15 +70,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--md-background)' }}>
-      {/* MD3 Navigation Drawer */}
+      {/* MD3 Navigation Drawer (Desktop collapsible / Mobile slide-in) */}
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         <TopBar onOpenMobile={() => setMobileOpen(true)} />
         <main
-          className="flex-1 overflow-y-auto"
-          style={{ padding: '24px 24px 48px' }}
+          className="flex-1 overflow-y-auto mobile-touch-scroll p-3 sm:p-5 md:p-6"
+          style={{
+            paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
+          }}
         >
           <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
             {children}
@@ -85,11 +88,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
+      {/* MD3 Mobile Bottom Navigation Bar in thumb reach zone */}
+      <MobileBottomNav />
+
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 md:hidden"
-          style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+          className="fixed inset-0 z-40 md:hidden backdrop-blur-xs transition-opacity"
+          style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
           onClick={() => setMobileOpen(false)}
         />
       )}

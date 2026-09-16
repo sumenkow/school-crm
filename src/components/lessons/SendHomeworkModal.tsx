@@ -313,11 +313,11 @@ export default function SendHomeworkModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl max-h-[94vh] sm:max-h-[90vh] overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl flex flex-col animate-in slide-in-from-bottom sm:fade-in sm:zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 p-6 text-white shrink-0">
+        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 p-4 sm:p-6 text-white shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md shadow-inner">
@@ -637,8 +637,13 @@ export default function SendHomeworkModal({
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="border-t border-slate-200 bg-slate-50/90 p-4 px-6 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        {/* Footer Actions with Safe Area Bottom */}
+        <div
+          className="border-t border-slate-200 bg-slate-50/95 p-3.5 sm:p-4 px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0"
+          style={{
+            paddingBottom: 'calc(14px + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
           <div className="text-xs text-slate-500">
             {t('homework.selectedCountLabel', 'Выбрано получателей:')} <strong className="text-slate-900 font-bold">{selectedCount}</strong> {t('homework.of', 'из')} {recipients.length}
           </div>

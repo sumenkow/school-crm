@@ -398,7 +398,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
       {/* Mobile: sliding modal drawer */}
       <div
-        className="md:hidden fixed inset-y-0 left-0 z-40 transition-transform duration-300"
+        className="md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300"
         style={{
           transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
           boxShadow: mobileOpen ? 'var(--md-elevation-3)' : 'none',

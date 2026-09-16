@@ -465,3 +465,64 @@ body {
   outline: 3px solid var(--md-primary);
   outline-offset: 2px;
 }
+
+/* =========================================================
+   MOBILE & TOUCH OPTIMIZATIONS (iPhone 15 & Modern Android)
+   ========================================================= */
+
+/* Safe Area variables */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Fix iOS Safari auto-zoom on input focus (<16px triggers zoom) */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Touch Target Helpers (Apple HIG 44px / MD3 48px standard) */
+.touch-target-44 {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-target-48 {
+  min-width: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Safe area padding utilities */
+.pb-safe {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Hardware accelerated smooth touch scrolling */
+.mobile-touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+

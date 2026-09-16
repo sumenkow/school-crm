@@ -20,10 +20,12 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const toast = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   // Format today's date localized
   useEffect(() => {
@@ -61,11 +63,14 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close menu on outside click
+  // Close menus on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(e.target as Node)) {
+        setLangMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
@@ -83,46 +88,41 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   return (
     <header
-      className="sticky top-0 z-20 flex items-center"
+      className="sticky top-0 z-20 flex items-center h-14 sm:h-16 px-2.5 sm:px-4 gap-1.5 sm:gap-2.5 transition-all duration-200"
       style={{
-        height: '64px',
         backgroundColor: 'var(--md-surface-container)',
         boxShadow: scrolled ? 'var(--md-elevation-2)' : 'none',
-        transition: 'box-shadow 0.2s',
-        padding: '0 16px',
-        gap: '8px',
       }}
     >
-      {/* Mobile menu button */}
+      {/* Mobile menu button (44px touch target) */}
       <button
         onClick={onOpenMobile}
-        className="md:hidden flex items-center justify-center"
+        className="md:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
         style={{
-          width: '40px', height: '40px', borderRadius: '50%',
           border: 'none', background: 'transparent',
           color: 'var(--md-on-surface)', cursor: 'pointer',
         }}
         aria-label="Открыть меню"
       >
-        <Menu size={24} />
+        <Menu size={22} />
       </button>
 
-      {/* Search bar / Command Palette trigger */}
+      {/* Desktop & Tablet Search Bar */}
       <div
-        className="flex items-center gap-2 transition-colors hover:bg-black/5"
+        className="hidden sm:flex items-center gap-2 transition-colors hover:bg-black/5"
         style={{
-          flex: '1 1 0', maxWidth: '340px', height: '40px',
+          flex: '1 1 0', maxWidth: '320px', height: '38px',
           backgroundColor: 'var(--md-surface-container-highest)',
-          borderRadius: '9999px', padding: '0 16px', cursor: 'pointer',
+          borderRadius: '9999px', padding: '0 14px', cursor: 'pointer',
         }}
         onClick={() => setPaletteOpen(true)}
       >
-        <Search size={18} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
-        <span className="md-body-medium flex-1 truncate" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
+        <Search size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
+        <span className="md-body-medium flex-1 truncate text-xs font-medium" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
           {t('topbar.searchPlaceholder', 'Быстрый поиск... (Cmd+K)')}
         </span>
         <span
-          className="hidden sm:inline-flex items-center text-[11px] font-mono font-medium rounded-md px-1.5 py-0.5"
+          className="inline-flex items-center text-[10px] font-mono font-medium rounded px-1.5 py-0.5"
           style={{
             backgroundColor: 'var(--md-surface)',
             color: 'var(--md-on-surface-variant)',
@@ -133,52 +133,121 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         </span>
       </div>
 
+      {/* Mobile Search Icon Button (44px touch target) */}
+      <button
+        type="button"
+        onClick={() => setPaletteOpen(true)}
+        className="sm:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
+        style={{
+          border: 'none', background: 'transparent',
+          color: 'var(--md-on-surface-variant)', cursor: 'pointer',
+        }}
+        aria-label={t('topbar.searchPlaceholder', 'Поиск')}
+      >
+        <Search size={20} />
+      </button>
+
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Intuitive Multi-Language Switcher (RU / EN / DE) */}
-      <div
-        className="flex items-center rounded-full p-1 border shadow-2xs shrink-0"
-        style={{
-          backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
-          borderColor: 'var(--md-outline-variant, #C1C7CE)',
-        }}
-        title={t('topbar.language', 'Язык интерфейса')}
-      >
-        {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
-          const isSelected = language === langKey;
-          const meta = LANGUAGE_LABELS[langKey];
-          return (
-            <button
-              key={langKey}
-              onClick={() => {
-                if (language !== langKey) {
-                  setLanguage(langKey);
-                  toast.success(`${meta.flag} ${meta.nativeName}`);
-                }
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-white shadow-xs scale-105 border border-slate-200/90 font-extrabold text-blue-700'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'
-              }`}
+      {/* Multi-Language Switcher (Desktop: segmented 3-button, Mobile: compact dropdown) */}
+      <div className="relative shrink-0">
+        {/* Desktop segmented bar */}
+        <div
+          className="hidden sm:flex items-center rounded-full p-1 border shadow-2xs"
+          style={{
+            backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
+            borderColor: 'var(--md-outline-variant, #C1C7CE)',
+          }}
+          title={t('topbar.language', 'Язык интерфейса')}
+        >
+          {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
+            const isSelected = language === langKey;
+            const meta = LANGUAGE_LABELS[langKey];
+            return (
+              <button
+                key={langKey}
+                onClick={() => {
+                  if (language !== langKey) {
+                    setLanguage(langKey);
+                    toast.success(`${meta.flag} ${meta.nativeName}`);
+                  }
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-white shadow-xs scale-105 border border-slate-200/90 font-extrabold text-blue-700'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'
+                }`}
+                style={{
+                  color: isSelected ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
+                  backgroundColor: isSelected ? 'var(--md-surface, #FFFFFF)' : 'transparent',
+                }}
+                title={meta.label}
+              >
+                <span className="text-sm">{meta.flag}</span>
+                <span className="text-[11px] font-extrabold tracking-tight">{meta.short}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mobile compact language picker */}
+        <div ref={langMenuRef} className="sm:hidden relative">
+          <button
+            type="button"
+            onClick={() => setLangMenuOpen(!langMenuOpen)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-2xs active:scale-95 transition-all text-xs font-bold"
+            style={{
+              backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
+              borderColor: 'var(--md-outline-variant, #C1C7CE)',
+              color: 'var(--md-on-surface)',
+            }}
+            aria-label={t('topbar.language', 'Язык')}
+          >
+            <span className="text-base leading-none">{LANGUAGE_LABELS[language].flag}</span>
+            <span className="text-[11px] font-extrabold uppercase">{LANGUAGE_LABELS[language].short}</span>
+            <ChevronDown size={13} style={{ color: 'var(--md-on-surface-variant)' }} />
+          </button>
+
+          {langMenuOpen && (
+            <div
+              className="absolute right-0 top-10 rounded-2xl shadow-xl border p-1.5 z-50 min-w-[130px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150"
               style={{
-                color: isSelected ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
-                backgroundColor: isSelected ? 'var(--md-surface, #FFFFFF)' : 'transparent',
+                backgroundColor: 'var(--md-surface-container-lowest, #FFFFFF)',
+                borderColor: 'var(--md-outline-variant, #C1C7CE)',
               }}
-              title={meta.label}
             >
-              <span className="text-sm">{meta.flag}</span>
-              <span className="text-[11px] font-extrabold tracking-tight">{meta.short}</span>
-            </button>
-          );
-        })}
+              {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
+                const isSelected = language === langKey;
+                const meta = LANGUAGE_LABELS[langKey];
+                return (
+                  <button
+                    key={langKey}
+                    onClick={() => {
+                      setLanguage(langKey);
+                      setLangMenuOpen(false);
+                      toast.success(`${meta.flag} ${meta.nativeName}`);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+                      isSelected
+                        ? 'bg-blue-50 text-blue-700 font-extrabold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-base">{meta.flag}</span>
+                    <span>{meta.nativeName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Today's highlighted date */}
+      {/* Today's highlighted date (Desktop only) */}
       {currentDate && (
         <div
-          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all select-none shrink-0"
+          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all select-none shrink-0"
           style={{
             backgroundColor: 'var(--md-secondary-container, #D7E3F7)',
             color: 'var(--md-on-secondary-container, #101C2B)',
@@ -187,10 +256,8 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
           }}
           title={t('nav.calendar', 'Календарь')}
         >
-          <span
-            className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
-          />
-          <Calendar size={14} style={{ color: 'var(--md-primary, #1565C0)' }} />
+          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+          <Calendar size={13} style={{ color: 'var(--md-primary, #1565C0)' }} />
           <span className="tracking-tight text-xs">{currentDate}</span>
         </div>
       )}
@@ -199,20 +266,18 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       <div ref={menuRef} style={{ position: 'relative' }}>
         <button
           onClick={() => setUserMenuOpen(!userMenuOpen)}
+          className="touch-target-44 sm:h-10 rounded-full border transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2 px-1 sm:px-3"
           style={{
-            height: '40px', borderRadius: '9999px',
-            border: '1px solid var(--md-outline-variant)',
+            borderColor: 'var(--md-outline-variant)',
             backgroundColor: 'transparent',
             cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '0 12px 0 4px',
           }}
           aria-label={t('topbar.profile', 'Профиль пользователя')}
         >
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
             backgroundColor: 'var(--md-primary)', color: 'var(--md-on-primary)',
-            fontWeight: 700, fontSize: '14px',
+            fontWeight: 700, fontSize: '13px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
@@ -244,7 +309,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
           >
             {t(`role.${role}`, role)}
           </span>
-          <ChevronDown size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
+          <ChevronDown size={14} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         </button>
 
         {/* Dropdown menu */}

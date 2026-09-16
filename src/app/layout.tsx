@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
 import { RoleProvider } from "@/context/RoleContext";
@@ -16,6 +16,19 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "YouEurope School CRM — Система управления школой",
   description: "Единая платформа управления образовательной школой, CRM, посещаемость и финансы",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "School CRM",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#1565C0",
 };
 
 export default function RootLayout({

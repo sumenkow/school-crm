@@ -176,22 +176,22 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
   const avatarLetter = (userName || 'А').charAt(0).toUpperCase();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-6 overflow-hidden border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-2xl max-h-[94vh] sm:max-h-[90vh] rounded-t-3xl sm:rounded-2xl bg-white shadow-2xl animate-in slide-in-from-bottom sm:fade-in sm:zoom-in-95 duration-150 my-0 sm:my-6 overflow-hidden border border-slate-200 flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-4 sm:px-6 py-3.5 sm:py-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs shrink-0">
               <User className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Карточка профиля учетной записи</h2>
-              <p className="text-xs text-slate-500">Персональные данные, настройки безопасности и права доступа</p>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">Карточка профиля учетной записи</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1">Персональные данные, настройки безопасности и права доступа</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors touch-target-44"
             title="Закрыть"
           >
             <X className="h-5 w-5" />
@@ -199,9 +199,14 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <div
+          className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto mobile-touch-scroll"
+          style={{
+            paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+          }}
+        >
           {/* 1. HERO PROFILE CARD */}
-          <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 p-5 shadow-xs">
+          <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 p-4 sm:p-5 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-2xl font-bold text-white shadow-md">
