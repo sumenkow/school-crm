@@ -42,6 +42,8 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
+import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
+import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import type { Task } from '@/types';
 import type { FullTaskData } from '@/lib/data/mockData';
 
@@ -898,6 +900,15 @@ export default function StudentDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* UPCOMING PAYMENT DEADLINE ALERT (Раздел 2 ТЗ) */}
+      <UpcomingPaymentAlert
+        item={getUpcomingPaymentForStudent(student.id)}
+        onPaymentRecorded={() => {
+          const fresh = getStudentById(student.id);
+          if (fresh) setStudent(fresh);
+        }}
+      />
 
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">

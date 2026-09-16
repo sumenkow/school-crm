@@ -38,6 +38,8 @@ import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
+import { getUpcomingPaymentForLead } from '@/lib/data/upcomingPaymentsHelper';
 
 export default function LeadDetailsPage() {
   const params = useParams();
@@ -937,6 +939,11 @@ export default function LeadDetailsPage() {
               Создать задачу
             </button>
           </div>
+        )}
+
+        {/* UPCOMING PAYMENT DEADLINE ALERT (Раздел 2 ТЗ) */}
+        {getUpcomingPaymentForLead(lead.id) && (
+          <UpcomingPaymentAlert item={getUpcomingPaymentForLead(lead.id)} className="mt-4" />
         )}
 
         {/* If Lost: Loss Reason */}

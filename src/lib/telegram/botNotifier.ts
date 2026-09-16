@@ -188,3 +188,77 @@ ${taskList}${overdueTasks.length > 5 ? `\n...и ещё ${overdueTasks.length - 5
     message,
   });
 }
+
+/**
+ * Notifies Administrator regarding an upcoming payment deadline.
+ */
+export async function notifyAdminOnUpcomingPayment(params: {
+  studentName: string;
+  parentName?: string;
+  parentPhone?: string;
+  courseName: string;
+  amountFormatted: string;
+  dueDate: string;
+  daysRemaining: number;
+}) {
+  const urgencyEmoji = params.daysRemaining <= 1 ? '🚨' : params.daysRemaining <= 3 ? '⏳' : '📅';
+  const timeLabel =
+    params.daysRemaining <= 0
+      ? '*Срок оплаты сегодня!*'
+      : params.daysRemaining === 1
+      ? '*Срок оплаты завтра!*'
+      : `*Осталось дней: ${params.daysRemaining}*`;
+
+  const message = `${urgencyEmoji} *НАПОМИНАНИЕ АДМИНИСТРАТОРУ: СРОК ОПЛАТЫ*
+
+🎓 *Ученик:* ${params.studentName}
+📚 *Курс:* ${params.courseName}
+💰 *Сумма к оплате:* *${params.amountFormatted}*
+📅 *Дата платежа:* ${params.dueDate} (${timeLabel})
+${params.parentName ? `👨‍👩‍👧 *Родитель:* ${params.parentName}\n` : ''}${params.parentPhone ? `📞 *Телефон:* ${params.parentPhone}\n` : ''}
+⚡ _Свяжитесь с родителем для подтверждения продления абонемента._`;
+
+  return sendTelegramNotification({
+    recipient: 'admin',
+    title: 'Подходящий срок оплаты',
+    message,
+  });
+}
+
+/**
+ * Sends a summary digest of all upcoming payments to administrators via Telegram bot.
+ */
+export async function sendUpcomingPaymentsDigestToTelegram(items: Array<{
+  studentName: string;
+  courseName: string;
+  amountFormatted: string;
+  dueDate: string;
+  daysRemaining: number;
+}>) {
+  if (items.length === 0) return { success: true };
+
+  const list = items
+    .slice(0, 7)
+    .map((item, idx) => `${idx + 1}. *${item.studentName}* (${item.courseName}) — *${item.amountFormatted}* (срок: ${item.dueDate})`)
+    .join('\n');
+
+  const totalSum = items.reduce((sum, i) => {
+    const num = parseFloat(i.amountFormatted.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+    return sum + num;
+  }, 0);
+
+  const message = `🔔 *СВОДКА АДМИНИСТРАТОРУ: ПРИБЛИЖАЮЩИЕСЯ ОПЛАТЫ*
+
+Всего оплат к сбору в ближайшие дни: *${items.length}*
+💰 Ожидаемая сумма поступлений: *${totalSum.toLocaleString('ru-RU')} ₽*
+
+${list}${items.length > 7 ? `\n...и ещё ${items.length - 7} платежей` : ''}
+
+📲 _Рекомендуется отправить ссылки на оплату и напомнить родителям о продлении абонементов._`;
+
+  return sendTelegramNotification({
+    recipient: 'admin',
+    title: 'Сводка приближающихся оплат',
+    message,
+  });
+}

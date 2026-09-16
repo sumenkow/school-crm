@@ -33,6 +33,8 @@ import { useToast } from '@/context/ToastContext';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
+import { getUpcomingPaymentForParent } from '@/lib/data/upcomingPaymentsHelper';
 
 export default function ParentDetailsPage() {
   const params = useParams();
@@ -870,6 +872,23 @@ export default function ParentDetailsPage() {
           </p>
         )}
       </div>
+
+      {/* UPCOMING PAYMENT DEADLINE ALERT (Раздел 2 ТЗ) */}
+      {(() => {
+        const upcomingList = getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id));
+        if (upcomingList.length === 0) return null;
+        return (
+          <div className="space-y-2">
+            {upcomingList.map((item) => (
+              <UpcomingPaymentAlert
+                key={item.id}
+                item={item}
+                onPaymentRecorded={() => setRefreshTrigger((prev) => prev + 1)}
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Предстоящие задачи по семье и детям */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">

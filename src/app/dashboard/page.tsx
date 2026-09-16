@@ -42,6 +42,7 @@ import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskReportModal';
+import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
@@ -429,6 +430,9 @@ function OwnerDashboard({
 
       {/* SMART ACTION HUB */}
       <SmartActionHub />
+
+      {/* UPCOMING PAYMENT DEADLINES & RENEWALS (Раздел 2 ТЗ) */}
+      <UpcomingPaymentsBlock viewMode="owner" />
 
       {/* Attention / Urgent Risks Banner */}
       <div
@@ -1237,6 +1241,9 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
 
       {/* SMART ACTION HUB */}
       <SmartActionHub />
+
+      {/* UPCOMING PAYMENT DEADLINES & RENEWALS (Раздел 2 ТЗ) */}
+      <UpcomingPaymentsBlock viewMode="admin" />
 
       {/* Admin KPI metrics (Clickable cards that open today's task queues) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
