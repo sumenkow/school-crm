@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import {
   ArrowLeft,
   Calendar,
@@ -36,7 +38,8 @@ import {
   MessageSquarePlus,
   BookOpen,
   X,
-  ExternalLink
+  ExternalLink,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -119,6 +122,42 @@ export default function StudentDetailsPage() {
   }, [studentId]);
 
   const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>('profile');
+
+  // Next Upcoming Lesson State
+  const [upcomingLesson, setUpcomingLesson] = useState<FullLessonData | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
+  const computeNextLesson = () => {
+    if (typeof window === 'undefined') return;
+    const allLessons = getStoredLessons();
+    const studentGroupIds = new Set((student.groups || []).map((g) => g.id));
+    
+    const candidates = allLessons.filter((l) => {
+      if (l.status === 'cancelled' || l.status === 'completed') return false;
+      const isStudentInLesson = (l.students || []).some((s) => s.id === student.id);
+      const isGroupMatched = l.groupId && studentGroupIds.has(l.groupId);
+      return isStudentInLesson || isGroupMatched;
+    });
+
+    candidates.sort((a, b) => {
+      const timeA = new Date(`${a.date}T${a.startTime || '00:00'}`).getTime();
+      const timeB = new Date(`${b.date}T${b.startTime || '00:00'}`).getTime();
+      return timeA - timeB;
+    });
+
+    setUpcomingLesson(candidates[0] || null);
+  };
+
+  useEffect(() => {
+    computeNextLesson();
+    const handleSync = () => computeNextLesson();
+    window.addEventListener('crm-lessons-changed', handleSync);
+    window.addEventListener('crm-groups-changed', handleSync);
+    return () => {
+      window.removeEventListener('crm-lessons-changed', handleSync);
+      window.removeEventListener('crm-groups-changed', handleSync);
+    };
+  }, [student.id, student.groups]);
 
   // Selected parent and task for modal window
   const [selectedParentForModal, setSelectedParentForModal] = useState<any | null>(null);
@@ -952,6 +991,83 @@ export default function StudentDetailsPage() {
               )} title={finSummary.breakdownSummary}>
                 {finSummary.breakdownSummary}
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Hero Block: Следующее занятие */}
+        <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          {upcomingLesson ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-blue-900">
+                      Следующее занятие:
+                    </span>
+                    <span className="rounded-md bg-blue-100/90 px-2 py-0.5 text-xs font-bold text-blue-800 border border-blue-200/60">
+                      {upcomingLesson.date} • {upcomingLesson.startTime} – {upcomingLesson.endTime}
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">
+                      «{upcomingLesson.groupName}»
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {upcomingLesson.topic && (
+                      <span><strong>Тема:</strong> {upcomingLesson.topic}</span>
+                    )}
+                    {upcomingLesson.teacherName && (
+                      <span><strong>Преподаватель:</strong> {upcomingLesson.teacherName}</span>
+                    )}
+                    {upcomingLesson.room && (
+                      <span><strong>Место:</strong> {upcomingLesson.room}</span>
+                    )}
+                    {upcomingLesson.homework && (
+                      <span className="text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200">
+                        <strong>Д/З:</strong> {upcomingLesson.homework}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                {upcomingLesson.onlineMeetingUrl && (
+                  <a
+                    href={upcomingLesson.onlineMeetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
+                  >
+                    <Video className="h-3.5 w-3.5 text-blue-600" />
+                    Zoom
+                  </a>
+                )}
+                <Link
+                  href={`/calendar/lessons/${upcomingLesson.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-2xs"
+                >
+                  Карточка урока →
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                <Calendar className="h-4 w-4 text-slate-400" />
+                <span>Нет запланированных занятий в расписании</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(true)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Запланировать занятие
+              </button>
             </div>
           )}
         </div>
@@ -2501,6 +2617,19 @@ export default function StudentDetailsPage() {
             setStudent(fresh);
             latestStudentRef.current = fresh;
           }
+        }}
+      />
+
+      {/* SCHEDULE LESSON MODAL */}
+      <ScheduleLessonModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          computeNextLesson();
+        }}
+        defaultGroupId={student.groups?.[0]?.id}
+        onScheduled={() => {
+          computeNextLesson();
         }}
       />
     </div>

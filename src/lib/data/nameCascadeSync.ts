@@ -34,6 +34,7 @@ export interface ParentNameUpdate {
   email?: string;
   telegram?: string;
   whatsapp?: string;
+  preferredChannel?: string;
 }
 
 export interface LeadNameUpdate {
@@ -274,6 +275,7 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
             email: parentData.email !== undefined ? parentData.email : p.email,
             telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
             whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
+            preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
           };
         }
         return p;
@@ -304,6 +306,7 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
                 email: parentData.email !== undefined ? parentData.email : p.email,
                 telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
                 whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
+                preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
               };
             }
             return p;
@@ -399,6 +402,7 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
             email: parentData.email || null,
             telegram: parentData.telegram || null,
             whatsapp: parentData.whatsapp || null,
+            preferred_channel: (parentData.preferredChannel === 'both' ? 'email' : (parentData.preferredChannel?.toLowerCase() as any)) || undefined,
             updated_at: new Date().toISOString(),
           })
           .eq('id', parentId)

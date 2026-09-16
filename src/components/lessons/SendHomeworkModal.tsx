@@ -30,6 +30,8 @@ interface RecipientItem {
   parentName?: string;
   parentRelationship?: string;
   email: string;
+  telegram?: string;
+  preferredChannel?: string;
   selected: boolean;
 }
 
@@ -125,6 +127,7 @@ export default function SendHomeworkModal({
 
       if (parents.length > 0) {
         parents.forEach((p) => {
+          const hasContact = Boolean((p.email && p.email.includes('@')) || (p.telegram && p.telegram.trim()));
           list.push({
             studentId: st.id,
             studentName: studentFullName,
@@ -132,19 +135,26 @@ export default function SendHomeworkModal({
             parentName: `${p.firstName} ${p.lastName}`.trim(),
             parentRelationship: p.relationshipType || 'Родитель',
             email: p.email || '',
-            selected: Boolean(p.email && p.email.includes('@')),
+            telegram: p.telegram || '',
+            preferredChannel: p.preferredChannel || 'email',
+            selected: hasContact,
           });
         });
       } else {
         // Adult student or student without parent record
         const directEmail = (st as any).email || (st.studentType === 'adult_student' ? `${st.firstName.toLowerCase()}@example.com` : '');
+        const directTelegram = (st as any).telegram || '';
+        const hasContact = Boolean((directEmail && directEmail.includes('@')) || directTelegram);
+
         list.push({
           studentId: st.id,
           studentName: studentFullName,
           parentName: st.studentType === 'adult_student' ? studentFullName : undefined,
           parentRelationship: st.studentType === 'adult_student' ? 'Студент (18+)' : 'Основной контакт',
           email: directEmail,
-          selected: Boolean(directEmail && directEmail.includes('@')),
+          telegram: directTelegram,
+          preferredChannel: 'email',
+          selected: hasContact,
         });
       }
     });
@@ -152,10 +162,11 @@ export default function SendHomeworkModal({
     setRecipients(list);
   }, [isOpen, lesson]);
 
-  if (!isOpen) return null;
-
-  const selectedCount = recipients.filter((r) => r.selected && r.email.trim()).length;
+  const selectedCount = recipients.filter((r) => r.selected && (r.email.trim() || r.telegram?.trim())).length;
   const missingEmailCount = recipients.filter((r) => !r.email || !r.email.includes('@')).length;
+  const missingContactCount = recipients.filter((r) => !r.email?.includes('@') && !r.telegram?.trim()).length;
+
+  if (!isOpen) return null;
 
   const handleToggleRecipient = (index: number) => {
     setRecipients((prev) =>
@@ -170,7 +181,21 @@ export default function SendHomeworkModal({
           ? {
               ...r,
               email: newEmail,
-              selected: Boolean(newEmail && newEmail.includes('@')),
+              selected: Boolean((newEmail && newEmail.includes('@')) || r.telegram?.trim()),
+            }
+          : r
+      )
+    );
+  };
+
+  const handleUpdateTelegram = (index: number, newTelegram: string) => {
+    setRecipients((prev) =>
+      prev.map((r, i) =>
+        i === index
+          ? {
+              ...r,
+              telegram: newTelegram,
+              selected: Boolean(newTelegram.trim() || (r.email && r.email.includes('@'))),
             }
           : r
       )
@@ -181,7 +206,7 @@ export default function SendHomeworkModal({
     setRecipients((prev) =>
       prev.map((r) => ({
         ...r,
-        selected: select ? Boolean(r.email && r.email.includes('@')) : false,
+        selected: select ? Boolean((r.email && r.email.includes('@')) || r.telegram?.trim()) : false,
       }))
     );
   };
@@ -192,10 +217,10 @@ export default function SendHomeworkModal({
       return;
     }
 
-    const activeRecipients = recipients.filter((r) => r.selected && r.email.trim());
+    const activeRecipients = recipients.filter((r) => r.selected && ((r.email && r.email.trim()) || (r.telegram && r.telegram.trim())));
 
     if (activeRecipients.length === 0) {
-      toast.error('Выберите хотя бы одного получателя с указанным email');
+      toast.error('Выберите хотя бы одного получателя с указанным email или telegram');
       return;
     }
 
@@ -203,10 +228,11 @@ export default function SendHomeworkModal({
     setSendResult(null);
 
     try {
-      const response = await fetch('/api/lessons/homework/send', {
+      const response = await fetch('/api/lessons/notify/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'homework',
           lessonId: lesson.id,
           groupName: lesson.groupName,
           courseName: lesson.courseName,
@@ -215,12 +241,14 @@ export default function SendHomeworkModal({
           topic: topic.trim() || 'Урок',
           homework: homework.trim(),
           deadline: deadline.trim(),
-          comment: teacherComment.trim() || undefined,
+          customMessage: teacherComment.trim() || undefined,
           recipients: activeRecipients.map((r) => ({
             studentId: r.studentId,
             studentName: r.studentName,
             parentName: r.parentName,
-            email: r.email.trim(),
+            email: r.email?.trim() || undefined,
+            telegram: r.telegram?.trim() || undefined,
+            channel: (r.preferredChannel?.toLowerCase() as any) || (r.email && r.telegram ? 'both' : r.telegram ? 'telegram' : 'email'),
           })),
         }),
       });
@@ -228,24 +256,29 @@ export default function SendHomeworkModal({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Не удалось отправить письма');
+        throw new Error(data.error || 'Не удалось отправить сообщения');
       }
 
-      // Record Timeline interactions for each successful recipient
+      // Record Timeline interactions for each recipient
       const now = new Date();
       const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      const dateFormatted = now.toLocaleDateString('ru-RU');
 
       activeRecipients.forEach((rec) => {
+        const channelDesc = rec.preferredChannel === 'telegram'
+          ? `✈️ Telegram (${rec.telegram})`
+          : rec.preferredChannel === 'both'
+          ? `📧 Email (${rec.email}) + ✈️ Telegram (${rec.telegram})`
+          : `📧 Email (${rec.email})`;
+
         const interaction: TimelineInteraction = {
           id: `int_hw_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           studentId: rec.studentId,
           parentId: rec.parentId,
           occurredAt: `Сегодня, ${timeFormatted}`,
           author: lesson.teacherName || 'Преподаватель',
-          channel: 'email',
+          channel: (rec.preferredChannel === 'telegram' ? 'telegram' : 'email') as any,
           type: 'organizational',
-          content: `📧 Рассылка домашнего задания по теме «${topic.trim() || 'Урок'}» успешно отправлена на email ${rec.email} (${rec.parentName || rec.studentName}). Срок сдачи: ${deadline}.`,
+          content: `Рассылка ДЗ по теме «${topic.trim() || 'Урок'}» успешно отправлена через ${channelDesc}. Срок сдачи: ${deadline}.`,
         };
 
         saveInteractionToStorage(interaction);
@@ -258,7 +291,7 @@ export default function SendHomeworkModal({
         message: data.message || `Домашнее задание успешно разослано ${activeRecipients.length} получателям!`,
       });
 
-      toast.success(data.message || `ДЗ успешно отправлено родителям (${activeRecipients.length} писем)!`);
+      toast.success(data.message || `ДЗ успешно отправлено родителям (${activeRecipients.length} сообщений)!`);
 
       if (onSentSuccess) {
         onSentSuccess();
@@ -270,7 +303,7 @@ export default function SendHomeworkModal({
         success: false,
         sentCount: 0,
         failedCount: activeRecipients.length,
-        message: err.message || 'Произошла ошибка при отправке писем через почтовый сервис',
+        message: err.message || 'Произошла ошибка при отправке сообщений',
       });
     } finally {
       setIsSending(false);

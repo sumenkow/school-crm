@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData, FullLessonData } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo, sortTimelineChronologicalDesc } from '@/lib/data/timelineStorage';
 import { syncParentNameCascade } from '@/lib/data/nameCascadeSync';
 import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -34,7 +35,8 @@ import {
   Calendar,
   ExternalLink,
   ChevronRight,
-  Filter
+  Filter,
+  Video
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -125,6 +127,55 @@ export default function ParentDetailsPage() {
   });
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Next Upcoming Lesson for Children
+  const [upcomingLesson, setUpcomingLesson] = useState<{ lesson: FullLessonData; childName: string } | null>(null);
+
+  const computeNextLesson = () => {
+    if (typeof window === 'undefined') return;
+    const allLessons = getStoredLessons();
+    const childrenIds = new Set((parent.children || []).map((c) => c.id));
+    
+    const matching: Array<{ lesson: FullLessonData; childName: string }> = [];
+
+    for (const lesson of allLessons) {
+      if (lesson.status === 'cancelled' || lesson.status === 'completed') continue;
+
+      for (const st of lesson.students || []) {
+        if (childrenIds.has(st.id)) {
+          matching.push({ lesson, childName: st.name });
+        }
+      }
+
+      for (const ch of parent.children || []) {
+        const isGroupMatched = ch.groups?.some((g: any) => g.id === lesson.groupId);
+        if (isGroupMatched && !matching.some((m) => m.lesson.id === lesson.id && m.childName === ch.name)) {
+          matching.push({ lesson, childName: ch.name });
+        }
+      }
+    }
+
+    matching.sort((a, b) => {
+      const timeA = new Date(`${a.lesson.date}T${a.lesson.startTime || '00:00'}`).getTime();
+      const timeB = new Date(`${b.lesson.date}T${b.lesson.startTime || '00:00'}`).getTime();
+      return timeA - timeB;
+    });
+
+    setUpcomingLesson(matching[0] || null);
+  };
+
+  useEffect(() => {
+    computeNextLesson();
+    const handleSync = () => computeNextLesson();
+    window.addEventListener('crm-lessons-changed', handleSync);
+    window.addEventListener('crm-groups-changed', handleSync);
+    window.addEventListener('crm-students-changed', handleSync);
+    return () => {
+      window.removeEventListener('crm-lessons-changed', handleSync);
+      window.removeEventListener('crm-groups-changed', handleSync);
+      window.removeEventListener('crm-students-changed', handleSync);
+    };
+  }, [parent.children]);
 
   useEffect(() => {
     const refreshParent = () => {
@@ -703,6 +754,60 @@ export default function ParentDetailsPage() {
     setIsEditModalOpen(false);
   };
 
+  const handleUpdateNotificationChannel = async (newChannel: 'email' | 'telegram' | 'both') => {
+    const channelLabel = newChannel === 'email' ? 'Email' : newChannel === 'telegram' ? 'Telegram' : 'both';
+    
+    setParent((prev) => ({
+      ...prev,
+      preferredChannel: channelLabel,
+    }));
+
+    // 1. Update in-memory students
+    const allStudents = getStoredStudents();
+    allStudents.forEach((student) => {
+      if (student.parents && student.parents.some((p) => p.id === parent.id)) {
+        student.parents = student.parents.map((p) =>
+          p.id === parent.id ? { ...p, preferredChannel: channelLabel as any } : p
+        );
+        saveStudentToStorage(student);
+      }
+    });
+
+    // 2. Cascade parent update
+    syncParentNameCascade(parent.id, {
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      phone: parent.phone,
+      email: parent.email,
+      telegram: parent.telegram,
+      whatsapp: parent.whatsapp,
+      preferredChannel: channelLabel,
+    });
+
+    // 3. Supabase Cloud DB direct update
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      await supabase.from('parents').upsert({
+        id: parent.id,
+        first_name: parent.firstName,
+        last_name: parent.lastName,
+        phone: parent.phone,
+        email: parent.email || null,
+        telegram: parent.telegram || null,
+        whatsapp: parent.whatsapp || null,
+        preferred_channel: (newChannel === 'both' ? 'email' : newChannel) as any,
+        notes: parent.notes || null,
+      });
+    } catch (e) {
+      console.warn('Supabase parent channel update warning:', e);
+    }
+
+    success(`Канал отправки уведомлений и отчётов обновлён: ${
+      newChannel === 'email' ? '📧 Электронная почта' : newChannel === 'telegram' ? '✈️ Telegram' : '🔄 Почта и Telegram'
+    }`);
+  };
+
   const [interactions, setInteractions] = useState<TimelineInteraction[]>(() => {
     const childrenIds = (parent?.children || []).map((c: { id: string }) => c.id);
     return getCombinedParentTimeline(parentId, childrenIds);
@@ -1004,6 +1109,82 @@ export default function ParentDetailsPage() {
             </p>
           </div>
         </div>
+
+        {/* Hero Block: Следующее занятие ребенка */}
+        <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          {upcomingLesson ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-blue-900">
+                      Следующее занятие ({upcomingLesson.childName}):
+                    </span>
+                    <span className="rounded-md bg-blue-100/90 px-2 py-0.5 text-xs font-bold text-blue-800 border border-blue-200/60">
+                      {upcomingLesson.lesson.date} • {upcomingLesson.lesson.startTime} – {upcomingLesson.lesson.endTime}
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">
+                      «{upcomingLesson.lesson.groupName}»
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {upcomingLesson.lesson.topic && (
+                      <span><strong>Тема:</strong> {upcomingLesson.lesson.topic}</span>
+                    )}
+                    {upcomingLesson.lesson.teacherName && (
+                      <span><strong>Преподаватель:</strong> {upcomingLesson.lesson.teacherName}</span>
+                    )}
+                    {upcomingLesson.lesson.room && (
+                      <span><strong>Место:</strong> {upcomingLesson.lesson.room}</span>
+                    )}
+                    {upcomingLesson.lesson.homework && (
+                      <span className="text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200">
+                        <strong>Д/З:</strong> {upcomingLesson.lesson.homework}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                {upcomingLesson.lesson.onlineMeetingUrl && (
+                  <a
+                    href={upcomingLesson.lesson.onlineMeetingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
+                  >
+                    <Video className="h-3.5 w-3.5 text-blue-600" />
+                    Zoom
+                  </a>
+                )}
+                <Link
+                  href={`/calendar/lessons/${upcomingLesson.lesson.id}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-2xs"
+                >
+                  Карточка урока →
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2.5 text-xs text-slate-600">
+                <Calendar className="h-4 w-4 text-slate-400" />
+                <span>Нет запланированных занятий для детей в расписании</span>
+              </div>
+              <Link
+                href="/calendar"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                Календарь занятий
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* UPCOMING PAYMENT DEADLINE ALERT */}
@@ -1052,6 +1233,98 @@ export default function ParentDetailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Main Column */}
           <div className="md:col-span-2 space-y-6">
+            {/* Notification Preference Switcher Card */}
+            <div className="rounded-2xl border border-blue-200 bg-linear-to-br from-blue-50/50 via-white to-sky-50/30 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-blue-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Send className="h-4 w-4 text-blue-600" />
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Канал отправки данных по ученикам и отчётов
+                  </h3>
+                </div>
+                <span className="text-[11px] font-semibold text-blue-800 bg-blue-100/80 px-2.5 py-0.5 rounded-full border border-blue-200">
+                  {parent.preferredChannel === 'Telegram' || parent.preferredChannel === 'telegram'
+                    ? '✈️ Telegram'
+                    : parent.preferredChannel === 'both'
+                    ? '🔄 Почта и Telegram'
+                    : '📧 Email'}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Выберите, куда автоматически отправлять родителю расписание занятий, отчёты о посещаемости, ссылки на онлайн-уроки и домашние задания. Все изменения сохраняются напрямую в базу данных.
+              </p>
+
+              {/* MD3 Segmented Toggle */}
+              <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200/60 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateNotificationChannel('email')}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    parent.preferredChannel === 'Email' || parent.preferredChannel === 'email'
+                      ? "bg-white text-blue-700 shadow-xs border border-blue-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+                  )}
+                >
+                  <Mail className="h-3.5 w-3.5 text-blue-600" />
+                  <span>📧 Почта (Email)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateNotificationChannel('telegram')}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    parent.preferredChannel === 'Telegram' || parent.preferredChannel === 'telegram'
+                      ? "bg-white text-sky-700 shadow-xs border border-sky-300"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+                  )}
+                >
+                  <Send className="h-3.5 w-3.5 text-sky-500" />
+                  <span>✈️ Telegram</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleUpdateNotificationChannel('both')}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    parent.preferredChannel === 'both'
+                      ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
+                  )}
+                >
+                  <span>🔄</span>
+                  <span>Оба канала</span>
+                </button>
+              </div>
+
+              {/* Contact preview & Edit trigger */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
+                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <div className="p-2 rounded-lg bg-blue-50 text-blue-600 shrink-0">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] uppercase font-bold text-slate-400">Email для рассылки</span>
+                    <span className="font-semibold text-slate-800 truncate block">
+                      {parent.email || 'Не указан'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <div className="p-2 rounded-lg bg-sky-50 text-sky-600 shrink-0">
+                    <Send className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] uppercase font-bold text-slate-400">Telegram для уведомлений</span>
+                    <span className="font-semibold text-slate-800 truncate block">
+                      {parent.telegram || 'Не указан'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Notes and Special Details */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
               <div className="flex items-center justify-between">
@@ -2072,16 +2345,17 @@ export default function ParentDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Основной канал связи</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Канал отправки уведомлений и отчётов</label>
                   <select
                     value={editForm.preferredChannel}
                     onChange={(e) => setEditForm({ ...editForm, preferredChannel: e.target.value })}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
                   >
-                    <option value="Telegram">Telegram</option>
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="Телефон">Телефон</option>
-                    <option value="Email">Email</option>
+                    <option value="Email">📧 Электронная почта (Email)</option>
+                    <option value="Telegram">✈️ Telegram</option>
+                    <option value="both">🔄 Почта и Telegram (Оба канала)</option>
+                    <option value="WhatsApp">💬 WhatsApp</option>
+                    <option value="Телефон">📞 Телефон</option>
                   </select>
                 </div>
               </div>

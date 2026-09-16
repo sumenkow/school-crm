@@ -8,6 +8,7 @@ import {
   FullLessonData,
   LessonRescheduleInfo,
   LessonTimelineEvent,
+  TimelineInteraction,
 } from '@/lib/data/mockData';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import {
@@ -32,12 +33,16 @@ import {
   UserCheck,
   CalendarClock,
   ShieldCheck,
-  Plus,
   Mail,
+  Edit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RescheduleLessonModal } from '@/components/calendar/RescheduleLessonModal';
+import { EditLessonModal } from '@/components/calendar/EditLessonModal';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
+import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
+import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
 
 export default function LessonDetailsPage() {
@@ -47,7 +52,8 @@ export default function LessonDetailsPage() {
   const { role, userName } = useRole();
 
   const [lesson, setLesson] = useState<FullLessonData>(() => {
-    return INITIAL_LESSONS.find((l) => l.id === lessonId) || INITIAL_LESSONS[0];
+    const stored = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+    return stored.find((l) => l.id === lessonId) || INITIAL_LESSONS.find((l) => l.id === lessonId) || INITIAL_LESSONS[0];
   });
 
   const [copied, setCopied] = useState(false);
@@ -55,6 +61,7 @@ export default function LessonDetailsPage() {
   const [homework, setHomework] = useState(lesson.homework || '');
   const [status, setStatus] = useState<FullLessonData['status']>(lesson.status);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSendHomeworkModalOpen, setIsSendHomeworkModalOpen] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [newTimelineComment, setNewTimelineComment] = useState('');
@@ -131,7 +138,7 @@ export default function LessonDetailsPage() {
     }));
   };
 
-  // Save Topic and Homework with Timeline record
+  // Save Topic and Homework with Timeline record & DB persistence
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -150,13 +157,48 @@ export default function LessonDetailsPage() {
       comment: `Обновлен учебный план: "${topic}". ДЗ: "${homework || 'не задано'}"`,
     };
 
-    setLesson((prev) => ({
-      ...prev,
+    const updatedLesson: FullLessonData = {
+      ...lesson,
       topic,
       homework,
       status,
-      timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
-    }));
+      timelineEvents: [newEvent, ...(lesson.timelineEvents || [])],
+    };
+
+    setLesson(updatedLesson);
+    saveLessonToStorage(updatedLesson);
+
+    // Save timeline interactions for all students and their parents
+    const allStudents = getStoredStudents();
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    for (const st of lesson.students || []) {
+      const fullStudent = allStudents.find((s) => s.id === st.id);
+      const parentId = fullStudent?.parents?.[0]?.id;
+      const parentName = fullStudent?.parents?.[0]
+        ? `${fullStudent.parents[0].firstName} ${fullStudent.parents[0].lastName}`
+        : undefined;
+
+      const interaction: TimelineInteraction = {
+        id: `int_det_${Date.now()}_${st.id}`,
+        studentId: st.id,
+        studentName: st.name,
+        parentId,
+        parentName,
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        author: authorName,
+        channel: 'other',
+        type: 'organizational',
+        content: `Обновлен учебный план занятия «${lesson.groupName}» (${lesson.dateFormatted}): Тема «${topic}», ДЗ: «${homework || 'не задано'}».`,
+      };
+
+      saveInteractionToStorage(interaction);
+    }
+
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
+
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2500);
   };
@@ -319,58 +361,71 @@ export default function LessonDetailsPage() {
           </div>
 
           {/* Status selector & Actions */}
-          <div className="flex flex-col items-end gap-2">
-            <span className="text-[11px] font-semibold text-slate-500">Управление статусом урока:</span>
-            <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
+          <div className="flex flex-col items-end gap-2.5">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleStatusChange('scheduled')}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 transition-all',
-                  status === 'scheduled'
-                    ? 'bg-white shadow-xs font-bold text-blue-700'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition-colors cursor-pointer"
               >
-                Запланировано
+                <Edit className="h-3.5 w-3.5 text-blue-600" />
+                Изменить параметры урока
               </button>
-              <button
-                type="button"
-                onClick={() => handleStatusChange('completed')}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 transition-all',
-                  status === 'completed'
-                    ? 'bg-white shadow-xs font-bold text-emerald-700'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                Проведено
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRescheduleModalOpen(true)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 transition-all flex items-center gap-1',
-                  status === 'rescheduled'
-                    ? 'bg-amber-100 shadow-xs font-bold text-amber-900 border border-amber-300'
-                    : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
-                )}
-              >
-                <CalendarClock className="h-3.5 w-3.5" />
-                Перенести
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStatusChange('cancelled')}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 transition-all',
-                  status === 'cancelled'
-                    ? 'bg-white shadow-xs font-bold text-rose-700'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                Отмена
-              </button>
+            </div>
+            
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500">Статус:</span>
+              <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange('scheduled')}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 transition-all cursor-pointer',
+                    status === 'scheduled'
+                      ? 'bg-white shadow-xs font-bold text-blue-700'
+                      : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  Запланировано
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange('completed')}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 transition-all cursor-pointer',
+                    status === 'completed'
+                      ? 'bg-white shadow-xs font-bold text-emerald-700'
+                      : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  Проведено
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRescheduleModalOpen(true)}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 transition-all flex items-center gap-1 cursor-pointer',
+                    status === 'rescheduled'
+                      ? 'bg-amber-100 shadow-xs font-bold text-amber-900 border border-amber-300'
+                      : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
+                  )}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  Перенести
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange('cancelled')}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 transition-all cursor-pointer',
+                    status === 'cancelled'
+                      ? 'bg-white shadow-xs font-bold text-rose-700'
+                      : 'text-slate-600 hover:text-slate-900'
+                  )}
+                >
+                  Отмена
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -766,6 +821,19 @@ export default function LessonDetailsPage() {
           </button>
         </form>
       </div>
+
+      {/* MODAL: Edit Lesson Parameters */}
+      <EditLessonModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        lesson={lesson}
+        onSaved={(upd) => {
+          setLesson(upd);
+          setTopic(upd.topic);
+          setHomework(upd.homework || '');
+          setStatus(upd.status);
+        }}
+      />
 
       {/* MODAL: Reschedule Lesson */}
       <RescheduleLessonModal

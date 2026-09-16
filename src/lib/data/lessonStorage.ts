@@ -41,6 +41,49 @@ export function getStoredLessons(): FullLessonData[] {
 }
 
 /**
+ * Loads all lessons from Supabase cloud database and merges with in-memory state.
+ */
+export async function fetchLessonsFromSupabase(): Promise<FullLessonData[]> {
+  try {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    const { data: dbLessons, error } = await supabase
+      .from('lessons')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (!error && dbLessons && dbLessons.length > 0) {
+      for (const l of dbLessons) {
+        const existingIdx = INITIAL_LESSONS.findIndex((il) => il.id === l.id);
+        const mappedLesson: Partial<FullLessonData> = {
+          id: l.id,
+          groupId: l.group_id || undefined,
+          teacherId: l.teacher_id || undefined,
+          date: l.date,
+          dateFormatted: new Date(l.date).toLocaleDateString('ru-RU'),
+          startTime: l.start_time || '18:45',
+          endTime: l.end_time || '20:15',
+          room: l.room || 'Онлайн (Zoom)',
+          status: (l.status as any) || 'scheduled',
+          topic: l.topic || l.title || 'Тема урока',
+          homework: l.homework || undefined,
+          onlineMeetingUrl: l.online_meeting_url || undefined,
+          isTrial: l.is_trial || false,
+        };
+
+        if (existingIdx !== -1) {
+          INITIAL_LESSONS[existingIdx] = { ...INITIAL_LESSONS[existingIdx], ...mappedLesson };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase lessons fetch warning:', err);
+  }
+
+  return getStoredLessons();
+}
+
+/**
  * Retrieves a single lesson by ID from stored lessons.
  */
 export function getStoredLessonById(lessonId: string): FullLessonData | undefined {
@@ -207,6 +250,27 @@ export function recordLessonAttendanceBatch(params: {
       saveInteractionToStorage(interaction);
     }
   });
+
+  // Direct Supabase Cloud DB attendances write
+  if (typeof window !== 'undefined') {
+    import('@/lib/supabase/client').then(async ({ createClient }) => {
+      try {
+        const supabase = createClient();
+        for (const rec of params.studentRecords) {
+          if (rec.status !== 'not_marked') {
+            await supabase.from('attendances').upsert({
+              lesson_id: params.lessonId,
+              student_id: rec.studentId,
+              status: rec.status,
+              notes: rec.note || null,
+            });
+          }
+        }
+      } catch (e) {
+        // ignore offline
+      }
+    }).catch(() => {});
+  }
 
   return { updatedLesson };
 }

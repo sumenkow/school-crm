@@ -42,7 +42,56 @@ export function getStoredGroups(): FullGroupData[] {
 }
 
 /**
- * Persists group to localStorage, syncs in-memory INITIAL_GROUPS, and dispatches crm-groups-changed event.
+ * Loads all groups from Supabase cloud database and merges with in-memory state.
+ */
+export async function fetchGroupsFromSupabase(): Promise<FullGroupData[]> {
+  try {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    const { data: dbGroups, error } = await supabase
+      .from('groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && dbGroups && dbGroups.length > 0) {
+      for (const g of dbGroups) {
+        const existingIdx = INITIAL_GROUPS.findIndex((ig) => ig.id === g.id);
+        const mappedGroup: Partial<FullGroupData> = {
+          id: g.id,
+          name: g.name,
+          status: (g.status as any) || 'active',
+          capacity: g.capacity || 8,
+        };
+        if (existingIdx !== -1) {
+          INITIAL_GROUPS[existingIdx] = { ...INITIAL_GROUPS[existingIdx], ...mappedGroup };
+        } else {
+          INITIAL_GROUPS.unshift({
+            id: g.id,
+            name: g.name,
+            courseId: 'c1',
+            courseName: 'Основной курс',
+            teacherId: 't1',
+            teacherName: 'Мария Иванова',
+            schedule: 'Пн, Чт • 18:45–20:15',
+            status: (g.status as any) || 'active',
+            students: [],
+            capacity: g.capacity || 8,
+            room: 'Онлайн (Zoom)',
+            startDate: g.start_date || new Date().toISOString().slice(0, 10),
+            recentLessons: [],
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase groups fetch warning:', err);
+  }
+
+  return getStoredGroups();
+}
+
+/**
+ * Persists group to Supabase cloud database, in-memory INITIAL_GROUPS, and dispatches crm-groups-changed event.
  */
 export function saveGroupToStorage(group: FullGroupData): void {
   // 1. In-memory update
@@ -53,7 +102,7 @@ export function saveGroupToStorage(group: FullGroupData): void {
     INITIAL_GROUPS.unshift(group);
   }
 
-  // 2. LocalStorage update
+  // 2. LocalStorage cache & dispatch
   if (typeof window !== 'undefined') {
     try {
       const all = getStoredGroups();
@@ -71,6 +120,22 @@ export function saveGroupToStorage(group: FullGroupData): void {
     } catch (err) {
       console.error('Failed to save group to storage:', err);
     }
+
+    // 3. Supabase Cloud DB direct write
+    import('@/lib/supabase/client').then(async ({ createClient }) => {
+      try {
+        const supabase = createClient();
+        await supabase.from('groups').upsert({
+          id: group.id,
+          name: group.name,
+          capacity: group.capacity || 8,
+          status: group.status || 'active',
+          is_mock_data: false,
+        });
+      } catch (e) {
+        // ignore in offline
+      }
+    }).catch(() => {});
   }
 }
 

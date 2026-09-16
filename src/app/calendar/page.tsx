@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 
@@ -27,8 +28,21 @@ export default function CalendarPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday (Today)
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-03');
-  const [lessons, setLessons] = useState<FullLessonData[]>(INITIAL_LESSONS);
+  const [lessons, setLessons] = useState<FullLessonData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+  });
   const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
+
+  useEffect(() => {
+    const handleSync = () => {
+      setLessons(getStoredLessons());
+    };
+    handleSync();
+    window.addEventListener('crm-lessons-changed', handleSync);
+    return () => {
+      window.removeEventListener('crm-lessons-changed', handleSync);
+    };
+  }, []);
 
   const handleUpdateAttendance = (
     lessonId: string,

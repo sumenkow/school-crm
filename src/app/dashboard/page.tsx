@@ -45,6 +45,7 @@ import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskRe
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
 import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/TaskDetailsCardModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
+import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData, INITIAL_GROUPS } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
@@ -2165,12 +2166,27 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
 function TeacherDashboard() {
   const [lessons, setLessons] = useState<FullLessonData[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     const allLessons = getStoredLessons();
     const allGroups = getStoredGroups();
     setLessons(allLessons.filter((l) => l.teacherId === 't1' || l.teacherName.includes('Мария') || !l.teacherId));
     setGroups(allGroups);
+  };
+
+  useEffect(() => {
+    loadData();
+
+    const handleLessonsChanged = () => {
+      loadData();
+    };
+    window.addEventListener('crm-lessons-changed', handleLessonsChanged);
+    window.addEventListener('crm-groups-changed', handleLessonsChanged);
+    return () => {
+      window.removeEventListener('crm-lessons-changed', handleLessonsChanged);
+      window.removeEventListener('crm-groups-changed', handleLessonsChanged);
+    };
   }, []);
 
   const todayLessons = lessons.filter((l) => l.date === '2026-09-03' || l.date === '2026-09-01' || l.date === '2026-09-02');
@@ -2206,7 +2222,16 @@ function TeacherDashboard() {
 
         {/* Quick action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/teacher/attendance" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
+          <button
+            type="button"
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="md-btn md-btn-filled md-btn-sm"
+            style={{ gap: '6px' }}
+          >
+            <Calendar size={16} />
+            + Запланировать занятие
+          </button>
+          <Link href="/teacher/attendance" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
             <CheckCircle size={16} />
             Журнал посещаемости
           </Link>
@@ -2399,6 +2424,17 @@ function TeacherDashboard() {
           ))}
         </div>
       </div>
+
+      <ScheduleLessonModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          loadData();
+        }}
+        onScheduled={() => {
+          loadData();
+        }}
+      />
     </div>
   );
 }

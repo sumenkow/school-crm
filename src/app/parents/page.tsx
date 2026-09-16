@@ -322,186 +322,208 @@ export default function ParentsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredParents.map((p) => (
-          <div
-            key={p.id}
-            className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3
-                    onClick={() => router.push(`/parents/${p.id}`)}
-                    className="font-bold text-slate-900 text-base cursor-pointer hover:text-blue-600 transition-colors"
-                  >
-                    {p.name}
-                  </h3>
-                  <span className="inline-block mt-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 border border-blue-100">
-                    Канал: {p.preferredChannel}
-                  </span>
+      {/* Compact Responsive Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        {filteredParents.map((p) => {
+          const initials = p.name
+            .split(' ')
+            .map((n) => n[0])
+            .filter(Boolean)
+            .slice(0, 2)
+            .join('')
+            .toUpperCase() || 'Р';
+
+          return (
+            <div
+              key={p.id}
+              className="relative rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3"
+            >
+              <div>
+                {/* Header: Avatar, Name, Preferred Channel, 3-dots */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3
+                        onClick={() => router.push(`/parents/${p.id}`)}
+                        className="font-bold text-slate-900 text-sm cursor-pointer hover:text-blue-600 transition-colors truncate"
+                        title={p.name}
+                      >
+                        {p.name}
+                      </h3>
+                      <span className="inline-block rounded-full bg-slate-100 px-2 py-0.2 text-[10px] font-semibold text-slate-600 border border-slate-200/60">
+                        {p.preferredChannel === 'both' ? '🔄 Почта и TG' : p.preferredChannel === 'email' || p.preferredChannel === 'Email' ? '📧 Email' : p.preferredChannel === 'WhatsApp' ? '💬 WhatsApp' : '✈️ Telegram'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3 Dots Overflow Action Menu */}
+                  <div className="parent-actions-menu-wrapper relative shrink-0">
+                    <button
+                      onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+                      title="Действия"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {activeMenuId === p.id && (
+                      <div className="absolute right-0 top-8 z-30 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            router.push(`/parents/${p.id}`);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          <User className="h-3.5 w-3.5 text-blue-600" />
+                          <span>Открыть профиль семьи</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            setEditingParent(p);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          <Edit3 className="h-3.5 w-3.5 text-amber-600" />
+                          <span>Редактировать контакт</span>
+                        </button>
+
+                        {p.whatsapp && (
+                          <a
+                            href={`https://wa.me/${p.whatsapp.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={() => setActiveMenuId(null)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Написать в WhatsApp</span>
+                          </a>
+                        )}
+
+                        {p.telegram && (
+                          <a
+                            href={`https://t.me/${p.telegram.replace('@', '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={() => setActiveMenuId(null)}
+                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
+                          >
+                            <Send className="h-3.5 w-3.5 text-blue-500" />
+                            <span>Написать в Telegram</span>
+                          </a>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            setLinkingChildParent(p);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                        >
+                          <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
+                          <span>Добавить / привязать ребенка</span>
+                        </button>
+
+                        <div className="my-1 border-t border-slate-100" />
+
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            setDeletingParent(p);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                          <span>Удалить контакт</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* 3 Dots Overflow Action Menu */}
-                <div className="parent-actions-menu-wrapper relative">
-                  <button
-                    onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                    title="Действия с родителем"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {activeMenuId === p.id && (
-                    <div className="absolute right-0 top-9 z-30 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                      <button
-                        onClick={() => {
-                          setActiveMenuId(null);
-                          router.push(`/parents/${p.id}`);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                      >
-                        <User className="h-3.5 w-3.5 text-blue-600" />
-                        <span>Открыть профиль семьи</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setActiveMenuId(null);
-                          setEditingParent(p);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                      >
-                        <Edit3 className="h-3.5 w-3.5 text-amber-600" />
-                        <span>Редактировать контакт</span>
-                      </button>
-
-                      {p.whatsapp && (
-                        <a
-                          href={`https://wa.me/${p.whatsapp.replace(/[^0-9]/g, '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => setActiveMenuId(null)}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>Написать в WhatsApp</span>
-                        </a>
-                      )}
-
-                      {p.telegram && (
-                        <a
-                          href={`https://t.me/${p.telegram.replace('@', '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          onClick={() => setActiveMenuId(null)}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
-                        >
-                          <Send className="h-3.5 w-3.5 text-blue-500" />
-                          <span>Написать в Telegram</span>
-                        </a>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          setActiveMenuId(null);
-                          setLinkingChildParent(p);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                      >
-                        <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
-                        <span>Добавить / привязать ребенка</span>
-                      </button>
-
-                      <div className="my-1 border-t border-slate-100" />
-
-                      <button
-                        onClick={() => {
-                          setActiveMenuId(null);
-                          setDeletingParent(p);
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                        <span>Удалить родителя</span>
-                      </button>
+                {/* Contact details */}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                  <div className="flex items-center gap-1">
+                    <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                    <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium truncate">
+                      {p.phone}
+                    </a>
+                  </div>
+                  {p.telegram && (
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3 text-blue-500 shrink-0" />
+                      <span className="font-medium text-slate-700 truncate">{p.telegram}</span>
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div className="mt-4 space-y-2 text-xs text-slate-600">
-                <div className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium">
-                    {p.phone}
-                  </a>
-                </div>
-                {p.telegram && (
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="font-medium text-slate-700">{p.telegram}</span>
+                {/* Children Section */}
+                <div className="mt-2.5 border-t border-slate-100 pt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                      Дети ({p.children.length}):
+                    </span>
+                    <button
+                      onClick={() => setLinkingChildParent(p)}
+                      className="text-[10px] font-bold text-blue-600 hover:underline"
+                    >
+                      + Ребенок
+                    </button>
                   </div>
-                )}
-              </div>
-
-              {/* Children */}
-              <div className="mt-4 border-t border-slate-100 pt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                    Дети ({p.children.length}):
-                  </p>
-                  <button
-                    onClick={() => setLinkingChildParent(p)}
-                    className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
-                  >
-                    + Добавить ребенка
-                  </button>
-                </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {p.children.length === 0 ? (
-                      <p className="text-[11px] text-slate-400 italic">Нет привязанных учеников</p>
+                      <p className="text-[11px] text-slate-400 italic py-0.5">Нет привязанных учеников</p>
                     ) : (
                       p.children.map((child) => (
                         <Link
                           key={child.id}
                           href={`/students/${child.id}`}
-                          className="flex items-start sm:items-center justify-between gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                          className="flex items-center justify-between gap-1.5 rounded-md bg-slate-50/90 px-2 py-1 text-xs hover:bg-blue-50 transition-colors"
+                          title={`${child.name} — ${child.group}`}
                         >
-                          <span className="font-semibold text-slate-800 shrink-0">{child.name}</span>
-                          <span className="text-[11px] text-slate-600 font-medium text-right leading-tight">{child.group} →</span>
+                          <span className="font-semibold text-slate-800 text-[11px] truncate">{child.name}</span>
+                          <span className="text-[10px] text-slate-500 font-medium truncate max-w-[130px]">{child.group} →</span>
                         </Link>
                       ))
                     )}
                   </div>
+                </div>
               </div>
-            </div>
 
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-slate-500">
-                  Всего оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
-                </span>
-                {p.debtFormatted ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-1.5 py-0.5 animate-pulse">
-                    <AlertTriangle className="h-3 w-3 text-rose-600" /> Долг семьи: {p.debtFormatted}
-                  </span>
-                ) : p.depositFormatted ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
-                    <Wallet className="h-3 w-3" /> Депозит семьи: {p.depositFormatted}
-                  </span>
-                ) : null}
+              {/* Financial & Profile Footer */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div>
+                  {p.debtFormatted ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">
+                      <AlertTriangle className="h-3 w-3 text-rose-600" /> Долг: {p.debtFormatted}
+                    </span>
+                  ) : p.depositFormatted ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                      <Wallet className="h-3 w-3" /> Депозит: {p.depositFormatted}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-500">
+                      Оплат: <strong className="text-slate-800">{p.totalPaid}</strong>
+                    </span>
+                  )}
+                </div>
+                <Link
+                  href={`/parents/${p.id}`}
+                  className="inline-flex items-center gap-0.5 text-blue-600 text-[11px] font-bold hover:underline"
+                >
+                  Профиль <ChevronRight className="h-3 w-3" />
+                </Link>
               </div>
-              <Link
-                href={`/parents/${p.id}`}
-                className="inline-flex items-center gap-0.5 text-blue-600 font-bold hover:underline"
-              >
-                Карточка семьи <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* 1. Modal: Edit Parent */}
@@ -668,16 +690,17 @@ function EditParentModal({
           </div>
 
           <div>
-            <label className="mb-1 block font-semibold text-slate-700">Предпочтительный канал связи</label>
+            <label className="mb-1 block font-semibold text-slate-700">Канал отправки уведомлений и отчётов</label>
             <select
               value={preferredChannel}
               onChange={(e) => setPreferredChannel(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
             >
-              <option value="Telegram">Telegram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Phone">Телефонный звонок</option>
-              <option value="Email">Email</option>
+              <option value="Email">📧 Электронная почта (Email)</option>
+              <option value="Telegram">✈️ Telegram</option>
+              <option value="both">🔄 Почта и Telegram (Оба канала)</option>
+              <option value="WhatsApp">💬 WhatsApp</option>
+              <option value="Phone">📞 Телефонный звонок</option>
             </select>
           </div>
 
@@ -843,16 +866,17 @@ function CreateParentModal({
           </div>
 
           <div>
-            <label className="mb-1 block font-semibold text-slate-700">Предпочтительный канал связи</label>
+            <label className="mb-1 block font-semibold text-slate-700">Канал отправки уведомлений и отчётов</label>
             <select
               value={preferredChannel}
               onChange={(e) => setPreferredChannel(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-none"
             >
-              <option value="Telegram">Telegram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Phone">Телефонный звонок</option>
-              <option value="Email">Email</option>
+              <option value="Email">📧 Электронная почта (Email)</option>
+              <option value="Telegram">✈️ Telegram</option>
+              <option value="both">🔄 Почта и Telegram (Оба канала)</option>
+              <option value="WhatsApp">💬 WhatsApp</option>
+              <option value="Phone">📞 Телефонный звонок</option>
             </select>
           </div>
 

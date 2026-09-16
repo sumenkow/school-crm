@@ -14,14 +14,15 @@ import {
   MessageSquare,
   BookOpen,
   Sparkles,
-  MapPin,
   Mail,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { recordLessonAttendanceBatch, getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
+import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 
 interface StudentAttendanceItem {
   id: string;
@@ -36,12 +37,15 @@ export default function TeacherMobileDashboard() {
   const [selectedLessonId, setSelectedLessonId] = useState<string>('l5'); // Today's lesson (03.09.2026)
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Teacher's lessons
-  const myLessons = INITIAL_LESSONS.filter((l) => l.teacherId === 't1');
+  const allStoredLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+  const myLessons = allStoredLessons.filter((l) => l.teacherId === 't1' || l.teacherName?.includes('Мария'));
 
   // Today's lessons
-  const todayLessons = myLessons.filter((l) => l.date === '2026-09-03');
+  const todayLessons = myLessons.filter((l) => l.date === '2026-09-03' || l.date === new Date().toISOString().slice(0, 10));
 
   // Students for the active lesson (Zero technical IDs shown to teacher)
   const [studentsList, setStudentsList] = useState<StudentAttendanceItem[]>([
@@ -112,10 +116,19 @@ export default function TeacherMobileDashboard() {
             Сводный табель →
           </Link>
         </div>
-        <h1 className="mt-1 text-xl font-extrabold tracking-tight">Здравствуйте, Мария!</h1>
-        <p className="mt-1 text-xs text-blue-100">
-          Сегодня: <strong>Четверг, 3 сентября</strong> • 1 урок в 18:45
-        </p>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
+          <p className="text-xs text-blue-100">
+            Сегодня: <strong>Четверг, 3 сентября</strong> • {todayLessons.length} занятие
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50 transition-colors cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Запланировать занятие
+          </button>
+        </div>
       </div>
 
       {/* Main Tab Switcher («Сегодня» vs «Моя неделя») */}
@@ -461,6 +474,13 @@ export default function TeacherMobileDashboard() {
           }}
         />
       )}
+
+      {/* MODAL: Schedule Lesson */}
+      <ScheduleLessonModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onScheduled={() => setRefreshTrigger((prev) => prev + 1)}
+      />
     </div>
   );
 }
