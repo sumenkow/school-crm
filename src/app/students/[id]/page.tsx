@@ -718,14 +718,6 @@ export default function StudentDetailsPage() {
                   )}
                 </span>
 
-                {/* Age & Grade Badge (через запятую: 14 лет, 8 класс) */}
-                {formatAgeAndGrade(student.birthDate, student.grade) && (
-                  <span className="rounded-full px-2.5 py-0.5 font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 inline-flex items-center gap-1 shadow-2xs">
-                    <GraduationCap className="h-3 w-3 text-indigo-600" />
-                    {formatAgeAndGrade(student.birthDate, student.grade)}
-                  </span>
-                )}
-
                 {/* Hero Balance Badge */}
                 {studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
