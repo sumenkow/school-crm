@@ -185,7 +185,7 @@ function getMergedParents(): ParentRecord[] {
             if (pay.status === 'paid') {
               const num = parseInt(pay.amount.replace(/[^0-9]/g, ''), 10) || 0;
               totalPaidSum += num;
-            } else if (pay.status === 'overdue' || pay.status === 'pending') {
+            } else if ((pay.status as string) === 'overdue' || (pay.status as string) === 'pending' || pay.status === 'expected') {
               const num = parseInt(pay.amount.replace(/[^0-9]/g, ''), 10) || 0;
               debt += num;
             }
