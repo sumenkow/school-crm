@@ -85,7 +85,7 @@ const ownerNav: NavSection[] = [
 const adminNav: NavSection[] = [
   {
     items: [
-      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { label: 'Мой день', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
       { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
     ],
   },

@@ -93,39 +93,204 @@ export async function GET(request: NextRequest) {
 ───────────────────
 🚀 *Смена успешно завершена!*`;
 
-    // HTML email body
+    // Rich HTML email body with responsive tables, cards, badges and full styling
     const emailHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden;">
-        <div style="background: #1565C0; color: #ffffff; padding: 24px; text-align: center;">
-          <h2 style="margin: 0; font-size: 20px;">Ежедневный отчет администратора</h2>
-          <p style="margin: 6px 0 0; opacity: 0.9; font-size: 14px;">${todayFormatted} • ${adminName}</p>
-        </div>
-        <div style="padding: 24px;">
-          <h3 style="color: #1e293b; font-size: 16px; margin-top: 0;">🎯 Лиды и продажи</h3>
-          <p style="margin: 4px 0; color: #475569;">• Новых обращений: <strong>${newLeadsCount}</strong></p>
-          <p style="margin: 4px 0; color: #475569;">• Пробных уроков назначено: <strong>${trialsScheduled}</strong></p>
-          <p style="margin: 4px 0; color: #475569;">• Пробных проведено: <strong>${trialsHeld}</strong></p>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ежедневный отчет администратора</title>
+</head>
+<body style="margin: 0; padding: 20px 10px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1e293b;">
+  <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9;">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 640px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); border: 1px solid #e2e8f0;">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #1565C0 0%, #1e40af 100%); padding: 28px 24px; text-align: left; color: #ffffff;">
+              <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                      School CRM • Ежедневный отчет
+                    </span>
+                    <h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.3; color: #ffffff;">
+                      Сводка за ${todayFormatted}
+                    </h1>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: #e0e7ff;">
+                      Ответственный: <strong>${adminName}</strong>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-          <h3 style="color: #1e293b; font-size: 16px; margin-top: 20px;">💳 Финансы за день</h3>
-          <p style="margin: 4px 0; color: #475569;">• Принято оплат: <strong>${paymentsCount}</strong></p>
-          <p style="margin: 4px 0; color: #059669; font-size: 18px; font-weight: bold;">Выручка: ${revenueToday.toLocaleString('ru-RU')} ₽</p>
-          <p style="margin: 4px 0; color: #dc2626;">• Должники (дебиторка): <strong>${debtorsCount} чел. (-${totalDebtAmount.toLocaleString('ru-RU')} ₽)</strong></p>
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 24px;">
 
-          <h3 style="color: #1e293b; font-size: 16px; margin-top: 20px;">✅ Задачи и поручения</h3>
-          <p style="margin: 4px 0; color: #475569;">• Выполнено задач: <strong>${tasksCompleted}</strong></p>
-          <p style="margin: 4px 0; color: #475569;">• В работе / ожидают: <strong>${tasksOpen}</strong></p>
-          <p style="margin: 4px 0; color: #dc2626;">• Просрочено: <strong>${tasksOverdue}</strong></p>
-          <p style="margin: 4px 0; color: #475569;">• Перенесено: <strong>${tasksRescheduled}</strong></p>
+              <!-- Primary Metrics Row (Cards) -->
+              <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Выручка за день</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #047857; margin-top: 4px;">${revenueToday.toLocaleString('ru-RU')} ₽</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #059669; margin-top: 2px;">≈ ${revenueTodayEur.toLocaleString('ru-RU')} € (курс ${eurRate} ₽)</div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Принято оплат</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #0284c7; margin-top: 4px;">${paymentsCount} <span style="font-size: 13px; font-weight: 500; color: #64748b;">чеков</span></div>
+                    <div style="font-size: 11px; font-weight: 600; color: #0369a1; margin-top: 2px;">Ср. чек: ${Math.round(revenueToday / (paymentsCount || 1)).toLocaleString('ru-RU')} ₽</div>
+                  </td>
+                </tr>
+              </table>
 
-          <h3 style="color: #1e293b; font-size: 16px; margin-top: 20px;">🎓 Учебный процесс</h3>
-          <p style="margin: 4px 0; color: #475569;">• Проведено занятий: <strong>${lessonsHeld}</strong></p>
-          <p style="margin: 4px 0; color: #475569;">• Новых зачислений: <strong>${newStudents}</strong></p>
-        </div>
-        <div style="background: #f8fafc; padding: 16px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
-          School CRM • Автоматический ежедневный отчет
-        </div>
-      </div>
-    `;
+              <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                <tr>
+                  <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Новых лидов</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #3b82f6; margin-top: 4px;">+${newLeadsCount} <span style="font-size: 13px; font-weight: 500; color: #64748b;">заявок</span></div>
+                    <div style="font-size: 11px; font-weight: 600; color: #2563eb; margin-top: 2px;">Пробных: ${trialsScheduled} назначено / ${trialsHeld} проведено</div>
+                  </td>
+                  <td width="4%"></td>
+                  <td width="48%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; vertical-align: top;">
+                    <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Задачи смены</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #7c3aed; margin-top: 4px;">${tasksCompleted} <span style="font-size: 13px; font-weight: 500; color: #64748b;">выполнено</span></div>
+                    <div style="font-size: 11px; font-weight: 600; color: ${tasksOverdue > 0 ? '#dc2626' : '#64748b'}; margin-top: 2px;">${tasksOpen} в работе • ${tasksOverdue} просрочено</div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Section: Funnel & Sales Table -->
+              <h2 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0;">
+                🎯 Воронка продаж и лиды
+              </h2>
+              <table width="100%" border="0" cellpadding="8" cellspacing="0" style="margin-bottom: 20px; border-collapse: collapse; font-size: 13px;">
+                <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                  <td style="color: #64748b; font-weight: 600;">Показатель</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Значение</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Статус</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Новые входящие заявки (Лиды)</td>
+                  <td align="right" style="font-weight: 700; color: #0f172a;">${newLeadsCount}</td>
+                  <td align="right"><span style="background-color: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">+${newLeadsCount} сегодня</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Назначено пробных занятий</td>
+                  <td align="right" style="font-weight: 700; color: #0f172a;">${trialsScheduled}</td>
+                  <td align="right"><span style="background-color: #f3e8ff; color: #6b21a8; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">В расписании</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Проведено пробных уроков</td>
+                  <td align="right" style="font-weight: 700; color: #0f172a;">${trialsHeld}</td>
+                  <td align="right"><span style="background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">Завершено</span></td>
+                </tr>
+                <tr>
+                  <td style="color: #334155;">Новых зачислений (учеников)</td>
+                  <td align="right" style="font-weight: 700; color: #0f172a;">+${newStudents}</td>
+                  <td align="right"><span style="background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">В базе</span></td>
+                </tr>
+              </table>
+
+              <!-- Section: Financials Table -->
+              <h2 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0;">
+                💳 Финансовые поступления и дебиторка
+              </h2>
+              <table width="100%" border="0" cellpadding="8" cellspacing="0" style="margin-bottom: 20px; border-collapse: collapse; font-size: 13px;">
+                <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                  <td style="color: #64748b; font-weight: 600;">Статья</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Сумма (₽)</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">В валюте (€)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155; font-weight: 600;">Кассовая выручка за смену</td>
+                  <td align="right" style="font-weight: 800; color: #047857;">+${revenueToday.toLocaleString('ru-RU')} ₽</td>
+                  <td align="right" style="font-weight: 700; color: #059669;">≈ +${revenueTodayEur.toLocaleString('ru-RU')} €</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Количество успешных транзакций</td>
+                  <td align="right" style="font-weight: 700; color: #0f172a;">${paymentsCount}</td>
+                  <td align="right" style="color: #64748b;">—</td>
+                </tr>
+                <tr style="background-color: #fff1f2;">
+                  <td style="color: #9f1239; font-weight: 600;">Дебиторская задолженность (${debtorsCount} чел.)</td>
+                  <td align="right" style="font-weight: 800; color: #be123c;">-${totalDebtAmount.toLocaleString('ru-RU')} ₽</td>
+                  <td align="right" style="font-weight: 700; color: #be123c;">≈ -${totalDebtAmountEur.toLocaleString('ru-RU')} €</td>
+                </tr>
+              </table>
+
+              <!-- Section: Tasks & Discipline Table -->
+              <h2 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0;">
+                ✅ Задачи и операционный контроль
+              </h2>
+              <table width="100%" border="0" cellpadding="8" cellspacing="0" style="margin-bottom: 24px; border-collapse: collapse; font-size: 13px;">
+                <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                  <td style="color: #64748b; font-weight: 600;">Категория</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Кол-во</td>
+                  <td align="right" style="color: #64748b; font-weight: 600;">Состояние</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Выполнено задач за сегодня</td>
+                  <td align="right" style="font-weight: 700; color: #047857;">${tasksCompleted}</td>
+                  <td align="right"><span style="background-color: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">Готово</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">В работе / ожидают действия</td>
+                  <td align="right" style="font-weight: 700; color: #0284c7;">${tasksOpen}</td>
+                  <td align="right"><span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">Открыто</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="color: #334155;">Просроченные поручения (SLA)</td>
+                  <td align="right" style="font-weight: 700; color: ${tasksOverdue > 0 ? '#be123c' : '#047857'};">${tasksOverdue}</td>
+                  <td align="right"><span style="background-color: ${tasksOverdue > 0 ? '#fee2e2' : '#f1f5f9'}; color: ${tasksOverdue > 0 ? '#991b1b' : '#64748b'}; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">${tasksOverdue > 0 ? 'Внимание!' : 'В норме'}</span></td>
+                </tr>
+                <tr>
+                  <td style="color: #334155;">Перенесено сроков</td>
+                  <td align="right" style="font-weight: 700; color: #b45309;">${tasksRescheduled}</td>
+                  <td align="right"><span style="background-color: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600;">Сдвинуто</span></td>
+                </tr>
+              </table>
+
+              <!-- Educational Process Box -->
+              <table width="100%" border="0" cellpadding="12" cellspacing="0" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;">
+                <tr>
+                  <td>
+                    <div style="font-size: 13px; font-weight: 700; color: #166534;">🎓 Учебный процесс за день</div>
+                    <div style="font-size: 12px; color: #15803d; margin-top: 4px;">
+                      Проведено занятий: <strong>${lessonsHeld}</strong> • Все группы стартовали по расписанию
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 20px 24px; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0; font-size: 12px; font-weight: 600; color: #475569;">
+                School CRM System • Сквозная отправка
+              </p>
+              <p style="margin: 4px 0 0; font-size: 11px; color: #94a3b8;">
+                Письмо автоматически направлено на email руководителя и адрес школы из настроек организации.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
 
     return NextResponse.json({
       success: true,

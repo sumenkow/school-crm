@@ -763,6 +763,7 @@ function OwnerDashboard({
             </div>
           </div>
         </div>
+      )}
     </div>
   );
 }
@@ -1196,7 +1197,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Операционный дашборд
+              Мой день
             </h1>
             <span
               className="md-label-small"
