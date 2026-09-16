@@ -554,18 +554,15 @@ export default function ParentDetailsPage() {
         balance: newChild.paymentStatus === 'paid' ? '0 ₽' : '-7 600 ₽',
         deposit: {
           balance: newChild.paymentStatus === 'paid' ? 7600 : 0,
+          balanceFormatted: newChild.paymentStatus === 'paid' ? '7 600 ₽' : '0 ₽',
           currency: 'RUB',
-          lastTopUpDate: newChild.paymentStatus === 'paid' ? new Date().toLocaleDateString('ru-RU') : '',
-          lastTopUpAmount: newChild.paymentStatus === 'paid' ? 7600 : 0,
         },
         activeSubscription: {
-          id: `sub_${Date.now()}`,
-          title: `Абонемент (${newChild.course})`,
+          period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
           price: newChild.price,
-          lessonsTotal: 8,
-          lessonsRemaining: 8,
-          renewalDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
           status: 'active',
+          lessonsAttended: '0 из 8 занятий',
+          renewalDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
         },
         payments: newChild.paymentStatus === 'paid'
           ? [
@@ -591,10 +588,11 @@ export default function ParentDetailsPage() {
       },
       attendanceStats: {
         totalLessons: 0,
-        attended: 0,
-        missedExcused: 0,
-        missedUnexcused: 0,
+        presentCount: 0,
+        absentCount: 0,
+        rescheduledCount: 0,
         attendanceRate: '100%',
+        history: [],
       },
       interactions: [childInteraction],
       teacherComments: [],
