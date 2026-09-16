@@ -3,6 +3,7 @@ import { Roboto } from "next/font/google";
 import "./globals.css";
 import { RoleProvider } from "@/context/RoleContext";
 import { ToastProvider } from "@/context/ToastContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { AppShell } from "@/components/layout/AppShell";
 
 const roboto = Roboto({
@@ -29,11 +30,13 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" style={{ backgroundColor: 'var(--md-background)', color: 'var(--md-on-background)' }}>
         <RoleProvider>
-          <ToastProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </ToastProvider>
+          <LanguageProvider>
+            <ToastProvider>
+              <AppShell>
+                {children}
+              </AppShell>
+            </ToastProvider>
+          </LanguageProvider>
         </RoleProvider>
       </body>
     </html>

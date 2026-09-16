@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage } from '@/context/LanguageContext';
 import {
   LayoutDashboard,
   Calendar,
@@ -30,118 +31,131 @@ import {
 } from 'lucide-react';
 
 interface NavItem {
+  key: string;
   label: string;
   href: string;
   icon: React.ReactNode;
 }
 
 interface NavSection {
+  sectionKey?: string;
   section?: string;
   items: NavItem[];
 }
 
-const ownerNav: NavSection[] = [
+const getOwnerNav = (): NavSection[] => [
   {
     items: [
-      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
+      { key: 'nav.main', label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { key: 'nav.calendar', label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.students',
     section: 'Ученики',
     items: [
-      { label: 'Ученики', href: '/students', icon: <Users size={20} /> },
-      { label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
-      { label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
+      { key: 'nav.students', label: 'Ученики', href: '/students', icon: <Users size={20} /> },
+      { key: 'nav.parents', label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
+      { key: 'nav.groups', label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.sales',
     section: 'Продажи',
     items: [
-      { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
-      { label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
+      { key: 'nav.crm', label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
+      { key: 'nav.tasks', label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.finance',
     section: 'Финансы и аналитика',
     items: [
-      { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
-      { label: 'Аналитика', href: '/analytics', icon: <BarChart3 size={20} /> },
+      { key: 'nav.finance', label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+      { key: 'nav.analytics', label: 'Аналитика', href: '/analytics', icon: <BarChart3 size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.admin',
     section: 'Администрирование',
     items: [
-      { label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
-      { label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
-      { label: 'Бэкап базы', href: '/settings/backup', icon: <Database size={20} /> },
-      { label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
+      { key: 'nav.team', label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
+      { key: 'nav.import', label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
+      { key: 'nav.backup', label: 'Бэкап базы', href: '/settings/backup', icon: <Database size={20} /> },
+      { key: 'nav.settings', label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
-      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
+      { key: 'nav.help', label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
     ],
   },
 ];
 
-const adminNav: NavSection[] = [
+const getAdminNav = (): NavSection[] => [
   {
     items: [
-      { label: 'Мой день', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
+      { key: 'nav.myDay', label: 'Мой день', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { key: 'nav.calendar', label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.students',
     section: 'Ученики',
     items: [
-      { label: 'Ученики', href: '/students', icon: <Users size={20} /> },
-      { label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
-      { label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
+      { key: 'nav.students', label: 'Ученики', href: '/students', icon: <Users size={20} /> },
+      { key: 'nav.parents', label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
+      { key: 'nav.groups', label: 'Группы', href: '/groups', icon: <BookOpen size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.sales',
     section: 'Продажи',
     items: [
-      { label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
-      { label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
+      { key: 'nav.crm', label: 'CRM (Лиды)', href: '/crm', icon: <UserCheck size={20} /> },
+      { key: 'nav.tasks', label: 'Задачи', href: '/tasks', icon: <CheckSquare size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.finance',
     section: 'Финансы',
     items: [
-      { label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
+      { key: 'nav.finance', label: 'Оплаты', href: '/finance', icon: <CreditCard size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.admin',
     section: 'Администрирование',
     items: [
-      { label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
+      { key: 'nav.team', label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
-      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
+      { key: 'nav.help', label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
     ],
   },
 ];
 
-const teacherNav: NavSection[] = [
+const getTeacherNav = (): NavSection[] => [
   {
     items: [
-      { label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-      { label: 'Мои занятия', href: '/teacher', icon: <MonitorPlay size={20} /> },
-      { label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
-      { label: 'Мои группы', href: '/groups', icon: <BookOpen size={20} /> },
-      { label: 'Журнал посещаемости', href: '/teacher/attendance', icon: <ClipboardList size={20} /> },
+      { key: 'nav.main', label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+      { key: 'nav.myLessons', label: 'Мои занятия', href: '/teacher', icon: <MonitorPlay size={20} /> },
+      { key: 'nav.calendar', label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
+      { key: 'nav.groups', label: 'Мои группы', href: '/groups', icon: <BookOpen size={20} /> },
+      { key: 'nav.attendanceJournal', label: 'Журнал посещаемости', href: '/teacher/attendance', icon: <ClipboardList size={20} /> },
     ],
   },
   {
+    sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
-      { label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
+      { key: 'nav.help', label: 'Справка и гид', href: '/help', icon: <HelpCircle size={20} /> },
     ],
   },
 ];
@@ -154,6 +168,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { role } = useRole();
+  const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -176,9 +191,9 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   };
 
   const navSections =
-    role === 'owner' ? ownerNav :
-    role === 'admin' ? adminNav :
-    teacherNav;
+    role === 'owner' ? getOwnerNav() :
+    role === 'admin' ? getAdminNav() :
+    getTeacherNav();
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
@@ -208,7 +223,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 backgroundColor: 'var(--md-primary-container)',
                 color: 'var(--md-on-primary-container)',
               }}
-              title="YouEurope School CRM"
+              title={t('app.title', 'YouEurope School CRM')}
             >
               <School size={20} />
             </div>
@@ -222,7 +237,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 backgroundColor: 'var(--md-surface)',
                 color: 'var(--md-primary)',
               }}
-              title="Развернуть панель навигации"
+              title={t('nav.expand', 'Развернуть панель')}
             >
               <ChevronRight size={16} />
             </button>
@@ -243,10 +258,10 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="md-title-small font-bold truncate" style={{ color: 'var(--md-on-surface)', fontSize: '15px', lineHeight: '18px' }}>
-                YouEurope School CRM
+                {t('app.title', 'YouEurope School CRM')}
               </p>
               <p className="md-label-small truncate" style={{ color: 'var(--md-on-surface-variant)' }}>
-                Управление школой
+                {t('app.subtitle', 'Управление школой')}
               </p>
             </div>
             {/* Collapse toggle button for desktop */}
@@ -260,7 +275,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 backgroundColor: 'transparent',
                 color: 'var(--md-on-surface-variant)',
               }}
-              title="Свернуть панель (увеличить рабочую область)"
+              title={t('nav.collapse', 'Свернуть панель')}
             >
               <ChevronLeft size={18} />
             </button>
@@ -311,19 +326,20 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   padding: '12px 16px 4px',
                 }}
               >
-                {section.section}
+                {section.sectionKey ? t(section.sectionKey, section.section) : section.section}
               </p>
             )}
 
             {/* Nav items */}
             {section.items.map((item) => {
               const active = isActive(item.href);
+              const label = item.key ? t(item.key, item.label) : item.label;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={onCloseMobile}
-                  title={collapsed ? item.label : undefined}
+                  title={collapsed ? label : undefined}
                   className={`flex items-center ${collapsed ? 'justify-center mx-auto' : 'gap-3'} relative transition-all duration-150`}
                   style={{
                     height: collapsed ? '46px' : '52px',
@@ -342,7 +358,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                     {item.icon}
                   </span>
                   {!collapsed && (
-                    <span className="md-label-large truncate">{item.label}</span>
+                    <span className="md-label-large truncate">{label}</span>
                   )}
                 </Link>
               );
@@ -361,9 +377,9 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             color: 'var(--md-on-surface-variant)',
             backgroundColor: 'transparent',
           }}
-          title={collapsed ? 'Развернуть панель' : 'Свернуть панель'}
+          title={collapsed ? t('nav.expand', 'Развернуть панель') : t('nav.collapse', 'Свернуть панель')}
         >
-          {!collapsed && <span>Свернуть панель</span>}
+          {!collapsed && <span>{t('nav.collapse', 'Свернуть панель')}</span>}
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>

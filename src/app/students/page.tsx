@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { useToast } from '@/context/ToastContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
@@ -104,6 +105,7 @@ function StudentsContent() {
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
   const toast = useToast();
+  const { t } = useLanguage();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(filterParam === 'absences' ? 'absences' : 'all');
@@ -173,9 +175,9 @@ function StudentsContent() {
       {/* Page Title & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Ученики школы</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('students.title', 'Ученики школы')}</h1>
           <p className="text-sm text-slate-500">
-            Единая база учеников и совершеннолетних студентов • Всего: {students.length} (активных: {students.filter(s => s.status === 'active').length})
+            {t('students.subtitle', 'Единая база учеников и совершеннолетних студентов')} • Всего: {students.length} (активных: {students.filter(s => s.status === 'active').length})
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -184,7 +186,7 @@ function StudentsContent() {
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            Новый ученик
+            {t('action.addStudent', 'Новый ученик')}
           </button>
         </div>
       </div>

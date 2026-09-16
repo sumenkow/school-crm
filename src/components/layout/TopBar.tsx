@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Search, LogOut, ChevronDown, User, Calendar } from 'lucide-react';
+import { Menu, Search, LogOut, ChevronDown, User, Calendar, Globe } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
+import { useLanguage, LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { CommandPalette } from '@/components/common/CommandPalette';
@@ -12,15 +14,10 @@ interface TopBarProps {
   onOpenMobile: () => void;
 }
 
-const roleConfig: Record<UserRole, { label: string }> = {
-  developer: { label: 'Разработчик' },
-  owner: { label: 'Владелец' },
-  admin: { label: 'Админ' },
-  teacher: { label: 'Учитель' },
-};
-
 export function TopBar({ onOpenMobile }: TopBarProps) {
   const { role, userName, userEmail } = useRole();
+  const { language, setLanguage, t } = useLanguage();
+  const toast = useToast();
   const [scrolled, setScrolled] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -28,11 +25,12 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
   const [currentDate, setCurrentDate] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Format today's date in Russian (e.g., "Вс, 13 сентября")
+  // Format today's date localized
   useEffect(() => {
     const updateDate = () => {
       const now = new Date();
-      const formatted = now.toLocaleDateString('ru-RU', {
+      const locale = language === 'ru' ? 'ru-RU' : language === 'de' ? 'de-DE' : 'en-US';
+      const formatted = now.toLocaleDateString(locale, {
         weekday: 'short',
         day: 'numeric',
         month: 'long',
@@ -43,7 +41,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
     updateDate();
     const timer = setInterval(updateDate, 60000);
     return () => clearInterval(timer);
-  }, []);
+  }, [language]);
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -113,7 +111,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       <div
         className="flex items-center gap-2 transition-colors hover:bg-black/5"
         style={{
-          flex: '1 1 0', maxWidth: '360px', height: '40px',
+          flex: '1 1 0', maxWidth: '340px', height: '40px',
           backgroundColor: 'var(--md-surface-container-highest)',
           borderRadius: '9999px', padding: '0 16px', cursor: 'pointer',
         }}
@@ -121,7 +119,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       >
         <Search size={18} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         <span className="md-body-medium flex-1 truncate" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
-          Быстрый поиск...
+          {t('topbar.searchPlaceholder', 'Быстрый поиск... (Cmd+K)')}
         </span>
         <span
           className="hidden sm:inline-flex items-center text-[11px] font-mono font-medium rounded-md px-1.5 py-0.5"
@@ -138,24 +136,62 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Intuitive Multi-Language Switcher (RU / EN / DE) */}
+      <div
+        className="flex items-center rounded-full p-1 border shadow-2xs shrink-0"
+        style={{
+          backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
+          borderColor: 'var(--md-outline-variant, #C1C7CE)',
+        }}
+        title={t('topbar.language', 'Язык интерфейса')}
+      >
+        {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
+          const isSelected = language === langKey;
+          const meta = LANGUAGE_LABELS[langKey];
+          return (
+            <button
+              key={langKey}
+              onClick={() => {
+                if (language !== langKey) {
+                  setLanguage(langKey);
+                  toast.success(`${meta.flag} ${meta.nativeName}`);
+                }
+              }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-white shadow-xs scale-105 border border-slate-200/90 font-extrabold text-blue-700'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'
+              }`}
+              style={{
+                color: isSelected ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
+                backgroundColor: isSelected ? 'var(--md-surface, #FFFFFF)' : 'transparent',
+              }}
+              title={meta.label}
+            >
+              <span className="text-sm">{meta.flag}</span>
+              <span className="text-[11px] font-extrabold tracking-tight">{meta.short}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Today's highlighted date */}
       {currentDate && (
         <div
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all select-none"
+          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all select-none shrink-0"
           style={{
             backgroundColor: 'var(--md-secondary-container, #D7E3F7)',
             color: 'var(--md-on-secondary-container, #101C2B)',
             border: '1px solid rgba(21, 101, 192, 0.22)',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
           }}
-          title="Сегодняшняя дата"
+          title={t('nav.calendar', 'Календарь')}
         >
           <span
             className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
-            title="Текущий рабочий день"
           />
-          <Calendar size={15} style={{ color: 'var(--md-primary, #1565C0)' }} />
-          <span className="tracking-tight">{currentDate}</span>
+          <Calendar size={14} style={{ color: 'var(--md-primary, #1565C0)' }} />
+          <span className="tracking-tight text-xs">{currentDate}</span>
         </div>
       )}
 
@@ -171,7 +207,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '0 12px 0 4px',
           }}
-          aria-label="Меню пользователя"
+          aria-label={t('topbar.profile', 'Профиль пользователя')}
         >
           <div style={{
             width: '32px', height: '32px', borderRadius: '50%',
@@ -206,7 +242,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               lineHeight: '16px',
             }}
           >
-            {roleConfig[role]?.label}
+            {t(`role.${role}`, role)}
           </span>
           <ChevronDown size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         </button>
@@ -257,7 +293,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                     fontWeight: 600,
                   }}
                 >
-                  {roleConfig[role]?.label}
+                  {t(`role.${role}`, role)}
                 </span>
               </div>
             </div>
@@ -271,14 +307,14 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                 borderRadius: '8px', color: 'var(--md-on-surface)',
                 fontSize: '14px', textAlign: 'left',
               }}
-              className="hover:bg-black/5 transition-colors"
+              className="hover:bg-black/5 transition-colors cursor-pointer"
               onClick={() => {
                 setUserMenuOpen(false);
                 setProfileModalOpen(true);
               }}
             >
               <User size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
-              Карточка профиля
+              {t('topbar.profile', 'Карточка профиля')}
             </button>
 
             {/* Logout */}
@@ -291,9 +327,10 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                 borderRadius: '8px', color: 'var(--md-error)',
                 fontSize: '14px', textAlign: 'left',
               }}
+              className="cursor-pointer"
             >
               <LogOut size={18} />
-              Выйти
+              {t('topbar.logout', 'Выйти')}
             </button>
           </div>
         )}

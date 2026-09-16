@@ -21,6 +21,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
 import { getStoredStudents, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
@@ -153,12 +154,12 @@ function getMergedParents(): ParentRecord[] {
           map.set(pr.id, {
             id: pr.id,
             name: fullName,
-            phone: pr.phone || '—',
+            phone: pr.phone || '+7 (999) 000-00-00',
             telegram: pr.telegram,
             whatsapp: pr.whatsapp,
             preferredChannel: pr.preferredChannel || 'Telegram',
             children: [childInfo],
-            totalPaid: '7 600 ₽',
+            totalPaid: '0 ₽',
             balanceStatus: 'paid',
           });
         }
@@ -166,61 +167,64 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
-  // 3. Fallback for any initial parent that had no students in allStudents
-  for (const init of INITIAL_PARENTS) {
-    const parentRecord = map.get(init.id);
-    if (parentRecord && parentRecord.children.length === 0 && init.children && init.children.length > 0) {
-      parentRecord.children = [...init.children];
-    }
-  }
+  // 3. Reconcile financial balances
+  const result: ParentRecord[] = [];
+  map.forEach((parent) => {
+    let deposit = 0;
+    let debt = 0;
+    let totalPaidSum = 0;
 
-  // 4. Compute true dynamic finances (total paid, active deposit, balance status, debt) from children
-  for (const parent of map.values()) {
-    let paidSum = 0;
-    let depositSum = 0;
-    let debtSum = 0;
-    let hasOverdue = false;
-    let currencySymbol = '₽';
-
-    for (const ch of parent.children) {
-      const st = allStudents.find((s) => s.id === ch.id);
-      if (st?.finance) {
-        if (st.finance.deposit?.balance) {
-          depositSum += st.finance.deposit.balance;
-          if (st.finance.deposit.currency === 'EUR') currencySymbol = '€';
+    for (const child of parent.children) {
+      const studentObj = allStudents.find((s) => s.id === child.id);
+      if (studentObj) {
+        if (studentObj.finance?.deposit?.balance) {
+          deposit += studentObj.finance.deposit.balance;
         }
-        if (st.finance.payments) {
-          for (const p of st.finance.payments) {
-            if (p.status === 'paid' && !p.amount.startsWith('-')) {
-              const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-              paidSum += num;
-              if (p.amount.includes('€')) currencySymbol = '€';
-            } else if (p.status === 'overdue') {
-              hasOverdue = true;
-              const num = parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-              debtSum += num;
+        if (studentObj.finance?.payments) {
+          studentObj.finance.payments.forEach((pay) => {
+            if (pay.status === 'paid') {
+              const num = parseInt(pay.amount.replace(/[^0-9]/g, ''), 10) || 0;
+              totalPaidSum += num;
+            } else if (pay.status === 'overdue' || pay.status === 'pending') {
+              const num = parseInt(pay.amount.replace(/[^0-9]/g, ''), 10) || 0;
+              debt += num;
             }
-          }
+          });
         }
       }
     }
 
-    if (paidSum > 0) {
-      parent.totalPaid = `${paidSum.toLocaleString('ru-RU')} ${currencySymbol}`;
+    const net = deposit - debt;
+    let balanceStatus = 'paid';
+    if (net < 0) {
+      balanceStatus = 'debt';
+    } else if (deposit > 0) {
+      balanceStatus = 'paid';
+    } else if (parent.children.some((c) => {
+      const s = allStudents.find((st) => st.id === c.id);
+      return s?.status === 'trial';
+    })) {
+      balanceStatus = 'trial';
     }
-    parent.balanceStatus = hasOverdue || debtSum > 0 ? 'overdue' : 'paid';
-    parent.depositBalance = depositSum;
-    parent.depositFormatted = depositSum > 0 ? `${depositSum.toLocaleString('ru-RU')} ${currencySymbol}` : undefined;
-    parent.debtBalance = debtSum;
-    parent.debtFormatted = debtSum > 0 ? `-${debtSum.toLocaleString('ru-RU')} ${currencySymbol}` : undefined;
-  }
 
-  return Array.from(map.values());
+    result.push({
+      ...parent,
+      totalPaid: totalPaidSum > 0 ? `${totalPaidSum.toLocaleString('ru-RU')} ₽` : parent.totalPaid,
+      balanceStatus,
+      depositFormatted: deposit > 0 ? `${deposit.toLocaleString('ru-RU')} ₽` : undefined,
+      depositBalance: deposit,
+      debtFormatted: debt > 0 ? `${debt.toLocaleString('ru-RU')} ₽` : undefined,
+      debtBalance: debt,
+    });
+  });
+
+  return result;
 }
 
 export default function ParentsPage() {
   const router = useRouter();
   const { success } = useToast();
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [parents, setParents] = useState<ParentRecord[]>(() => getMergedParents());
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -295,9 +299,9 @@ export default function ParentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Родители и контакты</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('parents.title', 'Родители и контакты')}</h1>
           <p className="text-sm text-slate-500">
-            Реестр контактных лиц и законных представителей • Единый профиль семьи
+            {t('parents.subtitle', 'Реестр контактных лиц и законных представителей • Единый профиль семьи')}
           </p>
         </div>
         <button
@@ -305,7 +309,7 @@ export default function ParentsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
         >
           <Plus className="h-4 w-4" />
-          Новый контакт
+          {t('action.newContact', 'Новый контакт')}
         </button>
       </div>
 
@@ -316,7 +320,7 @@ export default function ParentsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Поиск родителя по имени, телефону или ребенку..."
+            placeholder={t('parents.search', 'Поиск родителя по имени, телефону или ребенку...')}
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
