@@ -48,6 +48,7 @@ import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
+import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { cn } from '@/lib/utils';
 
@@ -173,6 +174,26 @@ function SmartActionHub() {
 
   const overdueList = payments.filter((p) => p.status === 'overdue');
   const firstOverdue = overdueList[0];
+  const rate = getEurRubRate();
+
+  const firstOverdueStudentSummary = firstOverdue?.studentId
+    ? getStudentFinancialSummary(firstOverdue.studentId)
+    : null;
+
+  let debtHighlight = '0 € (0 ₽) долгов';
+  if (firstOverdue) {
+    if (firstOverdueStudentSummary && firstOverdueStudentSummary.debt > 0) {
+      debtHighlight = `Долг: ${firstOverdueStudentSummary.debt.toLocaleString('ru-RU')} € (≈ ${firstOverdueStudentSummary.debtRub.toLocaleString('ru-RU')} ₽)`;
+    } else {
+      const rawAmount = typeof firstOverdue.amount === 'number'
+        ? firstOverdue.amount
+        : parseFloat(String(firstOverdue.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 84;
+      const isEur = rawAmount <= 500 || String(firstOverdue.amount).includes('€');
+      const eur = isEur ? rawAmount : Math.round((rawAmount / rate) * 100) / 100;
+      const rub = isEur ? Math.round(rawAmount * rate) : rawAmount;
+      debtHighlight = `Долг: ${eur.toLocaleString('ru-RU')} € (≈ ${rub.toLocaleString('ru-RU')} ₽)`;
+    }
+  }
 
   const debtTask = firstOverdue
     ? {
@@ -183,7 +204,7 @@ function SmartActionHub() {
         title: `${firstOverdue.studentName} (${firstOverdue.courseName || firstOverdue.groupName || 'Курс'})`,
         deadline: firstOverdue.paymentDate || 'Срочно',
         subtitle: firstOverdue.parentName ? `Родитель: ${firstOverdue.parentName}` : 'Счет на оплату',
-        highlight: `Долг: ${firstOverdue.amountFormatted || `${firstOverdue.amount.toLocaleString('ru-RU')} ₽`}`,
+        highlight: debtHighlight,
         phone: '+79992345678',
         waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
         profileUrl: `/students/${firstOverdue.studentId}`,
@@ -198,7 +219,7 @@ function SmartActionHub() {
         title: 'Задолженностей нет',
         deadline: 'Порядок',
         subtitle: 'Все текущие счета оплачены',
-        highlight: '0 ₽ долгов',
+        highlight: '0 € (0 ₽) долгов',
         phone: '',
         waUrl: '',
         profileUrl: '/finance?filter=overdue',

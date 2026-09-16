@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { getUpcomingPayments, UpcomingPaymentItem } from '@/lib/data/upcomingPaymentsHelper';
+import { getEurRubRate } from '@/lib/data/currencyHelper';
 import { notifyAdminOnUpcomingPayment, sendUpcomingPaymentsDigestToTelegram } from '@/lib/telegram/botNotifier';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
@@ -138,7 +139,7 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 6 }: Upcomin
             </div>
             <p className="md-body-small text-slate-500">
               {viewMode === 'owner'
-                ? `Прогноз ближайших поступлений: ${totalAmount.toLocaleString('ru-RU')} ₽ (${items.length} счетов)`
+                ? `Прогноз ближайших поступлений: ${totalAmount.toLocaleString('ru-RU')} € (≈ ${(totalAmount * getEurRubRate()).toLocaleString('ru-RU')} ₽) • ${items.length} счетов`
                 : `Клиенты, у которых подходит дата продления абонемента или оплата после пробного урока`}
             </p>
           </div>
