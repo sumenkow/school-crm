@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { getEurRubRate } from '@/lib/data/currencyHelper';
 
 interface DailyReportData {
   date: string;
@@ -30,8 +31,10 @@ interface DailyReportData {
     trialsHeld: number;
     paymentsCount: number;
     revenueToday: number;
+    revenueTodayEur?: number;
     debtorsCount?: number;
     totalDebtAmount?: number;
+    totalDebtAmountEur?: number;
     tasksCompleted?: number;
     tasksOpen?: number;
     tasksOverdue?: number;
@@ -78,7 +81,8 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
     async function loadReport() {
       try {
         setLoading(true);
-        const res = await fetch('/api/reports/daily');
+        const rate = getEurRubRate();
+        const res = await fetch(`/api/reports/daily?eurRate=${rate}`);
         if (res.ok) {
           const data = await res.json();
           if (data.data) {
@@ -260,6 +264,11 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                   <p className="text-lg font-bold text-emerald-700 mt-0.5">
                     {report.metrics.revenueToday.toLocaleString('ru-RU')} ₽
                   </p>
+                  {typeof report.metrics.revenueTodayEur === 'number' && (
+                    <p className="text-[11px] font-semibold text-emerald-600">
+                      ≈ {report.metrics.revenueTodayEur.toLocaleString('ru-RU')} €
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -291,7 +300,8 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                     <span className="font-bold text-rose-900">Задолженность по оплатам (дебиторка):</span>
                   </div>
                   <span className="font-extrabold text-rose-700">
-                    {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽)
+                    {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽
+                    {typeof report.metrics.totalDebtAmountEur === 'number' && ` / ≈ -${report.metrics.totalDebtAmountEur.toLocaleString('ru-RU')} €`})
                   </span>
                 </div>
               )}

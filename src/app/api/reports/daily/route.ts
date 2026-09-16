@@ -50,9 +50,12 @@ export async function GET(request: NextRequest) {
     const lessonsHeld = 6;
     const newStudents = 2;
 
-    // Debt and balance calculations
+    // Debt and balance calculations (with EUR conversion)
+    const eurRate = parseFloat(request.nextUrl.searchParams.get('eurRate') || '') || 100;
     const overduePayments = (payments || []).filter((p) => p.status === 'overdue' || p.status === 'failed');
     const totalDebtAmount = overduePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 7600;
+    const totalDebtAmountEur = Math.round((totalDebtAmount / eurRate) * 100) / 100;
+    const revenueTodayEur = Math.round((revenueToday / eurRate) * 100) / 100;
     const debtorsCount = overduePayments.length || 1;
 
     // Calculate task metrics
@@ -75,8 +78,8 @@ export async function GET(request: NextRequest) {
 
 💳 *ФИНАНСЫ И СБОРЫ:*
 • Оплат принято: *${paymentsCount}*
-• Выручка за день: *${revenueToday.toLocaleString('ru-RU')} ₽*
-• Должники / дебиторка: *${debtorsCount} чел. (-${totalDebtAmount.toLocaleString('ru-RU')} ₽)*
+• Выручка за день: *${revenueToday.toLocaleString('ru-RU')} ₽* _(≈ ${revenueTodayEur} €)_
+• Должники / дебиторка: *${debtorsCount} чел. (-${totalDebtAmount.toLocaleString('ru-RU')} ₽ / ≈ -${totalDebtAmountEur} €)*
 
 ✅ *ЗАДАЧИ И ПОРУЧЕНИЯ:*
 • Выполнено задач: *${tasksCompleted}*
@@ -136,8 +139,10 @@ export async function GET(request: NextRequest) {
           trialsHeld,
           paymentsCount,
           revenueToday,
+          revenueTodayEur,
           debtorsCount,
           totalDebtAmount,
+          totalDebtAmountEur,
           tasksCompleted,
           tasksOpen,
           tasksOverdue,

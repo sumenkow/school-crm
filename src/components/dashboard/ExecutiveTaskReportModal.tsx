@@ -19,10 +19,16 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
 
+import { getEurRubRate, setEurRubRate, formatDualCurrency } from '@/lib/data/currencyHelper';
+
 interface ExecutiveReportData {
   date: string;
   dateShort: string;
   ownerName: string;
+  currency?: {
+    base: string;
+    rate: number;
+  };
   metrics: {
     totalTasks: number;
     completedTasks: number;
@@ -31,6 +37,9 @@ interface ExecutiveReportData {
     completionRate: number;
     debtorsCount?: number;
     totalDebtAmount?: number;
+    totalDebtAmountEur?: number;
+    revenueToday?: number;
+    revenueTodayEur?: number;
   };
   managers: Array<{
     name: string;
@@ -55,32 +64,43 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
   const [loading, setLoading] = useState(true);
   const [copiedText, setCopiedText] = useState(false);
   const [sendingTg, setSendingTg] = useState(false);
+  const [eurRate, setEurRate] = useState(() => getEurRubRate());
+  const [isEditingRate, setIsEditingRate] = useState(false);
+
+  const loadReport = async (customRate?: number) => {
+    try {
+      setLoading(true);
+      const rateToUse = customRate || eurRate;
+      const res = await fetch(`/api/reports/executive?eurRate=${rateToUse}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data) {
+          setReport(data.data);
+        }
+      } else if (res.status === 403) {
+        toast.error('Доступ запрещен: отчет доступен только руководителю.');
+        onClose();
+      }
+    } catch (err) {
+      console.error('Failed to load executive report:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
-
-    async function loadReport() {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/reports/executive');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data) {
-            setReport(data.data);
-          }
-        } else if (res.status === 403) {
-          toast.error('Доступ запрещен: отчет доступен только руководителю.');
-          onClose();
-        }
-      } catch (err) {
-        console.error('Failed to load executive report:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     loadReport();
   }, [isOpen]);
+
+  const handleRateChange = (newRate: number) => {
+    if (newRate > 0) {
+      setEurRate(newRate);
+      setEurRubRate(newRate);
+      loadReport(newRate);
+      toast.success(`Курс валют обновлен: 1 € = ${newRate} ₽`);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -150,6 +170,78 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
           </div>
         ) : report ? (
           <div className="p-6 space-y-6">
+            {/* Currency Rate Bar (Base: EUR) */}
+            <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-purple-950">💱 Основная валюта отчета: EUR (€)</span>
+                <span className="text-[11px] text-purple-800 bg-purple-100/80 px-2 py-0.5 rounded-full font-bold">
+                  1 € = {eurRate} ₽
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isEditingRate ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-600 text-[11px]">Курс 1 € =</span>
+                    <input
+                      type="number"
+                      value={eurRate}
+                      onChange={(e) => setEurRate(parseFloat(e.target.value) || 100)}
+                      className="w-16 rounded border border-purple-300 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-900 focus:outline-none"
+                    />
+                    <span className="text-slate-600 text-[11px]">₽</span>
+                    <button
+                      onClick={() => {
+                        handleRateChange(eurRate);
+                        setIsEditingRate(false);
+                      }}
+                      className="rounded bg-purple-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-purple-700"
+                    >
+                      ОК
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingRate(true)}
+                    className="text-[11px] font-bold text-purple-700 hover:text-purple-900 hover:underline"
+                  >
+                    Изменить курс конвертации →
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Dual Currency Financials Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <span className="text-slate-500 text-[11px] font-medium">Выручка за день (EUR / RUB):</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-2xl font-black text-emerald-800">
+                    {(report.metrics.revenueTodayEur ?? 156).toLocaleString('ru-RU')} €
+                  </p>
+                  <span className="text-xs font-bold text-emerald-700">
+                    ({(report.metrics.revenueToday ?? 15600).toLocaleString('ru-RU')} ₽)
+                  </span>
+                </div>
+                <p className="text-[10px] text-emerald-600 mt-1 font-medium">Конвертировано по курсу 1 € = {eurRate} ₽</p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+                <span className="text-slate-500 text-[11px] font-medium">Дебиторская задолженность (EUR / RUB):</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-2xl font-black text-rose-800">
+                    -{(report.metrics.totalDebtAmountEur ?? 76).toLocaleString('ru-RU')} €
+                  </p>
+                  <span className="text-xs font-bold text-rose-700">
+                    (-{(report.metrics.totalDebtAmount ?? 7600).toLocaleString('ru-RU')} ₽)
+                  </span>
+                </div>
+                <p className="text-[10px] text-rose-600 mt-1 font-medium">
+                  {report.metrics.debtorsCount || 1} должников в базе
+                </p>
+              </div>
+            </div>
+
             {/* KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5">
@@ -189,13 +281,13 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                   <div>
                     <p className="font-bold text-rose-950">Дебиторская задолженность учеников</p>
                     <p className="text-[11px] text-rose-800">
-                      Обнаружены ученики с отрицательным балансом, требующие выставления счетов
+                      Требуется выставление счетов и постановка задач администраторам
                     </p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <span className="font-black text-sm text-rose-700 block">
-                    -{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽
+                    -{(report.metrics.totalDebtAmountEur ?? 76).toLocaleString('ru-RU')} € (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽)
                   </span>
                   <span className="text-[10px] text-rose-600 font-bold">{report.metrics.debtorsCount} чел.</span>
                 </div>

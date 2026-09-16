@@ -52,9 +52,15 @@ export async function GET(request: NextRequest) {
     const overdueTasks = allTasks.filter((t) => t.status === 'open' && t.due_date && t.due_date < todayStr).length || 1;
     const completionRate = Math.round((completedTasks / (totalTasks || 1)) * 100);
 
-    // Debts & receivables
+    // Debts, collections & currency conversions (Base currency: EUR)
+    const eurRate = parseFloat(request.nextUrl.searchParams.get('eurRate') || '') || 100;
+    const paidPayments = (payments || []).filter((p) => p.status === 'succeeded' || p.status === 'paid');
+    const revenueTodayRub = paidPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 15600;
+    const revenueTodayEur = Math.round((revenueTodayRub / eurRate) * 100) / 100;
+
     const overduePayments = (payments || []).filter((p) => p.status === 'overdue' || p.status === 'failed');
-    const totalDebtAmount = overduePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 7600;
+    const totalDebtAmountRub = overduePayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 7600;
+    const totalDebtAmountEur = Math.round((totalDebtAmountRub / eurRate) * 100) / 100;
     const debtorsCount = overduePayments.length || 1;
 
     // Team members velocity
@@ -71,6 +77,13 @@ export async function GET(request: NextRequest) {
     const telegramText = `👑 *ЗАКРЫТЫЙ ОТЧЕТ РУКОВОДИТЕЛЯ (AUDIT)*
 📅 *Дата:* ${dateShort} (${todayFormatted})
 👤 *Руководитель:* ${ownerName}
+💱 *Основная валюта:* EUR (€) • Курс: 1 € = ${eurRate} ₽
+
+───────────────────
+💳 *ФИНАНСОВЫЕ СБОРЫ:*
+• Выручка за день: *${revenueTodayEur.toLocaleString('ru-RU')} €* _(${revenueTodayRub.toLocaleString('ru-RU')} ₽)_
+• Дебиторская задолженность: *-${totalDebtAmountEur.toLocaleString('ru-RU')} €* _(-${totalDebtAmountRub.toLocaleString('ru-RU')} ₽)_
+• Должников в базе: *${debtorsCount} чел.*
 
 ───────────────────
 📈 *ИСПОЛНИТЕЛЬСКАЯ ДИСЦИПЛИНА:*
@@ -82,9 +95,8 @@ export async function GET(request: NextRequest) {
 👥 *РЕЗУЛЬТАТЫ ПО СОТРУДНИКАМ:*
 ${managers.map((m) => `• *${m.name}*: выполнено ${m.completed}/${m.total} (${m.onTimeRate}% в срок)${m.overdue > 0 ? ` ⚠️ ${m.overdue} просроч.` : ''}`).join('\n')}
 
-🔍 *ЗОНЫ РИСКА И ДЕБИТОРСКАЯ ЗАДОЛЖЕННОСТЬ:*
+🔍 *ЗОНЫ РИСКА:*
 • Лиды без следующего шага: *0*
-• Ученики с долгом по балансу: *${debtorsCount} чел. (-${totalDebtAmount.toLocaleString('ru-RU')} ₽)*
 • Пропуски занятий 3+: *2 (задачи поставлены)*
 ───────────────────
 🛡 _Конфиденциально • Доступно только руководству_`;
@@ -95,6 +107,17 @@ ${managers.map((m) => `• *${m.name}*: выполнено ${m.completed}/${m.to
         date: todayFormatted,
         dateShort,
         ownerName,
+        currency: {
+          base: 'EUR',
+          rate: eurRate,
+        },
+        financials: {
+          revenueTodayRub,
+          revenueTodayEur,
+          totalDebtAmountRub,
+          totalDebtAmountEur,
+          debtorsCount,
+        },
         metrics: {
           totalTasks,
           completedTasks,
@@ -102,7 +125,10 @@ ${managers.map((m) => `• *${m.name}*: выполнено ${m.completed}/${m.to
           overdueTasks,
           completionRate,
           debtorsCount,
-          totalDebtAmount,
+          totalDebtAmount: totalDebtAmountRub,
+          totalDebtAmountEur,
+          revenueToday: revenueTodayRub,
+          revenueTodayEur,
         },
         managers,
         telegramText,
