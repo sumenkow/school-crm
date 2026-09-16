@@ -551,7 +551,6 @@ export default function ParentDetailsPage() {
         },
       ],
       finance: {
-        balance: newChild.paymentStatus === 'paid' ? '0 ₽' : '-7 600 ₽',
         deposit: {
           balance: newChild.paymentStatus === 'paid' ? 7600 : 0,
           balanceFormatted: newChild.paymentStatus === 'paid' ? '7 600 ₽' : '0 ₽',
