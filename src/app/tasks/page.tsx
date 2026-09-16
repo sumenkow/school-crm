@@ -18,11 +18,12 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_TASKS, FullTaskData } from '@/lib/data/mockData';
+import { FullTaskData } from '@/lib/data/mockData';
+import { getStoredTasks, saveTaskToStorage } from '@/lib/data/taskStorage';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<FullTaskData[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<FullTaskData[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'in_progress' | 'overdue' | 'done'>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<'all' | 'my'>('all');
@@ -30,16 +31,23 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<FullTaskData | null>(null);
   const [selectedTask, setSelectedTask] = useState<FullTaskData | null>(null);
 
+  useEffect(() => {
+    getStoredTasks().then(setTasks);
+  }, []);
+
   const handleTaskCreated = (newTask: FullTaskData) => {
     setTasks((prev) => [newTask, ...prev]);
+    saveTaskToStorage(newTask);
   };
 
   const handleToggleStatus = (taskId: string) => {
+    let updatedTask: FullTaskData | undefined;
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id !== taskId) return t;
         const newStatus = t.status === 'done' ? 'open' : 'done';
-        return { ...t, status: newStatus };
+        updatedTask = { ...t, status: newStatus };
+        return updatedTask;
       })
     );
     setSelectedTask((prev) =>
@@ -47,6 +55,9 @@ export default function TasksPage() {
         ? { ...prev, status: prev.status === 'done' ? 'open' : 'done' }
         : prev
     );
+    if (updatedTask) {
+      saveTaskToStorage(updatedTask);
+    }
   };
 
   const filteredTasks = tasks.filter((t) => {
@@ -298,6 +309,7 @@ export default function TasksPage() {
           onClose={() => setEditingTask(null)}
           onSave={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+            saveTaskToStorage(updated);
             setEditingTask(null);
           }}
         />

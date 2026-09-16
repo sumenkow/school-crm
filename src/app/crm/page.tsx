@@ -85,6 +85,7 @@ export default function CrmPage() {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+          import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(newLead));
         } catch (e) {
           console.error('Failed to sync to localStorage', e);
         }
@@ -134,6 +135,7 @@ export default function CrmPage() {
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+          import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updatedLead));
         } catch (e) {
           console.error('Failed to sync to localStorage', e);
         }

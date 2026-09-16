@@ -17,8 +17,8 @@ async function verifyOwner() {
     .eq('id', user.id)
     .single();
 
-  if (!profile || profile.role !== 'owner') {
-    return { error: 'Доступ разрешен только владельцу', status: 403 };
+  if (!profile || !['developer', 'owner'].includes(profile.role)) {
+    return { error: 'Доступ разрешен только владельцу или разработчику', status: 403 };
   }
 
   return { currentUserId: user.id };

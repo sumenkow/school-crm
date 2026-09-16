@@ -113,6 +113,24 @@ export function saveStudentToStorage(student: FullStudentData): void {
 
       // Notify other views
       window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
+
+      // 3. Supabase dual-write (fire-and-forget)
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        const supabase = createClient();
+        const firstName = studentToSave.name.split(' ')[0] || studentToSave.name;
+        const lastName = studentToSave.name.split(' ').slice(1).join(' ') || '';
+        
+        supabase.from('students').upsert({
+          id: studentToSave.id,
+          first_name: firstName,
+          last_name: lastName,
+          status: (studentToSave.status as any) || 'active',
+          student_type: 'school_student',
+          notes: studentToSave.comment || null,
+          is_mock_data: false,
+        }).then(() => {}).catch(() => {});
+      }).catch(() => {});
+
     } catch (err) {
       console.error('Failed to save student to storage:', err);
     }

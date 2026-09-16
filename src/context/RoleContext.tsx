@@ -17,6 +17,7 @@ interface RoleContextType {
   setRole: (role: UserRole) => void;
   accountRole: UserRole;
   isOwnerAccount: boolean;
+  isDevAccount: boolean;
   userName: string;
   setUserName: (name: string) => void;
   userEmail: string;
@@ -28,6 +29,7 @@ interface RoleContextType {
   isOwner: boolean;
   ownerEmail: string;
   updateProfile: (updates: Partial<UserProfileData>) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const DEFAULT_PROFILE: UserProfileData = {
@@ -63,6 +65,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<UserRole>(DEFAULT_PROFILE.role);
   const [accountRole, setAccountRole] = useState<UserRole>('owner');
   const [isOwnerAccount, setIsOwnerAccount] = useState(true);
+  const [isDevAccount, setIsDevAccount] = useState(false);
   const [userName, setUserNameState] = useState(DEFAULT_PROFILE.userName);
   const [userEmail, setUserEmailState] = useState(DEFAULT_PROFILE.userEmail);
   const [userPhone, setUserPhoneState] = useState(DEFAULT_PROFILE.userPhone);
@@ -77,11 +80,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem(STORAGE_KEY);
       let initialRole: UserRole = DEFAULT_PROFILE.role;
 
-      if (explicitRole && ['owner', 'admin', 'teacher'].includes(explicitRole)) {
+      if (explicitRole && ['developer', 'owner', 'admin', 'teacher'].includes(explicitRole)) {
         initialRole = explicitRole;
       } else if (saved) {
         const parsed = JSON.parse(saved) as Partial<UserProfileData>;
-        if (parsed.role && ['owner', 'admin', 'teacher'].includes(parsed.role)) {
+        if (parsed.role && ['developer', 'owner', 'admin', 'teacher'].includes(parsed.role)) {
           initialRole = parsed.role;
         }
       }
@@ -115,9 +118,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === ROLE_KEY && e.newValue) {
         const newRole = e.newValue as UserRole;
-        if (['owner', 'admin', 'teacher'].includes(newRole)) {
+        if (['developer', 'owner', 'admin', 'teacher'].includes(newRole)) {
           setRoleState(newRole);
-          setIsOwner(newRole === 'owner');
+          setIsOwner(newRole === 'owner' || newRole === 'developer');
         }
       }
     };
@@ -160,12 +163,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     if (profile) {
       const dbRole = (profile.role as UserRole) || 'owner';
       setAccountRole(dbRole);
-      setIsOwnerAccount(dbRole === 'owner');
+      setIsOwnerAccount(dbRole === 'owner' || dbRole === 'developer');
+      setIsDevAccount(dbRole === 'developer');
 
       // Only overwrite active role if no manual role was chosen by the user
       if (!savedRole) {
         setRoleState(dbRole);
-        setIsOwner(dbRole === 'owner');
+        setIsOwner(dbRole === 'owner' || dbRole === 'developer');
       }
       if (profile.full_name) setUserNameState(profile.full_name);
       if (profile.phone) setUserPhoneState(profile.phone);
@@ -173,11 +177,12 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       const metaRole = (user.user_metadata?.role as UserRole) || 'owner';
       const metaName = user.user_metadata?.full_name || user.email || '';
       setAccountRole(metaRole);
-      setIsOwnerAccount(metaRole === 'owner');
+      setIsOwnerAccount(metaRole === 'owner' || metaRole === 'developer');
+      setIsDevAccount(metaRole === 'developer');
 
       if (!savedRole) {
         setRoleState(metaRole);
-        setIsOwner(metaRole === 'owner');
+        setIsOwner(metaRole === 'owner' || metaRole === 'developer');
       }
       if (metaName) setUserNameState(metaName);
     }
@@ -297,6 +302,19 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signOut = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {}
+    // Clear local state
+    try {
+      localStorage.removeItem(ROLE_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    window.location.href = '/login';
+  };
+
   return (
     <RoleContext.Provider
       value={{
@@ -304,6 +322,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setRole,
         accountRole,
         isOwnerAccount,
+        isDevAccount,
         userName,
         setUserName,
         userEmail,
@@ -315,6 +334,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         isOwner,
         ownerEmail,
         updateProfile,
+        signOut,
       }}
     >
       {children}

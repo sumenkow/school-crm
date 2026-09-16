@@ -40,6 +40,23 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
         }
       }
     }
+
+    // Supabase dual-write (fire-and-forget)
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.from('interactions').upsert({
+        id: item.id,
+        student_id: item.studentId || null,
+        parent_id: item.parentId || null,
+        lead_id: item.leadId || null,
+        type: item.type || 'comment',
+        title: item.title,
+        description: item.description || null,
+        created_at: item.date || new Date().toISOString(),
+        is_mock_data: false,
+      }).then(() => {}).catch(() => {});
+    }).catch(() => {});
+
   } catch (err) {
     console.error('Failed to save interaction to storage:', err);
   }

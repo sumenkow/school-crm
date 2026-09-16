@@ -403,6 +403,97 @@ export default function DatabaseBackupPage() {
           </span>
         </div>
       </div>
+
+      {/* Mock Data Cleanup — only for developer/owner */}
+      {(role === 'developer' || role === 'owner') && (
+        <MockDataCleanupSection />
+      )}
+    </div>
+  );
+}
+
+function MockDataCleanupSection() {
+  const [loading, setLoading] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const handleDelete = async () => {
+    if (!confirm(
+      'Удалить все тестовые данные из базы данных Supabase?\n\n' +
+      'Это действие необратимо. Будут удалены:\n' +
+      '• Тестовые ученики\n• Тестовые родители\n• Тестовые лиды\n• Тестовые оплаты\n• Тестовые задачи\n• Тестовые взаимодействия\n\n' +
+      'Реальные данные останутся нетронутыми.'
+    )) return;
+
+    setLoading(true);
+    setError('');
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { error: rpcError } = await supabase.rpc('delete_mock_data');
+      if (rpcError) {
+        setError(rpcError.message);
+      } else {
+        setDone(true);
+        // Also clear localStorage mock data
+        try {
+          localStorage.removeItem('crm_students_v2');
+          localStorage.removeItem('crm_payments_v2');
+          localStorage.removeItem('crm_leads_v2');
+          localStorage.removeItem('crm_tasks_v1');
+          localStorage.removeItem('crm_timeline_interactions_v1');
+        } catch {}
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Ошибка удаления');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-6 shadow-xs space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+          <Layers className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Удаление тестовых данных</h3>
+          <p className="text-xs text-slate-500">Очистка демо-данных из базы данных Supabase</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-slate-600 leading-relaxed">
+        Тестовые записи (ученики, оплаты, задачи, лиды и т.д.) помечены флагом <code>is_mock_data = true</code>.
+        Эта операция удалит только их, не затрагивая реальные данные школы.
+      </p>
+
+      {done && (
+        <div className="flex items-center gap-2 text-emerald-700 text-xs font-semibold bg-emerald-50 rounded-xl p-3">
+          <CheckCircle2 size={16} />
+          Тестовые данные успешно удалены из базы и localStorage!
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-center gap-2 text-rose-700 text-xs font-semibold bg-rose-100 rounded-xl p-3">
+          <AlertCircle size={16} />
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleDelete}
+        disabled={loading || done}
+        className="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition-colors disabled:opacity-50"
+      >
+        {loading ? (
+          <RefreshCw size={14} className="animate-spin" />
+        ) : (
+          <Trash2 size={14} />
+        )}
+        {done ? 'Удалено' : loading ? 'Удаление...' : 'Удалить тестовые данные'}
+      </button>
     </div>
   );
 }

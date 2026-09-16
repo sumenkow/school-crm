@@ -13,6 +13,7 @@ interface TopBarProps {
 }
 
 const roleConfig: Record<UserRole, { label: string }> = {
+  developer: { label: 'Разработчик' },
   owner: { label: 'Владелец' },
   admin: { label: 'Админ' },
   teacher: { label: 'Учитель' },
@@ -193,11 +194,11 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               padding: '2px 8px',
               borderRadius: '9999px',
               backgroundColor:
-                role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
+                (role === 'owner' || role === 'developer') ? 'var(--md-tertiary-container, #EEDCFF)' :
                 role === 'admin' ? 'var(--md-secondary-container)' :
                 'var(--md-primary-container)',
               color:
-                role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
+                (role === 'owner' || role === 'developer') ? 'var(--md-on-tertiary-container, #28123C)' :
                 role === 'admin' ? 'var(--md-on-secondary-container)' :
                 'var(--md-on-primary-container)',
               fontWeight: 600,
@@ -205,7 +206,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               lineHeight: '16px',
             }}
           >
-            {roleConfig[role].label}
+            {roleConfig[role]?.label}
           </span>
           <ChevronDown size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
         </button>
@@ -246,17 +247,17 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                     display: 'inline-block',
                     padding: '2px 8px', borderRadius: '9999px',
                     backgroundColor:
-                      role === 'owner' ? 'var(--md-tertiary-container, #EEDCFF)' :
+                      (role === 'owner' || role === 'developer') ? 'var(--md-tertiary-container, #EEDCFF)' :
                       role === 'admin' ? 'var(--md-secondary-container)' :
                       'var(--md-primary-container)',
                     color:
-                      role === 'owner' ? 'var(--md-on-tertiary-container, #28123C)' :
+                      (role === 'owner' || role === 'developer') ? 'var(--md-on-tertiary-container, #28123C)' :
                       role === 'admin' ? 'var(--md-on-secondary-container)' :
                       'var(--md-on-primary-container)',
                     fontWeight: 600,
                   }}
                 >
-                  {roleConfig[role].label}
+                  {roleConfig[role]?.label}
                 </span>
               </div>
             </div>

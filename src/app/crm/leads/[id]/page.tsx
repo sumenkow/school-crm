@@ -155,6 +155,7 @@ export default function LeadDetailsPage() {
           list.unshift(updated);
         }
         localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+        import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updated));
       }
     } catch (err) {
       console.error(err);
@@ -457,6 +458,7 @@ export default function LeadDetailsPage() {
           list.unshift(updatedLead);
         }
         localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+        import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updatedLead));
       }
     } catch (err) {
       console.error(err);
@@ -566,6 +568,7 @@ export default function LeadDetailsPage() {
           list.unshift(updatedLead);
         }
         localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+        import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updatedLead));
       }
     } catch (err) {
       console.error(err);
