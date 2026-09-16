@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { INITIAL_LEADS, FullLeadData, TimelineInteraction, splitFullName, buildFullName } from '@/lib/data/mockData';
 import {
   ArrowLeft,
   Calendar,
