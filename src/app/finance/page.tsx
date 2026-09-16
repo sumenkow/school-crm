@@ -377,7 +377,7 @@ function FinanceContent() {
               <div>
                 <p className="font-bold text-sm text-rose-950">Клиенты с просроченными платежами ({overduePayments.length})</p>
                 <p className="text-xs text-rose-800 mt-0.5">
-                  Общая сумма задолженности составляет <strong>{totalOverdue.toLocaleString('ru-RU')} ₽</strong>. Вы можете в 1 клик написать клиенту в WhatsApp/Telegram или создать задачу для менеджера.
+                  Общая сумма задолженности составляет <strong>{overdueTotals.totalEur.toLocaleString('ru-RU')} € (≈ {overdueTotals.totalRub.toLocaleString('ru-RU')} ₽)</strong>. Вы можете в 1 клик написать клиенту в WhatsApp/Telegram или создать задачу для менеджера.
                 </p>
               </div>
             </div>
