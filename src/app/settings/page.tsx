@@ -22,6 +22,10 @@ import {
   SchoolProfileData
 } from '@/components/settings/SchoolProfileModal';
 import {
+  getSchoolSettings,
+  saveSchoolSettings
+} from '@/lib/data/schoolSettingsStorage';
+import {
   CoursesSettingsModal,
   CourseSettingItem
 } from '@/components/settings/CoursesSettingsModal';
@@ -36,24 +40,21 @@ export default function SettingsPage() {
   const { role } = useRole();
   const [activeModal, setActiveModal] = useState<'school' | 'courses' | 'roles' | 'telegram' | null>(null);
 
-  // 1. School Profile State
-  const [schoolProfile, setSchoolProfile] = useState<SchoolProfileData>({
-    name: 'Smart Academy',
-    slogan: 'Центр детского развития, робототехники и языков',
-    legalEntity: 'ИП Смирнов Алексей Владимирович',
-    inn: '770123456789',
-    ogrn: '321774600123456',
-    bankAccount: '40802810100000012345',
-    bankName: 'АО «ТБанк», БИК 044525974',
-    bik: '044525974',
-    phone: '+7 (495) 777-11-22',
-    email: 'hello@smartacademy.ru',
-    branchName: 'Онлайн-школа (Основной аккаунт)',
-    address: 'Онлайн (Zoom, Google Meet, интерактивная доска)',
-    roomsDescription: 'Интерактивные онлайн-комнаты',
-    workHours: 'Пн-Сб 09:00 - 21:00',
-    timezone: 'UTC+3 (Москва)',
-  });
+  // 1. School Profile State (from storage/DB)
+  const [schoolProfile, setSchoolProfile] = useState<SchoolProfileData>(() => getSchoolSettings());
+
+  React.useEffect(() => {
+    setSchoolProfile(getSchoolSettings());
+
+    const handleSync = () => {
+      setSchoolProfile(getSchoolSettings());
+    };
+
+    window.addEventListener('crm-school-settings-changed', handleSync);
+    return () => {
+      window.removeEventListener('crm-school-settings-changed', handleSync);
+    };
+  }, []);
 
   // 2. Courses State
   const [courses, setCourses] = useState<CourseSettingItem[]>([
@@ -398,7 +399,10 @@ export default function SettingsPage() {
         isOpen={activeModal === 'school'}
         onClose={() => setActiveModal(null)}
         data={schoolProfile}
-        onSave={setSchoolProfile}
+        onSave={(updated) => {
+          setSchoolProfile(updated);
+          saveSchoolSettings(updated);
+        }}
       />
 
       <CoursesSettingsModal

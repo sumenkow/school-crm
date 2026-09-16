@@ -30,9 +30,11 @@ import {
   MinusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FullLeadData, INITIAL_LEADS, TimelineInteraction, INITIAL_STUDENTS, splitFullName, buildFullName } from '@/lib/data/mockData';
+import { FullLeadData, INITIAL_LEADS, TimelineInteraction, INITIAL_STUDENTS, FullTaskData, splitFullName, buildFullName } from '@/lib/data/mockData';
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getTasksForLead, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
+import { getCombinedLeadTimeline } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
@@ -64,6 +66,62 @@ export default function LeadDetailsPage() {
     } catch {}
     return INITIAL_LEADS[0];
   });
+
+  const [leadTasks, setLeadTasks] = useState<FullTaskData[]>([]);
+
+  // Sync tasks and timeline when updated anywhere in the CRM
+  useEffect(() => {
+    async function loadTasksAndTimeline() {
+      try {
+        const tasks = await getTasksForLead(leadId);
+        setLeadTasks(tasks);
+
+        const combinedTimeline = getCombinedLeadTimeline(leadId, lead.interactions, lead.convertedStudentId);
+        if (combinedTimeline.length !== lead.interactions.length) {
+          setLead((prev) => ({
+            ...prev,
+            interactions: combinedTimeline,
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to sync lead tasks/timeline:', e);
+      }
+    }
+
+    loadTasksAndTimeline();
+
+    const handleSync = () => {
+      loadTasksAndTimeline();
+    };
+
+    window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('crm-timeline-interactions-changed', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, [leadId, lead.convertedStudentId]);
+
+  const handleToggleLeadTask = async (taskId: string) => {
+    const currentTask = leadTasks.find((t) => t.id === taskId);
+    const newStatus = currentTask?.status === 'done' ? 'open' : 'done';
+
+    setLeadTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    );
+
+    try {
+      await updateUnifiedTaskStatus(taskId, newStatus, {
+        performedBy: userName || 'Администратор',
+      });
+      toast.success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
+    } catch (err) {
+      console.error('Failed to update task:', err);
+    }
+  };
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -1136,6 +1194,91 @@ export default function LeadDetailsPage() {
             Переносится в карточку семьи и реестр родителей
           </div>
         </div>
+      </div>
+
+      {/* ПРЕДСТОЯЩИЕ ЗАДАЧИ ПО ЛИДУ */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="h-4 w-4 text-purple-600" />
+            <h3 className="text-sm font-bold text-slate-900">Предстоящие задачи и поручения</h3>
+            <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[11px] font-bold text-purple-800">
+              {leadTasks.filter((t) => t.status === 'open').length}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateTaskModalOpen(true)}
+            className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 hover:bg-purple-100 transition-colors cursor-pointer border border-purple-200"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Поставить задачу
+          </button>
+        </div>
+
+        {leadTasks.length > 0 ? (
+          <div className="space-y-2">
+            {leadTasks.map((t) => {
+              const isDone = t.status === 'done';
+              return (
+                <div
+                  key={t.id}
+                  className={cn(
+                    'flex items-start justify-between gap-3 p-3 rounded-xl border transition-all text-xs',
+                    isDone
+                      ? 'bg-slate-50 border-slate-200 opacity-60'
+                      : t.priority === 'high'
+                      ? 'bg-rose-50/50 border-rose-200'
+                      : 'bg-white border-slate-200 shadow-2xs'
+                  )}
+                >
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      checked={isDone}
+                      onChange={() => handleToggleLeadTask(t.id)}
+                      className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn('font-bold', isDone ? 'line-through text-slate-400' : 'text-slate-900')}>
+                          {t.title}
+                        </span>
+                        {t.priority === 'high' && !isDone && (
+                          <span className="rounded-full bg-rose-100 px-1.5 py-0.2 text-[10px] font-bold text-rose-700">
+                            Срочно
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                          Срок: {t.dueDateFormatted || t.dueDate}
+                        </span>
+                        {t.assignedTo && (
+                          <span className="text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">
+                            Отв: {t.assignedTo}
+                          </span>
+                        )}
+                      </div>
+                      {t.description && (
+                        <p className="text-[11px] text-slate-600 mt-1">{t.description}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
+                    isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  )}>
+                    {isDone ? 'Выполнено' : 'В работе'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400 py-2">
+            Нет активных задач по лиду. Нажмите «Поставить задачу», чтобы зафиксировать поручение.
+          </p>
+        )}
       </div>
 
       {/* TIMELINE ВЗАИМОДЕЙСТВИЙ (Section 13) */}

@@ -609,22 +609,27 @@ export default function StudentDetailsPage() {
   useEffect(() => {
     reconcileAllStudentDepositsAndDebts();
 
-    // Sync tasks when changed elsewhere
-    const handleTasksSync = async () => {
+    // Sync tasks and timeline when changed anywhere
+    const handleSync = async () => {
       try {
         const studentTasks = await getTasksForStudent(studentId);
-        if (studentTasks && studentTasks.length > 0) {
-          setStudent((prev) => ({
-            ...prev,
-            tasks: studentTasks,
-          }));
-        }
+        const parentIds = (student.parents || []).map((p) => p.id);
+        const combined = getCombinedStudentTimeline(studentId, student.interactions, parentIds);
+        setStudent((prev) => ({
+          ...prev,
+          tasks: studentTasks,
+          interactions: combined,
+        }));
       } catch {}
     };
 
-    window.addEventListener('crm-tasks-changed', handleTasksSync);
+    window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('crm-timeline-interactions-changed', handleSync);
+    window.addEventListener('focus', handleSync);
     return () => {
-      window.removeEventListener('crm-tasks-changed', handleTasksSync);
+      window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
+      window.removeEventListener('focus', handleSync);
     };
   }, [studentId]);
 

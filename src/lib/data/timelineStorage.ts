@@ -59,9 +59,38 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
       } catch {}
     }).catch(() => {});
 
+    // Dispatch global event for reactive UI update
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: item }));
   } catch (err) {
     console.error('Failed to save interaction to storage:', err);
   }
+}
+
+/**
+ * Retrieves full unified timeline for a lead.
+ */
+export function getCombinedLeadTimeline(
+  leadId: string,
+  baseInteractions: TimelineInteraction[] = [],
+  convertedStudentId?: string
+): TimelineInteraction[] {
+  const stored = getStoredInteractions();
+  const map = new Map<string, TimelineInteraction>();
+
+  baseInteractions.forEach((i) => map.set(i.id, i));
+
+  stored.forEach((i) => {
+    if (
+      (i as any).leadId === leadId ||
+      (convertedStudentId && i.studentId === convertedStudentId)
+    ) {
+      map.set(i.id, i);
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    return (b.id || '').localeCompare(a.id || '');
+  });
 }
 
 /**

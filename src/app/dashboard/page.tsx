@@ -47,6 +47,7 @@ import { TaskDetailsCardModal, UrgentTaskItem } from '@/components/dashboard/Tas
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
+import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { cn } from '@/lib/utils';
 
 // Helper: MD3 icon container
@@ -1034,11 +1035,23 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
     toast.success(`Явка на пробный урок «${student}» успешно зафиксирована`);
   };
 
-  const handleToggleTaskCompleted = (id: string, title: string) => {
+  const handleToggleTaskCompleted = async (id: string, title: string) => {
+    const current = urgentTasks.find((t) => t.id === id);
+    const newCompleted = !current?.completed;
+    const newStatus = newCompleted ? 'done' : 'open';
+
     setUrgentTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      prev.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t))
     );
-    toast.success(`Статус задачи обновлен`);
+
+    try {
+      await updateUnifiedTaskStatus(id, newStatus, {
+        performedBy: userName || 'Администратор',
+      });
+    } catch (err) {
+      console.error('Failed to sync task status from dashboard:', err);
+    }
+    toast.success(newCompleted ? `Задача «${title}» выполнена!` : `Задача открыта заново`);
   };
 
   const handleSaveTaskDetails = (updated: UrgentTaskItem) => {

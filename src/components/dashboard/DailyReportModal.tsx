@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { getEurRubRate, fetchLiveEurRubRate } from '@/lib/data/currencyHelper';
+import { getReportRecipientEmails } from '@/lib/data/schoolSettingsStorage';
 
 interface DailyReportData {
   date: string;
@@ -65,8 +66,24 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
   const [copiedText, setCopiedText] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
 
-  // The recipient email is always the email of the school owner/director from their user account
-  const effectiveOwnerEmail = ownerEmail || (typeof window !== 'undefined' ? (localStorage.getItem('crm_owner_email') || 'admin@smartacademy.ru') : 'admin@smartacademy.ru');
+  // The recipient emails are: 1. Owner user account email, 2. School settings email
+  const [recipientEmailsState, setRecipientEmailsState] = useState(() => getReportRecipientEmails());
+
+  useEffect(() => {
+    setRecipientEmailsState(getReportRecipientEmails());
+
+    const handleSettingsChanged = () => {
+      setRecipientEmailsState(getReportRecipientEmails());
+    };
+    window.addEventListener('crm-school-settings-changed', handleSettingsChanged);
+    return () => {
+      window.removeEventListener('crm-school-settings-changed', handleSettingsChanged);
+    };
+  }, []);
+
+  const effectiveOwnerEmail = ownerEmail || recipientEmailsState.ownerEmail;
+  const effectiveSchoolEmail = recipientEmailsState.schoolEmail;
+  const effectiveRecipientList = Array.from(new Set([effectiveOwnerEmail, effectiveSchoolEmail].filter((e) => e && e.includes('@'))));
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -158,9 +175,9 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
   const handleSendEmail = async () => {
     if (!report) return;
 
-    if (!effectiveOwnerEmail || !effectiveOwnerEmail.includes('@')) {
+    if (effectiveRecipientList.length === 0) {
       setShowConfig(true);
-      toast.error('Адрес электронной почты владельца не найден в его учетной записи');
+      toast.error('Адреса электронной почты руководителя и школы не найдены');
       return;
     }
 
@@ -172,7 +189,9 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           channel: 'email',
-          recipientEmail: effectiveOwnerEmail.trim(),
+          recipientEmail: effectiveOwnerEmail,
+          schoolEmail: effectiveSchoolEmail,
+          recipientEmails: effectiveRecipientList,
           senderName: userName || 'Администратор школы',
           senderRole: role,
           messageText: report.telegramText,
@@ -182,9 +201,9 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
 
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || 'Ошибка отправки на почту руководителя');
+        toast.error(data.error || 'Ошибка отправки на почту');
       } else {
-        toast.success(`Отчет успешно отправлен на email руководителя-владельца (${effectiveOwnerEmail})!`);
+        toast.success(`Отчет успешно отправлен на email руководителя (${effectiveOwnerEmail}) и настройки школы (${effectiveSchoolEmail})!`);
       }
     } catch (err: any) {
       toast.error('Ошибка: ' + err.message);
@@ -231,24 +250,39 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
             </div>
           ) : report ? (
             <>
-              {/* Destination info: Owner Email Callout */}
+              {/* Destination info: Dual Email Callout (Owner + School Settings) */}
               <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 flex items-start gap-3">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
                   <Shield size={18} />
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-xs">Адресат отчета: Руководитель-владелец</span>
+                    <span className="font-bold text-slate-900 text-xs">Адресаты отчета: Руководитель и Школа</span>
                     <span className="rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-800">
-                      Учетная запись владельца
+                      Сквозная отправка
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Mail size={13} className="text-blue-600 shrink-0" />
-                    <span className="font-semibold text-xs text-blue-950 break-all">{effectiveOwnerEmail}</span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                    <div className="rounded-lg bg-white/90 border border-blue-100 p-2 text-[11px]">
+                      <span className="text-slate-500 block text-[10px] font-semibold">1. Учетная запись владельца:</span>
+                      <div className="flex items-center gap-1 font-bold text-blue-950 mt-0.5 break-all">
+                        <Mail size={12} className="text-blue-600 shrink-0" />
+                        {effectiveOwnerEmail}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg bg-white/90 border border-blue-100 p-2 text-[11px]">
+                      <span className="text-slate-500 block text-[10px] font-semibold">2. Email в настройках школы:</span>
+                      <div className="flex items-center gap-1 font-bold text-blue-950 mt-0.5 break-all">
+                        <Mail size={12} className="text-blue-600 shrink-0" />
+                        {effectiveSchoolEmail}
+                      </div>
+                    </div>
                   </div>
+
                   <p className="text-[11px] text-slate-500 mt-1 leading-normal">
-                    При отправке отчета администратором он уходит на адрес электронной почты руководителя-владельца, указанный в его учетной записи.
+                    Отчет автоматически дублируется на оба адреса: в личную почту владельца и на общий электронный адрес организации из настроек.
                   </p>
                 </div>
               </div>
@@ -421,7 +455,7 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs"
             >
               <Mail size={15} />
-              {sendingEmail ? 'Отправка...' : `Отправить руководителю (${effectiveOwnerEmail})`}
+              {sendingEmail ? 'Отправка...' : `Отправить на Email (${effectiveRecipientList.join(' + ')})`}
             </button>
           </div>
         </div>

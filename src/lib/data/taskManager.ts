@@ -174,7 +174,7 @@ export async function updateUnifiedTaskStatus(
   // 1. Save to Task Storage
   saveTaskToStorage(updatedTask);
 
-  // 2. Add Timeline event
+  // 2. Add Timeline event with full cross-entity linking
   const statusLabels: Record<string, string> = {
     done: 'выполнена',
     in_progress: 'взята в работу',
@@ -185,19 +185,49 @@ export async function updateUnifiedTaskStatus(
   const label = statusLabels[newStatus] || newStatus;
   const timeNow = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+  // Resolve cross-entity links if missing
+  let resolvedStudentId = target.studentId;
+  let resolvedStudentName = target.studentName;
+  let resolvedParentId = target.parentId;
+  let resolvedParentName = target.parentName;
+  const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+
+  if (resolvedStudentId && (!resolvedParentId || !resolvedParentName)) {
+    const st = allStudents.find((s) => s.id === resolvedStudentId);
+    if (st && st.parents && st.parents.length > 0) {
+      if (!resolvedParentId) resolvedParentId = st.parents[0].id;
+      if (!resolvedParentName) resolvedParentName = `${st.parents[0].firstName} ${st.parents[0].lastName}`.trim();
+    }
+  } else if (resolvedParentId && (!resolvedStudentId || !resolvedStudentName)) {
+    for (const st of allStudents) {
+      const p = st.parents?.find((pr) => pr.id === resolvedParentId);
+      if (p) {
+        if (!resolvedStudentId) resolvedStudentId = st.id;
+        if (!resolvedStudentName) resolvedStudentName = `${st.firstName} ${st.lastName}`.trim();
+        break;
+      }
+    }
+  }
+
   const timelineItem: TimelineInteraction = {
     id: `int_task_status_${Date.now()}`,
-    studentId: target.studentId,
-    studentName: target.studentName,
-    parentId: target.parentId,
-    parentName: target.parentName,
+    studentId: resolvedStudentId,
+    studentName: resolvedStudentName,
+    parentId: resolvedParentId,
+    parentName: resolvedParentName,
     occurredAt: `Сегодня, ${timeNow}`,
     channel: 'other',
     type: 'status_change',
     author: options?.performedBy || 'Администратор',
     content: `Задача «${target.title}» отмечена как ${label}.${options?.comment ? ` Комментарий: ${options.comment}` : ''}${options?.newDueDate ? ` Новый срок: ${updatedTask.dueDateFormatted}` : ''}`,
     result: options?.comment || undefined,
+    targetType: target.parentId ? 'parent' : 'student',
+    targetName: target.parentId ? (resolvedParentName || 'Родитель') : (resolvedStudentName || 'Ученик'),
+    targetRole: target.parentId ? 'Родитель' : 'Ученик',
   };
+
+  (timelineItem as any).leadId = target.leadId;
+  (timelineItem as any).leadName = target.leadName;
 
   saveInteractionToStorage(timelineItem);
 
@@ -213,8 +243,8 @@ export async function updateUnifiedTaskStatus(
     performedBy: options?.performedBy || 'Администратор',
     oldStatus,
     newStatus,
-    studentName: target.studentName,
-    parentName: target.parentName,
+    studentName: resolvedStudentName || target.studentName,
+    parentName: resolvedParentName || target.parentName,
     leadName: target.leadName,
     comment: options?.comment,
   }).catch(() => {});
@@ -223,11 +253,15 @@ export async function updateUnifiedTaskStatus(
 }
 
 /**
- * Gets tasks associated with a specific student.
+ * Gets tasks associated with a specific student (and their parents).
  */
 export async function getTasksForStudent(studentId: string): Promise<FullTaskData[]> {
+  const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+  const st = allStudents.find((s) => s.id === studentId);
+  const parentIds = new Set(st?.parents?.map((p) => p.id) || []);
+
   const tasks = await getStoredTasks();
-  return tasks.filter((t) => t.studentId === studentId);
+  return tasks.filter((t) => t.studentId === studentId || (t.parentId && parentIds.has(t.parentId)));
 }
 
 /**
@@ -244,11 +278,21 @@ export async function getTasksForParent(parentId: string): Promise<FullTaskData[
 }
 
 /**
- * Gets tasks associated with a lead.
+ * Gets tasks associated with a lead (including converted student).
  */
 export async function getTasksForLead(leadId: string): Promise<FullTaskData[]> {
+  let convertedStudentId: string | undefined;
+  if (typeof window !== 'undefined') {
+    try {
+      const storedLeads = localStorage.getItem('crm_leads_v2');
+      const leads = storedLeads ? JSON.parse(storedLeads) : INITIAL_LEADS;
+      const found = leads.find((l: any) => l.id === leadId);
+      if (found) convertedStudentId = found.convertedStudentId;
+    } catch {}
+  }
+
   const tasks = await getStoredTasks();
-  return tasks.filter((t) => t.leadId === leadId);
+  return tasks.filter((t) => t.leadId === leadId || (convertedStudentId && t.studentId === convertedStudentId));
 }
 
 /**

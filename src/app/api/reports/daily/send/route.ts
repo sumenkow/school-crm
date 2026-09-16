@@ -57,17 +57,36 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Send via Email to Owner/Director
+    // 2. Send via Email to Owner/Director AND School Settings Email
     if (channel === 'email') {
-      const email = recipientEmail?.trim() || process.env.OWNER_EMAIL || process.env.ADMIN_REPORT_EMAIL;
+      const {
+        recipientEmail,
+        recipientEmails,
+        schoolEmail,
+      } = body as {
+        recipientEmail?: string;
+        recipientEmails?: string[];
+        schoolEmail?: string;
+      };
 
-      if (!email) {
+      const ownerMail = recipientEmail?.trim() || process.env.OWNER_EMAIL || 'admin@smartacademy.ru';
+      const schoolMail = schoolEmail?.trim() || process.env.SCHOOL_EMAIL || 'hello@smartacademy.ru';
+      
+      const combinedList = Array.from(
+        new Set(
+          [ownerMail, schoolMail, ...(recipientEmails || [])]
+            .map((e) => e?.trim())
+            .filter((e): e is string => Boolean(e && e.includes('@')))
+        )
+      );
+
+      if (combinedList.length === 0) {
         return NextResponse.json({
-          error: 'Адрес электронной почты руководителя-владельца не найден',
+          error: 'Адреса электронной почты для отправки отчета не найдены',
         }, { status: 400 });
       }
 
-      // If Resend API key is available, send via Resend
+      // If Resend API key is available, send via Resend to all recipients
       if (process.env.RESEND_API_KEY) {
         try {
           await fetch('https://api.resend.com/emails', {
@@ -78,7 +97,7 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               from: process.env.RESEND_FROM_EMAIL || 'CRM School <reports@school.ru>',
-              to: [email],
+              to: combinedList,
               subject: `📊 Ежедневный отчет (${senderName || 'Администратор'})`,
               text: messageText,
               html: emailHtml || `<pre style="font-family: sans-serif; white-space: pre-wrap;">${messageText}</pre>`,
@@ -89,11 +108,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      const formattedRecipients = combinedList.join(', ');
       return NextResponse.json({
         success: true,
         channel: 'email',
-        recipientEmail: email,
-        message: `Отчет успешно отправлен на email руководителя-владельца (${email})`,
+        recipientEmails: combinedList,
+        message: `Отчет успешно отправлен на email руководителя и email школы (${formattedRecipients})`,
       });
     }
 

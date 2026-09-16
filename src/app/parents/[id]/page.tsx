@@ -288,24 +288,30 @@ export default function ParentDetailsPage() {
   const [familyTasks, setFamilyTasks] = useState<FullTaskData[]>([]);
 
   useEffect(() => {
-    async function loadTasks() {
+    async function loadTasksAndTimeline() {
       try {
         const tasks = await getTasksForParent(parentId);
         setFamilyTasks(tasks);
+
+        const childrenIds = (parent?.children || []).map((c) => c.id);
+        const combined = getCombinedParentTimeline(parentId, childrenIds);
+        setInteractions(combined);
       } catch (e) {
-        console.error('Failed to load family tasks:', e);
+        console.error('Failed to load family tasks/timeline:', e);
       }
     }
-    loadTasks();
+    loadTasksAndTimeline();
 
     const handleSync = () => {
-      loadTasks();
+      loadTasksAndTimeline();
     };
 
     window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('crm-timeline-interactions-changed', handleSync);
     window.addEventListener('focus', handleSync);
     return () => {
       window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
       window.removeEventListener('focus', handleSync);
     };
   }, [parentId, parent.children]);
