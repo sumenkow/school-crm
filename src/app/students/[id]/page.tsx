@@ -1502,9 +1502,6 @@ export default function StudentDetailsPage() {
                   <MessageSquarePlus className="h-4 w-4 text-purple-600" />
                   Комментарии и отзывы преподавателей
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Таймлайн заметок преподавателя: успеваемость, поведение, выполнение ДЗ и рекомендации к ученику
-                </p>
               </div>
             </div>
 

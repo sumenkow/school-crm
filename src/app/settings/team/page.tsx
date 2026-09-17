@@ -825,11 +825,19 @@ function TeamContent() {
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-1.5 text-xs text-slate-700">
                             <Phone size={12} className="text-slate-400" />
-                            <span>{m.phone || '—'}</span>
+                            {m.phone ? (
+                              <a href={`tel:${m.phone.replace(/[^\d+]/g, '')}`} className="hover:text-blue-600 hover:underline">
+                                {m.phone}
+                              </a>
+                            ) : (
+                              <span>—</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-slate-500">
                             <Mail size={12} className="text-slate-400" />
-                            <span className="truncate max-w-[160px]">{m.email}</span>
+                            <a href={`mailto:${m.email}`} className="truncate max-w-[160px] hover:text-blue-600 hover:underline">
+                              {m.email}
+                            </a>
                           </div>
                         </div>
                       </td>

@@ -618,10 +618,10 @@ interface LeadCardProps {
 function getCourseBorderClass(course?: string) {
   if (!course) return 'border-l-4 border-l-purple-500';
   const c = course.toLowerCase();
-  if (c.includes('англ') || c.includes('english')) return 'border-l-4 border-l-blue-500';
+  if (c.includes('англ') || c.includes('english')) return 'border-l-4 border-l-purple-500';
   if (c.includes('робот') || c.includes('robot')) return 'border-l-4 border-l-amber-500';
   if (c.includes('матем') || c.includes('math')) return 'border-l-4 border-l-emerald-500';
-  return 'border-l-4 border-l-purple-500';
+  return 'border-l-4 border-l-indigo-500';
 }
 
 function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone, onDeleteLead }: LeadCardProps) {

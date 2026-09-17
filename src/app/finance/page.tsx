@@ -424,6 +424,9 @@ function FinanceContent() {
               const matchedStudent = students.find((st) => st.id === p.studentId);
               const contactPhone = matchedStudent?.parentPhone || matchedStudent?.phone || '+7 (999) 234-56-78';
               const digitsOnly = contactPhone.replace(/\D/g, '');
+              const reminderMsg = encodeURIComponent(
+                `Здравствуйте, ${p.parentName || 'уважаемый родитель'}! Напоминаем об оплате обучения ${p.studentName} за ${p.periodLabel || 'период'} в размере ${p.amountFormatted || `${p.amount} ₽`}. Подскажите, пожалуйста, удалось ли ознакомиться со счетом?`
+              );
 
               return (
                 <div key={p.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -463,11 +466,11 @@ function FinanceContent() {
                         Погасить долг
                       </button>
                       <a
-                        href={`https://wa.me/${digitsOnly}`}
+                        href={`https://wa.me/${digitsOnly}?text=${reminderMsg}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-bold flex items-center gap-1"
-                        title="Написать в WhatsApp"
+                        className="rounded-lg bg-emerald-50 px-2 py-1.5 text-emerald-700 hover:bg-emerald-100 transition-colors text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        title="Напомнить в WhatsApp с готовым текстом"
                       >
                         <span>WA</span>
                       </a>
@@ -475,7 +478,7 @@ function FinanceContent() {
                         href={`https://t.me/+${digitsOnly}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-lg bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 transition-colors"
+                        className="rounded-lg bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
                         title="Написать в Telegram"
                       >
                         <MessageSquare className="h-4 w-4" />

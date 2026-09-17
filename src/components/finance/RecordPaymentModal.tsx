@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, DollarSign, Calendar, Check, User, Users, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet, AlertCircle } from 'lucide-react';
+import { X, CreditCard, DollarSign, Calendar, Check, User, Users, Bell, Send, MessageSquare, ShieldCheck, Lock, Wallet, AlertCircle, Info } from 'lucide-react';
 import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit, settleFamilyDebtsFromFamilyDeposit } from '@/lib/data/studentStorage';
 import { savePaymentToStorage, settleOverduePayments, getStoredPayments } from '@/lib/data/paymentStorage';
@@ -36,8 +36,11 @@ export function RecordPaymentModal({
   const defaultId = initialStudentId || allowedStudents?.[0]?.id || allStudents[0]?.id || '1';
   const [studentId, setStudentId] = useState(defaultId);
   const [currency, setCurrency] = useState<'RUB' | 'EUR'>('EUR');
-  const [paymentType, setPaymentType] = useState<'subscription' | 'prepayment' | 'one_time'>('subscription');
   const [amount, setAmount] = useState('85');
+  const [amountEur, setAmountEur] = useState('85');
+  const [amountRub, setAmountRub] = useState(() => String(Math.round(85 * rate)));
+  const [showOwnerTemplate, setShowOwnerTemplate] = useState(false);
+  const [showParentTemplate, setShowParentTemplate] = useState(false);
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [periodLabel, setPeriodLabel] = useState(() => {
     return new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
@@ -45,6 +48,7 @@ export function RecordPaymentModal({
   const [paymentMethod, setPaymentMethod] = useState<FullPaymentData['paymentMethod']>('card');
   const [status, setStatus] = useState<FullPaymentData['status']>('paid');
   const [comment, setComment] = useState('');
+  const [paymentType, setPaymentType] = useState<'subscription' | 'prepayment' | 'one_time'>('subscription');
   const [autoRenewSubscription, setAutoRenewSubscription] = useState(true);
 
   useEffect(() => {
@@ -89,11 +93,45 @@ export function RecordPaymentModal({
 
   const handleCurrencyChange = (newCur: 'RUB' | 'EUR') => {
     setCurrency(newCur);
-    if (newCur === 'EUR' && (amount === '7600' || amount === '8400')) {
-      setAmount('85');
-    } else if (newCur === 'RUB' && (amount === '85' || amount === '100')) {
-      setAmount('7600');
+    if (newCur === 'EUR') {
+      const curEur = parseFloat(amountEur) || Math.round(((parseFloat(amountRub) || 7600) / rate) * 100) / 100;
+      setAmount(String(curEur));
+    } else {
+      const curRub = parseFloat(amountRub) || Math.round((parseFloat(amountEur) || 85) * rate);
+      setAmount(String(curRub));
     }
+  };
+
+  const handleRubInput = (val: string) => {
+    setAmountRub(val);
+    const num = parseFloat(val.replace(',', '.')) || 0;
+    if (num > 0) {
+      const calculatedEur = Math.round((num / rate) * 100) / 100;
+      setAmountEur(String(calculatedEur));
+      setAmount(currency === 'EUR' ? String(calculatedEur) : val);
+    } else {
+      setAmountEur('');
+      setAmount('');
+    }
+  };
+
+  const handleEurInput = (val: string) => {
+    setAmountEur(val);
+    const num = parseFloat(val.replace(',', '.')) || 0;
+    if (num > 0) {
+      const calculatedRub = Math.round(num * rate);
+      setAmountRub(String(calculatedRub));
+      setAmount(currency === 'EUR' ? val : String(calculatedRub));
+    } else {
+      setAmountRub('');
+      setAmount('');
+    }
+  };
+
+  const setPresetAmount = (rub: number, eur: number) => {
+    setAmountRub(String(rub));
+    setAmountEur(String(eur));
+    setAmount(currency === 'EUR' ? String(eur) : String(rub));
   };
 
   const handlePaymentTypeChange = (type: 'subscription' | 'prepayment' | 'one_time') => {
@@ -112,7 +150,8 @@ export function RecordPaymentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanAmount = String(amount).replace(',', '.').trim();
+    const effectiveAmountStr = amount || (currency === 'EUR' ? amountEur : amountRub);
+    const cleanAmount = String(effectiveAmountStr).replace(',', '.').trim();
     const numAmount = parseFloat(cleanAmount);
     if (isNaN(numAmount) || numAmount <= 0) {
       alert('Укажите корректную сумму платежа');
@@ -479,81 +518,67 @@ export function RecordPaymentModal({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-700">
-                  Сумма ({currencySymbol}) *
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Сумма в рублях (₽)</span>
+                  <span className="text-[10px] font-normal text-slate-400">1 € = {rate} ₽</span>
                 </label>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleCurrencyChange('EUR')}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                      currency === 'EUR'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    )}
-                  >
-                    € Евро (базовая)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCurrencyChange('RUB')}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                      currency === 'RUB'
-                        ? 'bg-emerald-600 text-white shadow-2xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    )}
-                  >
-                    ₽ Рубли
-                  </button>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={amountRub}
+                    onChange={(e) => handleRubInput(e.target.value)}
+                    placeholder={String(Math.round(85 * rate))}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-8 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">₽</span>
                 </div>
               </div>
-              <input
-                type="number"
-                required
-                min="0.01"
-                step="any"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={currency === 'EUR' ? '85' : '7600'}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
 
-              {/* Dynamic conversion preview */}
-              <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-500">
-                <span>
-                  {currency === 'EUR' ? (
-                    <>
-                      ≈ <strong className="text-emerald-700 font-bold">{((parseFloat(amount) || 0) * rate).toLocaleString('ru-RU')} ₽</strong>
-                    </>
-                  ) : (
-                    <>
-                      ≈ <strong className="text-emerald-700 font-bold">{Math.round(((parseFloat(amount) || 0) / (rate || 100)) * 100) / 100} €</strong>
-                    </>
-                  )}
-                </span>
-                <span className="text-[10px] text-slate-400">курс 1 € = {rate} ₽</span>
-              </div>
-
-              {/* Quick amount presets */}
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {(currency === 'EUR' ? ['65', '75', '85', '120', '150'] : ['6800', '7600', '8400', '12000']).map((val) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setAmount(val)}
-                    className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
-                  >
-                    {val} {currencySymbol}
-                  </button>
-                ))}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Сумма в евро (€)</span>
+                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Базовая</span>
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={amountEur}
+                    onChange={(e) => handleEurInput(e.target.value)}
+                    placeholder="85"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-8 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">€</span>
+                </div>
               </div>
             </div>
-            <div>
+
+            {/* Quick amount presets (ТЗ 3.3) */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {[
+                { label: '1 занятие', eur: 20, rub: Math.round(20 * rate) },
+                { label: 'Абонемент 4 зан.', eur: 75, rub: Math.round(75 * rate) },
+                { label: 'Абонемент 8 зан.', eur: 140, rub: Math.round(140 * rate) },
+                { label: 'Депозит', eur: 85, rub: Math.round(85 * rate) },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => setPresetAmount(preset.rub, preset.eur)}
+                  className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                >
+                  {preset.label} — {preset.eur} € / {preset.rub.toLocaleString('ru-RU')} ₽
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3">
               <label className="text-xs font-medium text-slate-700">
                 {paymentType === 'prepayment' ? 'Назначение депозита' : 'Период обучения'}
               </label>
@@ -618,75 +643,91 @@ export function RecordPaymentModal({
             </div>
           )}
 
-          {/* Notifications Section */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3.5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-bold text-slate-900">Уведомления о поступлении платежа</span>
+          {/* Notifications Section (ТЗ 3.3: Compact view with collapsible templates) */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Bell className="h-3.5 w-3.5 text-blue-600" />
+                <span className="text-xs font-bold text-slate-900">Уведомления и квитанции</span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-medium">Компактный вид</span>
             </div>
 
             {/* Notification 1: Owner */}
-            <div className="rounded-lg bg-white p-2.5 border border-slate-200/80 shadow-xs">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifyOwner}
-                  onChange={(e) => setNotifyOwner(e.target.checked)}
-                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                <div className="text-xs">
-                  <span className="font-semibold text-slate-800">Отправить статус владельцу школы</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Мгновенное финансовое push/Telegram оповещение о поступлении денег в кассу
-                  </p>
-                  {notifyOwner && (
-                    <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[10px] text-slate-600 font-mono">
-                      Бот: «Поступил платёж {Number(amount || 0).toLocaleString('ru-RU')} {currencySymbol} ({paymentType === 'prepayment' ? 'Предоплата' : paymentType === 'one_time' ? 'Разовое' : 'Абонемент'}) от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
-                    </div>
-                  )}
+            <div className="rounded-lg bg-white p-2 border border-slate-200/80 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={notifyOwner}
+                    onChange={(e) => setNotifyOwner(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="font-semibold text-slate-800">Оповестить владельца школы</span>
+                </label>
+                {notifyOwner && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOwnerTemplate(!showOwnerTemplate)}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
+                  >
+                    {showOwnerTemplate ? 'Скрыть текст' : 'Шаблон (i)'}
+                  </button>
+                )}
+              </div>
+              {notifyOwner && showOwnerTemplate && (
+                <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[10px] text-slate-600 font-mono">
+                  Бот: «Поступил платёж {Number(amountEur || 0).toLocaleString('ru-RU')} € / {Number(amountRub || 0).toLocaleString('ru-RU')} ₽ ({paymentType === 'prepayment' ? 'Предоплата' : paymentType === 'one_time' ? 'Разовое' : 'Абонемент'}) от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
                 </div>
-              </label>
+              )}
             </div>
 
             {/* Notification 2: Parents */}
-            <div className="rounded-lg bg-white p-2.5 border border-slate-200/80 shadow-xs">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={notifyParent}
-                  onChange={(e) => setNotifyParent(e.target.checked)}
-                  className="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                />
-                <div className="text-xs flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-800">
-                      Отправить квитанцию и статус родителю
-                    </span>
-                    {notifyParent && (
-                      <select
-                        value={parentChannel}
-                        onChange={(e) => setParentChannel(e.target.value as any)}
-                        className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700 focus:outline-none"
-                      >
-                        <option value="telegram">Telegram</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="sms">SMS</option>
-                        <option value="email">Email</option>
-                      </select>
-                    )}
+            <div className="rounded-lg bg-white p-2 border border-slate-200/80 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={notifyParent}
+                    onChange={(e) => setNotifyParent(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="font-semibold text-slate-800">Отправить чек родителю</span>
+                </label>
+                {notifyParent && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={parentChannel}
+                      onChange={(e) => setParentChannel(e.target.value as any)}
+                      className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 focus:outline-none"
+                    >
+                      <option value="telegram">Telegram</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="sms">SMS</option>
+                      <option value="email">Email</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowParentTemplate(!showParentTemplate)}
+                      className="text-[10px] text-emerald-700 hover:text-emerald-900 font-medium cursor-pointer"
+                    >
+                      {showParentTemplate ? 'Скрыть чек' : 'Шаблон (i)'}
+                    </button>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Получатель: <strong className="text-slate-700">{parentDisplayName}</strong> ({parent?.phone || 'Телефон не указан'})
-                  </p>
-                  {notifyParent && (
-                    <div className="mt-1.5 rounded bg-emerald-50/70 border border-emerald-100 p-2 text-[10px] text-emerald-900 leading-snug">
-                      {paymentType === 'prepayment'
-                        ? `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Предоплата за обучение ${selectedStudent.firstName} на сумму ${Number(amount || 0).toLocaleString('ru-RU')} ${currencySymbol} зачислена на баланс курса. Списание будет производиться по стоимости курса. Спасибо!»`
-                        : `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Оплата обучения ${selectedStudent.firstName} на сумму ${Number(amount || 0).toLocaleString('ru-RU')} ${currencySymbol} за ${periodLabel} подтверждена. Абонемент активен. Спасибо!»`}
-                    </div>
-                  )}
+                )}
+              </div>
+              {notifyParent && (
+                <div className="text-[10px] text-slate-500 mt-1">
+                  Получатель: <strong className="text-slate-700">{parentDisplayName}</strong> ({parent?.phone || 'Телефон не указан'})
                 </div>
-              </label>
+              )}
+              {notifyParent && showParentTemplate && (
+                <div className="mt-1.5 rounded bg-emerald-50/70 border border-emerald-100 p-2 text-[10px] text-emerald-900 leading-snug">
+                  {paymentType === 'prepayment'
+                    ? `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Предоплата за обучение ${selectedStudent.firstName} на сумму ${Number(amountEur || 0).toLocaleString('ru-RU')} € (${Number(amountRub || 0).toLocaleString('ru-RU')} ₽) зачислена на баланс курса. Списание будет производиться по стоимости курса. Спасибо!»`
+                    : `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Оплата обучения ${selectedStudent.firstName} на сумму ${Number(amountEur || 0).toLocaleString('ru-RU')} € (${Number(amountRub || 0).toLocaleString('ru-RU')} ₽) за ${periodLabel} подтверждена. Абонемент активен. Спасибо!»`}
+                </div>
+              )}
             </div>
           </div>
 

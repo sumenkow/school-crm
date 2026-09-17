@@ -288,15 +288,17 @@ export default function TasksPage() {
 
                     <span
                       className={cn(
-                        'rounded-full px-2.5 py-0.5 text-[10px] font-bold',
-                        task.priority === 'high' && 'bg-rose-100 text-rose-800',
-                        task.priority === 'medium' && 'bg-amber-100 text-amber-800',
-                        task.priority === 'low' && 'bg-slate-100 text-slate-700'
+                        'rounded-full px-2.5 py-0.5 text-[10px]',
+                        isDone
+                          ? 'bg-slate-100 text-slate-400 font-normal'
+                          : task.priority === 'high'
+                          ? 'bg-rose-100 text-rose-800 font-bold'
+                          : task.priority === 'medium'
+                          ? 'bg-amber-100 text-amber-800 font-bold'
+                          : 'bg-slate-100 text-slate-700 font-bold'
                       )}
                     >
-                      {task.priority === 'high' && 'Срочно'}
-                      {task.priority === 'medium' && 'Средний'}
-                      {task.priority === 'low' && 'Низкий'}
+                      {isDone ? 'Выполнена' : task.priority === 'high' ? 'Срочно' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
                     </span>
 
                     <button

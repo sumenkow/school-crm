@@ -1743,9 +1743,6 @@ export default function ParentDetailsPage() {
                 <Users className="h-5 w-5 text-blue-600" />
                 Дети семьи ({parent.children.length})
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Ученики, привязанные к данному родителю в рамках единого семейного аккаунта школы
-              </p>
             </div>
             <button
               type="button"
@@ -1947,9 +1944,6 @@ export default function ParentDetailsPage() {
                 <CreditCard className="h-5 w-5 text-emerald-600" />
                 Финансы и история оплат семьи ({filteredPayments.length})
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Сквозной учёт платежей по каждому ребёнку семьи в EUR и RUB с детализацией по курсам и абонементам
-              </p>
             </div>
             <button
               type="button"
@@ -2128,9 +2122,6 @@ export default function ParentDetailsPage() {
               <MessageSquare className="h-5 w-5 text-blue-600" />
               История взаимодействий с семьей (Единый Timeline)
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Сквозная история по всем детям и родителю с фиксацией звонков, переписок и изменений статусов
-            </p>
           </div>
 
           {/* Quick note form with channel and target selection */}
@@ -2204,12 +2195,12 @@ export default function ParentDetailsPage() {
                         </span>
 
                         {isParentAction ? (
-                          <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
-                            Родитель: {target.name}
+                          <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                            [Родитель: {target.name}]
                           </span>
                         ) : (
-                          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
-                            Ученик: {target.name}
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800 border border-blue-200">
+                            [{target.name}]
                           </span>
                         )}
                       </div>
@@ -2238,9 +2229,6 @@ export default function ParentDetailsPage() {
                 <CheckSquare className="h-5 w-5 text-purple-600" />
                 Задачи по семье и детям ({familyTasks.filter((t) => t.status === 'open').length} открытых)
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Сквозной список задач по родителю и всем привязанным детям семьи
-              </p>
             </div>
             <button
               type="button"

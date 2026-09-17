@@ -502,10 +502,27 @@ export default function ParentsPage() {
                       {p.phone}
                     </a>
                   </div>
+                  <a
+                    href={`https://wa.me/${p.phone.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
+                    title="Написать в WhatsApp"
+                  >
+                    WA
+                  </a>
                   {p.telegram && (
                     <div className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3 text-blue-500 shrink-0" />
-                      <span className="font-medium text-slate-700 truncate">{p.telegram}</span>
+                      <a
+                        href={`https://t.me/${p.telegram.replace('@', '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-blue-600 hover:underline truncate"
+                        title="Написать в Telegram"
+                      >
+                        {p.telegram}
+                      </a>
                     </div>
                   )}
                 </div>

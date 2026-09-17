@@ -27,6 +27,13 @@ const DAYS_MAP = [
   { dayIndex: 6, short: 'Вс', full: 'Воскресенье' },
 ];
 
+const TEACHER_ZOOM_LINKS: Record<string, string> = {
+  t1: 'https://zoom.us/j/7492049281', // Мария Иванова
+  t2: 'https://zoom.us/j/8392019482', // Денис Смирнов
+  t3: 'https://zoom.us/j/9182736451', // Ольга Соколова
+  t4: 'https://zoom.us/j/8291047261', // Анна Кузнецова
+};
+
 export function ScheduleCourseModal({
   isOpen,
   onClose,
@@ -42,9 +49,9 @@ export function ScheduleCourseModal({
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 4]); // Tue, Fri by default
   const [startTime, setStartTime] = useState('18:00');
   const [endTime, setEndTime] = useState('19:30');
-  const [room, setRoom] = useState('Онлайн (Zoom 1)');
+  const [room, setRoom] = useState('Онлайн (Zoom)');
   const [courseTopic, setCourseTopic] = useState('Интенсивный модуль: основы и разговорная практика');
-  const [onlineUrl, setOnlineUrl] = useState('https://meet.google.com/school-crm-course');
+  const [onlineUrl, setOnlineUrl] = useState('https://zoom.us/j/7492049281');
   const [notifyParents, setNotifyParents] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,10 +61,23 @@ export function ScheduleCourseModal({
       setGroups(stored);
       if (stored.length > 0) {
         setGroupId(stored[0].id);
-        setRoom(stored[0].room || 'Онлайн (Zoom 1)');
+        const tId = stored[0].teacherId || 't1';
+        setOnlineUrl(TEACHER_ZOOM_LINKS[tId] || 'https://zoom.us/j/7492049281');
+        setRoom(stored[0].room || 'Онлайн (Zoom)');
       }
     }
   }, [isOpen]);
+
+  // Auto-sync Zoom link on group change
+  useEffect(() => {
+    const grp = groups.find((g) => g.id === groupId);
+    if (grp) {
+      const tId = grp.teacherId || 't1';
+      const zoom = TEACHER_ZOOM_LINKS[tId] || 'https://zoom.us/j/7492049281';
+      setOnlineUrl(zoom);
+      if (grp.room) setRoom(grp.room);
+    }
+  }, [groupId, groups]);
 
   if (!isOpen) return null;
 
@@ -338,16 +358,21 @@ export function ScheduleCourseModal({
 
           {/* Video meeting link */}
           <div>
-            <label className="text-xs font-medium text-slate-700 flex items-center gap-1.5 mb-1">
-              <Video className="h-3.5 w-3.5 text-blue-600" />
-              Ссылка на онлайн-конференцию (Zoom / Google Meet)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5 text-blue-600" />
+                Постоянный онлайн-класс (Zoom)
+              </label>
+              <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                🔒 Ссылка преподавателя ({selectedGroup.teacherName})
+              </span>
+            </div>
             <input
               type="url"
               value={onlineUrl}
               onChange={(e) => setOnlineUrl(e.target.value)}
-              placeholder="https://meet.google.com/..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              placeholder="https://zoom.us/j/..."
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
             />
           </div>
 
