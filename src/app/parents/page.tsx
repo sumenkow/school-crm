@@ -26,6 +26,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
 import { getStoredStudents, reconcileAllStudentDepositsAndDebts, getDeletedParentIds, softDeleteParent, restoreParent } from '@/lib/data/studentStorage';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
+import { cn } from '@/lib/utils';
 
 interface ParentRecord {
   id: string;

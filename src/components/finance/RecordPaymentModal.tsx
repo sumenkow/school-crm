@@ -233,10 +233,12 @@ export function RecordPaymentModal({
       const nextRenewalDate = `${padP(lastDayOfNextMonth)}.${padP(nextMonth + 1)}.${nextMonthYear}`;
 
       updatedActiveSubscription = {
-        ...updatedActiveSubscription,
         id: updatedActiveSubscription?.id || `sub_${Date.now()}`,
         name: updatedActiveSubscription?.name || 'Ежемесячный абонемент',
+        period: updatedActiveSubscription?.period || '1 месяц',
+        price: updatedActiveSubscription?.price || String(numAmount),
         status: 'active' as const,
+        lessonsAttended: updatedActiveSubscription?.lessonsAttended || '0/8',
         renewalDate: nextRenewalDate,
         priceFormatted: formattedAmount,
         lessonsTotal: updatedActiveSubscription?.lessonsTotal || 8,

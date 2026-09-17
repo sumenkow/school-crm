@@ -10,6 +10,7 @@ export interface TimelineInteraction {
   targetName?: string;
   targetRole?: string;
   occurredAt: string;
+  createdAt?: string;
   channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other';
   type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other';
   author: string;
@@ -32,6 +33,8 @@ export interface TeacherComment {
 
 export interface FullStudentData extends Student {
   parents: Array<Parent & { relationshipType: string; isPrimary: boolean }>;
+  parentPhone?: string;
+  parentName?: string;
   groups: Array<{
     id: string;
     name: string;
@@ -57,10 +60,15 @@ export interface FullStudentData extends Student {
   };
   finance: {
     activeSubscription?: {
-      period: string;
-      price: string;
+      id?: string;
+      name?: string;
+      period?: string;
+      price?: string;
+      priceFormatted?: string;
       status: string;
-      lessonsAttended: string;
+      lessonsAttended?: string;
+      lessonsTotal?: number;
+      lessonsRemaining?: number;
       renewalDate: string;
     };
     deposit?: {
@@ -716,6 +724,8 @@ export interface FullGroupData {
   status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
   is_deleted?: boolean;
   deleted_at?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
   startDate: string;
   endDate?: string;
   notes?: string;
@@ -1286,6 +1296,8 @@ export interface FullLeadData {
   studentNotes?: string;
   is_deleted?: boolean;
   deleted_at?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
   parentNotes?: string;
   createdAt: string;
   convertedStudentId?: string;

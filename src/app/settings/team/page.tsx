@@ -809,10 +809,10 @@ function TeamContent() {
                         {m.role === 'teacher' ? (
                           <div className="flex flex-col gap-0.5">
                             <span className="text-xs font-semibold text-slate-800">
-                              {tData?.weeklyHours ? `${tData.weeklyHours} ч/нед • ${tData.studentsCount || 0} уч.` : 'Нагрузка уточняется'}
+                              {tData?.hoursPerWeek ? `${tData.hoursPerWeek} ч/нед • ${tData.activeStudentsCount || 0} уч.` : 'Нагрузка уточняется'}
                             </span>
                             <span className="text-[11px] text-slate-500">
-                              {tData?.activeGroups ? `${tData.activeGroups.length} активных онлайн-групп` : 'Индивидуальные занятия'}
+                              {tData?.groupsCount ? `${tData.groupsCount} активных онлайн-групп` : 'Индивидуальные занятия'}
                             </span>
                           </div>
                         ) : (
@@ -975,15 +975,15 @@ function TeamContent() {
                   {m.role === 'teacher' ? (
                     <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center border border-slate-100">
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.activeGroups?.length || 0}</p>
+                        <p className="text-sm font-bold text-slate-900">{tData?.groupsCount || 0}</p>
                         <p className="text-[10px] text-slate-500">Групп</p>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.studentsCount || 0}</p>
+                        <p className="text-sm font-bold text-slate-900">{tData?.activeStudentsCount || 0}</p>
                         <p className="text-[10px] text-slate-500">Учеников</p>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.weeklyHours ? `${tData.weeklyHours}ч` : '—'}</p>
+                        <p className="text-sm font-bold text-slate-900">{tData?.hoursPerWeek ? `${tData.hoursPerWeek}ч` : '—'}</p>
                         <p className="text-[10px] text-slate-500">В неделю</p>
                       </div>
                     </div>

@@ -84,7 +84,7 @@ const roleDescriptions: Record<UserRole, { title: string; subtitle: string; badg
 };
 
 export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
-  const { role, setRole, isOwnerAccount, userName, userEmail, userPhone, userTelegram, updateProfile } = useRole();
+  const { role, setRole, isOwnerAccount, isDevAccount, userName, userEmail, userPhone, userTelegram, updateProfile } = useRole();
   const toast = useToast();
 
   const [isEditing, setIsEditing] = useState(false);

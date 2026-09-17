@@ -20,7 +20,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const [capacity, setCapacity] = useState(group?.capacity || 8);
   const [schedule, setSchedule] = useState(group?.schedule || 'Пн, Чт • 17:00–18:30');
   const [room, setRoom] = useState(group?.room || 'Онлайн (Zoom)');
-  const [status, setStatus] = useState<'active' | 'recruiting' | 'paused' | 'archived'>(group?.status || 'active');
+  const [status, setStatus] = useState<FullGroupData['status']>(group?.status || 'active');
 
   useEffect(() => {
     if (group) {
@@ -115,7 +115,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
             >
               {INITIAL_COURSES.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} ({c.level})
+                  {c.name} {c.description ? `(${c.description})` : ''}
                 </option>
               ))}
             </select>

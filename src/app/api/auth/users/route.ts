@@ -165,7 +165,7 @@ export async function PATCH(request: NextRequest) {
       id: string;
       full_name: string;
       phone?: string;
-      role?: 'admin' | 'teacher';
+      role?: 'admin' | 'teacher' | 'owner';
       is_active?: boolean;
       new_password?: string;
     };
