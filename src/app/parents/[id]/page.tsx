@@ -137,11 +137,28 @@ export default function ParentDetailsPage() {
     if (typeof window === 'undefined') return;
     const allLessons = getStoredLessons();
     const childrenIds = new Set((parent.children || []).map((c) => c.id));
+    const nowMs = Date.now();
+
+    const parseLessonDateMs = (l: FullLessonData): number => {
+      if (!l.date) return 0;
+      let isoDate = l.date;
+      if (l.date.includes('.')) {
+        const parts = l.date.split('.');
+        if (parts.length === 3) {
+          isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+      const time = l.startTime && l.startTime.length >= 4 ? l.startTime : '00:00';
+      const parsed = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
     
     const matching: Array<{ lesson: FullLessonData; childName: string }> = [];
 
     for (const lesson of allLessons) {
       if (lesson.status === 'cancelled' || lesson.status === 'completed') continue;
+      const lessonMs = parseLessonDateMs(lesson);
+      if (lessonMs <= nowMs) continue;
 
       for (const st of lesson.students || []) {
         if (childrenIds.has(st.id)) {
@@ -158,8 +175,8 @@ export default function ParentDetailsPage() {
     }
 
     matching.sort((a, b) => {
-      const timeA = new Date(`${a.lesson.date}T${a.lesson.startTime || '00:00'}`).getTime();
-      const timeB = new Date(`${b.lesson.date}T${b.lesson.startTime || '00:00'}`).getTime();
+      const timeA = parseLessonDateMs(a.lesson);
+      const timeB = parseLessonDateMs(b.lesson);
       return timeA - timeB;
     });
 
@@ -667,6 +684,19 @@ export default function ParentDetailsPage() {
     notes: parent.notes,
   });
 
+  const [interactions, setInteractions] = useState<TimelineInteraction[]>(() => {
+    const childrenIds = (parent?.children || []).map((c: { id: string }) => c.id);
+    return getCombinedParentTimeline(parentId, childrenIds);
+  });
+
+  useEffect(() => {
+    const childrenIds = parent.children.map((c) => c.id);
+    const combined = getCombinedParentTimeline(parentId, childrenIds, interactions);
+    if (combined.length !== interactions.length) {
+      setInteractions(combined);
+    }
+  }, [parentId, parent.children]);
+
   const handleOpenEdit = () => {
     setEditForm({
       firstName: parent.firstName,
@@ -685,6 +715,9 @@ export default function ParentDetailsPage() {
 
   const handleSaveParent = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const previousChannel = parent.preferredChannel;
+    const newChannel = editForm.preferredChannel;
 
     setParent((prev) => ({
       ...prev,
@@ -751,6 +784,27 @@ export default function ParentDetailsPage() {
       whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
     });
 
+    // Log channel change interaction if modified
+    if (newChannel && newChannel !== previousChannel) {
+      const channelInteraction: TimelineInteraction = {
+        id: `int_channel_${Date.now()}`,
+        parentId: parent.id,
+        parentName: `${editForm.firstName.trim() || parent.firstName} ${editForm.lastName.trim() || parent.lastName}`,
+        occurredAt: 'Только что',
+        createdAt: new Date().toISOString(),
+        channel: (newChannel.toLowerCase().includes('email') ? 'email' : newChannel.toLowerCase().includes('tele') ? 'telegram' : 'other') as any,
+        type: 'status_change',
+        author: userName || 'Администратор школы',
+        content: `Способ связи изменен на: «${newChannel}». Настройки сохранены в базу.`,
+        result: 'Обновлен предпочтительный канал',
+        targetType: 'parent',
+        targetName: `${editForm.firstName.trim() || parent.firstName} ${editForm.lastName.trim() || parent.lastName}`,
+        targetRole: 'Родитель',
+      };
+      saveInteractionToStorage(channelInteraction);
+      setInteractions((prev) => sortTimelineChronologicalDesc([channelInteraction, ...prev]));
+    }
+
     window.dispatchEvent(new CustomEvent('crm-students-changed'));
     success('Данные родителя и состав семьи успешно сохранены!');
     setIsEditModalOpen(false);
@@ -805,23 +859,30 @@ export default function ParentDetailsPage() {
       console.warn('Supabase parent channel update warning:', e);
     }
 
+    // 4. Log interaction in timeline and save to storage & DB
+    const channelNameRu = newChannel === 'email' ? 'Email (почта)' : newChannel === 'telegram' ? 'Telegram' : 'Email и Telegram';
+    const channelInteraction: TimelineInteraction = {
+      id: `int_channel_${Date.now()}`,
+      parentId: parent.id,
+      parentName: `${parent.firstName} ${parent.lastName}`,
+      occurredAt: 'Только что',
+      createdAt: new Date().toISOString(),
+      channel: (newChannel === 'email' ? 'email' : newChannel === 'telegram' ? 'telegram' : 'other') as any,
+      type: 'status_change',
+      author: userName || 'Администратор школы',
+      content: `Предпочтительный канал связи изменен на: «${channelNameRu}». Все уведомления и отчеты теперь отправляются по этому каналу.`,
+      result: 'Канал связи обновлен',
+      targetType: 'parent',
+      targetName: `${parent.firstName} ${parent.lastName}`,
+      targetRole: 'Родитель',
+    };
+    saveInteractionToStorage(channelInteraction);
+    setInteractions((prev) => sortTimelineChronologicalDesc([channelInteraction, ...prev]));
+
     success(`Канал отправки уведомлений и отчётов обновлён: ${
       newChannel === 'email' ? '📧 Электронная почта' : newChannel === 'telegram' ? '✈️ Telegram' : '🔄 Почта и Telegram'
     }`);
   };
-
-  const [interactions, setInteractions] = useState<TimelineInteraction[]>(() => {
-    const childrenIds = (parent?.children || []).map((c: { id: string }) => c.id);
-    return getCombinedParentTimeline(parentId, childrenIds);
-  });
-
-  useEffect(() => {
-    const childrenIds = parent.children.map((c) => c.id);
-    const combined = getCombinedParentTimeline(parentId, childrenIds, interactions);
-    if (combined.length !== interactions.length) {
-      setInteractions(combined);
-    }
-  }, [parentId, parent.children]);
 
   // Timeline interaction form state
   const [newNote, setNewNote] = useState('');

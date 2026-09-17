@@ -15,23 +15,17 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   // Client type: 'school_student' (minor, through parents) vs 'adult_student' (18+, self-sufficient)
   const [clientType, setClientType] = useState<'school_student' | 'adult_student'>('school_student');
 
-  // Parent / Primary contact (3 separate fields)
-  const [parentLastName, setParentLastName] = useState('');
-  const [parentFirstName, setParentFirstName] = useState('');
-  const [parentMiddleName, setParentMiddleName] = useState('');
-
-  // Student (3 separate fields)
-  const [studentLastName, setStudentLastName] = useState('');
-  const [studentFirstName, setStudentFirstName] = useState('');
-  const [studentMiddleName, setStudentMiddleName] = useState('');
+  // Unified Full Name inputs (split automatically)
+  const [parentFullName, setParentFullName] = useState('');
+  const [studentFullName, setStudentFullName] = useState('');
 
   // Shared contacts (with prefix +)
   const [contact, setContact] = useState('+');
   const [telegram, setTelegram] = useState('');
 
-  // School student additional fields
-  const [studentAge, setStudentAge] = useState('');
-  const [studentGrade, setStudentGrade] = useState('');
+  // School student additional fields with strict number steppers
+  const [studentAge, setStudentAge] = useState<number>(10);
+  const [studentGrade, setStudentGrade] = useState<number>(5);
   const [parentNotes, setParentNotes] = useState('');
 
   // Adult student additional fields
@@ -43,7 +37,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [source, setSource] = useState('Сайт школы');
   const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
   const [nextAction, setNextAction] = useState('Первичный звонок / квалификация');
-  const [nextActionDate, setNextActionDate] = useState('Сегодня, 14:00');
+  const [nextActionDate, setNextActionDate] = useState(() => {
+    const d = new Date(Date.now() + 15 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `Сегодня, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [studentNotes, setStudentNotes] = useState('');
   const [comment, setComment] = useState('');
 
@@ -55,26 +53,35 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     const isAdult = clientType === 'adult_student';
 
     if (isAdult) {
-      if (!studentFirstName.trim() || !contact.trim() || contact.trim() === '+') {
-        alert('Укажите имя студента и контактный номер телефона');
+      if (!studentFullName.trim() || !contact.trim() || contact.trim() === '+') {
+        alert('Укажите ФИО студента и контактный номер телефона');
         return;
       }
     } else {
-      if (!parentFirstName.trim() || !contact.trim() || contact.trim() === '+') {
-        alert('Укажите имя родителя и контактный номер телефона');
+      if (!parentFullName.trim() || !contact.trim() || contact.trim() === '+') {
+        alert('Укажите ФИО родителя и контактный номер телефона');
         return;
       }
-      if (!studentFirstName.trim()) {
-        alert('Укажите имя ученика');
+      if (!studentFullName.trim()) {
+        alert('Укажите ФИО ученика');
         return;
       }
     }
 
-    const fullParent = buildFullName(parentLastName, parentFirstName, parentMiddleName);
-    const fullStudent = buildFullName(studentLastName, studentFirstName, studentMiddleName);
+    const { lastName: parentLastName, firstName: parentFirstName, middleName: parentMiddleName } = splitFullName(parentFullName);
+    const { lastName: studentLastName, firstName: studentFirstName, middleName: studentMiddleName } = splitFullName(studentFullName);
 
-    const effectiveName = isAdult ? fullStudent : fullParent;
-    const effectiveStudentName = fullStudent;
+    const effectiveName = isAdult ? studentFullName.trim() : parentFullName.trim();
+    const effectiveStudentName = studentFullName.trim();
+
+    const now = new Date();
+    const nowStr = now.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const createdLead: FullLeadData = {
       id: `lead_${Date.now()}`,
@@ -82,16 +89,16 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       name: effectiveName,
       contact: contact.trim(),
       telegram: telegram ? (telegram.startsWith('@') ? telegram : `@${telegram}`) : undefined,
-      parentLastName: isAdult ? undefined : (parentLastName.trim() || undefined),
-      parentFirstName: isAdult ? undefined : (parentFirstName.trim() || undefined),
-      parentMiddleName: isAdult ? undefined : (parentMiddleName.trim() || undefined),
-      studentLastName: studentLastName.trim() || undefined,
-      studentFirstName: studentFirstName.trim(),
-      studentMiddleName: studentMiddleName.trim() || undefined,
+      parentLastName: isAdult ? undefined : (parentLastName || undefined),
+      parentFirstName: isAdult ? undefined : (parentFirstName || undefined),
+      parentMiddleName: isAdult ? undefined : (parentMiddleName || undefined),
+      studentLastName: studentLastName || undefined,
+      studentFirstName: studentFirstName || effectiveStudentName,
+      studentMiddleName: studentMiddleName || undefined,
       studentName: effectiveStudentName,
-      studentAge: isAdult ? adultOccupation.trim() || undefined : studentAge.trim() || undefined,
-      studentGrade: isAdult ? undefined : (studentGrade.trim() || undefined),
-      grade: isAdult ? undefined : (studentGrade.trim() || undefined),
+      studentAge: isAdult ? adultOccupation.trim() || undefined : String(studentAge),
+      studentGrade: isAdult ? undefined : `${studentGrade} класс`,
+      grade: isAdult ? undefined : `${studentGrade} класс`,
       directionOrCourse,
       source,
       assignedTo,
@@ -107,7 +114,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       interactions: [
         {
           id: `int_${Date.now()}`,
-          occurredAt: 'Только что',
+          occurredAt: nowStr,
           channel: 'phone',
           type: 'initial_contact',
           author: assignedTo || 'Администратор',
@@ -231,31 +238,15 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700">ФИО родителя *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={parentLastName}
-                    onChange={(e) => setParentLastName(e.target.value)}
-                    placeholder="Фамилия"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={parentFirstName}
-                    onChange={(e) => setParentFirstName(e.target.value)}
-                    placeholder="Имя *"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={parentMiddleName}
-                    onChange={(e) => setParentMiddleName(e.target.value)}
-                    placeholder="Отчество"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО родителя (Фамилия Имя Отчество) *</label>
+                <input
+                  type="text"
+                  required
+                  value={parentFullName}
+                  onChange={(e) => setParentFullName(e.target.value)}
+                  placeholder="Иванова Мария Сергеевна"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -292,53 +283,71 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700">ФИО ученика *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={studentLastName}
-                    onChange={(e) => setStudentLastName(e.target.value)}
-                    placeholder="Фамилия"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={studentFirstName}
-                    onChange={(e) => setStudentFirstName(e.target.value)}
-                    placeholder="Имя *"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={studentMiddleName}
-                    onChange={(e) => setStudentMiddleName(e.target.value)}
-                    placeholder="Отчество"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                  />
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО ученика (Фамилия Имя Отчество) *</label>
+                <input
+                  type="text"
+                  required
+                  value={studentFullName}
+                  onChange={(e) => setStudentFullName(e.target.value)}
+                  placeholder="Иванов Петр Сергеевич"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-slate-700">Возраст</label>
-                  <input
-                    type="text"
-                    value={studentAge}
-                    onChange={(e) => setStudentAge(e.target.value)}
-                    placeholder="9 лет или 14"
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
-                  />
+                  <label className="text-xs font-medium text-slate-700">Возраст (лет)</label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setStudentAge((prev) => Math.max(4, prev - 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={4}
+                      max={20}
+                      value={studentAge}
+                      onChange={(e) => setStudentAge(parseInt(e.target.value) || 0)}
+                      className="w-16 text-center rounded-lg border border-slate-200 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStudentAge((prev) => Math.min(20, prev + 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-slate-700">Класс</label>
-                  <input
-                    type="text"
-                    value={studentGrade}
-                    onChange={(e) => setStudentGrade(e.target.value)}
-                    placeholder="3 класс / 8 класс"
-                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none bg-white"
-                  />
+                  <label className="text-xs font-medium text-slate-700">Класс (1-11)</label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setStudentGrade((prev) => Math.max(1, prev - 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={11}
+                      value={studentGrade}
+                      onChange={(e) => setStudentGrade(parseInt(e.target.value) || 1)}
+                      className="w-16 text-center rounded-lg border border-slate-200 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStudentGrade((prev) => Math.min(11, prev + 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-700">О ребенке</label>
@@ -372,31 +381,15 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </div>
 
               <div>
-                <label className="text-xs font-medium text-slate-700">ФИО студента *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
-                  <input
-                    type="text"
-                    value={studentLastName}
-                    onChange={(e) => setStudentLastName(e.target.value)}
-                    placeholder="Фамилия"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    required
-                    value={studentFirstName}
-                    onChange={(e) => setStudentFirstName(e.target.value)}
-                    placeholder="Имя *"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                  />
-                  <input
-                    type="text"
-                    value={studentMiddleName}
-                    onChange={(e) => setStudentMiddleName(e.target.value)}
-                    placeholder="Отчество"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
-                  />
-                </div>
+                <label className="text-xs font-medium text-slate-700">ФИО студента (Фамилия Имя Отчество) *</label>
+                <input
+                  type="text"
+                  required
+                  value={studentFullName}
+                  onChange={(e) => setStudentFullName(e.target.value)}
+                  placeholder="Иванов Алексей Петрович"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

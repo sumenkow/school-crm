@@ -178,13 +178,19 @@ export function RecordPaymentModal({
       interactionResult = status === 'paid' ? 'Разовая оплата' : 'Ожидается оплата';
     }
 
+    const nowP = new Date();
+    const padP = (n: number) => String(n).padStart(2, '0');
+    const dateStrP = `${padP(nowP.getDate())}.${padP(nowP.getMonth() + 1)}.${nowP.getFullYear()}`;
+    const timeStrP = `${padP(nowP.getHours())}:${padP(nowP.getMinutes())}`;
+
     const paymentInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: freshStudent.id,
       studentName: `${freshStudent.firstName} ${freshStudent.lastName}`,
       parentId: parent?.id,
       parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
-      occurredAt: 'Только что',
+      occurredAt: `${dateStrP}, ${timeStrP}`,
+      createdAt: nowP.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: 'Администратор школы',
@@ -218,12 +224,33 @@ export function RecordPaymentModal({
       };
     }
 
+    let updatedActiveSubscription = freshStudent.finance?.activeSubscription;
+    if (autoRenewSubscription && status === 'paid' && paymentType === 'subscription') {
+      const pDate = new Date(paymentDate);
+      const nextMonthYear = pDate.getMonth() === 11 ? pDate.getFullYear() + 1 : pDate.getFullYear();
+      const nextMonth = (pDate.getMonth() + 1) % 12;
+      const lastDayOfNextMonth = new Date(nextMonthYear, nextMonth + 1, 0).getDate();
+      const nextRenewalDate = `${padP(lastDayOfNextMonth)}.${padP(nextMonth + 1)}.${nextMonthYear}`;
+
+      updatedActiveSubscription = {
+        ...updatedActiveSubscription,
+        id: updatedActiveSubscription?.id || `sub_${Date.now()}`,
+        name: updatedActiveSubscription?.name || 'Ежемесячный абонемент',
+        status: 'active' as const,
+        renewalDate: nextRenewalDate,
+        priceFormatted: formattedAmount,
+        lessonsTotal: updatedActiveSubscription?.lessonsTotal || 8,
+        lessonsRemaining: updatedActiveSubscription?.lessonsTotal || 8,
+      };
+    }
+
     const updatedStudent = {
       ...freshStudent,
       finance: {
         ...freshStudent.finance,
         payments: [paymentRecordForStudent, ...currentPayments],
         ...(updatedDeposit ? { deposit: updatedDeposit } : {}),
+        ...(updatedActiveSubscription ? { activeSubscription: updatedActiveSubscription } : {}),
       },
       interactions: [paymentInteraction, ...(freshStudent.interactions || [])],
     };

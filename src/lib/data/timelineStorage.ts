@@ -111,6 +111,22 @@ export function getStoredInteractions(): TimelineInteraction[] {
 export function saveInteractionToStorage(item: TimelineInteraction): void {
   if (typeof window === 'undefined') return;
   try {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const todayStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    // Never leave relative 'Только что' or 'Сегодня' unpersisted — freeze exact date and time
+    if (!item.occurredAt || item.occurredAt === 'Только что') {
+      item.occurredAt = `${todayStr}, ${timeStr}`;
+    } else if (item.occurredAt.toLowerCase().startsWith('сегодня')) {
+      item.occurredAt = item.occurredAt.replace(/сегодня/i, todayStr);
+    }
+
+    const isoCreatedAt = (item as any).created_at || (item as any).createdAt || (item as any).date || now.toISOString();
+    (item as any).createdAt = isoCreatedAt;
+    (item as any).created_at = isoCreatedAt;
+
     const existing = getStoredInteractions();
     const updated = [item, ...existing.filter((i) => i.id !== item.id)];
     localStorage.setItem(TIMELINE_STORAGE_KEY, JSON.stringify(updated));
@@ -138,7 +154,7 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
           type: (item.type as any) || 'comment',
           title: (item as any).title || item.content?.slice(0, 50) || 'Заметка',
           description: item.content || (item as any).description || null,
-          created_at: (item as any).created_at || (item as any).date || new Date().toISOString(),
+          created_at: isoCreatedAt,
           is_mock_data: false,
         }).then(() => {}, () => {});
       } catch {}

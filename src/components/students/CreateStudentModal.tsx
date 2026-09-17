@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, BookOpen, GraduationCap, School } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction, splitFullName, buildFullName } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { saveStudentToStorage, settleDebtsFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { qualifyAndConvertLead } from '@/lib/data/leadStorage';
@@ -68,10 +68,12 @@ export function CreateStudentModal({
 }: CreateStudentModalProps) {
   // Student fields
   const [studentType, setStudentType] = useState<'school_student' | 'adult_student'>('school_student');
+  const [studentFullName, setStudentFullName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [grade, setGrade] = useState('');
+  const [gradeNumber, setGradeNumber] = useState<number>(5);
+  const [grade, setGrade] = useState('5 класс');
   const [phone, setPhone] = useState('');
   const [telegram, setTelegram] = useState('');
   const [status, setStatus] = useState('active');
@@ -80,6 +82,7 @@ export function CreateStudentModal({
 
   // Parent fields
   const [parentMode, setParentMode] = useState<'new' | 'existing'>('new');
+  const [parentFullName, setParentFullName] = useState('');
   const [parentFirstName, setParentFirstName] = useState('');
   const [parentLastName, setParentLastName] = useState('');
   const [parentPhone, setParentPhone] = useState('');
@@ -91,16 +94,27 @@ export function CreateStudentModal({
   useEffect(() => {
     if (isOpen && initialData) {
       setStudentType(initialData.studentType || 'school_student');
+      const initialSName = [initialData.lastName, initialData.firstName].filter(Boolean).join(' ');
+      setStudentFullName(initialSName || '');
       setFirstName(initialData.firstName || '');
       setLastName(initialData.lastName || '');
       setBirthDate(initialData.birthDate || '');
-      setGrade(initialData.grade || '');
+      if (initialData.grade) {
+        const num = parseInt(initialData.grade.replace(/\D/g, '')) || 5;
+        setGradeNumber(num);
+        setGrade(`${num} класс`);
+      } else {
+        setGradeNumber(5);
+        setGrade('5 класс');
+      }
       setPhone(initialData.phone || '');
       setTelegram(initialData.telegram || '');
       setStatus(initialData.status || 'active');
       setNotes(initialData.notes || '');
       if (initialData.group) setGroup(initialData.group);
       if (initialData.parentMode) setParentMode(initialData.parentMode);
+      const initialPName = [initialData.parentLastName, initialData.parentFirstName].filter(Boolean).join(' ');
+      setParentFullName(initialPName || '');
       setParentFirstName(initialData.parentFirstName || '');
       setParentLastName(initialData.parentLastName || '');
       setParentPhone(initialData.parentPhone || '');
@@ -110,17 +124,19 @@ export function CreateStudentModal({
     } else if (isOpen && !initialData) {
       // Reset
       setStudentType('school_student');
+      setStudentFullName('');
       setFirstName('');
       setLastName('');
       setBirthDate('');
-      setGrade('');
-      setBirthDate('');
+      setGradeNumber(5);
+      setGrade('5 класс');
       setPhone('');
       setTelegram('');
       setStatus('active');
       setNotes('');
       setGroup('English B1 Teens');
       setParentMode('new');
+      setParentFullName('');
       setParentFirstName('');
       setParentLastName('');
       setParentPhone('');
@@ -135,35 +151,53 @@ export function CreateStudentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      alert('Пожалуйста, укажите имя и фамилию ученика');
+    const { lastName: sLast, firstName: sFirst } = splitFullName(studentFullName);
+    const effStudentFirstName = sFirst || studentFullName.trim();
+    const effStudentLastName = sLast || '';
+
+    if (!studentFullName.trim() || !effStudentFirstName) {
+      alert('Пожалуйста, укажите ФИО ученика');
       return;
     }
+
+    const { lastName: pLast, firstName: pFirst } = splitFullName(parentFullName);
+    const effParentFirstName = parentMode === 'existing' ? parentFirstName : (pFirst || parentFullName.trim());
+    const effParentLastName = parentMode === 'existing' ? parentLastName : pLast;
 
     const newStudentId = `std_${Date.now()}`;
     const parentId =
       parentMode === 'existing' && selectedParentId
         ? selectedParentId
         : (initialData as any)?.parentId || `p_${Date.now()}`;
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    const fullName = studentFullName.trim();
     const courseName = group.includes('English')
       ? 'Английский язык'
       : group.includes('Robotics')
       ? 'Робототехника'
       : 'Математика';
 
-
-    const parentFullName = `${parentFirstName.trim()} ${parentLastName.trim()}`.trim();
+    const effParentFullName = parentMode === 'existing'
+      ? `${parentFirstName.trim()} ${parentLastName.trim()}`.trim()
+      : parentFullName.trim();
 
     const isAdult = studentType === 'adult_student';
+
+    const now = new Date();
+    const nowStr = now.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
 
     const creationInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: newStudentId,
       studentName: fullName,
       parentId: parentId,
-      parentName: parentFullName || undefined,
-      occurredAt: 'Только что',
+      parentName: effParentFullName || undefined,
+      occurredAt: nowStr,
       channel: (preferredChannel as any) || 'telegram',
       type: 'status_change',
       author: 'Администратор школы',
@@ -172,7 +206,7 @@ export function CreateStudentModal({
         : `Создана карточка (${isAdult ? 'Студент 18+' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
       result: 'Карточка ученика сохранена',
       targetType: isAdult ? 'student' : 'parent',
-      targetName: isAdult ? fullName : (parentFullName || 'Родитель'),
+      targetName: isAdult ? fullName : (effParentFullName || 'Родитель'),
       targetRole: isAdult ? 'Студент' : 'Родитель',
     };
 
@@ -184,9 +218,9 @@ export function CreateStudentModal({
         studentId: newStudentId,
         studentName: fullName,
         parentId: parentId,
-        parentName: parentFullName || undefined,
+        parentName: effParentFullName || undefined,
         targetType: int.targetType || (isStudentAction ? 'student' : 'parent'),
-        targetName: int.targetName || (isStudentAction ? fullName : (parentFullName || 'Родитель')),
+        targetName: int.targetName || (isStudentAction ? fullName : (effParentFullName || 'Родитель')),
         targetRole: int.targetRole || (isStudentAction ? (isAdult ? 'Студент' : 'Ученик') : 'Родитель'),
       };
     });
@@ -195,24 +229,24 @@ export function CreateStudentModal({
 
     const newFullStudent: FullStudentData = {
       id: newStudentId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: effStudentFirstName,
+      lastName: effStudentLastName,
       studentType,
       birthDate: birthDate || '2012-05-15',
-      grade: grade.trim() || undefined,
+      grade: `${gradeNumber} класс`,
       phone: isAdult ? (phone.trim() || '—') : (phone.trim() || parentPhone || '—'),
       telegram: telegram.trim() || (isAdult ? undefined : parentTelegram) || undefined,
       status: (status as any) || 'active',
       notes: notes.trim() || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      parents: isAdult && !parentFirstName.trim()
+      parents: isAdult && !effParentFirstName
         ? []
         : [
             {
               id: parentId,
-              firstName: parentFirstName.trim() || (isAdult ? 'Контакт' : 'Родитель'),
-              lastName: parentLastName.trim() || '',
+              firstName: effParentFirstName || (isAdult ? 'Контакт' : 'Родитель'),
+              lastName: effParentLastName || '',
               phone: parentPhone || '—',
               telegram: parentTelegram || undefined,
               preferredChannel: (preferredChannel as any) || 'telegram',
@@ -416,25 +450,14 @@ export function CreateStudentModal({
               {studentType === 'adult_student' ? '1. Данные совершеннолетнего студента' : '1. Данные школьника'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-slate-700">Имя ученика *</label>
+              <div className="sm:col-span-2">
+                <label className="text-xs font-medium text-slate-700">ФИО ученика (Фамилия Имя Отчество) *</label>
                 <input
                   type="text"
                   required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="Иван"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-700">Фамилия ученика *</label>
-                <input
-                  type="text"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Смирнов"
+                  value={studentFullName}
+                  onChange={(e) => setStudentFullName(e.target.value)}
+                  placeholder="Смирнов Иван Алексеевич"
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -448,14 +471,31 @@ export function CreateStudentModal({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-700">Класс / Ступень обучения</label>
-                <input
-                  type="text"
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  placeholder="Например: 5 класс или 8"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none bg-white"
-                />
+                <label className="text-xs font-medium text-slate-700">Класс (1-11)</label>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setGradeNumber((prev) => Math.max(1, prev - 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={11}
+                    value={gradeNumber}
+                    onChange={(e) => setGradeNumber(parseInt(e.target.value) || 1)}
+                    className="w-16 text-center rounded-lg border border-slate-200 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setGradeNumber((prev) => Math.min(11, prev + 1))}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-700">Статус</label>
@@ -537,23 +577,14 @@ export function CreateStudentModal({
 
             {parentMode === 'new' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl bg-slate-50/60 p-3.5 border border-slate-200">
-                <div>
-                  <label className="text-xs font-medium text-slate-700">Имя родителя</label>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-slate-700">ФИО родителя (Фамилия Имя Отчество) *</label>
                   <input
                     type="text"
-                    value={parentFirstName}
-                    onChange={(e) => setParentFirstName(e.target.value)}
-                    placeholder="Ольга"
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-slate-700">Фамилия родителя</label>
-                  <input
-                    type="text"
-                    value={parentLastName}
-                    onChange={(e) => setParentLastName(e.target.value)}
-                    placeholder="Смирнова"
+                    required
+                    value={parentFullName}
+                    onChange={(e) => setParentFullName(e.target.value)}
+                    placeholder="Смирнова Ольга Дмитриевна"
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:outline-none"
                   />
                 </div>

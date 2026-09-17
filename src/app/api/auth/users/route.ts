@@ -21,7 +21,7 @@ async function verifyOwner() {
     return { error: 'Доступ разрешен только владельцу или разработчику', status: 403 };
   }
 
-  return { currentUserId: user.id };
+  return { currentUserId: user.id, callerRole: profile.role as 'developer' | 'owner' };
 }
 
 // GET /api/auth/users — list all team members
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       email: string;
       password?: string;
       full_name: string;
-      role: 'admin' | 'teacher';
+      role: 'owner' | 'admin' | 'teacher';
       phone?: string;
     };
 
@@ -70,7 +70,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Заполните email, имя и выберите роль' }, { status: 400 });
     }
 
-    if (role !== 'admin' && role !== 'teacher') {
+    if (role === 'owner') {
+      if (check.callerRole !== 'developer') {
+        return NextResponse.json({ error: 'Назначать роль Владельца может только Разработчик системы' }, { status: 403 });
+      }
+    } else if (role !== 'admin' && role !== 'teacher') {
       return NextResponse.json({ error: 'Можно создавать только Администраторов или Преподавателей' }, { status: 400 });
     }
 
@@ -183,8 +187,13 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Сотрудник не найден' }, { status: 404 });
     }
 
-    // Owner role cannot be changed
-    const effectiveRole = targetProfile.role === 'owner' ? 'owner' : (role || targetProfile.role);
+    // Only developer can escalate role to owner
+    if (role === 'owner' && targetProfile.role !== 'owner' && check.callerRole !== 'developer') {
+      return NextResponse.json({ error: 'Назначать роль Владельца может только Разработчик системы' }, { status: 403 });
+    }
+
+    // Owner role cannot be changed by non-developer
+    const effectiveRole = targetProfile.role === 'owner' && check.callerRole !== 'developer' ? 'owner' : (role || targetProfile.role);
 
     // 1. If new password provided, update via Supabase Admin API
     if (new_password && new_password.trim().length > 0) {

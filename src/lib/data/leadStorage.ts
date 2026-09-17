@@ -3,9 +3,20 @@ import { createClient } from '@/lib/supabase/client';
 
 const LEADS_STORAGE_KEY = 'crm_leads_v2';
 
-export function getStoredLeads(includeConverted: boolean = false): FullLeadData[] {
+export function getStoredLeads(includeConverted: boolean = false, includeDeleted: boolean = false): FullLeadData[] {
+  const filterLeads = (leads: FullLeadData[]) => {
+    let res = leads;
+    if (!includeDeleted) {
+      res = res.filter((l) => !l.is_deleted && !(l as any).isDeleted);
+    }
+    if (!includeConverted) {
+      res = res.filter((l) => (l.status as string) !== 'enrolled');
+    }
+    return res;
+  };
+
   if (typeof window === 'undefined') {
-    return includeConverted ? INITIAL_LEADS : INITIAL_LEADS.filter((l) => (l.status as string) !== 'enrolled');
+    return filterLeads(INITIAL_LEADS);
   }
 
   try {
@@ -31,13 +42,10 @@ export function getStoredLeads(includeConverted: boolean = false): FullLeadData[
       }
     }
 
-    if (!includeConverted) {
-      return leads.filter((l) => (l.status as string) !== 'enrolled');
-    }
-    return leads;
+    return filterLeads(leads);
   } catch (err) {
     console.error('Failed to get stored leads:', err);
-    return includeConverted ? INITIAL_LEADS : INITIAL_LEADS.filter((l) => (l.status as string) !== 'enrolled');
+    return filterLeads(INITIAL_LEADS);
   }
 }
 
@@ -103,6 +111,31 @@ export function qualifyAndConvertLead(leadId: string, convertedStudentId: string
     targetLead.status = 'enrolled' as any;
     targetLead.convertedStudentId = convertedStudentId;
     if (convertedParentId) targetLead.convertedParentId = convertedParentId;
+    saveLeadToStorage(targetLead);
+  }
+}
+
+export function softDeleteLead(leadId: string): void {
+  const currentLeads = getStoredLeads(true, true);
+  const targetLead = currentLeads.find((l) => l.id === leadId);
+  if (targetLead) {
+    const now = new Date().toISOString();
+    targetLead.isDeleted = true;
+    targetLead.is_deleted = true;
+    targetLead.deletedAt = now;
+    targetLead.deleted_at = now;
+    saveLeadToStorage(targetLead);
+  }
+}
+
+export function restoreLead(leadId: string): void {
+  const currentLeads = getStoredLeads(true, true);
+  const targetLead = currentLeads.find((l) => l.id === leadId);
+  if (targetLead) {
+    targetLead.isDeleted = false;
+    targetLead.is_deleted = false;
+    targetLead.deletedAt = undefined;
+    targetLead.deleted_at = undefined;
     saveLeadToStorage(targetLead);
   }
 }

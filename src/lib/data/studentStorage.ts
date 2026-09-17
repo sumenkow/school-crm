@@ -767,4 +767,136 @@ export function reconcileAllStudentDepositsAndDebts(): void {
   }
 }
 
+/**
+ * Soft deletes a student: marks status as archived and is_deleted as true.
+ * Persists immediately to localStorage and Supabase.
+ */
+export function softDeleteStudent(studentId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const students = getStoredStudents();
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+
+    const updated: FullStudentData = {
+      ...student,
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      status: 'archived' as any,
+    };
+
+    saveStudentToStorage(updated);
+
+    // Supabase dual-write
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      try {
+        const supabase = createClient();
+        supabase.from('students').update({
+          status: 'archived',
+        }).eq('id', studentId).then(() => {}, () => {});
+      } catch {}
+    }).catch(() => {});
+
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
+  } catch (err) {
+    console.error('Failed to soft delete student:', err);
+  }
+}
+
+/**
+ * Restores an archived / deleted student.
+ */
+export function restoreStudent(studentId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const students = getStoredStudents();
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+
+    const updated: FullStudentData = {
+      ...student,
+      isDeleted: false,
+      deletedAt: undefined,
+      status: 'active' as any,
+    };
+
+    saveStudentToStorage(updated);
+
+    // Supabase dual-write
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      try {
+        const supabase = createClient();
+        supabase.from('students').update({
+          status: 'active',
+        }).eq('id', studentId).then(() => {}, () => {});
+      } catch {}
+    }).catch(() => {});
+
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
+  } catch (err) {
+    console.error('Failed to restore student:', err);
+  }
+}
+
+const DELETED_PARENTS_KEY = 'crm_deleted_parents_v1';
+
+export function getDeletedParentIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_PARENTS_KEY);
+    if (!raw) return new Set();
+    const list = JSON.parse(raw);
+    return new Set(Array.isArray(list) ? list : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function softDeleteParent(parentId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getDeletedParentIds();
+    current.add(parentId);
+    localStorage.setItem(DELETED_PARENTS_KEY, JSON.stringify(Array.from(current)));
+
+    // Supabase dual-write
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      try {
+        const supabase = createClient();
+        supabase.from('parents').update({
+          notes: '[ARCHIVED_DELETED]',
+        }).eq('id', parentId).then(() => {}, () => {});
+      } catch {}
+    }).catch(() => {});
+
+    window.dispatchEvent(new CustomEvent('crm-parents-changed'));
+  } catch (err) {
+    console.error('Failed to soft delete parent:', err);
+  }
+}
+
+export function restoreParent(parentId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getDeletedParentIds();
+    current.delete(parentId);
+    localStorage.setItem(DELETED_PARENTS_KEY, JSON.stringify(Array.from(current)));
+
+    // Supabase dual-write
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      try {
+        const supabase = createClient();
+        supabase.from('parents').update({
+          notes: null,
+        }).eq('id', parentId).then(() => {}, () => {});
+      } catch {}
+    }).catch(() => {});
+
+    window.dispatchEvent(new CustomEvent('crm-parents-changed'));
+  } catch (err) {
+    console.error('Failed to restore parent:', err);
+  }
+}
+
+
 

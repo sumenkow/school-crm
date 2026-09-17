@@ -19,11 +19,12 @@ import {
   AlertTriangle,
   X,
   Wallet,
+  RotateCcw,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS } from '@/lib/data/mockData';
-import { getStoredStudents, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStoredStudents, reconcileAllStudentDepositsAndDebts, getDeletedParentIds, softDeleteParent, restoreParent } from '@/lib/data/studentStorage';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 
 interface ParentRecord {
@@ -40,6 +41,7 @@ interface ParentRecord {
   depositBalance?: number;
   debtFormatted?: string;
   debtBalance?: number;
+  isDeleted?: boolean;
 }
 
 const INITIAL_PARENTS: ParentRecord[] = [
@@ -207,6 +209,9 @@ function getMergedParents(): ParentRecord[] {
       balanceStatus = 'trial';
     }
 
+    const deletedIds = typeof window !== 'undefined' ? getDeletedParentIds() : new Set<string>();
+    const isDeleted = deletedIds.has(parent.id);
+
     result.push({
       ...parent,
       totalPaid: totalPaidSum > 0 ? `${totalPaidSum.toLocaleString('ru-RU')} ₽` : parent.totalPaid,
@@ -215,6 +220,7 @@ function getMergedParents(): ParentRecord[] {
       depositBalance: deposit,
       debtFormatted: debt > 0 ? `${debt.toLocaleString('ru-RU')} ₽` : undefined,
       debtBalance: debt,
+      isDeleted,
     });
   });
 
@@ -228,6 +234,7 @@ export default function ParentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [parents, setParents] = useState<ParentRecord[]>(() => getMergedParents());
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'deleted'>('all');
 
   useEffect(() => {
     const sync = () => {
@@ -236,10 +243,12 @@ export default function ParentsPage() {
     };
     sync();
     window.addEventListener('crm-students-changed', sync);
+    window.addEventListener('crm-parents-changed', sync);
     window.addEventListener('crm-payments-changed', sync);
     window.addEventListener('focus', sync);
     return () => {
       window.removeEventListener('crm-students-changed', sync);
+      window.removeEventListener('crm-parents-changed', sync);
       window.removeEventListener('crm-payments-changed', sync);
       window.removeEventListener('focus', sync);
     };
@@ -263,7 +272,11 @@ export default function ParentsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredParents = parents.filter((p) =>
+  const activeParents = parents.filter((p) => !p.isDeleted);
+  const deletedParents = parents.filter((p) => p.isDeleted);
+  const currentList = statusFilter === 'deleted' ? deletedParents : activeParents;
+
+  const filteredParents = currentList.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.phone.includes(searchTerm) ||
     p.children.some((c) => c.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -271,8 +284,9 @@ export default function ParentsPage() {
 
   const handleDeleteParent = () => {
     if (!deletingParent) return;
-    setParents((prev) => prev.filter((p) => p.id !== deletingParent.id));
-    success(`Родитель ${deletingParent.name} успешно удален из базы`);
+    softDeleteParent(deletingParent.id);
+    setParents(getMergedParents());
+    success(`Родитель ${deletingParent.name} перемещен в раздел «Удаленные»`);
     setDeletingParent(null);
   };
 
@@ -289,6 +303,7 @@ export default function ParentsPage() {
       children: [],
       totalPaid: '0 ₽',
       balanceStatus: 'trial',
+      isDeleted: false,
     };
     setParents((prev) => [created, ...prev]);
     success(`Контакт ${created.name} добавлен в базу`);
@@ -300,17 +315,43 @@ export default function ParentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('parents.title', 'Родители и контакты')}</h1>
-          <p className="text-sm text-slate-500">
-            {t('parents.subtitle', 'Реестр контактных лиц и законных представителей • Единый профиль семьи')}
+          <p className="text-sm text-slate-600">
+            {t('parents.subtitle', 'Реестр контактных лиц и законных представителей • Единый профиль семьи')} • Всего: {activeParents.length}
           </p>
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          {t('action.newContact', 'Новый контакт')}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                statusFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Все контакты ({activeParents.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('deleted')}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                statusFilter === 'deleted'
+                  ? 'bg-white text-rose-700 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Удаленные ({deletedParents.length})
+            </button>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            {t('action.newContact', 'Новый контакт')}
+          </button>
+        </div>
       </div>
 
       <div className="flex rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
@@ -525,6 +566,22 @@ export default function ParentsPage() {
                   Профиль <ChevronRight className="h-3 w-3" />
                 </Link>
               </div>
+
+              {p.isDeleted && (
+                <div className="pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      restoreParent(p.id);
+                      setParents(getMergedParents());
+                      success(`Контакт ${p.name} восстановлен`);
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Восстановить контакт
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}

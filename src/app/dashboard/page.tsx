@@ -685,14 +685,9 @@ function OwnerDashboard({
             </Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { id: 'p101', student: 'Артем Смирнов', studentId: '1', course: 'Английский (Kids)', amount: '9 600 ₽', date: 'Сегодня', status: 'Оплачен', method: 'Банковская карта', recordedBy: 'Администратор' },
-              { id: 'p102', student: 'София Лебедева', studentId: '2', course: 'Робототехника', amount: '12 000 ₽', date: 'Вчера', status: 'Оплачен', method: 'СБП', recordedBy: 'Администратор' },
-              { id: 'p103', student: 'Максим Кузнецов', studentId: '3', course: 'Математика ОГЭ', amount: '8 800 ₽', date: '10 сен', status: 'Оплачен', method: 'Карта', recordedBy: 'Администратор' },
-              { id: 'p104', student: 'Дарья Попова', studentId: '4', course: 'Программирование', amount: '10 500 ₽', date: '9 сен', status: 'Оплачен', method: 'Счет (ООО)', recordedBy: 'Бухгалтерия' },
-            ].map((p, idx) => (
+            {recentPaidList.slice(0, 5).map((p, idx) => (
               <div
-                key={idx}
+                key={p.id || idx}
                 onClick={() => setSelectedPayment(p)}
                 className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
                 style={{
@@ -716,6 +711,16 @@ function OwnerDashboard({
               </div>
             ))}
           </div>
+          {allPayments.filter((p) => p.status === 'paid').length > 5 && (
+            <div className="mt-3 pt-2.5 border-t border-slate-100 text-center">
+              <Link
+                href="/finance"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+              >
+                Смотреть все оплаты ({allPayments.filter((p) => p.status === 'paid').length})... <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Team & Teachers overview */}
@@ -1632,6 +1637,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     lead.source.toLowerCase().includes(q)
                   );
                 })
+                .slice(0, 5)
                 .map((lead) => (
                   <div
                     key={lead.id}
@@ -1712,6 +1718,16 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     </div>
                   </div>
                 ))}
+              {leadsList.length > 5 && (
+                <div className="pt-2 text-center border-t border-slate-100">
+                  <Link
+                    href="/crm"
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                  >
+                    Смотреть все ({leadsList.length})... <ChevronRight size={14} />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -1728,6 +1744,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     trial.phone.includes(q)
                   );
                 })
+                .slice(0, 5)
                 .map((trial) => (
                   <div
                     key={trial.id}
@@ -1797,6 +1814,16 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     </div>
                   </div>
                 ))}
+              {trialsList.length > 5 && (
+                <div className="pt-2 text-center border-t border-slate-100">
+                  <Link
+                    href="/calendar"
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                  >
+                    Смотреть все ({trialsList.length})... <ChevronRight size={14} />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -1826,6 +1853,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                       p.method.toLowerCase().includes(q)
                     );
                   })
+                  .slice(0, 5)
                   .map((p) => (
                     <div
                       key={p.id}
@@ -1868,6 +1896,16 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     </div>
                   ))}
               </div>
+              {paymentsList.length > 5 && (
+                <div className="pt-2 text-center border-t border-slate-100">
+                  <Link
+                    href="/finance"
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                  >
+                    Смотреть все ({paymentsList.length})... <ChevronRight size={14} />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
@@ -1882,6 +1920,7 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                     task.detail.toLowerCase().includes(q)
                   );
                 })
+                .slice(0, 5)
                 .map((task) => (
                   <div
                     key={task.id}
@@ -1966,7 +2005,15 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                   </div>
                 ))}
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex justify-between items-center">
+                {urgentTasks.length > 5 ? (
+                  <Link
+                    href="/tasks"
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                  >
+                    Смотреть все ({urgentTasks.length})... <ChevronRight size={14} />
+                  </Link>
+                ) : <span />}
                 <Link
                   href="/tasks"
                   className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"

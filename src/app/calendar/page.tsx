@@ -20,6 +20,7 @@ import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { ScheduleCourseModal } from '@/components/calendar/ScheduleCourseModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 
 export default function CalendarPage() {
@@ -27,9 +28,11 @@ export default function CalendarPage() {
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday (Today)
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-03');
+  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+  const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-02');
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => new Date(2026, 7, 31)); // Mon Aug 31, 2026 (01.09.2026 is Tuesday)
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
   });
@@ -67,15 +70,41 @@ export default function CalendarPage() {
     );
   };
 
-  const daysOfWeek = [
-    { name: t('days.mon', 'Пн'), date: '01.09', fullDate: '2026-09-01', dayIndex: 0 },
-    { name: t('days.tue', 'Вт'), date: '02.09', fullDate: '2026-09-02', dayIndex: 1 },
-    { name: t('days.wed', 'Ср'), date: '03.09', fullDate: '2026-09-03', dayIndex: 2, isToday: true },
-    { name: t('days.thu', 'Чт'), date: '04.09', fullDate: '2026-09-04', dayIndex: 3 },
-    { name: t('days.fri', 'Пт'), date: '05.09', fullDate: '2026-09-05', dayIndex: 4 },
-    { name: t('days.sat', 'Сб'), date: '06.09', fullDate: '2026-09-06', dayIndex: 5 },
-    { name: t('days.sun', 'Вс'), date: '07.09', fullDate: '2026-09-07', dayIndex: 6 },
-  ];
+  // Real date math: Monday = 31.08.2026, Tuesday = 01.09.2026!
+  const daysOfWeek = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
+    const d = new Date(currentWeekStart);
+    d.setDate(currentWeekStart.getDate() + offset);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
+    const fullDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const dayKeys = ['days.mon', 'days.tue', 'days.wed', 'days.thu', 'days.fri', 'days.sat', 'days.sun'];
+    return {
+      name: t(dayKeys[offset], dayNames[offset]),
+      date,
+      fullDate,
+      dayIndex: offset,
+      isToday: fullDate === '2026-09-02',
+    };
+  });
+
+  const weekEnd = new Date(currentWeekStart);
+  weekEnd.setDate(currentWeekStart.getDate() + 6);
+
+  const formatDateRange = (start: Date, end: Date) => {
+    const monthsRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    const sDay = start.getDate();
+    const eDay = end.getDate();
+    const sM = monthsRu[start.getMonth()];
+    const eM = monthsRu[end.getMonth()];
+    const yr = end.getFullYear();
+    if (start.getMonth() === end.getMonth()) {
+      return `${sDay} – ${eDay} ${sM} ${yr}`;
+    }
+    return `${sDay} ${sM} – ${eDay} ${eM} ${yr}`;
+  };
+
+  const dateRangeLabel = formatDateRange(currentWeekStart, weekEnd);
 
   const handleOpenScheduleForDate = (dateStr: string) => {
     setSelectedDateForSchedule(dateStr);
@@ -103,6 +132,13 @@ export default function CalendarPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsCourseModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
+          >
+            <CalendarIcon className="h-4 w-4" />
+            Запланировать курс
+          </button>
+          <button
             onClick={() => setIsScheduleModalOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
@@ -113,63 +149,116 @@ export default function CalendarPage() {
       </div>
 
       {/* Navigation & Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-        <div className="flex items-center gap-2">
-          <button className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-sm font-semibold text-slate-800 px-2">
-            {t('calendar.dateRangeSept', '1 сентября – 7 сентября 2026')}
-          </span>
-          <button className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setSelectedDayIndex(2)}
-            className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
-          >
-            {t('calendar.today', 'Сегодня')}
-          </button>
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setCurrentWeekStart((prev) => {
+                  const d = new Date(prev);
+                  d.setDate(d.getDate() - 7);
+                  return d;
+                });
+              }}
+              title="Предыдущая неделя"
+              className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold text-slate-800 px-2 min-w-[210px] text-center">
+              {dateRangeLabel}
+            </span>
+            <button
+              onClick={() => {
+                setCurrentWeekStart((prev) => {
+                  const d = new Date(prev);
+                  d.setDate(d.getDate() + 7);
+                  return d;
+                });
+              }}
+              title="Следующая неделя"
+              className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setCurrentWeekStart(new Date(2026, 7, 31));
+                setSelectedDayIndex(2);
+              }}
+              className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+            >
+              {t('calendar.today', 'Сегодня')}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* View Mode Toggle (Day / Week / Month) */}
+            <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
+              <button
+                onClick={() => setViewMode('day')}
+                className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'day' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              >
+                {t('calendar.viewDay', 'День')}
+              </button>
+              <button
+                onClick={() => setViewMode('week')}
+                className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'week' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              >
+                {t('calendar.viewWeek', 'Неделя')}
+              </button>
+              <button
+                onClick={() => setViewMode('month')}
+                className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'month' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
+              >
+                {t('calendar.viewMonth', 'Месяц')}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Teacher filter */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-            <Filter className="h-3.5 w-3.5 text-slate-400" />
-            <span>{t('calendar.filterTeacher', 'Преподаватель')}:</span>
-            <select
-              value={selectedTeacher}
-              onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">{t('calendar.allTeachers', 'Все преподаватели')}</option>
-              <option value="t1">Мария Иванова (English)</option>
-              <option value="t2">Денис Смирнов (Robotics)</option>
-              <option value="t3">Ольга Соколова (Math)</option>
-            </select>
-          </div>
-
-          {/* View Mode Toggle (Day / Week / Month) */}
-          <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
-            <button
-              onClick={() => setViewMode('day')}
-              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'day' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-            >
-              {t('calendar.viewDay', 'День')}
-            </button>
-            <button
-              onClick={() => setViewMode('week')}
-              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'week' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-            >
-              {t('calendar.viewWeek', 'Неделя')}
-            </button>
-            <button
-              onClick={() => setViewMode('month')}
-              className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'month' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-            >
-              {t('calendar.viewMonth', 'Месяц')}
-            </button>
-          </div>
+        {/* Quick Teacher Avatar Filters */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 overflow-x-auto">
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Преподаватели:</span>
+          <button
+            type="button"
+            onClick={() => setSelectedTeacher('all')}
+            className={cn(
+              'px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+              selectedTeacher === 'all'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+          >
+            Все учителя
+          </button>
+          {[
+            { id: 't1', name: 'Мария Иванова', role: 'English', initials: 'МИ', bg: 'bg-rose-500' },
+            { id: 't2', name: 'Денис Смирнов', role: 'Robotics', initials: 'ДС', bg: 'bg-amber-500' },
+            { id: 't3', name: 'Ольга Соколова', role: 'Math', initials: 'ОС', bg: 'bg-emerald-500' },
+            { id: 't4', name: 'Анна Кузнецова', role: 'German', initials: 'АК', bg: 'bg-indigo-500' },
+          ].map((teacher) => {
+            const isSelected = selectedTeacher === teacher.id;
+            return (
+              <button
+                key={teacher.id}
+                type="button"
+                onClick={() => setSelectedTeacher(isSelected ? 'all' : teacher.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap',
+                  isSelected
+                    ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold ring-2 ring-blue-200'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                )}
+              >
+                <span className={cn('flex h-4.5 w-4.5 items-center justify-center rounded-full text-[9px] font-bold text-white', teacher.bg)}>
+                  {teacher.initials}
+                </span>
+                <span>{teacher.name}</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">({teacher.role})</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -177,7 +266,7 @@ export default function CalendarPage() {
       {viewMode === 'week' && (
         <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           {daysOfWeek.map((day) => {
-            const dayLessons = filteredLessons.filter((l) => l.dayOfWeek === day.dayIndex);
+            const dayLessons = filteredLessons.filter((l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex));
 
             return (
               <div
@@ -249,9 +338,17 @@ export default function CalendarPage() {
                                   </span>
                                 )}
                                 {lesson.onlineMeetingUrl && (
-                                  <span className="flex items-center gap-0.5 text-[10px] text-indigo-600 font-medium bg-indigo-50 px-1 py-0.5 rounded">
-                                    <Video className="h-2.5 w-2.5" /> Online
-                                  </span>
+                                  <a
+                                    href={lesson.onlineMeetingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Открыть Zoom / конференцию"
+                                    className="flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
+                                  >
+                                    <Video className="h-2.5 w-2.5 text-indigo-600" />
+                                    <span>Zoom</span>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -297,56 +394,58 @@ export default function CalendarPage() {
       )}
 
       {/* VIEW 2: DAY VIEW */}
-      {viewMode === 'day' && (
-        <div className="space-y-4 max-w-3xl mx-auto">
-          {/* Day picker pills */}
-          <div className="flex gap-2 justify-center pb-2 flex-wrap">
-            {daysOfWeek.map((day) => (
-              <button
-                key={day.dayIndex}
-                onClick={() => setSelectedDayIndex(day.dayIndex)}
-                className={cn(
-                  'rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer',
-                  selectedDayIndex === day.dayIndex
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                )}
-              >
-                <div>{day.name}</div>
-                <div className="text-[10px] opacity-80">{day.date}</div>
-              </button>
-            ))}
-          </div>
+      {viewMode === 'day' && (() => {
+        const selectedDay = daysOfWeek[selectedDayIndex] || daysOfWeek[0];
+        const dayLessons = filteredLessons.filter((l) => l.date === selectedDay.fullDate || (!l.date && l.dayOfWeek === selectedDay.dayIndex));
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-sm font-bold text-slate-900">
-                {t('calendar.lessonsOn', 'Занятия на')} {daysOfWeek[selectedDayIndex].date}:
-              </h2>
-              <button
-                onClick={() => handleOpenScheduleForDate(daysOfWeek[selectedDayIndex].fullDate)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {t('calendar.scheduleFor', 'Запланировать на')} {daysOfWeek[selectedDayIndex].name}
-              </button>
+        return (
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {/* Day picker pills */}
+            <div className="flex gap-2 justify-center pb-2 flex-wrap">
+              {daysOfWeek.map((day) => (
+                <button
+                  key={day.dayIndex}
+                  onClick={() => setSelectedDayIndex(day.dayIndex)}
+                  className={cn(
+                    'rounded-xl px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer',
+                    selectedDayIndex === day.dayIndex
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  )}
+                >
+                  <div>{day.name}</div>
+                  <div className="text-[10px] opacity-80">{day.date}</div>
+                </button>
+              ))}
             </div>
 
-            {filteredLessons.filter((l) => l.dayOfWeek === selectedDayIndex).length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-xs text-slate-400 mb-3">{t('calendar.noLessonsDay', 'На этот день занятий не запланировано')}</p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 className="text-sm font-bold text-slate-900">
+                  {t('calendar.lessonsOn', 'Занятия на')} {selectedDay.date}:
+                </h2>
                 <button
-                  onClick={() => handleOpenScheduleForDate(daysOfWeek[selectedDayIndex].fullDate)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100/60 transition-colors cursor-pointer"
+                  onClick={() => handleOpenScheduleForDate(selectedDay.fullDate)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  {t('calendar.addLesson', 'Добавить занятие')}
+                  {t('calendar.scheduleFor', 'Запланировать на')} {selectedDay.name}
                 </button>
               </div>
-            ) : (
-              filteredLessons
-                .filter((l) => l.dayOfWeek === selectedDayIndex)
-                .map((lesson) => (
+
+              {dayLessons.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-xs text-slate-400 mb-3">{t('calendar.noLessonsDay', 'На этот день занятий не запланировано')}</p>
+                  <button
+                    onClick={() => handleOpenScheduleForDate(selectedDay.fullDate)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-blue-300 bg-blue-50/50 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-100/60 transition-colors cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {t('calendar.addLesson', 'Добавить занятие')}
+                  </button>
+                </div>
+              ) : (
+                dayLessons.map((lesson) => (
                   <div
                     key={lesson.id}
                     onClick={() => setSelectedLessonForQuickView(lesson)}
@@ -360,6 +459,19 @@ export default function CalendarPage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-slate-900 text-sm">{lesson.groupName}</h3>
+                          {lesson.onlineMeetingUrl && (
+                            <a
+                              href={lesson.onlineMeetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Открыть Zoom / конференцию"
+                              className="flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
+                            >
+                              <Video className="h-2.5 w-2.5 text-indigo-600" />
+                              <span>Zoom</span>
+                            </a>
+                          )}
                           {(() => {
                             const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
                             if (trialCount > 0) {
@@ -399,10 +511,11 @@ export default function CalendarPage() {
                     </div>
                   </div>
                 ))
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* VIEW 3: MONTH VIEW (HIGH LEVEL OVERVIEW) */}
       {viewMode === 'month' && (
@@ -415,6 +528,23 @@ export default function CalendarPage() {
             {[t('days.mon', 'Пн'), t('days.tue', 'Вт'), t('days.wed', 'Ср'), t('days.thu', 'Чт'), t('days.fri', 'Пт'), t('days.sat', 'Сб'), t('days.sun', 'Вс')].map((d, di) => (
               <div key={di} className="font-bold text-slate-400 uppercase py-1">{d}</div>
             ))}
+            {/* Monday August 31 slot since September 1, 2026 is Tuesday! */}
+            <div
+              onClick={() => handleOpenScheduleForDate('2026-08-31')}
+              title="31 августа 2026 (Понедельник)"
+              className="group h-20 rounded-xl border border-slate-100 bg-slate-50/50 p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer opacity-60 hover:opacity-100 hover:border-blue-300"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-400">31</span>
+                <span className="text-[9px] text-slate-400 font-medium">авг</span>
+              </div>
+              <div className="space-y-0.5">
+                <span className="block rounded bg-slate-200/80 px-1 py-0.5 text-[9px] font-medium text-slate-600 truncate">
+                  1 урок
+                </span>
+              </div>
+            </div>
+
             {Array.from({ length: 30 }).map((_, i) => {
               const dayNum = i + 1;
               const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
@@ -427,13 +557,13 @@ export default function CalendarPage() {
                   title={`${t('calendar.scheduleFor', 'Запланировать на')} ${dayNum}`}
                   className={cn(
                     'group h-20 rounded-xl border p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer',
-                    dayNum === 3
+                    dayNum === 2
                       ? 'border-blue-500 bg-blue-50/30 hover:border-blue-600 hover:shadow-xs'
                       : 'border-slate-100 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-xs'
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={cn('text-[11px] font-bold', dayNum === 3 ? 'text-blue-600' : 'text-slate-700')}>
+                    <span className={cn('text-[11px] font-bold', dayNum === 2 ? 'text-blue-600' : 'text-slate-700')}>
                       {dayNum}
                     </span>
                     <Plus className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 text-blue-600 transition-opacity" />
@@ -441,7 +571,7 @@ export default function CalendarPage() {
                   {hasLessons && (
                     <div className="space-y-0.5">
                       <span className="block rounded bg-blue-100 px-1 py-0.5 text-[9px] font-semibold text-blue-800 truncate">
-                        2 {t('calendar.lessonsCount', 'урока')}
+                        {dayNum === 3 ? '2 урока' : '1 урок'}
                       </span>
                     </div>
                   )}
@@ -458,6 +588,13 @@ export default function CalendarPage() {
         onClose={() => setIsScheduleModalOpen(false)}
         onScheduled={handleLessonScheduled}
         initialDate={selectedDateForSchedule}
+      />
+
+      {/* Schedule Course Modal */}
+      <ScheduleCourseModal
+        isOpen={isCourseModalOpen}
+        onClose={() => setIsCourseModalOpen(false)}
+        onCourseScheduled={(newLessons) => setLessons((prev) => [...prev, ...newLessons])}
       />
 
       {/* Quick Lesson View & Attendance Modal */}

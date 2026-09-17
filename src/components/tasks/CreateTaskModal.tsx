@@ -52,10 +52,27 @@ export function CreateTaskModal({
   const { role, userName } = useRole();
   const [title, setTitle] = useState('');
   const [taskType, setTaskType] = useState<FullTaskData['taskType']>('Retention');
-  const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
+  const [assignedTo, setAssignedTo] = useState(() => userName || 'Елена Менеджер');
   const [priority, setPriority] = useState<FullTaskData['priority']>('medium');
-  const [dueDate, setDueDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dueTime, setDueTime] = useState('15:00');
+
+  const [dueDate, setDueDate] = useState(() => {
+    const now = new Date();
+    const future = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    return future.toISOString().slice(0, 10);
+  });
+
+  const [dueTime, setDueTime] = useState(() => {
+    const now = new Date();
+    const future = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    let hours = future.getHours();
+    let minutes = future.getMinutes();
+    if (hours >= 21) {
+      hours = 21;
+      minutes = 0;
+    }
+    return `${pad(hours)}:${pad(minutes)}`;
+  });
   const [scopedTarget, setScopedTarget] = useState<string>('student');
   const [scopedChildTarget, setScopedChildTarget] = useState<string>('family');
   const [relatedEntity, setRelatedEntity] = useState<'student' | 'lead' | 'parent' | 'none'>(

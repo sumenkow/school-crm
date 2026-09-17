@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
+import { getStoredLeads } from '@/lib/data/leadStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { Shield } from 'lucide-react';
@@ -52,8 +53,23 @@ export default function AnalyticsPage() {
   const [teacherViewMode, setTeacherViewMode] = useState<'chart' | 'table' | 'cards'>('chart');
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<FunnelStageKey | 'all' | null>(null);
   const [leadSearchTerm, setLeadSearchTerm] = useState('');
-  const [leads, setLeads] = useState<FullLeadData[]>(INITIAL_LEADS);
+  const [leads, setLeads] = useState<FullLeadData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredLeads(true, true) : INITIAL_LEADS;
+  });
   const [statusMenuOpenLeadId, setStatusMenuOpenLeadId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const sync = () => {
+      setLeads(getStoredLeads(true, true));
+    };
+    sync();
+    window.addEventListener('crm-leads-changed', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener('crm-leads-changed', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
 
   if (role !== 'owner' && role !== 'developer') {
     return (
@@ -75,7 +91,27 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Funnel steps with lead status mappings
+  // Dynamic funnel calculation tied to real CRM leads data
+  const activeLeads = leads.filter((l) => !l.is_deleted && !(l as any).isDeleted);
+  const totalLeadsCount = activeLeads.length || 1;
+
+  const countNew = activeLeads.length;
+  const countContacted = activeLeads.filter((l) => l.status !== 'new' && l.status !== 'no_response').length;
+  const countTrialScheduled = activeLeads.filter((l) => l.status === 'trial_scheduled' || l.status === 'trial_held' || l.status === 'paid' || !!l.trialDate).length;
+  const countTrialHeld = activeLeads.filter((l) => l.status === 'trial_held' || l.status === 'paid').length;
+  const countPaid = activeLeads.filter((l) => l.status === 'paid').length;
+
+  const rateNew = '100%';
+  const rateContacted = `${Math.round((countContacted / totalLeadsCount) * 1000) / 10}%`;
+  const rateTrialScheduled = `${Math.round((countTrialScheduled / totalLeadsCount) * 1000) / 10}%`;
+  const rateTrialHeld = `${Math.round((countTrialHeld / totalLeadsCount) * 1000) / 10}%`;
+  const ratePaid = `${Math.round((countPaid / totalLeadsCount) * 1000) / 10}%`;
+
+  const dropContacted = countNew > 0 ? `-${(Math.round(((countNew - countContacted) / countNew) * 1000) / 10)}%` : '0%';
+  const dropTrialScheduled = countContacted > 0 ? `-${(Math.round(((countContacted - countTrialScheduled) / countContacted) * 1000) / 10)}%` : '0%';
+  const dropTrialHeld = countTrialScheduled > 0 ? `-${(Math.round(((countTrialScheduled - countTrialHeld) / countTrialScheduled) * 1000) / 10)}%` : '0%';
+  const dropPaid = countTrialHeld > 0 ? `-${(Math.round(((countTrialHeld - countPaid) / countTrialHeld) * 1000) / 10)}%` : '0%';
+
   const funnelSteps: Array<{
     id: FunnelStageKey;
     stepNumber: number;
@@ -93,8 +129,8 @@ export default function AnalyticsPage() {
       stepNumber: 1,
       label: 'Новые обращения (Лиды)',
       description: 'Поступившие онлайн-заявки и первичные звонки',
-      count: 28,
-      rate: '100%',
+      count: countNew,
+      rate: rateNew,
       drop: null,
       leadStatuses: ['new'],
       badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -104,9 +140,9 @@ export default function AnalyticsPage() {
       stepNumber: 2,
       label: 'Успешный контакт / Квалификация',
       description: 'Менеджер связался с родителем, выявлены цели и потребности',
-      count: 24,
-      rate: '85.7%',
-      drop: '-14.3%',
+      count: countContacted,
+      rate: rateContacted,
+      drop: dropContacted,
       leadStatuses: ['contacted', 'thinking'],
       badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
     },
@@ -115,9 +151,9 @@ export default function AnalyticsPage() {
       stepNumber: 3,
       label: 'Назначен пробный урок',
       description: 'Выбрана группа, дата и время пробного занятия',
-      count: 18,
-      rate: '64.2%',
-      drop: '-21.5%',
+      count: countTrialScheduled,
+      rate: rateTrialScheduled,
+      drop: dropTrialScheduled,
       leadStatuses: ['trial_scheduled'],
       badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
     },
@@ -126,9 +162,9 @@ export default function AnalyticsPage() {
       stepNumber: 4,
       label: 'Пробный урок состоялся',
       description: 'Ребенок посетил урок, получен фидбек от педагога',
-      count: 14,
-      rate: '50.0%',
-      drop: '-14.2%',
+      count: countTrialHeld,
+      rate: rateTrialHeld,
+      drop: dropTrialHeld,
       leadStatuses: ['trial_held'],
       badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     },
@@ -137,9 +173,9 @@ export default function AnalyticsPage() {
       stepNumber: 5,
       label: 'Оплата абонемента (Конверсия)',
       description: 'Оплачен абонемент, ученик зачислен в регулярную группу',
-      count: 10,
-      rate: '35.7%',
-      drop: '-14.3%',
+      count: countPaid,
+      rate: ratePaid,
+      drop: dropPaid,
       isGoal: true,
       leadStatuses: ['paid'],
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -204,6 +240,21 @@ export default function AnalyticsPage() {
           trend: '+4.5%',
           color: 'bg-teal-600',
         },
+        {
+          id: 't4',
+          name: 'Анна Кузнецова',
+          subject: 'Немецкий язык',
+          role: 'Преподаватель немецкого языка',
+          avatarColor: 'from-purple-500 to-pink-600',
+          students: 0,
+          hours: 0,
+          lessons: 0,
+          revenue: '0 ₽',
+          avgPerStudent: '0 ₽',
+          share: 0,
+          trend: 'Идет набор',
+          color: 'bg-purple-600',
+        },
       ],
     },
     quarter: {
@@ -253,6 +304,21 @@ export default function AnalyticsPage() {
           share: 20.2,
           trend: '+6.8%',
           color: 'bg-teal-600',
+        },
+        {
+          id: 't4',
+          name: 'Анна Кузнецова',
+          subject: 'Немецкий язык',
+          role: 'Преподаватель немецкого языка',
+          avatarColor: 'from-purple-500 to-pink-600',
+          students: 0,
+          hours: 0,
+          lessons: 0,
+          revenue: '0 ₽',
+          avgPerStudent: '0 ₽',
+          share: 0,
+          trend: 'Идет набор',
+          color: 'bg-purple-600',
         },
       ],
     },
@@ -304,6 +370,21 @@ export default function AnalyticsPage() {
           trend: '+9.1%',
           color: 'bg-teal-600',
         },
+        {
+          id: 't4',
+          name: 'Анна Кузнецова',
+          subject: 'Немецкий язык',
+          role: 'Преподаватель немецкого языка',
+          avatarColor: 'from-purple-500 to-pink-600',
+          students: 0,
+          hours: 0,
+          lessons: 0,
+          revenue: '0 ₽',
+          avgPerStudent: '0 ₽',
+          share: 0,
+          trend: 'Идет набор',
+          color: 'bg-purple-600',
+        },
       ],
     },
   };
@@ -314,16 +395,19 @@ export default function AnalyticsPage() {
       { name: 'Английский язык', students: 64, revenue: '486 400 ₽', share: 51.4, color: 'bg-blue-600' },
       { name: 'Робототехника', students: 32, revenue: '268 800 ₽', share: 28.4, color: 'bg-indigo-600' },
       { name: 'Олимпиадная математика', students: 28, revenue: '190 400 ₽', share: 20.2, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
     ],
     quarter: [
       { name: 'Английский язык', students: 78, revenue: '1 420 000 ₽', share: 51.3, color: 'bg-blue-600' },
       { name: 'Робототехника', students: 42, revenue: '790 000 ₽', share: 28.5, color: 'bg-indigo-600' },
       { name: 'Олимпиадная математика', students: 35, revenue: '560 000 ₽', share: 20.2, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
     ],
     year: [
       { name: 'Английский язык', students: 120, revenue: '4 250 000 ₽', share: 51.1, color: 'bg-blue-600' },
       { name: 'Робототехника', students: 65, revenue: '2 380 000 ₽', share: 28.6, color: 'bg-indigo-600' },
       { name: 'Олимпиадная математика', students: 54, revenue: '1 680 000 ₽', share: 20.3, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
     ],
   };
 
@@ -342,7 +426,7 @@ export default function AnalyticsPage() {
       ...teacher,
       strokeDasharray,
       strokeDashoffset,
-      pieColor: teacher.id === 't1' ? '#2563eb' : teacher.id === 't2' ? '#4f46e5' : '#0d9488',
+      pieColor: teacher.id === 't1' ? '#2563eb' : teacher.id === 't2' ? '#4f46e5' : teacher.id === 't3' ? '#0d9488' : '#9333ea',
     };
   });
 
@@ -1166,7 +1250,7 @@ export default function AnalyticsPage() {
                       <>
                         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Выручка</span>
                         <span className="text-lg font-black text-slate-900 mt-0.5">{currentTeacherData.total}</span>
-                        <span className="text-[10px] font-medium text-slate-500 mt-0.5">3 преподавателя</span>
+                        <span className="text-[10px] font-medium text-slate-500 mt-0.5">{currentTeacherData.teachers.length} преподавателя</span>
                       </>
                     )}
                   </div>
@@ -1177,7 +1261,7 @@ export default function AnalyticsPage() {
               <div className="md:col-span-7 space-y-2.5">
                 {currentTeacherData.teachers.map((t) => {
                   const isHovered = hoveredTeacherId === t.id;
-                  const dotColor = t.id === 't1' ? '#2563eb' : t.id === 't2' ? '#4f46e5' : '#0d9488';
+                  const dotColor = t.id === 't1' ? '#2563eb' : t.id === 't2' ? '#4f46e5' : t.id === 't3' ? '#0d9488' : '#9333ea';
                   return (
                     <div
                       key={t.id}

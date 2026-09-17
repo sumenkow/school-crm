@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
-import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
@@ -39,7 +39,8 @@ import {
   BookOpen,
   X,
   ExternalLink,
-  Video
+  Video,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
@@ -133,17 +134,34 @@ export default function StudentDetailsPage() {
     if (typeof window === 'undefined') return;
     const allLessons = getStoredLessons();
     const studentGroupIds = new Set((student.groups || []).map((g) => g.id));
+    const nowMs = Date.now();
+
+    const parseLessonDateMs = (l: FullLessonData): number => {
+      if (!l.date) return 0;
+      let isoDate = l.date;
+      if (l.date.includes('.')) {
+        const parts = l.date.split('.');
+        if (parts.length === 3) {
+          isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+      const time = l.startTime && l.startTime.length >= 4 ? l.startTime : '00:00';
+      const parsed = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
     
     const candidates = allLessons.filter((l) => {
       if (l.status === 'cancelled' || l.status === 'completed') return false;
+      const lessonMs = parseLessonDateMs(l);
+      if (lessonMs <= nowMs) return false;
       const isStudentInLesson = (l.students || []).some((s) => s.id === student.id);
       const isGroupMatched = l.groupId && studentGroupIds.has(l.groupId);
       return isStudentInLesson || isGroupMatched;
     });
 
     candidates.sort((a, b) => {
-      const timeA = new Date(`${a.date}T${a.startTime || '00:00'}`).getTime();
-      const timeB = new Date(`${b.date}T${b.startTime || '00:00'}`).getTime();
+      const timeA = parseLessonDateMs(a);
+      const timeB = parseLessonDateMs(b);
       return timeA - timeB;
     });
 
@@ -867,6 +885,22 @@ export default function StudentDetailsPage() {
                 {t('action.addPayment', 'Добавить платёж')}
               </button>
             )}
+            {role !== 'teacher' && (
+              <button
+                onClick={() => {
+                  if (confirm(`Вы уверены, что хотите переместить ученика ${student.firstName} ${student.lastName} в удаленные? Его можно восстановить в любой момент.`)) {
+                    softDeleteStudent(student.id);
+                    toast.success(`Ученик ${student.firstName} ${student.lastName} перемещен в удаленные`);
+                    router.push('/students');
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 shadow-xs hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Удалить ученика"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-rose-500" />
+                {t('action.delete', 'Удалить')}
+              </button>
+            )}
           </div>
         </div>
 
@@ -879,10 +913,10 @@ export default function StudentDetailsPage() {
                 type="button"
                 onClick={() => setIsEnrollGroupModalOpen(true)}
                 className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
-                title="Зачислить в группу"
+                title="Зачислить в новую группу"
               >
                 <Plus className="h-3 w-3" />
-                {t('common.add', 'Зачислить')}
+                {t('action.enrollNewGroup', 'Зачислить в новую группу')}
               </button>
             </div>
             {student.groups.length === 0 ? (

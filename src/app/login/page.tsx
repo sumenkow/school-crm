@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useLanguage, LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
 import { useRole } from '@/context/RoleContext';
 import { School, Eye, EyeOff, LogIn, Sparkles, UserCheck, Shield, MonitorPlay } from 'lucide-react';
+import { CountryFlag } from '@/components/common/CountryFlag';
 
 export default function LoginPage() {
   const { language, setLanguage, t } = useLanguage();
@@ -64,13 +65,13 @@ export default function LoginPage() {
               key={langKey}
               type="button"
               onClick={() => setLanguage(langKey)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 isSelected
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span>{meta.flag}</span>
+              <CountryFlag country={langKey} size={15} />
               <span>{meta.short}</span>
             </button>
           );
@@ -267,7 +268,7 @@ export default function LoginPage() {
 
       {/* Version */}
       <p className="md-label-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '24px' }}>
-        School CRM • Material Design 3
+        School CRM • v2.4
       </p>
 
       <style>{`

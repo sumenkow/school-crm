@@ -165,7 +165,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     interactions: [
       {
         id: 'int1',
-        occurredAt: 'Сегодня, 11:30',
+        occurredAt: '01.09.2026, 11:30',
         channel: 'telegram',
         type: 'follow_up',
         author: 'Елена Менеджер',
@@ -310,7 +310,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     interactions: [
       {
         id: 'int4',
-        occurredAt: 'Вчера, 16:20',
+        occurredAt: '31.08.2026, 16:20',
         channel: 'whatsapp',
         type: 'follow_up',
         author: 'Елена Менеджер',
@@ -714,6 +714,8 @@ export interface FullGroupData {
   room: string;
   capacity: number;
   status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
+  is_deleted?: boolean;
+  deleted_at?: string;
   startDate: string;
   endDate?: string;
   notes?: string;
@@ -818,6 +820,20 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
     activeGroups: [
       { id: '4', name: 'Kids Math Safari (Чт 16:00)', courseName: 'Математика', schedule: 'Четверг • 16:00–17:00', studentsCount: 5 },
     ],
+  },
+  {
+    id: 't4',
+    name: 'Анна Кузнецова',
+    role: 'Преподаватель немецкого языка (Goethe-Zertifikat C2)',
+    phone: '+7 (999) 777-77-88',
+    telegram: '@anna_deutsch',
+    email: 'anna.kuznetsova@school.ru',
+    bio: 'Преподаватель немецкого языка. Идет набор первой группы на новый учебный год.',
+    status: 'active',
+    weeklyHours: 0,
+    lessonsPerWeek: 0,
+    studentsCount: 0,
+    activeGroups: [],
   },
 ];
 
@@ -1028,8 +1044,8 @@ export const INITIAL_LESSONS: FullLessonData[] = [
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
-    date: '2026-09-01',
-    dateFormatted: '01 сен 2026',
+    date: '2026-08-31',
+    dateFormatted: '31 авг 2026',
     dayOfWeek: 0,
     startTime: '18:45',
     endTime: '20:15',
@@ -1268,6 +1284,8 @@ export interface FullLeadData {
   nextActionDate?: string;
   comment?: string;
   studentNotes?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
   parentNotes?: string;
   createdAt: string;
   convertedStudentId?: string;
@@ -1319,7 +1337,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     interactions: [
       {
         id: 'int_l1',
-        occurredAt: 'Сегодня, 08:30',
+        occurredAt: '03.09.2026, 08:30',
         channel: 'telegram',
         type: 'initial_contact',
         author: 'Сайт школы (бот)',
@@ -1909,13 +1927,13 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     groupName: 'Robotics Junior',
     startDate: '01.09.2026',
     endDate: '30.09.2026',
-    renewalDate: '25.08.2026',
+    renewalDate: '28.09.2026',
     price: 8400,
     priceFormatted: '8 400 ₽',
-    status: 'expired',
+    status: 'active',
     lessonsTotal: 8,
     lessonsAttended: 1,
-    notes: 'Оплата просрочена, требуется продление',
+    notes: 'Абонемент активен до 30.09.2026',
   },
   {
     id: 'sub3',
@@ -1925,7 +1943,7 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     groupName: 'English B1 Teens',
     startDate: '15.08.2026',
     endDate: '15.09.2026',
-    renewalDate: '10.09.2026',
+    renewalDate: '13.09.2026',
     price: 7600,
     priceFormatted: '7 600 ₽',
     status: 'frozen',
@@ -1941,13 +1959,29 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     groupName: 'Kids Math Safari',
     startDate: '01.09.2026',
     endDate: '30.09.2026',
-    renewalDate: '05.10.2026',
+    renewalDate: '28.09.2026',
     price: 6800,
     priceFormatted: '6 800 ₽',
     status: 'active',
     lessonsTotal: 4,
     lessonsAttended: 1,
     notes: 'Абонемент на 1 занятие в неделю (4 занятия в месяц)',
+  },
+  {
+    id: 'sub5',
+    studentId: '3',
+    studentName: 'Анна Васильева',
+    courseName: 'Английский язык',
+    groupName: 'English B1 Teens',
+    startDate: '01.08.2026',
+    endDate: '31.08.2026',
+    renewalDate: '29.08.2026',
+    price: 7600,
+    priceFormatted: '7 600 ₽',
+    status: 'expired',
+    lessonsTotal: 8,
+    lessonsAttended: 8,
+    notes: 'Абонемент за август завершен (все 8 занятий пройдены)',
   },
 ];
 

@@ -33,8 +33,8 @@ interface RoleContextType {
 }
 
 const DEFAULT_PROFILE: UserProfileData = {
-  role: 'owner',
-  userName: 'Руководитель школы',
+  role: 'teacher',
+  userName: 'Сотрудник школы',
   userEmail: '',
   userPhone: '',
   userTelegram: '',
@@ -69,15 +69,15 @@ export function getOwnerEmailFromStorage(): string {
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
 export function RoleProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>(DEFAULT_PROFILE.role);
-  const [accountRole, setAccountRole] = useState<UserRole>('owner');
-  const [isOwnerAccount, setIsOwnerAccount] = useState(true);
+  const [role, setRoleState] = useState<UserRole>('teacher');
+  const [accountRole, setAccountRole] = useState<UserRole>('teacher');
+  const [isOwnerAccount, setIsOwnerAccount] = useState(false);
   const [isDevAccount, setIsDevAccount] = useState(false);
   const [userName, setUserNameState] = useState(DEFAULT_PROFILE.userName);
   const [userEmail, setUserEmailState] = useState(DEFAULT_PROFILE.userEmail);
   const [userPhone, setUserPhoneState] = useState(DEFAULT_PROFILE.userPhone);
   const [userTelegram, setUserTelegramState] = useState(DEFAULT_PROFILE.userTelegram);
-  const [isOwner, setIsOwner] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
   const [ownerEmail, setOwnerEmailState] = useState<string>(DEFAULT_PROFILE.userEmail);
 
   // 1. Initial hydration & sanitization from storage
@@ -178,28 +178,36 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     if (profile) {
-      const dbRole = (profile.role as UserRole) || 'owner';
+      const dbRole = (profile.role as UserRole) || 'teacher';
+      const isOwnerOrDev = dbRole === 'owner' || dbRole === 'developer';
       setAccountRole(dbRole);
-      setIsOwnerAccount(dbRole === 'owner' || dbRole === 'developer');
+      setIsOwnerAccount(isOwnerOrDev);
       setIsDevAccount(dbRole === 'developer');
 
-      // Only overwrite active role if no manual role was chosen by the user
-      if (!savedRole) {
+      // Non-owners MUST strictly use their DB role
+      if (isOwnerOrDev && savedRole) {
+        setRoleState(savedRole);
+        setIsOwner(savedRole === 'owner' || savedRole === 'developer');
+      } else {
         setRoleState(dbRole);
-        setIsOwner(dbRole === 'owner' || dbRole === 'developer');
+        setIsOwner(isOwnerOrDev);
       }
       if (profile.full_name) setUserNameState(profile.full_name);
       if (profile.phone) setUserPhoneState(profile.phone);
     } else {
-      const metaRole = (user.user_metadata?.role as UserRole) || 'owner';
+      const metaRole = (user.user_metadata?.role as UserRole) || 'teacher';
       const metaName = user.user_metadata?.full_name || user.email || '';
+      const isOwnerOrDev = metaRole === 'owner' || metaRole === 'developer';
       setAccountRole(metaRole);
-      setIsOwnerAccount(metaRole === 'owner' || metaRole === 'developer');
+      setIsOwnerAccount(isOwnerOrDev);
       setIsDevAccount(metaRole === 'developer');
 
-      if (!savedRole) {
+      if (isOwnerOrDev && savedRole) {
+        setRoleState(savedRole);
+        setIsOwner(savedRole === 'owner' || savedRole === 'developer');
+      } else {
         setRoleState(metaRole);
-        setIsOwner(metaRole === 'owner' || metaRole === 'developer');
+        setIsOwner(isOwnerOrDev);
       }
       if (metaName) setUserNameState(metaName);
     }
@@ -217,8 +225,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   }, [loadUser]);
 
   const setRole = (newRole: UserRole) => {
+    // Only owner or developer account can change or switch role
+    if (!isOwnerAccount && !isDevAccount && accountRole !== 'owner' && accountRole !== 'developer') {
+      console.warn('Только владелец или разработчик может изменять роль');
+      return;
+    }
     setRoleState(newRole);
-    setIsOwner(newRole === 'owner');
+    setIsOwner(newRole === 'owner' || newRole === 'developer');
     try {
       localStorage.setItem(ROLE_KEY, newRole);
       const current = localStorage.getItem(STORAGE_KEY);
@@ -276,8 +289,13 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProfile = async (updates: Partial<UserProfileData>) => {
+    // Non-owner accounts cannot change their role
     if (updates.role !== undefined) {
-      setRole(updates.role);
+      if (isOwnerAccount || isDevAccount || accountRole === 'owner' || accountRole === 'developer') {
+        setRole(updates.role);
+      } else {
+        delete updates.role;
+      }
     }
     if (updates.userName !== undefined) setUserNameState(updates.userName);
     if (updates.userEmail !== undefined) {

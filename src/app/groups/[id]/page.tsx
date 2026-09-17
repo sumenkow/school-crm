@@ -36,6 +36,7 @@ import {
 } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 
 export default function GroupDetailsPage() {
   const params = useParams();
@@ -66,6 +67,7 @@ export default function GroupDetailsPage() {
   }, [groupId]);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isScheduleLessonOpen, setIsScheduleLessonOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: group.name,
     courseName: group.courseName,
@@ -291,8 +293,16 @@ export default function GroupDetailsPage() {
             </Link>
             <button
               type="button"
+              onClick={() => setIsScheduleLessonOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Запланировать новое занятие
+            </button>
+            <button
+              type="button"
               onClick={handleOpenEdit}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <Edit className="h-3.5 w-3.5 text-slate-500" />
               {t('action.edit', 'Изменить')}
@@ -536,7 +546,10 @@ export default function GroupDetailsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900">{t('groups.groupLessons', 'Уроки группы')}</h3>
-            <button className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700">
+            <button
+              onClick={() => setIsScheduleLessonOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 cursor-pointer"
+            >
               <Plus className="h-3.5 w-3.5" />
               {t('groups.addLesson', 'Добавить урок')}
             </button>
@@ -714,6 +727,17 @@ export default function GroupDetailsPage() {
           </div>
         </div>
       )}
+      {/* SCHEDULE LESSON MODAL */}
+      <ScheduleLessonModal
+        isOpen={isScheduleLessonOpen}
+        onClose={() => setIsScheduleLessonOpen(false)}
+        defaultGroupId={group.id}
+        onScheduled={() => {
+          success('Занятие успешно запланировано, уведомления разосланы родителям!');
+          const fresh = getGroupById(groupId);
+          if (fresh) setGroup(fresh);
+        }}
+      />
     </div>
   );
 }

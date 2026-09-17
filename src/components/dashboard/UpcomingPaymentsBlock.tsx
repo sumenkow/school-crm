@@ -32,7 +32,7 @@ interface UpcomingPaymentsBlockProps {
   limit?: number;
 }
 
-export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 6 }: UpcomingPaymentsBlockProps) {
+export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 5 }: UpcomingPaymentsBlockProps) {
   const toast = useToast();
   const { role } = useRole();
 
@@ -284,6 +284,17 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 6 }: Upcomin
               </div>
             );
           })}
+        </div>
+      )}
+
+      {items.length > limit && (
+        <div className="pt-2 text-center border-t border-slate-100">
+          <Link
+            href="/finance?filter=expected"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+          >
+            Смотреть все ({items.length})... <ChevronRight size={14} />
+          </Link>
         </div>
       )}
 

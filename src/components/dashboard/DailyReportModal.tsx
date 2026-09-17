@@ -23,6 +23,16 @@ import { useRole } from '@/context/RoleContext';
 import { getEurRubRate, fetchLiveEurRubRate } from '@/lib/data/currencyHelper';
 import { getReportRecipientEmails } from '@/lib/data/schoolSettingsStorage';
 
+export interface DailyTransactionItem {
+  id: string;
+  date: string;
+  clientFullName: string;
+  amount: number;
+  currency: string;
+  formattedAmount: string;
+  periodLabel: string;
+}
+
 interface DailyReportData {
   date: string;
   dateShort: string;
@@ -44,6 +54,7 @@ interface DailyReportData {
     lessonsHeld: number;
     newStudents: number;
   };
+  transactions?: DailyTransactionItem[];
   telegramText: string;
   emailHtml: string;
 }
@@ -363,6 +374,46 @@ export function DailyReportModal({ isOpen, onClose }: DailyReportModalProps) {
                     {report.metrics.debtorsCount} чел. (-{(report.metrics.totalDebtAmountEur || Math.round(((report.metrics.totalDebtAmount || 0) / 100) * 100) / 100).toLocaleString('ru-RU')} €
                     {` / ≈ -${(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽`})
                   </span>
+                </div>
+              )}
+
+              {/* Itemized Transactions Table (Item 2) */}
+              {report.transactions && report.transactions.length > 0 && (
+                <div className="space-y-2.5 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        🧾 Реестр платежей за смену
+                      </span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                        {report.transactions.length} транзакции
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400">Поступления в кассу</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-slate-400 text-[11px]">
+                          <th className="py-2 font-semibold">Дата и время</th>
+                          <th className="py-2 font-semibold">Клиент (ФИО)</th>
+                          <th className="py-2 font-semibold">Назначение</th>
+                          <th className="py-2 font-semibold text-right">Сумма</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {report.transactions.map((tx) => (
+                          <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-2 text-slate-500 font-mono text-[11px] whitespace-nowrap">{tx.date}</td>
+                            <td className="py-2 font-semibold text-slate-800">{tx.clientFullName}</td>
+                            <td className="py-2 text-slate-600">{tx.periodLabel}</td>
+                            <td className="py-2 text-right font-bold text-emerald-700 whitespace-nowrap">{tx.formattedAmount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 

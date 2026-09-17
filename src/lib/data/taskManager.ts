@@ -103,14 +103,18 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
   saveTaskToStorage(newTask);
 
   // 5. Create cross-entity Timeline interaction
-  const timeNow = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const nowCreated = new Date();
+  const padC = (n: number) => String(n).padStart(2, '0');
+  const dateStrC = `${padC(nowCreated.getDate())}.${padC(nowCreated.getMonth() + 1)}.${nowCreated.getFullYear()}`;
+  const timeNow = `${padC(nowCreated.getHours())}:${padC(nowCreated.getMinutes())}`;
   const timelineItem: TimelineInteraction = {
     id: `int_task_${Date.now()}`,
     studentId,
     studentName,
     parentId,
     parentName,
-    occurredAt: `Сегодня, ${timeNow}`,
+    occurredAt: `${dateStrC}, ${timeNow}`,
+    createdAt: nowCreated.toISOString(),
     channel: 'other',
     type: 'organizational',
     author: options.createdByName || options.assignedTo || 'Система',
@@ -209,18 +213,30 @@ export async function updateUnifiedTaskStatus(
     }
   }
 
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const formattedDateTime = `${dateStr}, ${timeStr}`;
+
+  const performerName = options?.performedBy || target.assignedTo || 'Администратор';
+  const taskContent = newStatus === 'done'
+    ? `[Задача выполнена] ${target.title}. Ответственный: ${performerName}. Дата и время: ${formattedDateTime}${options?.comment ? `. Комментарий: ${options.comment}` : ''}`
+    : `Задача «${target.title}» отмечена как ${label}.${options?.comment ? ` Комментарий: ${options.comment}` : ''}${options?.newDueDate ? ` Новый срок: ${updatedTask.dueDateFormatted}` : ''}`;
+
   const timelineItem: TimelineInteraction = {
     id: `int_task_status_${Date.now()}`,
     studentId: resolvedStudentId,
     studentName: resolvedStudentName,
     parentId: resolvedParentId,
     parentName: resolvedParentName,
-    occurredAt: `Сегодня, ${timeNow}`,
+    occurredAt: formattedDateTime,
+    createdAt: now.toISOString(),
     channel: 'other',
     type: 'status_change',
-    author: options?.performedBy || 'Администратор',
-    content: `Задача «${target.title}» отмечена как ${label}.${options?.comment ? ` Комментарий: ${options.comment}` : ''}${options?.newDueDate ? ` Новый срок: ${updatedTask.dueDateFormatted}` : ''}`,
-    result: options?.comment || undefined,
+    author: performerName,
+    content: taskContent,
+    result: options?.comment || (newStatus === 'done' ? 'Задача выполнена' : undefined),
     targetType: target.parentId ? 'parent' : 'student',
     targetName: target.parentId ? (resolvedParentName || 'Родитель') : (resolvedStudentName || 'Ученик'),
     targetRole: target.parentId ? 'Родитель' : 'Ученик',

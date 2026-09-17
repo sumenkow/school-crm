@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { UserProfileModal } from '@/components/profile/UserProfileModal';
+import { CountryFlag } from '@/components/common/CountryFlag';
 
 interface TopBarProps {
   onOpenMobile: () => void;
@@ -184,7 +185,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                 }}
                 title={meta.label}
               >
-                <span className="text-sm">{meta.flag}</span>
+                <CountryFlag country={langKey} size={15} />
                 <span className="text-[11px] font-extrabold tracking-tight">{meta.short}</span>
               </button>
             );
@@ -204,7 +205,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
             }}
             aria-label={t('topbar.language', 'Язык')}
           >
-            <span className="text-base leading-none">{LANGUAGE_LABELS[language].flag}</span>
+            <CountryFlag country={language} size={15} />
             <span className="text-[11px] font-extrabold uppercase">{LANGUAGE_LABELS[language].short}</span>
             <ChevronDown size={13} style={{ color: 'var(--md-on-surface-variant)' }} />
           </button>
@@ -226,7 +227,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                     onClick={() => {
                       setLanguage(langKey);
                       setLangMenuOpen(false);
-                      toast.success(`${meta.flag} ${meta.nativeName}`);
+                      toast.success(`${meta.nativeName}`);
                     }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
                       isSelected
@@ -234,7 +235,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
                         : 'text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span className="text-base">{meta.flag}</span>
+                    <CountryFlag country={langKey} size={15} />
                     <span>{meta.nativeName}</span>
                   </button>
                 );

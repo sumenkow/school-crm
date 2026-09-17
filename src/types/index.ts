@@ -29,6 +29,8 @@ export interface Student {
   email?: string;
   studentType?: 'school_student' | 'adult_student';
   status: StudentStatus;
+  isDeleted?: boolean;
+  deletedAt?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +45,8 @@ export interface Parent {
   whatsapp?: string;
   email?: string;
   preferredChannel: 'telegram' | 'whatsapp' | 'phone' | 'email';
+  isDeleted?: boolean;
+  deletedAt?: string;
   notes?: string;
 }
 
@@ -71,6 +75,8 @@ export interface Group {
   capacity: number;
   enrolledCount?: number;
   status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
+  isDeleted?: boolean;
+  deletedAt?: string;
   scheduleRule?: Array<{ day: number; start: string; end: string }>;
   startDate: string;
   endDate?: string;

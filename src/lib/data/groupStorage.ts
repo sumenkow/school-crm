@@ -350,3 +350,30 @@ export function enrollStudentToGroup(params: {
 
   return { updatedGroup, updatedStudent };
 }
+
+export function softDeleteGroup(groupId: string): void {
+  const group = getGroupById(groupId);
+  if (!group) return;
+  const now = new Date().toISOString();
+  const updatedGroup: FullGroupData = {
+    ...group,
+    isDeleted: true,
+    is_deleted: true,
+    deletedAt: now,
+    deleted_at: now,
+  };
+  saveGroupToStorage(updatedGroup);
+}
+
+export function restoreGroup(groupId: string): void {
+  const group = getGroupById(groupId);
+  if (!group) return;
+  const updatedGroup: FullGroupData = {
+    ...group,
+    isDeleted: false,
+    is_deleted: false,
+    deletedAt: undefined,
+    deleted_at: undefined,
+  };
+  saveGroupToStorage(updatedGroup);
+}

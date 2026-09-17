@@ -111,6 +111,7 @@ function TeamContent() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
   const [editCopiedEmail, setEditCopiedEmail] = useState(false);
+  const [editTeacherRoleDesc, setEditTeacherRoleDesc] = useState('');
 
   const DEFAULT_MOCK_MEMBERS: TeamMember[] = [
     {
@@ -198,6 +199,8 @@ function TeamContent() {
     setEditNewPassword('');
     setEditError('');
     setShowEditPassword(false);
+    const tData = getTeacherData(member);
+    setEditTeacherRoleDesc(tData?.role || (member.role === 'teacher' ? 'Преподаватель онлайн-школы' : ''));
   };
 
   // Check URL query params for ?role=teacher or ?role=admin
@@ -304,6 +307,27 @@ function TeamContent() {
       if (!res.ok) {
         setEditError(data.error || 'Ошибка сохранения изменений');
       } else {
+        // Update custom teacher role description in localStorage and memory
+        if (editTeacherRoleDesc.trim()) {
+          try {
+            const raw = localStorage.getItem('crm_teacher_roles_v1');
+            const customRoles = raw ? JSON.parse(raw) : {};
+            customRoles[editingMember.id] = editTeacherRoleDesc.trim();
+            if (editingMember.email) customRoles[editingMember.email] = editTeacherRoleDesc.trim();
+            const t = INITIAL_TEACHERS.find(
+              (tc) =>
+                tc.id === editingMember.id ||
+                tc.email?.toLowerCase() === editingMember.email?.toLowerCase() ||
+                tc.name?.toLowerCase() === editingMember.full_name?.toLowerCase()
+            );
+            if (t) {
+              t.role = editTeacherRoleDesc.trim();
+              customRoles[t.id] = editTeacherRoleDesc.trim();
+            }
+            localStorage.setItem('crm_teacher_roles_v1', JSON.stringify(customRoles));
+          } catch {}
+        }
+
         setActionSuccess(`Карточка сотрудника «${editFullName}» успешно обновлена!`);
         setTimeout(() => setActionSuccess(''), 4000);
         setEditingMember(null);
@@ -365,12 +389,42 @@ function TeamContent() {
   }
 
   const getTeacherData = (member: TeamMember) => {
-    return INITIAL_TEACHERS.find(
-      (t) =>
-        t.id === member.id ||
-        t.email?.toLowerCase() === member.email?.toLowerCase() ||
-        t.name?.toLowerCase() === member.full_name?.toLowerCase()
+    let customRoles: Record<string, string> = {};
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('crm_teacher_roles_v1');
+        if (raw) customRoles = JSON.parse(raw);
+      } catch {}
+    }
+
+    const t = INITIAL_TEACHERS.find(
+      (tc) =>
+        tc.id === member.id ||
+        tc.email?.toLowerCase() === member.email?.toLowerCase() ||
+        tc.name?.toLowerCase() === member.full_name?.toLowerCase()
     );
+
+    const overridden = customRoles[member.id] || (member.email && customRoles[member.email]) || (t && customRoles[t.id]);
+    if (t) {
+      return {
+        ...t,
+        role: overridden || t.role || 'Преподаватель онлайн-школы',
+      };
+    }
+
+    return {
+      id: member.id,
+      name: member.full_name,
+      email: member.email,
+      phone: member.phone || '',
+      role: overridden || 'Преподаватель онлайн-школы',
+      telegram: '',
+      groupsCount: 0,
+      activeStudentsCount: 0,
+      hoursPerWeek: 0,
+      avatar: '',
+      color: 'bg-blue-600',
+    };
   };
 
   const teachersCount = members.filter((m) => m.role === 'teacher').length;
@@ -1123,6 +1177,26 @@ function TeamContent() {
                     <Calendar size={14} />
                     Открыть расписание
                   </Link>
+                </div>
+              )}
+
+              {/* Teacher Position Description (Item 12) */}
+              {(editRole === 'teacher' || editingMember.role === 'teacher') && (
+                <div>
+                  <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+                    Описание позиции / предмета преподавателя
+                  </label>
+                  <input
+                    type="text"
+                    value={editTeacherRoleDesc}
+                    onChange={(e) => setEditTeacherRoleDesc(e.target.value)}
+                    placeholder="Преподаватель онлайн-школы, английский язык"
+                    className="md-input"
+                    style={{ width: '100%' }}
+                  />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Отображается в карточке сотрудника в блоке «Расписание и группы»
+                  </span>
                 </div>
               )}
 
