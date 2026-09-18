@@ -55,6 +55,8 @@ import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currency
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { cn } from '@/lib/utils';
+import { MobileActionCenter } from '@/components/dashboard/MobileActionCenter';
+import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 
 // Helper: MD3 icon container
 function IconContainer({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
@@ -399,6 +401,7 @@ function OwnerDashboard({
 }) {
   const router = useRouter();
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
   const [allPayments, setAllPayments] = useState<FullPaymentData[]>(() => {
@@ -482,66 +485,74 @@ function OwnerDashboard({
     }));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Сводка руководителя
-            </h1>
-            <span
-              className="md-label-small"
-              style={{
-                padding: '3px 10px',
-                borderRadius: '9999px',
-                backgroundColor: 'var(--md-tertiary-container, #EEDCFF)',
-                color: 'var(--md-on-tertiary-container, #28123C)',
-                fontWeight: 600,
-              }}
-            >
-              Руководитель школы
-            </span>
-          </div>
-          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Финансовые результаты в EUR / RUB • {currentMonth} • Курс 1 € = {rate} ₽
-          </p>
-        </div>
-
-        {/* Quick action buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/crm" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
-            <UserCheck size={16} />
-            + Новый лид
-          </Link>
-          <Link href="/finance" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
-            <CreditCard size={16} />
-            Финансы
-          </Link>
-          <Link href="/analytics" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
-            <BarChart3 size={16} />
-            Аналитика
-          </Link>
-          <button
-            onClick={onOpenReport}
-            className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
-            style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
-          >
-            <FileText size={16} />
-            Отчет за день
-          </button>
-          {onOpenExecutiveReport && (
-            <button
-              onClick={onOpenExecutiveReport}
-              className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
-              style={{ backgroundColor: '#FAF5FF', color: '#7E22CE', fontWeight: 600, border: '1px solid #E9D5FF' }}
-            >
-              <Shield size={16} />
-              Аудит задач
-            </button>
-          )}
-        </div>
+    <div className="w-full min-w-0 overflow-x-hidden">
+      {/* Mobile Action Center (< 768px) */}
+      <div className="md:hidden">
+        <MobileActionCenter
+          rate={rate}
+          payments={allPayments}
+          leads={leads}
+          lessons={INITIAL_LESSONS}
+          onOpenCreateLead={() => setIsCreateLeadOpen(true)}
+        />
       </div>
+
+      {/* Desktop Dashboard (>= 768px) */}
+      <div className="hidden md:flex flex-col gap-[28px]">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
+                Сводка руководителя
+              </h1>
+              <span
+                className="md-label-small"
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'var(--md-tertiary-container, #EEDCFF)',
+                  color: 'var(--md-on-tertiary-container, #28123C)',
+                  fontWeight: 600,
+                }}
+              >
+                Руководитель школы
+              </span>
+            </div>
+            <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+              Финансовые результаты в EUR / RUB • {currentMonth} • Курс 1 € = {rate} ₽
+            </p>
+          </div>
+
+          {/* Cleaned Desktop Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsCreateLeadOpen(true)}
+              className="md-btn md-btn-filled md-btn-sm inline-flex items-center gap-1.5"
+            >
+              <UserCheck size={16} />
+              + Новый лид
+            </button>
+            <button
+              onClick={onOpenReport}
+              className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+              style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
+            >
+              <FileText size={16} />
+              Отчет за день
+            </button>
+            {onOpenExecutiveReport && (
+              <button
+                onClick={onOpenExecutiveReport}
+                className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+                style={{ backgroundColor: '#FAF5FF', color: '#7E22CE', fontWeight: 600, border: '1px solid #E9D5FF' }}
+              >
+                <Shield size={16} />
+                Аудит задач
+              </button>
+            )}
+          </div>
+        </div>
 
       {/* SMART ACTION HUB */}
       <SmartActionHub />
@@ -672,112 +683,60 @@ function OwnerDashboard({
         />
       </div>
 
-      {/* Operational Overview: Recent Payments + Active Teachers */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Recent Payments */}
-        <div className="md-card-elevated" style={{ padding: '20px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-            <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Последние поступления
-            </h3>
-            <Link href="/finance" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
-              Все оплаты →
-            </Link>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {recentPaidList.slice(0, 5).map((p, idx) => (
-              <div
-                key={p.id || idx}
-                onClick={() => setSelectedPayment(p)}
-                className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
-                style={{
-                  padding: '12px 14px',
-                  backgroundColor: 'var(--md-surface-container-low)',
-                  borderRadius: '12px',
-                }}
-                title="Нажмите для просмотра квитанции платежа"
-              >
-                <div>
-                  <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>{p.student}</p>
-                  <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{p.course} • {p.date}</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p className="md-label-large" style={{ color: 'var(--md-success)', fontWeight: 700 }}>+{p.amount}</p>
-                  <span className="md-label-small flex items-center justify-end gap-1" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    <span>{p.status}</span>
-                    <ChevronRight className="h-3 w-3 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-          {allPayments.filter((p) => p.status === 'paid').length > 5 && (
-            <div className="mt-3 pt-2.5 border-t border-slate-100 text-center">
-              <Link
-                href="/finance"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
-              >
-                Смотреть все оплаты ({allPayments.filter((p) => p.status === 'paid').length})... <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          )}
+      {/* Team & Teachers overview (Desktop only) */}
+      <div className="md-card-elevated" style={{ padding: '20px' }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+          <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
+            Команда и преподаватели
+          </h3>
+          <Link href="/settings/team" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
+            Управление доступом →
+          </Link>
         </div>
-
-        {/* Team & Teachers overview */}
-        <div className="md-card-elevated" style={{ padding: '20px' }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-            <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Команда и преподаватели
-            </h3>
-            <Link href="/settings/team" className="md-label-medium" style={{ color: 'var(--md-primary)' }}>
-              Управление доступом →
-            </Link>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { name: 'Мария Иванова', role: 'Преподаватель Английского', groups: '3 группы • 18 учеников', load: '92%', href: '/teachers/t1' },
-              { name: 'Дмитрий Соколов', role: 'Преподаватель Робототехники', groups: '2 группы • 14 учеников', load: '85%', href: '/teachers/t2' },
-              { name: 'Елена Васильева', role: 'Преподаватель Математики', groups: '2 группы • 11 учеников', load: '78%', href: '/teachers/t3' },
-              { name: 'Анна Менеджер', role: 'Администратор школы', groups: 'Куратор оплат и лидов', load: 'Активна', href: '/settings/team' },
-            ].map((t, idx) => (
-              <div
-                key={idx}
-                onClick={() => router.push(t.href)}
-                className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
-                style={{
-                  padding: '12px 14px',
-                  backgroundColor: 'var(--md-surface-container-low)',
-                  borderRadius: '12px',
-                }}
-                title="Нажмите, чтобы открыть карточку сотрудника"
-              >
-                <div>
-                  <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>{t.name}</p>
-                  <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{t.role} • {t.groups}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="md-label-small"
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: '9999px',
-                      backgroundColor: 'var(--md-secondary-container)',
-                      color: 'var(--md-on-secondary-container)',
-                    }}
-                  >
-                    {t.load}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { name: 'Мария Иванова', role: 'Преподаватель Английского', groups: '3 группы • 18 учеников', load: '92%', href: '/teachers/t1' },
+            { name: 'Дмитрий Соколов', role: 'Преподаватель Робототехники', groups: '2 группы • 14 учеников', load: '85%', href: '/teachers/t2' },
+            { name: 'Елена Васильева', role: 'Преподаватель Математики', groups: '2 группы • 11 учеников', load: '78%', href: '/teachers/t3' },
+            { name: 'Анна Менеджер', role: 'Администратор школы', groups: 'Куратор оплат и лидов', load: 'Активна', href: '/settings/team' },
+          ].map((t, idx) => (
+            <div
+              key={idx}
+              onClick={() => router.push(t.href)}
+              className="flex items-center justify-between group cursor-pointer hover:bg-slate-100/80 transition-all"
+              style={{
+                padding: '12px 14px',
+                backgroundColor: 'var(--md-surface-container-low)',
+                borderRadius: '12px',
+              }}
+              title="Нажмите, чтобы открыть карточку сотрудника"
+            >
+              <div>
+                <p className="md-label-large group-hover:text-blue-600 transition-colors" style={{ color: 'var(--md-on-surface)' }}>{t.name}</p>
+                <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>{t.role} • {t.groups}</p>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="md-label-small"
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '9999px',
+                    backgroundColor: 'var(--md-secondary-container)',
+                    color: 'var(--md-on-secondary-container)',
+                  }}
+                >
+                  {t.load}
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Admin Performance (для руководителя-владельца) */}
+      {/* Admin Performance (для руководителя-владельца, Desktop only) */}
       <div
-        className="md-card-elevated flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        className="hidden md:flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 md-card-elevated"
         style={{
           padding: '16px 20px',
           background: 'linear-gradient(135deg, rgba(21, 101, 192, 0.05) 0%, rgba(142, 36, 170, 0.05) 100%)',
@@ -819,83 +778,15 @@ function OwnerDashboard({
           <ArrowRight size={13} />
         </Link>
       </div>
+      </div>
 
-      {/* Payment Details Modal */}
-      {selectedPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                  <CreditCard className="h-4 w-4" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">Квитанция платежа</h3>
-              </div>
-              <button onClick={() => setSelectedPayment(null)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3.5 text-xs">
-              <div className="rounded-xl bg-emerald-50/60 p-4 border border-emerald-200/60 flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] text-emerald-800 font-semibold uppercase tracking-wider">Поступившая сумма</span>
-                  <p className="text-2xl font-bold text-emerald-950 mt-0.5">{selectedPayment.amount}</p>
-                </div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                  {selectedPayment.status}
-                </span>
-              </div>
-
-              <div className="space-y-2 rounded-xl bg-slate-50 p-3.5 border border-slate-200/80">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Ученик:</span>
-                  <strong className="text-slate-900">{selectedPayment.student}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Курс обучения:</span>
-                  <span className="text-slate-800 font-medium">{selectedPayment.course}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Дата внесения:</span>
-                  <span className="text-slate-800">{selectedPayment.date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Способ оплаты:</span>
-                  <span className="text-slate-800">{selectedPayment.method}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Принял оплату:</span>
-                  <span className="text-slate-800">{selectedPayment.recordedBy}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    const sid = selectedPayment.studentId || '1';
-                    setSelectedPayment(null);
-                    router.push(`/students/${sid}`);
-                  }}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  Карточка ученика
-                </button>
-                <button
-                  onClick={() => {
-                    alert('Печатная форма квитанции сформирована');
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <Printer className="h-3.5 w-3.5 text-slate-500" />
-                  Печать
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateLeadModal
+        isOpen={isCreateLeadOpen}
+        onClose={() => setIsCreateLeadOpen(false)}
+        onCreated={(createdLead) => {
+          setLeads((prev) => [createdLead, ...prev]);
+        }}
+      />
     </div>
   );
 }
@@ -910,6 +801,25 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const { userName } = useRole();
   const [activeQueue, setActiveQueue] = useState<AdminQueueType | null>(null);
   const [queueSearch, setQueueSearch] = useState('');
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const [allPayments, setAllPayments] = useState<FullPaymentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
+  const [allLeads, setAllLeads] = useState<FullLeadData[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const parsedIds = new Set(parsed.map((l) => l.id));
+            return [...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))];
+          }
+        }
+      } catch {}
+    }
+    return INITIAL_LEADS;
+  });
 
   // 1. Leads queue data
   const [leadsList, setLeadsList] = useState([
@@ -1323,60 +1233,72 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
   const pendingLeadsCount = leadsList.filter((l) => !l.contacted).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-              Мой день
-            </h1>
-            <span
-              className="md-label-small"
-              style={{
-                padding: '3px 10px',
-                borderRadius: '9999px',
-                backgroundColor: 'var(--md-secondary-container)',
-                color: 'var(--md-on-secondary-container)',
-                fontWeight: 600,
-              }}
-            >
-              Администратор
-            </span>
-          </div>
-          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Задачи на смену, входящие заявки, контроль оплат и расписание
-          </p>
-        </div>
-
-        {/* Quick action buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={onOpenReport}
-            className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
-            style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
-          >
-            <FileText size={16} />
-            Отчет за день
-          </button>
-          <Link href="/crm" className="md-btn md-btn-filled md-btn-sm" style={{ gap: '6px' }}>
-            <UserCheck size={16} />
-            + Новый лид
-          </Link>
-          <Link href="/finance" className="md-btn md-btn-tonal md-btn-sm" style={{ gap: '6px' }}>
-            <CreditCard size={16} />
-            Принять оплату
-          </Link>
-          <Link href="/calendar" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
-            <Calendar size={16} />
-            Расписание
-          </Link>
-          <Link href="/tasks" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
-            <CheckSquare size={16} />
-            Задачи
-          </Link>
-        </div>
+    <div className="w-full min-w-0 overflow-x-hidden">
+      {/* Mobile Action Center (< 768px) */}
+      <div className="md:hidden">
+        <MobileActionCenter
+          rate={getEurRubRate()}
+          payments={allPayments}
+          leads={allLeads}
+          lessons={INITIAL_LESSONS}
+          onOpenCreateLead={() => setIsCreateLeadOpen(true)}
+        />
       </div>
+
+      {/* Desktop Dashboard (>= 768px) */}
+      <div className="hidden md:flex flex-col gap-[28px]">
+        {/* Header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
+                Мой день
+              </h1>
+              <span
+                className="md-label-small"
+                style={{
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'var(--md-secondary-container)',
+                  color: 'var(--md-on-secondary-container)',
+                  fontWeight: 600,
+                }}
+              >
+                Администратор
+              </span>
+            </div>
+            <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
+              Задачи на смену, входящие заявки, контроль оплат и расписание
+            </p>
+          </div>
+
+          {/* Cleaned Desktop Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsCreateLeadOpen(true)}
+              className="md-btn md-btn-filled md-btn-sm inline-flex items-center gap-1.5"
+            >
+              <UserCheck size={16} />
+              + Новый лид
+            </button>
+            <button
+              onClick={onOpenReport}
+              className="md-btn md-btn-tonal md-btn-sm inline-flex items-center gap-1.5"
+              style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: 600 }}
+            >
+              <FileText size={16} />
+              Отчет за день
+            </button>
+            <Link href="/calendar" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
+              <Calendar size={16} />
+              Расписание
+            </Link>
+            <Link href="/tasks" className="md-btn md-btn-outlined md-btn-sm" style={{ gap: '6px' }}>
+              <CheckSquare size={16} />
+              Задачи
+            </Link>
+          </div>
+        </div>
 
       {/* SMART ACTION HUB */}
       <SmartActionHub />
@@ -2204,6 +2126,30 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
         onClose={() => setSelectedLessonForModal(null)}
         onUpdateAttendance={handleUpdateLessonAttendance}
       />
+      </div>
+
+      <CreateLeadModal
+        isOpen={isCreateLeadOpen}
+        onClose={() => setIsCreateLeadOpen(false)}
+        onCreated={(createdLead) => {
+          setAllLeads((prev) => [createdLead, ...prev]);
+          setLeadsList((prev) => [
+            {
+              id: `ql-dyn-${createdLead.id}`,
+              name: `${createdLead.name}${createdLead.studentName ? ` (${createdLead.studentName})` : ''}`,
+              course: createdLead.directionOrCourse,
+              source: `${createdLead.source} (новое)`,
+              phone: createdLead.contact,
+              status: 'Требует 1-го звонка',
+              deadline: 'в течение 15 мин',
+              urgent: true,
+              contacted: false,
+              leadId: createdLead.id,
+            },
+            ...prev,
+          ]);
+        }}
+      />
     </div>
   );
 }
@@ -2240,7 +2186,7 @@ function TeacherDashboard() {
   const totalStudents = groups.reduce((acc, g) => acc + (g.students?.length || 0), 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+    <div className="w-full min-w-0 overflow-x-hidden flex flex-col gap-7">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
