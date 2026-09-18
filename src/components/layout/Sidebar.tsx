@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { createClient } from '@/lib/supabase/client';
 import {
   LayoutDashboard,
   Calendar,
@@ -28,7 +29,13 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
+  ChevronDown,
+  User,
+  LogOut,
+  MoreVertical
 } from 'lucide-react';
+import { UserProfileModal } from '@/components/profile/UserProfileModal';
 
 interface NavItem {
   key: string;
@@ -38,19 +45,24 @@ interface NavItem {
 }
 
 interface NavSection {
+  id: string;
   sectionKey?: string;
   section?: string;
+  defaultOpen?: boolean;
   items: NavItem[];
 }
 
 const getOwnerNav = (): NavSection[] => [
   {
+    id: 'main',
+    defaultOpen: true,
     items: [
       { key: 'nav.main', label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
       { key: 'nav.calendar', label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
     ],
   },
   {
+    id: 'students',
     sectionKey: 'nav.section.students',
     section: 'Ученики',
     items: [
@@ -60,6 +72,7 @@ const getOwnerNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'sales',
     sectionKey: 'nav.section.sales',
     section: 'Продажи',
     items: [
@@ -68,6 +81,7 @@ const getOwnerNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'finance',
     sectionKey: 'nav.section.finance',
     section: 'Финансы и аналитика',
     items: [
@@ -76,6 +90,7 @@ const getOwnerNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'admin',
     sectionKey: 'nav.section.admin',
     section: 'Администрирование',
     items: [
@@ -86,6 +101,7 @@ const getOwnerNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'kb',
     sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
@@ -96,12 +112,15 @@ const getOwnerNav = (): NavSection[] => [
 
 const getAdminNav = (): NavSection[] => [
   {
+    id: 'main',
+    defaultOpen: true,
     items: [
       { key: 'nav.myDay', label: 'Мой день', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
       { key: 'nav.calendar', label: 'Календарь', href: '/calendar', icon: <Calendar size={20} /> },
     ],
   },
   {
+    id: 'students',
     sectionKey: 'nav.section.students',
     section: 'Ученики',
     items: [
@@ -111,6 +130,7 @@ const getAdminNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'sales',
     sectionKey: 'nav.section.sales',
     section: 'Продажи',
     items: [
@@ -119,6 +139,7 @@ const getAdminNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'finance',
     sectionKey: 'nav.section.finance',
     section: 'Финансы',
     items: [
@@ -126,6 +147,7 @@ const getAdminNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'admin',
     sectionKey: 'nav.section.admin',
     section: 'Администрирование',
     items: [
@@ -133,6 +155,7 @@ const getAdminNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'kb',
     sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
@@ -143,6 +166,8 @@ const getAdminNav = (): NavSection[] => [
 
 const getTeacherNav = (): NavSection[] => [
   {
+    id: 'main',
+    defaultOpen: true,
     items: [
       { key: 'nav.main', label: 'Главная', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
       { key: 'nav.myLessons', label: 'Мои занятия', href: '/teacher', icon: <MonitorPlay size={20} /> },
@@ -152,6 +177,7 @@ const getTeacherNav = (): NavSection[] => [
     ],
   },
   {
+    id: 'kb',
     sectionKey: 'nav.section.kb',
     section: 'База знаний',
     items: [
@@ -160,6 +186,76 @@ const getTeacherNav = (): NavSection[] => [
   },
 ];
 
+const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: any) => {
+  const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
+  const isActive = (href: string) => {
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    return pathname.startsWith(href);
+  };
+  const hasActive = section.items.some((i: any) => isActive(i.href));
+
+  useEffect(() => {
+    if (hasActive && !collapsed) setIsOpen(true);
+  }, [hasActive, collapsed]);
+
+  return (
+    <div className="mb-2">
+      {!collapsed && section.section && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center justify-between w-full px-4 py-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 rounded-xl transition-colors group cursor-pointer"
+        >
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 group-hover:text-slate-600">
+            {section.sectionKey ? t(section.sectionKey, section.section) : section.section}
+          </span>
+          {isOpen ? (
+            <ChevronDown size={14} className="text-slate-400 group-hover:text-slate-600" />
+          ) : (
+            <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-600" />
+          )}
+        </button>
+      )}
+
+      {(isOpen || collapsed || !section.section) && (
+        <div className="mt-0.5 space-y-0.5">
+          {section.items.map((item: any) => {
+            const active = isActive(item.href);
+            const label = item.key ? t(item.key, item.label) : item.label;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onCloseMobile}
+                title={collapsed ? label : undefined}
+                className={"flex items-center relative transition-all duration-150 rounded-full cursor-pointer " + 
+                  (collapsed ? "justify-center mx-auto" : "gap-3 px-4")
+                }
+                style={{
+                  height: collapsed ? '44px' : '40px',
+                  width: collapsed ? '44px' : '100%',
+                  backgroundColor: active ? 'var(--md-secondary-container, #e2e8f0)' : 'transparent',
+                  color: active ? 'var(--md-on-secondary-container, #0f172a)' : 'var(--md-on-surface-variant, #64748b)',
+                  fontWeight: active ? 600 : 400,
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                }}
+              >
+                <span style={{ flexShrink: 0, opacity: active ? 1 : 0.75 }}>
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <span className="truncate">{label}</span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 interface SidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
@@ -167,236 +263,171 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
-  const { role } = useRole();
+  const router = useRouter();
+  const { role, userName, userEmail } = useRole();
   const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('crm_sidebar_collapsed');
-      if (saved === 'true') {
-        setCollapsed(true);
-      }
-    } catch {}
+    const handleResize = () => {
+      if (window.innerWidth < 1024) setCollapsed(true);
+      else setCollapsed(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleToggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('crm_sidebar_collapsed', String(next));
-      } catch {}
-      return next;
-    });
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
-  const navSections =
-    (role === 'owner' || role === 'developer') ? getOwnerNav() :
+  const navSections = role === 'owner' || role === 'developer' ? getOwnerNav() :
     role === 'admin' ? getAdminNav() :
     getTeacherNav();
 
-  const isActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
-    return pathname.startsWith(href);
-  };
+  const handleToggleCollapsed = () => setCollapsed(!collapsed);
+
+  const displayName = userName || userEmail || '?';
+  const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const drawerContent = (
-    <div
-      className="flex flex-col h-full overflow-hidden transition-all duration-200"
-      style={{
-        width: collapsed ? '76px' : '256px',
-        backgroundColor: 'var(--md-surface-container-low)',
-        paddingTop: '8px',
-        paddingBottom: '16px',
-      }}
-    >
-      {/* Drawer Header */}
-      <div style={{ padding: collapsed ? '12px 8px' : '16px 16px 12px' }}>
-        {collapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <div
-              className="flex items-center justify-center flex-shrink-0"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--md-primary-container)',
-                color: 'var(--md-on-primary-container)',
-              }}
-              title={t('app.title', 'YouEurope School CRM')}
-            >
-              <School size={20} />
-            </div>
-            <button
-              onClick={handleToggleCollapsed}
-              className="hidden md:flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-              style={{
-                width: '32px',
-                height: '32px',
-                border: '1px solid var(--md-outline-variant)',
-                backgroundColor: 'var(--md-surface)',
-                color: 'var(--md-primary)',
-              }}
-              title={t('nav.expand', 'Развернуть панель')}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center flex-shrink-0"
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--md-primary-container)',
-                color: 'var(--md-on-primary-container)',
-              }}
-            >
-              <School size={20} />
+    <div className="flex flex-col h-full overflow-hidden transition-all duration-300 relative bg-slate-50 border-r border-slate-200" style={{ width: collapsed ? '76px' : '260px' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 flex-shrink-0 h-16">
+        {!collapsed && (
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg bg-slate-900 text-white">
+              <School size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="md-title-small font-bold truncate" style={{ color: 'var(--md-on-surface)', fontSize: '15px', lineHeight: '18px' }}>
-                {t('app.title', 'YouEurope School CRM')}
-              </p>
-              <p className="md-label-small truncate" style={{ color: 'var(--md-on-surface-variant)' }}>
-                {t('app.subtitle', 'Управление школой')}
+              <p className="font-bold text-[15px] truncate text-slate-800">
+                YouEurope CRM
               </p>
             </div>
-            {/* Collapse toggle button for desktop */}
+          </div>
+        )}
+        <button
+          onClick={handleToggleCollapsed}
+          className={"flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 shrink-0 " + (collapsed ? "w-full h-10" : "w-8 h-8")}
+          title={collapsed ? "Развернуть" : "Свернуть"}
+        >
+          {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+        </button>
+      </div>
+
+      {/* Primary CTA */}
+      <div className="px-3 mb-3 flex-shrink-0">
+        <button
+          onClick={() => {
+            onCloseMobile();
+            router.push('/crm?new=1');
+          }}
+          title={collapsed ? "Новый лид" : undefined}
+          className="w-full rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          style={{ height: '44px', padding: collapsed ? '0' : '0 16px' }}
+        >
+          <Plus size={20} />
+          {!collapsed && <span className="font-medium text-[15px]">Новый лид</span>}
+        </button>
+      </div>
+
+      {/* Body / Nav List */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 pb-4">
+        {navSections.map((section) => (
+          <NavAccordionGroup 
+            key={section.id} 
+            section={section} 
+            collapsed={collapsed} 
+            pathname={pathname} 
+            onCloseMobile={onCloseMobile} 
+            t={t} 
+          />
+        ))}
+      </div>
+
+      {/* Footer / User Profile */}
+      <div className="p-3 border-t border-slate-200 flex-shrink-0 relative" ref={dropdownRef}>
+        <button
+          onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+          className={"w-full flex items-center gap-2 p-2 rounded-xl hover:bg-slate-200 transition-colors cursor-pointer " + (collapsed ? "justify-center" : "")}
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold shrink-0">
+            {avatarLetter}
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-semibold text-slate-800 truncate">{displayName}</p>
+              <p className="text-[11px] text-slate-500 capitalize">{role}</p>
+            </div>
+          )}
+          {!collapsed && <MoreVertical size={16} className="text-slate-400 shrink-0" />}
+        </button>
+
+        {/* User Dropdown */}
+        {userDropdownOpen && (
+          <div 
+            className="absolute bottom-full mb-2 left-3 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-50 animate-in fade-in zoom-in-95 duration-100"
+            style={{ 
+               transformOrigin: 'bottom left',
+               left: collapsed ? '70px' : '12px'
+            }}
+          >
+            <div className="px-3 py-2 border-b border-slate-100 mb-1">
+              <p className="text-sm font-bold text-slate-800 truncate">{displayName}</p>
+              <p className="text-xs text-slate-500 truncate">{userEmail}</p>
+            </div>
             <button
-              onClick={handleToggleCollapsed}
-              className="hidden md:flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0"
-              style={{
-                width: '32px',
-                height: '32px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                color: 'var(--md-on-surface-variant)',
+              onClick={() => {
+                setUserDropdownOpen(false);
+                setProfileModalOpen(true);
               }}
-              title={t('nav.collapse', 'Свернуть панель')}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              <ChevronLeft size={18} />
+              <User size={16} /> Профиль
             </button>
-            {/* Mobile close button */}
             <button
-              onClick={onCloseMobile}
-              className="md:hidden ml-auto flex items-center justify-center"
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                color: 'var(--md-on-surface-variant)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
             >
-              <X size={20} />
+              <LogOut size={16} /> Выйти
             </button>
           </div>
         )}
       </div>
-
-      {/* Navigation Sections */}
-      <nav style={{ flex: 1, padding: collapsed ? '0 8px' : '0 12px' }}>
-        {navSections.map((section, sIdx) => (
-          <div key={sIdx}>
-            {/* Divider between sections */}
-            {sIdx > 0 && (
-              <div
-                style={{
-                  height: '1px',
-                  backgroundColor: 'var(--md-outline-variant)',
-                  margin: collapsed ? '8px auto' : '8px 4px',
-                  width: collapsed ? '36px' : 'auto',
-                }}
-              />
-            )}
-
-            {/* Section label */}
-            {section.section && !collapsed && (
-              <p
-                className="md-label-medium"
-                style={{
-                  color: 'var(--md-on-surface-variant)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.8px',
-                  padding: '12px 16px 4px',
-                }}
-              >
-                {section.sectionKey ? t(section.sectionKey, section.section) : section.section}
-              </p>
-            )}
-
-            {/* Nav items */}
-            {section.items.map((item) => {
-              const active = isActive(item.href);
-              const label = item.key ? t(item.key, item.label) : item.label;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onCloseMobile}
-                  title={collapsed ? label : undefined}
-                  className={`flex items-center ${collapsed ? 'justify-center mx-auto' : 'gap-3'} relative transition-all duration-150`}
-                  style={{
-                    height: collapsed ? '46px' : '52px',
-                    width: collapsed ? '46px' : '100%',
-                    padding: collapsed ? '0' : '0 16px',
-                    borderRadius: '9999px',
-                    marginBottom: '3px',
-                    backgroundColor: active ? 'var(--md-secondary-container)' : 'transparent',
-                    color: active ? 'var(--md-on-secondary-container)' : 'var(--md-on-surface-variant)',
-                    fontWeight: active ? 700 : 400,
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                  }}
-                >
-                  <span style={{ flexShrink: 0, opacity: active ? 1 : 0.75 }}>
-                    {item.icon}
-                  </span>
-                  {!collapsed && (
-                    <span className="md-label-large truncate">{label}</span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-
-      {/* Bottom Collapse/Expand Footer Button (Desktop) */}
-      <div className="hidden md:block pt-3 border-t border-slate-200/60" style={{ paddingLeft: collapsed ? '8px' : '12px', paddingRight: collapsed ? '8px' : '12px' }}>
-        <button
-          onClick={handleToggleCollapsed}
-          className={`flex items-center ${collapsed ? 'justify-center mx-auto w-10 h-10' : 'justify-between w-full px-3.5 py-2'} rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer text-xs font-semibold`}
-          style={{
-            border: '1px solid var(--md-outline-variant)',
-            color: 'var(--md-on-surface-variant)',
-            backgroundColor: 'transparent',
-          }}
-          title={collapsed ? t('nav.expand', 'Развернуть панель') : t('nav.collapse', 'Свернуть панель')}
-        >
-          {!collapsed && <span>{t('nav.collapse', 'Свернуть панель')}</span>}
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </button>
-      </div>
+      
+      {/* User Account Profile Modal */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
     </div>
   );
 
   return (
     <>
-      {/* Desktop: permanent collapsible drawer */}
-      <div
-        className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-200"
-        style={{ width: collapsed ? '76px' : '256px' }}
-      >
+      {/* Desktop */}
+      <div className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-300" style={{ width: collapsed ? '76px' : '260px' }}>
         {drawerContent}
       </div>
 
-      {/* Mobile: sliding modal drawer */}
+      {/* Mobile */}
       <div
         className="md:hidden fixed inset-y-0 left-0 z-50 transition-transform duration-300"
         style={{
@@ -406,6 +437,11 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       >
         {drawerContent}
       </div>
+      
+      {/* Mobile Backdrop */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onCloseMobile} />
+      )}
     </>
   );
 }
