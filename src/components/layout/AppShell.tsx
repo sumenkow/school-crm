@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden w-full min-w-0" style={{ backgroundColor: 'var(--md-background)' }}>
+    <div className="flex h-[100dvh] overflow-x-hidden w-full min-w-0" style={{ backgroundColor: 'var(--md-background)' }}>
       {/* MD3 Navigation Drawer (Desktop collapsible / Mobile slide-in) */}
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
 
