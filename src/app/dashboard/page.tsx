@@ -404,6 +404,159 @@ function OwnerDashboard({
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
+  // Dummy states, using INITIAL data to keep imports valid
+  const rate = 100;
+  
+  // Compact KpiCard definition
+  const CompactKpiCard = ({ title, value, icon, onClick, badges }: any) => (
+    <div onClick={onClick} className="flex-1 flex flex-col justify-between bg-white rounded-2xl border border-slate-200 p-3 shadow-xs cursor-pointer hover:border-blue-300 transition-colors group">
+      <div className="flex items-center justify-between text-slate-500">
+        <div className="flex items-center gap-1.5 text-xs font-semibold">
+          {icon} <span className="uppercase tracking-wider">{title}</span>
+        </div>
+        <ChevronRight size={14} className="group-hover:text-blue-500 transition-colors" />
+      </div>
+      <div className="text-2xl font-bold text-slate-800 mt-2">
+        {value}
+      </div>
+      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        {badges.map((b: any, i: number) => (
+          <span key={i} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${b.color || 'bg-slate-100 text-slate-600'}`}>
+            {b.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="h-[calc(100vh-4rem)] flex flex-col justify-between gap-4 p-4 overflow-hidden">
+      
+      {/* 2. Top Row (KPIs) - 4 cards */}
+      <div className="flex gap-4 shrink-0 h-[110px]">
+        <CompactKpiCard
+          title="Выручка"
+          value="1 497,44 €"
+          icon={<CreditCard size={16} />}
+          onClick={() => router.push('/finance')}
+          badges={[{ label: 'План: 24%', color: 'bg-blue-100 text-blue-700' }, { label: 'Долг: 320 €', color: 'bg-rose-100 text-rose-700' }]}
+        />
+        <CompactKpiCard
+          title="Ученики"
+          value="48"
+          icon={<Users size={16} />}
+          onClick={() => router.push('/students')}
+          badges={[{ label: '+7 новых', color: 'bg-emerald-100 text-emerald-700' }, { label: '4 на паузе' }]}
+        />
+        <CompactKpiCard
+          title="Воронка"
+          value="18"
+          icon={<UserCheck size={16} />}
+          onClick={() => router.push('/crm')}
+          badges={[{ label: 'Конверсия 38%', color: 'bg-emerald-100 text-emerald-700' }, { label: '5 пробных' }]}
+        />
+        <CompactKpiCard
+          title="Группы"
+          value="8"
+          icon={<BookOpen size={16} />}
+          onClick={() => router.push('/groups')}
+          badges={[{ label: '84% наполняемость', color: 'bg-blue-100 text-blue-700' }, { label: '2 набор' }]}
+        />
+      </div>
+
+      {/* Columns Row */}
+      <div className="flex flex-1 gap-4 min-h-0 overflow-hidden pb-2">
+        
+        {/* 3. Attention Focus (Left Column 60%) */}
+        <div className="w-[60%] flex flex-col bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+            <h3 className="text-sm font-bold text-slate-800">Фокус внимания</h3>
+            <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Требует реакции</span>
+          </div>
+          <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
+            {[
+              { status: 'Долг', name: 'Иванов Иван', desc: 'Просрочка 150 €', color: 'bg-rose-100 text-rose-700' },
+              { status: 'Пробный', name: 'Мария Смирнова', desc: 'Ждет назначения', color: 'bg-purple-100 text-purple-700' },
+              { status: 'Отток', name: 'Алексей Попов', desc: 'Не выходит на связь', color: 'bg-slate-200 text-slate-700' },
+              { status: 'Долг', name: 'Елена Васильева', desc: 'Частичная оплата', color: 'bg-rose-100 text-rose-700' },
+              { status: 'Пробный', name: 'Дмитрий Соколов', desc: 'Завтра 14:00', color: 'bg-purple-100 text-purple-700' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-1.5 h-[42px] hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100 group">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md w-16 text-center ${item.color}`}>
+                  {item.status}
+                </span>
+                <span className="text-sm font-semibold text-slate-700 w-32 truncate">{item.name}</span>
+                <span className="text-xs text-slate-500 flex-1 truncate">{item.desc}</span>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button className="w-7 h-7 rounded-full flex items-center justify-center bg-green-100 text-green-700 hover:bg-green-200" title="WhatsApp"><MessageCircle size={12} /></button>
+                   <button className="w-7 h-7 rounded-full flex items-center justify-center bg-blue-100 text-blue-700 hover:bg-blue-200" title="Профиль"><ChevronRight size={12} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Team & Quality (Right Column 40%) */}
+        <div className="w-[40%] flex flex-col gap-4 min-h-0 overflow-hidden">
+          
+          <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+             <div className="px-4 py-3 border-b border-slate-100 shrink-0 bg-slate-50/50">
+               <h3 className="text-sm font-bold text-slate-800">Команда преподавателей</h3>
+             </div>
+             <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
+               {[
+                 { name: 'Мария Иванова', role: 'Английский', load: '92%', count: 18 },
+                 { name: 'Дмитрий Соколов', role: 'Робототехника', load: '85%', count: 14 },
+                 { name: 'Елена Васильева', role: 'Математика', load: '78%', count: 11 },
+                 { name: 'Сергей Петров', role: 'Программирование', load: '65%', count: 8 },
+               ].map((t, i) => (
+                 <div key={i} className="flex items-center justify-between px-3 py-2 h-[46px] hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group">
+                    <div className="flex items-center gap-2">
+                       <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">{t.name.charAt(0)}</div>
+                       <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{t.name}</span>
+                          <span className="text-[10px] text-slate-500">{t.role} • {t.count} учеников</span>
+                       </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">{t.load}</span>
+                 </div>
+               ))}
+             </div>
+          </div>
+
+          <div className="shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-slate-700 p-4 shadow-sm relative overflow-hidden group cursor-pointer hover:border-slate-500 transition-colors" onClick={onOpenReport}>
+             <div className="relative z-10 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-xs">
+                  94%
+                </div>
+                <div>
+                   <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider mb-1">Эффективность администратора</h4>
+                   <p className="text-[11px] text-slate-400">44/48 задач • 0 пропущенных • CSAT 4.95</p>
+                </div>
+             </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <CreateLeadModal
+        isOpen={isCreateLeadOpen}
+        onClose={() => setIsCreateLeadOpen(false)}
+        onCreated={() => {}}
+      />
+    </div>
+  );
+}
+
+  onOpenReport: () => void;
+  onOpenExecutiveReport?: () => void;
+}) {
+  const router = useRouter();
+  const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
+  const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
+  const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+
   const [allPayments, setAllPayments] = useState<FullPaymentData[]>(() => {
     return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
   });
