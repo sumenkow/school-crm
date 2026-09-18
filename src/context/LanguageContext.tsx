@@ -549,6 +549,16 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'toast.created': 'Успешно создано',
     'toast.updated': 'Данные обновлены',
     'toast.deleted': 'Успешно удалено',
+
+    // Login form
+    'login.passwordLabel': 'Пароль',
+    'login.submitBtn': 'Войти',
+    'login.signingIn': 'Вход...',
+    'login.showPassword': 'Показать пароль',
+    'login.hidePassword': 'Скрыть пароль',
+    'login.errorInvalidCredentials': 'Неверный email или пароль',
+    'login.errorEmailNotConfirmed': 'Подтвердите email перед входом',
+    'login.errorGeneral': 'Ошибка входа. Попробуйте ещё раз.',
   },
 
   en: {
@@ -1080,6 +1090,16 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'toast.created': 'Successfully created',
     'toast.updated': 'Data updated',
     'toast.deleted': 'Successfully deleted',
+
+    // Login form
+    'login.passwordLabel': 'Password',
+    'login.submitBtn': 'Sign In',
+    'login.signingIn': 'Signing in...',
+    'login.showPassword': 'Show password',
+    'login.hidePassword': 'Hide password',
+    'login.errorInvalidCredentials': 'Invalid email or password',
+    'login.errorEmailNotConfirmed': 'Please confirm your email before signing in',
+    'login.errorGeneral': 'Login error. Please try again.',
   },
 
   de: {
@@ -1611,6 +1631,16 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'toast.created': 'Erfolgreich erstellt',
     'toast.updated': 'Daten aktualisiert',
     'toast.deleted': 'Erfolgreich gelöscht',
+
+    // Login form
+    'login.passwordLabel': 'Passwort',
+    'login.submitBtn': 'Anmelden',
+    'login.signingIn': 'Anmeldung...',
+    'login.showPassword': 'Passwort anzeigen',
+    'login.hidePassword': 'Passwort ausblenden',
+    'login.errorInvalidCredentials': 'Ungültige E-Mail oder Passwort',
+    'login.errorEmailNotConfirmed': 'Bitte bestätigen Sie Ihre E-Mail vor der Anmeldung',
+    'login.errorGeneral': 'Anmeldefehler. Bitte versuchen Sie es erneut.',
   },
 };
 

@@ -27,10 +27,10 @@ export default function LoginPage() {
     if (error) {
       setError(
         error.message === 'Invalid login credentials'
-          ? 'Неверный email или пароль'
+          ? t('login.errorInvalidCredentials')
           : error.message === 'Email not confirmed'
-          ? 'Подтвердите email перед входом'
-          : 'Ошибка входа. Попробуйте ещё раз.'
+          ? t('login.errorEmailNotConfirmed')
+          : t('login.errorGeneral')
       );
       setLoading(false);
       return;
@@ -129,7 +129,7 @@ export default function LoginPage() {
               className="md-label-large"
               style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}
             >
-              Пароль
+              {t('login.passwordLabel')}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -158,7 +158,7 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                 }}
-                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -200,12 +200,12 @@ export default function LoginPage() {
                 >
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10" />
                 </svg>
-                Вход...
+                {t('login.signingIn')}
               </span>
             ) : (
               <>
                 <LogIn size={18} />
-                Войти
+                {t('login.submitBtn')}
               </>
             )}
           </button>
