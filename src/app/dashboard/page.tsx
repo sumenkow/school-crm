@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
+  User,
   Users,
   CreditCard,
   UserCheck,
@@ -58,6 +59,8 @@ import { cn } from '@/lib/utils';
 import { MobileActionCenter } from '@/components/dashboard/MobileActionCenter';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { QuickActionDrawer, DrawerState, DrawerType } from '@/components/dashboard/QuickActionDrawer';
+import { TaskModal } from '@/components/dashboard/TaskModal';
+import { TeacherModal } from '@/components/dashboard/TeacherModal';
 
 // Helper: MD3 icon container
 function IconContainer({ children, bg, color }: { children: React.ReactNode; bg: string; color: string }) {
@@ -405,6 +408,8 @@ function OwnerDashboard({
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const currentMonth = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
 
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
   const [drawerState, setDrawerState] = useState<DrawerState>({ isOpen: false, type: null, entityId: null });
   const openDrawer = (type: DrawerType, entityId: string, initialData?: any) => setDrawerState({ isOpen: true, type, entityId, initialData });
   const closeDrawer = () => setDrawerState(prev => ({ ...prev, isOpen: false }));
@@ -450,10 +455,10 @@ function OwnerDashboard({
   );
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col justify-between gap-4 p-4 overflow-hidden">
+    <div className="space-y-6 w-full p-2">
       
-      {/* 2. Top Row (KPIs) - 4 cards */}
-      <div className="flex gap-4 shrink-0 h-[110px]">
+      {/* 2. Top Row (KPIs) - 5 cards grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <CompactKpiCard
           title="Выручка"
           value="1 497,44 €"
@@ -482,18 +487,25 @@ function OwnerDashboard({
           onClick={() => router.push('/groups')}
           badges={[{ label: '84% наполняемость', color: 'bg-blue-100 text-blue-700' }, { label: '2 набор' }]}
         />
+        <CompactKpiCard
+          title="Администратор"
+          value="94%"
+          icon={<User size={16} />}
+          onClick={onOpenReport || (() => router.push('/tasks'))}
+          badges={[{ label: '44/48 задач', color: 'bg-indigo-100 text-indigo-700' }, { label: 'CSAT 4.95', color: 'bg-amber-100 text-amber-700' }]}
+        />
       </div>
 
       {/* Columns Row */}
-      <div className="flex flex-1 gap-4 min-h-0 overflow-hidden pb-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         
-        {/* 3. Attention Focus (Left Column 60%) */}
-        <div className="w-[60%] flex flex-col bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        {/* 3. Attention Focus */}
+        <div className="h-fit bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
             <h3 className="text-sm font-bold text-slate-800">Фокус внимания</h3>
             <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Требует реакции</span>
           </div>
-          <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
+          <div className="p-2 space-y-1">
             {attentionItems.length === 0 && (
               <div className="flex items-center justify-center h-32 text-sm text-slate-500 font-medium bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 Задач нет, все отлично! 🎉
@@ -502,7 +514,7 @@ function OwnerDashboard({
             {attentionItems.map((item, i) => (
               <div 
                 key={i}
-                onClick={() => openDrawer(item.type as DrawerType, item.entityId, item)}
+                onClick={() => setSelectedTask(item)}
                 className="grid grid-cols-[76px_150px_1fr_auto] items-center gap-4 px-3 py-2.5 rounded-lg border border-transparent hover:border-slate-200 hover:bg-slate-50 transition-all cursor-pointer group"
               >
                 {/* Колонка 1: Бейдж фиксированной ширины */}
@@ -512,19 +524,18 @@ function OwnerDashboard({
                   </span>
                 </div>
 
-                {/* Колонка 2: Имя ученика (строго по левому краю, фиксированная ширина) */}
+                {/* Колонка 2: Имя ученика */}
                 <div className="font-medium text-slate-800 text-sm truncate">
                   {item.name}
                 </div>
 
-                {/* Колонка 3: Суть проблемы / сумма (занимает свободное пространство) */}
+                {/* Колонка 3: Суть проблемы / сумма */}
                 <div className="text-xs text-slate-500 truncate">
                   {item.description}
                 </div>
                 
-                {/* Колонка 4: Блок быстрых действий (прижат вправо) */}
+                {/* Колонка 4: Блок быстрых действий */}
                 <div className="flex items-center gap-2 justify-end opacity-80 group-hover:opacity-100 transition-opacity">
-                  {/* Кнопка WhatsApp / Чат (только для долга/оттока) */}
                   {(item.type === 'debt' || item.type === 'churn') && (
                     <button 
                       type="button"
@@ -539,12 +550,11 @@ function OwnerDashboard({
                     </button>
                   )}
 
-                  {/* Кнопка перехода */}
                   <button 
                     type="button"
                     onClick={(e) => { 
                       e.stopPropagation(); 
-                      openDrawer(item.type as DrawerType, item.entityId, item);
+                      setSelectedTask(item);
                     }}
                     className="text-xs text-blue-600 font-medium px-2 py-1 hover:bg-blue-50 rounded transition-colors flex items-center gap-1"
                   >
@@ -556,48 +566,32 @@ function OwnerDashboard({
           </div>
         </div>
 
-        {/* 4. Team & Quality (Right Column 40%) */}
-        <div className="w-[40%] flex flex-col gap-4 min-h-0 overflow-hidden">
-          
-          <div className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-             <div className="px-4 py-3 border-b border-slate-100 shrink-0 bg-slate-50/50">
-               <h3 className="text-sm font-bold text-slate-800">Команда преподавателей</h3>
-             </div>
-             <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-               {teachersList.map((t, i) => (
-                 <div 
-                   key={i} 
-                   onClick={() => openDrawer('teacher', t.id, t)}
-                   className="flex items-center justify-between px-3 py-2 h-[46px] hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group"
-                 >
-                    <div className="flex items-center gap-2">
-                       <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">{t.name.charAt(0)}</div>
-                       <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{t.name}</span>
-                          <span className="text-[10px] text-slate-500">{t.role} • {t.count} учеников</span>
-                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">{t.load}</span>
-                      <ChevronRight size={14} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                    </div>
-                 </div>
-               ))}
-             </div>
+        {/* 4. Team & Quality */}
+        <div className="h-fit bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 shrink-0 bg-slate-50/50">
+            <h3 className="text-sm font-bold text-slate-800">Команда преподавателей</h3>
           </div>
-
-          <div className="shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-slate-700 p-4 shadow-sm relative overflow-hidden group cursor-pointer hover:border-slate-500 transition-colors" onClick={onOpenReport}>
-             <div className="relative z-10 flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-xs">
-                  94%
+          <div className="p-2 space-y-1">
+            {teachersList.map((t, i) => (
+              <div 
+                key={i} 
+                onClick={() => setSelectedTeacher(t)}
+                className="flex items-center justify-between px-3 py-2 h-[46px] hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-2">
+                   <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">{t.name.charAt(0)}</div>
+                   <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">{t.name}</span>
+                      <span className="text-[10px] text-slate-500">{t.role} • {t.count} учеников</span>
+                   </div>
                 </div>
-                <div>
-                   <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider mb-1">Эффективность администратора</h4>
-                   <p className="text-[11px] text-slate-400">44/48 задач • 0 пропущенных • CSAT 4.95</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">{t.load}</span>
+                  <ChevronRight size={14} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                 </div>
-             </div>
+              </div>
+            ))}
           </div>
-
         </div>
 
       </div>
@@ -607,6 +601,22 @@ function OwnerDashboard({
         onClose={() => setIsCreateLeadOpen(false)}
         onCreated={() => {}}
       />
+      <TaskModal 
+        isOpen={!!selectedTask}
+        taskData={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onComplete={(id) => {
+          setAttentionItems(prev => prev.filter(item => item.entityId !== id));
+          setSelectedTask(null);
+        }}
+      />
+
+      <TeacherModal 
+        isOpen={!!selectedTeacher}
+        teacherData={selectedTeacher}
+        onClose={() => setSelectedTeacher(null)}
+      />
+
       <QuickActionDrawer 
         state={drawerState} 
         onClose={closeDrawer} 
