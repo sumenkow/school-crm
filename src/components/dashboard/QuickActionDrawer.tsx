@@ -1,6 +1,9 @@
 import React from 'react';
 import { X, MessageCircle, Calendar, CreditCard, Phone, Ban, FileBox, CheckCircle, Copy } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { savePaymentToStorage, settleOverduePayments } from '@/lib/data/paymentStorage';
+import { saveLeadToStorage } from '@/lib/data/leadStorage';
+import { saveTaskToStorage } from '@/lib/data/taskStorage';
 
 export type DrawerType = 'debt' | 'trial' | 'churn' | 'teacher' | null;
 
@@ -25,14 +28,59 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
   const data = state.initialData || {};
 
   const handleAction = (actionName: string) => {
-    // Mock API call
+    // 1. Supabase persistence based on action type
+    if (state.type === 'debt') {
+      savePaymentToStorage({
+        id: `pay_${Date.now()}`,
+        studentId: state.entityId || '1',
+        studentName: data.name || 'Ученик',
+        courseName: 'Английский язык',
+        groupName: 'Основная группа',
+        amount: 150,
+        amountFormatted: '150 €',
+        paymentDate: new Date().toLocaleDateString('ru-RU'),
+        periodLabel: 'Оплата задолженности',
+        status: 'paid',
+        paymentMethod: 'card',
+        currency: 'EUR',
+        paymentType: 'subscription',
+        recordedBy: 'Администратор',
+      });
+      settleOverduePayments(state.entityId || '1', 150);
+    } else if (state.type === 'trial') {
+      saveLeadToStorage({
+        id: state.entityId || `lead_${Date.now()}`,
+        name: data.name || 'Лид',
+        contact: data.phone || '+123456789',
+        status: 'trial_scheduled',
+        directionOrCourse: 'Английский',
+        source: 'Сайт',
+        assignedTo: 'Анастасия (Админ)',
+        createdAt: new Date().toISOString(),
+        interactions: [],
+      });
+    } else if (state.type === 'churn') {
+      saveTaskToStorage({
+        id: state.entityId || `task_${Date.now()}`,
+        title: `Отток: ${data.name || ''}`,
+        taskType: 'Retention',
+        assignedTo: 'Анастасия (Админ)',
+        dueDate: new Date().toISOString().slice(0, 10),
+        dueDateFormatted: new Date().toLocaleDateString('ru-RU'),
+        status: 'done',
+        priority: 'high',
+        isOverdue: false,
+      });
+    }
+
+    // 2. Mock API completion & UI update
     setTimeout(() => {
       toast.success(`${actionName} успешно выполнено`);
       if (state.entityId && state.type) {
         onSuccess(state.type, state.entityId);
       }
       onClose();
-    }, 500);
+    }, 300);
   };
 
   const renderContent = () => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, MessageCircle, Calendar, User, CheckCircle2, Clock, Send, AlertCircle } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { saveTaskToStorage } from '@/lib/data/taskStorage';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -38,6 +39,21 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
 
   const handleCompleteTask = () => {
     setStatus('resolved');
+    
+    // Save to Supabase DB & dispatch global event
+    saveTaskToStorage({
+      id: taskData.entityId || taskData.id,
+      title: `${taskData.label || 'Задача'}: ${taskData.name || ''}`,
+      taskType: 'Retention',
+      assignedTo: 'Анастасия (Админ)',
+      dueDate: new Date().toISOString().slice(0, 10),
+      dueDateFormatted: new Date().toLocaleDateString('ru-RU'),
+      status: 'done',
+      priority: 'medium',
+      description: taskData.description,
+      isOverdue: false,
+    });
+
     toast.success('Задача помечена как выполненная');
     onComplete(taskData.entityId || taskData.id);
     onClose();

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import {
   User,
   Users,
@@ -421,6 +422,52 @@ function OwnerDashboard({
     { entityType: 'payment', entityId: '4', type: 'debt', label: 'Долг', name: 'Елена Васильева', description: 'Частичная оплата', color: 'bg-rose-50 text-rose-700 border border-rose-200', phone: '+123456789' },
     { entityType: 'lead', entityId: '5', type: 'trial', label: 'Пробный', name: 'Дмитрий Соколов', description: 'Завтра 14:00', color: 'bg-purple-50 text-purple-700 border border-purple-200', phone: '+123456789' },
   ]);
+
+    useEffect(() => {
+    // 1. Same-window custom event listeners for reactive UI
+    const handleStorageChange = (e: any) => {
+      if (e?.detail?.id) {
+        setAttentionItems(prev => prev.filter(i => i.entityId !== e.detail.id));
+      }
+    };
+    window.addEventListener('crm-tasks-changed', handleStorageChange);
+    window.addEventListener('crm-payments-changed', handleStorageChange);
+    window.addEventListener('crm-leads-changed', handleStorageChange);
+
+    // 2. Cross-device / Multi-tab Supabase Realtime Subscription
+    let channel: any;
+    try {
+      const supabase = createClient();
+      channel = supabase
+        .channel('dashboard-realtime-sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public' },
+          (payload) => {
+            console.log('⚡ Realtime Supabase DB Update:', payload);
+            if (payload.new && (payload.new as any).id) {
+              const updatedId = (payload.new as any).id;
+              setAttentionItems(prev => prev.filter(i => i.entityId !== updatedId));
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {
+      console.warn('Realtime subscription warning:', e);
+    }
+
+    return () => {
+      window.removeEventListener('crm-tasks-changed', handleStorageChange);
+      window.removeEventListener('crm-payments-changed', handleStorageChange);
+      window.removeEventListener('crm-leads-changed', handleStorageChange);
+      if (channel) {
+        try {
+          const supabase = createClient();
+          supabase.removeChannel(channel);
+        } catch (e) {}
+      }
+    };
+  }, []);
 
   const [teachersList, setTeachersList] = useState([
     { id: 't1', name: 'Мария Иванова', role: 'Английский', load: '92%', count: 18 },
