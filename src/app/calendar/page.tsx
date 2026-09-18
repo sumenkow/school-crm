@@ -22,32 +22,91 @@ import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { ScheduleCourseModal } from '@/components/calendar/ScheduleCourseModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
+import { DesktopLessonModal } from '@/components/calendar/DesktopLessonModal';
+import { createClient } from '@/lib/supabase/client';
 
 export default function CalendarPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday
-  const [selectedMonthDate, setSelectedMonthDate] = useState<string>('2026-09-02');
+
+  const getMonday = (d: Date) => {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(date.setDate(diff));
+  };
+
+  const getTodayDateStr = () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  };
+
+  const getTodayDayIndex = () => {
+    const day = new Date().getDay();
+    return day === 0 ? 6 : day - 1;
+  };
+
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(new Date()));
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => getTodayDayIndex());
+  const [selectedMonthDate, setSelectedMonthDate] = useState<string>(() => getTodayDateStr());
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
-  const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-02');
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => new Date(2026, 7, 31)); // Mon Aug 31, 2026 (01.09.2026 is Tuesday)
+  const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>(() => getTodayDateStr());
+  
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
   });
   const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
+  const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
 
+  // Sync stored lessons and subscribe to Supabase Realtime
   useEffect(() => {
     const handleSync = () => {
       setLessons(getStoredLessons());
     };
     handleSync();
     window.addEventListener('crm-lessons-changed', handleSync);
-    return () => {
-      window.removeEventListener('crm-lessons-changed', handleSync);
-    };
+
+    try {
+      const supabase = createClient();
+      const channel = supabase
+        .channel('calendar-realtime-channel')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'lessons' },
+          (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              setLessons((prev) =>
+                prev.map((l) => (l.id === payload.new.id ? { ...l, ...payload.new } : l))
+              );
+            } else if (payload.eventType === 'INSERT') {
+              setLessons((prev) => [payload.new as any, ...prev]);
+            } else if (payload.eventType === 'DELETE') {
+              setLessons((prev) => prev.filter((l) => l.id === payload.old.id));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'lesson_attendance' },
+          () => {
+            setLessons(getStoredLessons());
+          }
+        )
+        .subscribe();
+
+      return () => {
+        window.removeEventListener('crm-lessons-changed', handleSync);
+        supabase.removeChannel(channel);
+      };
+    } catch {
+      return () => {
+        window.removeEventListener('crm-lessons-changed', handleSync);
+      };
+    }
   }, []);
 
   const handleUpdateAttendance = (
@@ -71,7 +130,23 @@ export default function CalendarPage() {
     );
   };
 
-  // Real date math: Monday = 31.08.2026, Tuesday = 01.09.2026!
+  const handleGoToToday = () => {
+    const today = new Date();
+    setCurrentWeekStart(getMonday(today));
+    setSelectedDayIndex(getTodayDayIndex());
+    setSelectedMonthDate(getTodayDateStr());
+  };
+
+  const handleLessonClick = (lesson: FullLessonData) => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setSelectedLessonForDesktop(lesson);
+    } else {
+      setSelectedLessonForQuickView(lesson);
+    }
+  };
+
+  const todayStr = getTodayDateStr();
+
   const daysOfWeek = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
     const d = new Date(currentWeekStart);
     d.setDate(currentWeekStart.getDate() + offset);
@@ -85,7 +160,7 @@ export default function CalendarPage() {
       date,
       fullDate,
       dayIndex: offset,
-      isToday: fullDate === '2026-09-02',
+      isToday: fullDate === todayStr,
     };
   });
 
@@ -120,7 +195,7 @@ export default function CalendarPage() {
       setCurrentWeekStart((prev) => {
         const d = new Date(prev);
         d.setMonth(d.getMonth() - 1);
-        return d;
+        return getMonday(d);
       });
     } else if (viewMode === 'day') {
       setSelectedDayIndex((prev) => (prev > 0 ? prev - 1 : 6));
@@ -138,7 +213,7 @@ export default function CalendarPage() {
       setCurrentWeekStart((prev) => {
         const d = new Date(prev);
         d.setMonth(d.getMonth() + 1);
-        return d;
+        return getMonday(d);
       });
     } else if (viewMode === 'day') {
       setSelectedDayIndex((prev) => (prev < 6 ? prev + 1 : 0));
@@ -164,6 +239,14 @@ export default function CalendarPage() {
     if (selectedTeacher === 'all') return true;
     return l.teacherId === selectedTeacher;
   });
+
+  // Dynamic month grid calculations
+  const viewYear = currentWeekStart.getFullYear();
+  const viewMonth = currentWeekStart.getMonth();
+  const firstDayOfMonth = new Date(viewYear, viewMonth, 1);
+  const lastDayOfMonth = new Date(viewYear, viewMonth + 1, 0);
+  const daysInMonthCount = lastDayOfMonth.getDate();
+  const startDayOfWeek = firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1;
 
   return (
     <div className="space-y-6">
@@ -215,11 +298,7 @@ export default function CalendarPage() {
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {
-                setCurrentWeekStart(new Date(2026, 7, 31));
-                setSelectedDayIndex(2);
-                setSelectedMonthDate('2026-09-02');
-              }}
+              onClick={handleGoToToday}
               className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
               {t('calendar.today', 'Сегодня')}
@@ -351,7 +430,7 @@ export default function CalendarPage() {
                         {dayLessons.map((lesson) => (
                           <div
                             key={lesson.id}
-                            onClick={() => setSelectedLessonForQuickView(lesson)}
+                            onClick={() => handleLessonClick(lesson)}
                             className={cn(
                               'rounded-xl border p-2.5 text-xs transition-all hover:shadow-md cursor-pointer text-left',
                               lesson.status === 'completed'
@@ -482,7 +561,7 @@ export default function CalendarPage() {
                 dayLessons.map((lesson) => (
                   <div
                     key={lesson.id}
-                    onClick={() => setSelectedLessonForQuickView(lesson)}
+                    onClick={() => handleLessonClick(lesson)}
                     className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 hover:bg-slate-100/70 transition-all cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
@@ -567,40 +646,19 @@ export default function CalendarPage() {
                 <div key={di} className="font-bold text-slate-400 uppercase py-1 text-[10px]">{d}</div>
               ))}
 
-              {/* 31 Aug slot */}
-              {(() => {
-                const dateStr = '2026-08-31';
-                const isSelected = selectedMonthDate === dateStr;
-                const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === 0));
-                const hasLessons = dayLessons.length > 0;
+              {/* Preceding empty slots */}
+              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                <div key={`empty_m_${idx}`} className="h-10 opacity-30" />
+              ))}
 
-                return (
-                  <button
-                    key={dateStr}
-                    type="button"
-                    onClick={() => setSelectedMonthDate(dateStr)}
-                    className={cn(
-                      'h-10 rounded-xl flex flex-col items-center justify-center text-xs transition-all relative',
-                      isSelected
-                        ? 'bg-blue-600 text-white font-bold shadow-xs'
-                        : 'text-slate-400 hover:bg-slate-100 opacity-60'
-                    )}
-                  >
-                    <span>31</span>
-                    {hasLessons && (
-                      <span className={cn('h-1.5 w-1.5 rounded-full mt-0.5', isSelected ? 'bg-white' : 'bg-blue-600')} />
-                    )}
-                  </button>
-                );
-              })()}
-
-              {/* 1..30 Sept slots */}
-              {Array.from({ length: 30 }).map((_, i) => {
+              {/* Days of current month */}
+              {Array.from({ length: daysInMonthCount }).map((_, i) => {
                 const dayNum = i + 1;
-                const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(dayNum)}`;
                 const isSelected = selectedMonthDate === dateStr;
-                const isToday = dateStr === '2026-09-02';
-                const d = new Date(2026, 8, dayNum);
+                const isToday = dateStr === todayStr;
+                const d = new Date(viewYear, viewMonth, dayNum);
                 const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
                 const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === dayOfWeek));
                 const hasLessons = dayLessons.length > 0;
@@ -681,7 +739,7 @@ export default function CalendarPage() {
                       {selectedDayLessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          onClick={() => setSelectedLessonForQuickView(lesson)}
+                          onClick={() => handleLessonClick(lesson)}
                           className="rounded-xl border border-slate-200 bg-white p-3 hover:border-blue-300 transition-all cursor-pointer space-y-1.5"
                         >
                           <div className="flex items-center justify-between text-xs">
@@ -727,45 +785,36 @@ export default function CalendarPage() {
               {[t('days.mon', 'Пн'), t('days.tue', 'Вт'), t('days.wed', 'Ср'), t('days.thu', 'Чт'), t('days.fri', 'Пт'), t('days.sat', 'Сб'), t('days.sun', 'Вс')].map((d, di) => (
                 <div key={di} className="font-bold text-slate-400 uppercase py-1">{d}</div>
               ))}
-              {/* Monday August 31 slot since September 1, 2026 is Tuesday! */}
-              <div
-                onClick={() => handleOpenScheduleForDate('2026-08-31')}
-                title="31 августа 2026 (Понедельник)"
-                className="group h-20 rounded-xl border border-slate-100 bg-slate-50/50 p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer opacity-60 hover:opacity-100 hover:border-blue-300"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-400">31</span>
-                  <span className="text-[9px] text-slate-400 font-medium">авг</span>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="block rounded bg-slate-200/80 px-1 py-0.5 text-[9px] font-medium text-slate-600 truncate">
-                    1 урок
-                  </span>
-                </div>
-              </div>
+              
+              {/* Preceding empty slots for Month Grid */}
+              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                <div key={`empty_${idx}`} className="h-20 rounded-xl border border-slate-50 bg-slate-50/20 p-1.5 opacity-40" />
+              ))}
 
-              {Array.from({ length: 30 }).map((_, i) => {
+              {Array.from({ length: daysInMonthCount }).map((_, i) => {
                 const dayNum = i + 1;
-                const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
-                const d = new Date(2026, 8, dayNum);
+                const pad = (n: number) => String(n).padStart(2, '0');
+                const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(dayNum)}`;
+                const isToday = dateStr === todayStr;
+                const d = new Date(viewYear, viewMonth, dayNum);
                 const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
                 const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === dayOfWeek));
                 const hasLessons = dayLessons.length > 0;
 
                 return (
                   <div
-                    key={i}
+                    key={dateStr}
                     onClick={() => handleOpenScheduleForDate(dateStr)}
                     title={`${t('calendar.scheduleFor', 'Запланировать на')} ${dayNum}`}
                     className={cn(
                       'group h-20 rounded-xl border p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer',
-                      dayNum === 2
+                      isToday
                         ? 'border-blue-500 bg-blue-50/30 hover:border-blue-600 hover:shadow-xs'
                         : 'border-slate-100 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-xs'
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={cn('text-[11px] font-bold', dayNum === 2 ? 'text-blue-600' : 'text-slate-700')}>
+                      <span className={cn('text-[11px] font-bold', isToday ? 'text-blue-600' : 'text-slate-700')}>
                         {dayNum}
                       </span>
                       <Plus className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 text-blue-600 transition-opacity" />
@@ -800,12 +849,22 @@ export default function CalendarPage() {
         onCourseScheduled={(newLessons) => setLessons((prev) => [...prev, ...newLessons])}
       />
 
-      {/* Quick Lesson View & Attendance Modal */}
+      {/* Quick Lesson View & Attendance Modal (Mobile) */}
       <LessonQuickViewModal
         isOpen={!!selectedLessonForQuickView}
         lesson={selectedLessonForQuickView}
         onClose={() => setSelectedLessonForQuickView(null)}
         onUpdateAttendance={handleUpdateAttendance}
+      />
+
+      {/* Interactive Desktop Lesson Modal (Desktop) */}
+      <DesktopLessonModal
+        isOpen={!!selectedLessonForDesktop}
+        lesson={selectedLessonForDesktop}
+        onClose={() => setSelectedLessonForDesktop(null)}
+        onSave={(updatedLesson) => {
+          setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+        }}
       />
     </div>
   );
