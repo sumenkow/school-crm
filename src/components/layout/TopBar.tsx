@@ -98,7 +98,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
       {/* Mobile menu button (44px touch target) */}
       <button
         onClick={onOpenMobile}
-        className="md:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
+        className="lg:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
         style={{
           border: 'none', background: 'transparent',
           color: 'var(--md-on-surface)', cursor: 'pointer',
@@ -110,44 +110,16 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
       {/* Desktop & Tablet Search Bar */}
       <div
-        className="hidden sm:flex items-center gap-2 transition-colors hover:bg-black/5"
-        style={{
-          flex: '1 1 0', maxWidth: '320px', height: '38px',
-          backgroundColor: 'var(--md-surface-container-highest)',
-          borderRadius: '9999px', padding: '0 14px', cursor: 'pointer',
-        }}
+        className="flex-1 max-w-sm hidden sm:flex items-center cursor-text transition-all"
         onClick={() => setPaletteOpen(true)}
       >
-        <Search size={16} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
-        <span className="md-body-medium flex-1 truncate text-xs font-medium" style={{ color: 'var(--md-on-surface-variant)', userSelect: 'none' }}>
-          {t('topbar.searchPlaceholder', 'Быстрый поиск... (Cmd+K)')}
-        </span>
-        <span
-          className="inline-flex items-center text-[10px] font-mono font-medium rounded px-1.5 py-0.5"
-          style={{
-            backgroundColor: 'var(--md-surface)',
-            color: 'var(--md-on-surface-variant)',
-            border: '1px solid var(--md-outline-variant)'
-          }}
-        >
-          ⌘K
-        </span>
+        <div className="relative w-full">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <div className="w-full h-9 rounded-full bg-slate-100 flex items-center pl-9 pr-3 hover:bg-slate-200/70 transition-colors border border-transparent">
+            <span className="text-[13px] text-slate-500 font-medium">{t('topbar.searchPlaceholder', 'Быстрый поиск... (Cmd+K)')}</span>
+          </div>
+        </div>
       </div>
-
-      {/* Mobile Search Icon Button (44px touch target) */}
-      <button
-        type="button"
-        onClick={() => setPaletteOpen(true)}
-        className="sm:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
-        style={{
-          border: 'none', background: 'transparent',
-          color: 'var(--md-on-surface-variant)', cursor: 'pointer',
-        }}
-        aria-label={t('topbar.searchPlaceholder', 'Поиск')}
-      >
-        <Search size={20} />
-      </button>
-
       {/* Spacer */}
       <div className="flex-1" />
 

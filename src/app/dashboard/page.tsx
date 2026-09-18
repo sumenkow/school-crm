@@ -475,21 +475,40 @@ function OwnerDashboard({
           </div>
           <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
             {[
-              { status: 'Долг', name: 'Иванов Иван', desc: 'Просрочка 150 €', color: 'bg-rose-100 text-rose-700' },
-              { status: 'Пробный', name: 'Мария Смирнова', desc: 'Ждет назначения', color: 'bg-purple-100 text-purple-700' },
-              { status: 'Отток', name: 'Алексей Попов', desc: 'Не выходит на связь', color: 'bg-slate-200 text-slate-700' },
-              { status: 'Долг', name: 'Елена Васильева', desc: 'Частичная оплата', color: 'bg-rose-100 text-rose-700' },
-              { status: 'Пробный', name: 'Дмитрий Соколов', desc: 'Завтра 14:00', color: 'bg-purple-100 text-purple-700' },
+              { entityType: 'payment', entityId: '1', type: 'debt', label: 'Долг', name: 'Иванов Иван', description: 'Просрочка 150 €', color: 'bg-rose-100 text-rose-700', phone: '+123456789' },
+              { entityType: 'lead', entityId: '2', type: 'trial', label: 'Пробный', name: 'Мария Смирнова', description: 'Ждет назначения', color: 'bg-purple-100 text-purple-700', phone: '+123456789' },
+              { entityType: 'student', entityId: '3', type: 'churn', label: 'Отток', name: 'Алексей Попов', description: 'Не выходит на связь', color: 'bg-slate-200 text-slate-700', phone: '+123456789' },
+              { entityType: 'payment', entityId: '4', type: 'debt', label: 'Долг', name: 'Елена Васильева', description: 'Частичная оплата', color: 'bg-rose-100 text-rose-700', phone: '+123456789' },
+              { entityType: 'lead', entityId: '5', type: 'trial', label: 'Пробный', name: 'Дмитрий Соколов', description: 'Завтра 14:00', color: 'bg-purple-100 text-purple-700', phone: '+123456789' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 px-3 py-1.5 h-[42px] hover:bg-slate-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-slate-100 group">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md w-16 text-center ${item.color}`}>
-                  {item.status}
-                </span>
-                <span className="text-sm font-semibold text-slate-700 w-32 truncate">{item.name}</span>
-                <span className="text-xs text-slate-500 flex-1 truncate">{item.desc}</span>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button className="w-7 h-7 rounded-full flex items-center justify-center bg-green-100 text-green-700 hover:bg-green-200" title="WhatsApp"><MessageCircle size={12} /></button>
-                   <button className="w-7 h-7 rounded-full flex items-center justify-center bg-blue-100 text-blue-700 hover:bg-blue-200" title="Профиль"><ChevronRight size={12} /></button>
+              <div 
+                key={i}
+                onClick={() => console.log('openEntityDrawer', item.entityType, item.entityId)}
+                className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md text-center ${item.color}`}>
+                    {item.label}
+                  </span>
+                  <span className="font-medium text-slate-800 text-sm">{item.name}</span>
+                  <span className="text-xs text-slate-500">{item.description}</span>
+                </div>
+                
+                {/* Быстрые действия, проявляющиеся при ховере */}
+                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); console.log('openWhatsApp', item.phone); }}
+                    className="p-1 hover:bg-emerald-50 text-emerald-600 rounded" 
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4"/>
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); console.log('openEntityDrawer', item.entityType, item.entityId); }}
+                    className="text-xs text-blue-600 font-medium px-2 py-1 hover:bg-blue-50 rounded"
+                  >
+                    Решить →
+                  </button>
                 </div>
               </div>
             ))}
