@@ -62,12 +62,12 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
   const phoneFormatted = (taskData.phone || '+79991234567').replace(/\D/g, '');
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div 
         className="fixed inset-0" 
         onClick={onClose} 
       />
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden z-10 flex flex-col max-h-[90vh]">
+      <div className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-white sm:rounded-2xl shadow-xl overflow-hidden z-10 flex flex-col">
         
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

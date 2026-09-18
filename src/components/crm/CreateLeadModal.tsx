@@ -175,10 +175,10 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
-      <div className="relative flex flex-col w-full max-w-xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex flex-col sm:items-center sm:justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
+      <div className="relative flex flex-col w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-xl sm:rounded-2xl bg-white shadow-2xl border-0 sm:border sm:border-slate-100 overflow-hidden">
         {/* Sticky Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 bg-slate-50/90 sticky top-0 z-10 shrink-0">
+        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-100 px-4 py-3 sm:px-5 bg-white pt-safe sticky top-0 z-10">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
               <UserCheck className="h-5 w-5" />
@@ -191,15 +191,15 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
             aria-label="Закрыть"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6 sm:h-5 sm:w-5" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
-        <form id="create-lead-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <form id="create-lead-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:p-6 space-y-4 pb-6">
           {/* FIELD 1: NAME */}
           <div>
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1 mb-1">
@@ -470,21 +470,21 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           )}
         </form>
 
-        {/* Sticky Footer */}
-        <div className="flex items-center justify-end gap-2.5 p-4 border-t border-slate-100 bg-white sticky bottom-0 z-10 shrink-0 pb-[calc(14px+env(safe-area-inset-bottom,0px))]">
+        {/* Sticky Action Footer */}
+        <div className="flex-shrink-0 p-4 bg-white border-t border-slate-100 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="hidden sm:block rounded-xl border border-slate-200 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Отмена
           </button>
           <button
             type="submit"
             form="create-lead-form"
-            className="rounded-xl bg-purple-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-purple-700 active:scale-[0.98] transition-all"
+            className="w-full sm:w-auto py-3.5 sm:py-2.5 px-5 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-semibold sm:font-bold rounded-xl text-sm shadow-md transition-colors flex items-center justify-center gap-2"
           >
-            Создать лид
+            <span>Создать лид</span>
           </button>
         </div>
       </div>

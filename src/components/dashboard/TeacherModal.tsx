@@ -14,9 +14,9 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
   if (!isOpen || !teacherData) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="fixed inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-xl p-6 z-10 flex flex-col space-y-6">
+      <div className="relative w-full h-[100dvh] sm:h-auto sm:max-w-xl bg-white sm:rounded-2xl shadow-xl p-6 z-10 flex flex-col space-y-6 overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
