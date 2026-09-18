@@ -58,7 +58,7 @@ export function CalendarMobile({
     const fullDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
     const dateNum = d.getDate();
-    
+
     // Lessons on this date
     const dayLessons = lessons.filter((l) => {
       const matchDate = l.date === fullDate || (!l.date && l.dayOfWeek === offset);
@@ -145,12 +145,12 @@ export function CalendarMobile({
   ];
 
   return (
-    <div className="flex flex-col bg-slate-50 min-h-screen">
+    <div className="h-[100dvh] w-full flex flex-col bg-slate-50 overflow-hidden">
       
-      {/* UNIFIED STICKY CONTAINER FOR HEADER + STRIP / MONTH PICKER */}
-      <div className="sticky top-0 z-30 w-full bg-white border-b border-slate-200 shadow-xs flex flex-col">
+      {/* FIXED HEADER IN FLEX FLOW */}
+      <header className="flex-shrink-0 w-full bg-white border-b border-slate-200 shadow-xs z-20">
         
-        {/* ROW 1: Month Title with Dropdown Arrow, Today, Filter, Plus */}
+        {/* ROW 1: Month Title, Today, Filter, Plus */}
         <div className="h-14 px-4 flex items-center justify-between flex-shrink-0 bg-white">
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -291,7 +291,7 @@ export function CalendarMobile({
           </div>
         ) : (
           /* ROW 2: Week DateStrip with clear padding without negative margins */
-          <div className="w-full px-2 pt-2 pb-3 flex items-center justify-between flex-shrink-0 bg-white">
+          <div className="w-full px-2 pt-1 pb-3 flex items-center justify-between flex-shrink-0 bg-white">
             <button type="button" onClick={handlePrevWeek} className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer">
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -334,26 +334,18 @@ export function CalendarMobile({
             </button>
           </div>
         )}
-      </div>
+      </header>
 
-      {/* AGENDA DAY LIST IN NORMAL DOCUMENT FLOW */}
-      <div className="p-4 space-y-3 pb-28">
+      {/* MAIN SCROLLABLE AGENDA LIST STARTS DIRECTLY BELOW HEADER */}
+      <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-28 space-y-3">
         <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
           <span>{formattedSelectedDayTitle}</span>
           <span>{dayLessons.length} {dayLessons.length === 1 ? 'занятие' : 'занятий'}</span>
         </div>
 
         {dayLessons.length === 0 ? (
-          <div className="p-8 rounded-2xl border border-dashed border-slate-200 bg-white text-center space-y-3">
-            <p className="text-xs text-slate-400">На выбранный день занятий не запланировано</p>
-            <button
-              type="button"
-              onClick={() => onOpenSchedule(selectedDate)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Запланировать занятие</span>
-            </button>
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-sm">
+            На этот день занятий не запланировано
           </div>
         ) : (
           <div className="space-y-3">
@@ -364,47 +356,62 @@ export function CalendarMobile({
                 <div
                   key={lesson.id}
                   onClick={() => setSelectedLesson(lesson)}
-                  className={cn(
-                    'rounded-2xl border p-4 bg-white shadow-2xs transition-all active:scale-[0.99] cursor-pointer space-y-2.5',
-                    lesson.status === 'completed'
-                      ? 'border-emerald-200 bg-emerald-50/20'
-                      : lesson.status === 'rescheduled'
-                      ? 'border-amber-200 bg-amber-50/20'
-                      : 'border-slate-200 hover:border-blue-300'
-                  )}
+                  className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs hover:border-blue-300 transition-all cursor-pointer space-y-2.5 active:scale-[0.99]"
                 >
-                  {/* Top Row: Timing + Room + Zoom */}
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        {lesson.startTime} – {lesson.endTime}
-                      </span>
-                      <span className="text-slate-500 font-medium text-[11px]">{lesson.room}</span>
+                  {/* Card Header: Group & Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-sm leading-snug">
+                        {lesson.groupName}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        {lesson.courseName} • {lesson.teacherName}
+                      </p>
                     </div>
 
-                    {lesson.onlineMeetingUrl && (
-                      <a
-                        href={lesson.onlineMeetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px] shadow-2xs"
-                      >
-                        <Video className="w-3 h-3" />
-                        <span>Zoom</span>
-                      </a>
-                    )}
+                    <span
+                      className={cn(
+                        'px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0',
+                        lesson.status === 'completed'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : lesson.status === 'cancelled'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      )}
+                    >
+                      {lesson.status === 'completed'
+                        ? 'Проведен'
+                        : lesson.status === 'cancelled'
+                        ? 'Отменен'
+                        : 'Запланирован'}
+                    </span>
                   </div>
 
-                  {/* Group Name & Teacher */}
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                      {lesson.groupName}
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Преподаватель: <span className="font-semibold text-slate-700">{lesson.teacherName}</span>
-                    </p>
+                  {/* Card Details: Time, Room, Format */}
+                  <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-blue-700 font-bold">
+                      {lesson.startTime} – {lesson.endTime}
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="truncate flex items-center gap-1">
+                      {lesson.onlineMeetingUrl ? (
+                        <>
+                          <Video className="w-3.5 h-3.5 text-blue-600 inline" />
+                          <span>Онлайн</span>
+                        </>
+                      ) : (
+                        <span>{lesson.room || 'Аудитория'}</span>
+                      )}
+                    </span>
                   </div>
+
+                  {/* Topic snippet if present */}
+                  {lesson.topic && (
+                    <div className="text-xs text-slate-700 font-medium line-clamp-1">
+                      <span className="text-slate-400 font-semibold">Тема: </span>
+                      {lesson.topic}
+                    </div>
+                  )}
 
                   {/* Personalized Trial Badges */}
                   {trialStudents.length > 0 ? (
@@ -425,13 +432,12 @@ export function CalendarMobile({
 
                   {/* Card Footer */}
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500">
-                    <div className="flex items-center gap-1">
+                    <span className="flex items-center gap-1">
                       <Users className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-700">{lesson.students?.length || 0} уч.</span>
-                    </div>
-
-                    <span className="text-blue-600 font-bold text-[11px] hover:underline">
-                      Отметить журнал →
+                      <span>{lesson.students?.length || 0} учеников</span>
+                    </span>
+                    <span className="text-blue-600 font-semibold text-[11px]">
+                      Подробнее →
                     </span>
                   </div>
                 </div>
@@ -439,15 +445,16 @@ export function CalendarMobile({
             })}
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Lesson Bottom Sheet Drawer */}
+      {/* Lesson Details Bottom Sheet Modal */}
       <LessonBottomSheet
-        isOpen={!!selectedLesson}
+        isOpen={Boolean(selectedLesson)}
         lesson={selectedLesson}
         onClose={() => setSelectedLesson(null)}
-        onSaved={(updatedLesson) => {
-          if (onLessonUpdated) onLessonUpdated(updatedLesson);
+        onSaved={(updated: FullLessonData) => {
+          if (onLessonUpdated) onLessonUpdated(updated);
+          setSelectedLesson(updated);
         }}
       />
     </div>

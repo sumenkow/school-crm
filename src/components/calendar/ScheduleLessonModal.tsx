@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Video, Check, Users, BookOpen, Send, Sparkles, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle } from 'lucide-react';
 import { FullLessonData, TimelineInteraction } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
@@ -10,7 +10,7 @@ import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { MobileModalWrapper } from '@/components/ui/MobileModalWrapper';
+import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
 
 interface ScheduleLessonModalProps {
   isOpen: boolean;
@@ -41,7 +41,7 @@ export function ScheduleLessonModal({
   const [topic, setTopic] = useState('');
   const [homework, setHomework] = useState('');
   const [isOnline, setIsOnline] = useState(true);
-  const [onlineUrl, setOnlineUrl] = useState('https://zoom.us/j/teachermaria');
+  const [onlineUrl, setOnlineUrl] = useState('https://zoom.us/j/teacher-maria-english');
   const [isTrial, setIsTrial] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -228,17 +228,17 @@ export function ScheduleLessonModal({
     }
   };
 
-  const modalSubtitle = selectedGroup.teacherName 
-    ? `Преподаватель: ${selectedGroup.teacherName}` 
+  const modalSubtitle = selectedGroup.teacherName
+    ? `Преподаватель: ${selectedGroup.teacherName}`
     : 'Синхронизация с Zoom и расписанием';
 
   const modalFooter = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center justify-end gap-3 w-full">
       <button
         type="button"
         onClick={onClose}
         disabled={isSubmitting}
-        className="py-3 px-4 text-xs font-semibold text-slate-600 bg-slate-100 active:bg-slate-200 rounded-xl"
+        className="w-1/3 md:w-auto px-4 py-2.5 text-xs md:text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
       >
         Отмена
       </button>
@@ -246,7 +246,7 @@ export function ScheduleLessonModal({
         type="submit"
         form="schedule-lesson-form"
         disabled={isSubmitting}
-        className="flex-1 py-3.5 px-4 text-sm font-semibold text-white bg-blue-600 active:bg-blue-700 rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        className="flex-1 md:flex-initial px-6 py-2.5 text-xs md:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
       >
         <Check className="h-4 w-4" />
         <span>{isSubmitting ? t('common.saving', 'Сохранение...') : 'Сохранить занятие'}</span>
@@ -255,12 +255,12 @@ export function ScheduleLessonModal({
   );
 
   return (
-    <MobileModalWrapper
+    <ResponsiveModal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('modal.scheduleLesson.title', 'Запланировать занятие')}
+      title={t('modal.scheduleLesson.title', 'Запланировать новое занятие')}
       subtitle={modalSubtitle}
-      headerBg="bg-linear-to-r from-blue-600 to-indigo-700 text-white"
+      headerBg="bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
       footer={modalFooter}
     >
       <form id="schedule-lesson-form" onSubmit={handleSubmit} className="space-y-4">
@@ -274,13 +274,13 @@ export function ScheduleLessonModal({
 
         {/* GROUP SELECTOR */}
         <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1">
+          <label className="block text-xs font-semibold text-slate-500 mb-1">
             {t('modal.selectGroup', 'Учебная группа')} *
           </label>
           <select
             value={groupId}
             onChange={(e) => handleGroupChange(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
           >
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -290,122 +290,114 @@ export function ScheduleLessonModal({
           </select>
         </div>
 
-        {/* DATE & TIME (AUTO-FILLED) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* DATE & TIME (GRID 3 COLUMNS ON DESKTOP) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">{t('modal.lessonDate', 'Дата')} *</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">
+              {t('modal.lessonDate', 'Дата занятия')} *
+            </label>
             <input
               type="date"
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.startTime', 'Начало')} *</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">
+              {t('common.startTime', 'Начало')} *
+            </label>
             <input
               type="time"
               required
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">{t('common.endTime', 'Окончание')} *</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">
+              {t('common.endTime', 'Окончание')} *
+            </label>
             <input
               type="time"
               required
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
 
         {/* TOPIC & HOMEWORK */}
-        <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1">
-            {t('hero.topic', 'Тема занятия')}
-          </label>
-          <input
-            type="text"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="Например: Unit 3: Conditionals and Future in the Past"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-          />
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">
+              {t('hero.topic', 'Тема занятия')}
+            </label>
+            <input
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="Например: Unit 3: Conditionals"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1">
+              {t('hero.homework', 'Домашнее задание')}
+            </label>
+            <input
+              type="text"
+              value={homework}
+              onChange={(e) => setHomework(e.target.value)}
+              placeholder="Например: Прочитать стр. 45-48"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1">
-            {t('hero.homework', 'Домашнее задание')}
-          </label>
-          <input
-            type="text"
-            value={homework}
-            onChange={(e) => setHomework(e.target.value)}
-            placeholder="Например: Прочитать стр. 45-48, подготовить диалог"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-          />
-        </div>
-
-        {/* ROOM & ONLINE */}
-        <div>
-          <label className="text-xs font-bold text-slate-700 block mb-1">
-            {t('lesson.roomFormat', 'Аудитория / Локация')}
-          </label>
-          <input
-            type="text"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-            placeholder="Онлайн (Zoom 1) или Аудитория 204"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-          />
-        </div>
-
-        <div className="space-y-3 rounded-2xl bg-slate-50 p-4 border border-slate-200/80">
-          <label className="flex items-center gap-2.5 cursor-pointer">
+        {/* ROOM & ONLINE ROOM & TRIAL */}
+        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
+              id="is_online"
               checked={isOnline}
               onChange={(e) => setIsOnline(e.target.checked)}
-              className="h-4 w-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
+              className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
             />
-            <span className="text-xs font-bold text-slate-800">
-              🌐 {t('lesson.onlineRoom', 'Онлайн-занятие (подключение по видеосвязи)')}
-            </span>
-          </label>
+            <label htmlFor="is_online" className="text-xs font-medium text-slate-700 cursor-pointer">
+              {t('lesson.onlineRoom', 'Онлайн-комната занятия (Zoom / Meet)')}
+            </label>
+          </div>
 
           {isOnline && (
-            <div className="pt-1">
-              <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                Ссылка Zoom / Google Meet (подтянута для {selectedGroup.teacherName || 'преподавателя'}):
-              </label>
-              <input
-                type="url"
-                value={onlineUrl}
-                onChange={(e) => setOnlineUrl(e.target.value)}
-                placeholder="https://zoom.us/j/..."
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-blue-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            <input
+              type="url"
+              value={onlineUrl}
+              onChange={(e) => setOnlineUrl(e.target.value)}
+              placeholder="https://zoom.us/j/teacher-maria-english"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500"
+            />
           )}
 
-          <label className="flex items-center gap-2.5 cursor-pointer pt-1 border-t border-slate-200/60">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60">
             <input
               type="checkbox"
+              id="has_trial"
               checked={isTrial}
               onChange={(e) => setIsTrial(e.target.checked)}
-              className="h-4 w-4 rounded-md border-slate-300 text-purple-600 focus:ring-purple-500"
+              className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
             />
-            <span className="text-xs font-bold text-slate-800">
-              🎯 {t('status.trial', 'Пробный урок для новых учеников')}
-            </span>
-          </label>
+            <label htmlFor="has_trial" className="text-xs font-medium text-slate-700 cursor-pointer">
+              🎯 {t('status.trial', 'Присутствует пробный ученик')}
+            </label>
+          </div>
         </div>
       </form>
-    </MobileModalWrapper>
+    </ResponsiveModal>
   );
 }
