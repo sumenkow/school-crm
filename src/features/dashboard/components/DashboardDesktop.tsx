@@ -51,7 +51,7 @@ export function DashboardDesktop({ data, actions, onOpenReport }: DashboardDeskt
   );
 
   return (
-    <div className="space-y-6 w-full p-6">
+    <div className="hidden md:block space-y-6 w-full p-6">
       
       {/* 5 KPI Cards Row */}
       <div className="grid grid-cols-5 gap-4">

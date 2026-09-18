@@ -89,7 +89,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   return (
     <header
-      className="sticky top-0 z-20 flex items-center h-14 sm:h-16 px-2.5 sm:px-4 gap-1.5 sm:gap-2.5 transition-all duration-200"
+      className="hidden md:flex sticky top-0 z-20 items-center h-14 sm:h-16 px-2.5 sm:px-4 gap-1.5 sm:gap-2.5 transition-all duration-200"
       style={{
         backgroundColor: 'var(--md-surface-container)',
         boxShadow: scrolled ? 'var(--md-elevation-2)' : 'none',

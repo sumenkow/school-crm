@@ -408,7 +408,7 @@ function OwnerDashboard({
   onOpenReport: () => void;
   onOpenExecutiveReport?: () => void;
 }) {
-  const isMobile = useIsMobile(1024);
+  const isMobile = useIsMobile(768);
   const dashboardState = useDashboardState();
 
   return isMobile ? (
