@@ -1110,13 +1110,15 @@ export default function StudentDetailsPage() {
       </div>
 
       {/* UPCOMING PAYMENT DEADLINE ALERT */}
-      <UpcomingPaymentAlert
-        item={getUpcomingPaymentForStudent(student.id)}
-        onPaymentRecorded={() => {
-          const fresh = getStudentById(student.id);
-          if (fresh) setStudent(fresh);
-        }}
-      />
+      {role !== 'teacher' && (
+        <UpcomingPaymentAlert
+          item={getUpcomingPaymentForStudent(student.id)}
+          onPaymentRecorded={() => {
+            const fresh = getStudentById(student.id);
+            if (fresh) setStudent(fresh);
+          }}
+        />
+      )}
 
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
@@ -1125,7 +1127,7 @@ export default function StudentDetailsPage() {
           { key: 'education', label: `${t('students.tabAcademic', 'Обучение и Группы')}` },
           { key: 'attendance', label: `${t('students.tabAttendance', 'Посещаемость')} (${student.attendanceStats.attendanceRate})` },
           { key: 'teacher_comments', label: `${t('teacher.teacherComments', 'Комментарии учителя')} (${(student.teacherComments || []).length})` },
-          { key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')}` },
+          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')}` }] : []),
           { key: 'timeline', label: `Timeline (${student.interactions.length})` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${student.tasks.filter((t) => t.status === 'open').length})` },
         ].map((tab) => (
@@ -1294,24 +1296,30 @@ export default function StudentDetailsPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3.5 w-3.5 text-slate-400" />
-                        <a href={`tel:${parent.phone}`} className="hover:text-blue-600 font-medium">{parent.phone}</a>
+                    {role !== 'teacher' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 text-slate-400" />
+                          <a href={`tel:${parent.phone}`} className="hover:text-blue-600 font-medium">{parent.phone}</a>
+                        </div>
+                        {parent.telegram && (
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                            <span className="font-medium text-blue-600">{parent.telegram}</span>
+                          </div>
+                        )}
+                        {parent.whatsapp && (
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
+                            <span className="font-medium text-emerald-600">{parent.whatsapp}</span>
+                          </div>
+                        )}
                       </div>
-                      {parent.telegram && (
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                          <span className="font-medium text-blue-600">{parent.telegram}</span>
-                        </div>
-                      )}
-                      {parent.whatsapp && (
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
-                          <span className="font-medium text-emerald-600">{parent.whatsapp}</span>
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="text-[11px] text-slate-400 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        Контакты родителей скрыты в соответствии с политикой доступа преподавателя
+                      </div>
+                    )}
 
                     {parent.notes && (
                       <p className="text-[11px] text-slate-500 border-t border-slate-200/60 pt-2">

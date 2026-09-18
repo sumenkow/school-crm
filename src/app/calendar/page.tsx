@@ -29,6 +29,7 @@ export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(2); // Wednesday
+  const [selectedMonthDate, setSelectedMonthDate] = useState<string>('2026-09-02');
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>('2026-09-02');
@@ -106,6 +107,50 @@ export default function CalendarPage() {
 
   const dateRangeLabel = formatDateRange(currentWeekStart, weekEnd);
 
+  const monthLabel = currentWeekStart.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  const capitalizedMonthLabel = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+  const activeNavigationLabel = viewMode === 'month'
+    ? capitalizedMonthLabel
+    : viewMode === 'day'
+    ? `${daysOfWeek[selectedDayIndex]?.name}, ${daysOfWeek[selectedDayIndex]?.date}`
+    : dateRangeLabel;
+
+  const handlePrev = () => {
+    if (viewMode === 'month') {
+      setCurrentWeekStart((prev) => {
+        const d = new Date(prev);
+        d.setMonth(d.getMonth() - 1);
+        return d;
+      });
+    } else if (viewMode === 'day') {
+      setSelectedDayIndex((prev) => (prev > 0 ? prev - 1 : 6));
+    } else {
+      setCurrentWeekStart((prev) => {
+        const d = new Date(prev);
+        d.setDate(d.getDate() - 7);
+        return d;
+      });
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === 'month') {
+      setCurrentWeekStart((prev) => {
+        const d = new Date(prev);
+        d.setMonth(d.getMonth() + 1);
+        return d;
+      });
+    } else if (viewMode === 'day') {
+      setSelectedDayIndex((prev) => (prev < 6 ? prev + 1 : 0));
+    } else {
+      setCurrentWeekStart((prev) => {
+        const d = new Date(prev);
+        d.setDate(d.getDate() + 7);
+        return d;
+      });
+    }
+  };
+
   const handleOpenScheduleForDate = (dateStr: string) => {
     setSelectedDateForSchedule(dateStr);
     setIsScheduleModalOpen(true);
@@ -153,30 +198,18 @@ export default function CalendarPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                setCurrentWeekStart((prev) => {
-                  const d = new Date(prev);
-                  d.setDate(d.getDate() - 7);
-                  return d;
-                });
-              }}
-              title="Предыдущая неделя"
+              onClick={handlePrev}
+              title="Назад"
               className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-sm font-semibold text-slate-800 px-2 min-w-[210px] text-center">
-              {dateRangeLabel}
+              {activeNavigationLabel}
             </span>
             <button
-              onClick={() => {
-                setCurrentWeekStart((prev) => {
-                  const d = new Date(prev);
-                  d.setDate(d.getDate() + 7);
-                  return d;
-                });
-              }}
-              title="Следующая неделя"
+              onClick={handleNext}
+              title="Вперед"
               className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
             >
               <ChevronRight className="h-4 w-4" />
@@ -185,6 +218,7 @@ export default function CalendarPage() {
               onClick={() => {
                 setCurrentWeekStart(new Date(2026, 7, 31));
                 setSelectedDayIndex(2);
+                setSelectedMonthDate('2026-09-02');
               }}
               className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
@@ -519,65 +553,234 @@ export default function CalendarPage() {
 
       {/* VIEW 3: MONTH VIEW (HIGH LEVEL OVERVIEW) */}
       {viewMode === 'month' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-900">{t('calendar.monthGridTitle', 'Сетка месяца (Сентябрь 2026)')}</h3>
-            <span className="text-xs text-slate-500">{t('calendar.monthGridHint', 'Нажмите на любую дату, чтобы запланировать занятие')}</span>
-          </div>
-          <div className="grid grid-cols-7 gap-2 text-center text-xs">
-            {[t('days.mon', 'Пн'), t('days.tue', 'Вт'), t('days.wed', 'Ср'), t('days.thu', 'Чт'), t('days.fri', 'Пт'), t('days.sat', 'Сб'), t('days.sun', 'Вс')].map((d, di) => (
-              <div key={di} className="font-bold text-slate-400 uppercase py-1">{d}</div>
-            ))}
-            {/* Monday August 31 slot since September 1, 2026 is Tuesday! */}
-            <div
-              onClick={() => handleOpenScheduleForDate('2026-08-31')}
-              title="31 августа 2026 (Понедельник)"
-              className="group h-20 rounded-xl border border-slate-100 bg-slate-50/50 p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer opacity-60 hover:opacity-100 hover:border-blue-300"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400">31</span>
-                <span className="text-[9px] text-slate-400 font-medium">авг</span>
-              </div>
-              <div className="space-y-0.5">
-                <span className="block rounded bg-slate-200/80 px-1 py-0.5 text-[9px] font-medium text-slate-600 truncate">
-                  1 урок
-                </span>
-              </div>
+        <div className="space-y-4">
+          {/* MOBILE VIEW (< 768px): Compact 7-col grid with dots + selected day lessons below */}
+          <div className="md:hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">{capitalizedMonthLabel}</h3>
+              <span className="text-[11px] text-slate-500">Выберите дату</span>
             </div>
 
-            {Array.from({ length: 30 }).map((_, i) => {
-              const dayNum = i + 1;
-              const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
-              const hasLessons = dayNum === 1 || dayNum === 2 || dayNum === 3 || dayNum === 4 || dayNum === 5;
+            {/* Compact 7-col grid */}
+            <div className="grid grid-cols-7 gap-1 text-center text-xs mb-4">
+              {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d, di) => (
+                <div key={di} className="font-bold text-slate-400 uppercase py-1 text-[10px]">{d}</div>
+              ))}
+
+              {/* 31 Aug slot */}
+              {(() => {
+                const dateStr = '2026-08-31';
+                const isSelected = selectedMonthDate === dateStr;
+                const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === 0));
+                const hasLessons = dayLessons.length > 0;
+
+                return (
+                  <button
+                    key={dateStr}
+                    type="button"
+                    onClick={() => setSelectedMonthDate(dateStr)}
+                    className={cn(
+                      'h-10 rounded-xl flex flex-col items-center justify-center text-xs transition-all relative',
+                      isSelected
+                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                        : 'text-slate-400 hover:bg-slate-100 opacity-60'
+                    )}
+                  >
+                    <span>31</span>
+                    {hasLessons && (
+                      <span className={cn('h-1.5 w-1.5 rounded-full mt-0.5', isSelected ? 'bg-white' : 'bg-blue-600')} />
+                    )}
+                  </button>
+                );
+              })()}
+
+              {/* 1..30 Sept slots */}
+              {Array.from({ length: 30 }).map((_, i) => {
+                const dayNum = i + 1;
+                const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
+                const isSelected = selectedMonthDate === dateStr;
+                const isToday = dateStr === '2026-09-02';
+                const d = new Date(2026, 8, dayNum);
+                const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
+                const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === dayOfWeek));
+                const hasLessons = dayLessons.length > 0;
+
+                return (
+                  <button
+                    key={dateStr}
+                    type="button"
+                    onClick={() => setSelectedMonthDate(dateStr)}
+                    className={cn(
+                      'h-10 rounded-xl flex flex-col items-center justify-center text-xs transition-all relative cursor-pointer',
+                      isSelected
+                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                        : isToday
+                        ? 'border border-blue-400 bg-blue-50 text-blue-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    )}
+                  >
+                    <span>{dayNum}</span>
+                    {hasLessons && (
+                      <span className={cn('h-1.5 w-1.5 rounded-full mt-0.5', isSelected ? 'bg-white' : 'bg-blue-600')} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected day lessons list on mobile */}
+            {(() => {
+              const selectedDateObj = new Date(selectedMonthDate);
+              const selectedDayOfWeek = selectedDateObj.getDay() === 0 ? 6 : selectedDateObj.getDay() - 1;
+              const selectedDayLessons = filteredLessons.filter(
+                (l) => l.date === selectedMonthDate || (!l.date && l.dayOfWeek === selectedDayOfWeek)
+              );
+              const formattedSelectedDate = selectedDateObj.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: 'long',
+                weekday: 'short',
+              });
 
               return (
-                <div
-                  key={i}
-                  onClick={() => handleOpenScheduleForDate(dateStr)}
-                  title={`${t('calendar.scheduleFor', 'Запланировать на')} ${dayNum}`}
-                  className={cn(
-                    'group h-20 rounded-xl border p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer',
-                    dayNum === 2
-                      ? 'border-blue-500 bg-blue-50/30 hover:border-blue-600 hover:shadow-xs'
-                      : 'border-slate-100 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-xs'
-                  )}
-                >
+                <div className="border-t border-slate-100 pt-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className={cn('text-[11px] font-bold', dayNum === 2 ? 'text-blue-600' : 'text-slate-700')}>
-                      {dayNum}
-                    </span>
-                    <Plus className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 text-blue-600 transition-opacity" />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 capitalize">
+                        {formattedSelectedDate}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {selectedDayLessons.length === 0
+                          ? 'Нет занятий'
+                          : `${selectedDayLessons.length} ${selectedDayLessons.length === 1 ? 'занятие' : 'занятия'}`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenScheduleForDate(selectedMonthDate)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Запланировать
+                    </button>
                   </div>
-                  {hasLessons && (
-                    <div className="space-y-0.5">
-                      <span className="block rounded bg-blue-100 px-1 py-0.5 text-[9px] font-semibold text-blue-800 truncate">
-                        {dayNum === 3 ? '2 урока' : '1 урок'}
-                      </span>
+
+                  {selectedDayLessons.length === 0 ? (
+                    <div className="p-6 rounded-xl border border-dashed border-slate-200 text-center bg-slate-50/50">
+                      <p className="text-xs text-slate-400 mb-2">На этот день занятий не запланировано</p>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenScheduleForDate(selectedMonthDate)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Добавить занятие на эту дату
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedDayLessons.map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          onClick={() => setSelectedLessonForQuickView(lesson)}
+                          className="rounded-xl border border-slate-200 bg-white p-3 hover:border-blue-300 transition-all cursor-pointer space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                              {lesson.startTime} – {lesson.endTime}
+                            </span>
+                            {lesson.onlineMeetingUrl && (
+                              <a
+                                href={lesson.onlineMeetingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1 text-[11px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200"
+                              >
+                                <Video className="h-3 w-3 text-indigo-600" />
+                                <span>Zoom</span>
+                              </a>
+                            )}
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-900">{lesson.groupName}</h5>
+                            <p className="text-[11px] text-slate-500">{lesson.teacherName} • {lesson.room}</p>
+                          </div>
+                          {lesson.topic && (
+                            <p className="text-[11px] text-slate-600 truncate">Тема: {lesson.topic}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               );
-            })}
+            })()}
+          </div>
+
+          {/* DESKTOP VIEW (>= 768px): Full Month Grid */}
+          <div className="hidden md:block rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-slate-900">{t('calendar.monthGridTitle', 'Сетка месяца')} ({capitalizedMonthLabel})</h3>
+              <span className="text-xs text-slate-500">{t('calendar.monthGridHint', 'Нажмите на любую дату, чтобы запланировать занятие')}</span>
+            </div>
+            <div className="grid grid-cols-7 gap-2 text-center text-xs">
+              {[t('days.mon', 'Пн'), t('days.tue', 'Вт'), t('days.wed', 'Ср'), t('days.thu', 'Чт'), t('days.fri', 'Пт'), t('days.sat', 'Сб'), t('days.sun', 'Вс')].map((d, di) => (
+                <div key={di} className="font-bold text-slate-400 uppercase py-1">{d}</div>
+              ))}
+              {/* Monday August 31 slot since September 1, 2026 is Tuesday! */}
+              <div
+                onClick={() => handleOpenScheduleForDate('2026-08-31')}
+                title="31 августа 2026 (Понедельник)"
+                className="group h-20 rounded-xl border border-slate-100 bg-slate-50/50 p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer opacity-60 hover:opacity-100 hover:border-blue-300"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-400">31</span>
+                  <span className="text-[9px] text-slate-400 font-medium">авг</span>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="block rounded bg-slate-200/80 px-1 py-0.5 text-[9px] font-medium text-slate-600 truncate">
+                    1 урок
+                  </span>
+                </div>
+              </div>
+
+              {Array.from({ length: 30 }).map((_, i) => {
+                const dayNum = i + 1;
+                const dateStr = `2026-09-${String(dayNum).padStart(2, '0')}`;
+                const d = new Date(2026, 8, dayNum);
+                const dayOfWeek = d.getDay() === 0 ? 6 : d.getDay() - 1;
+                const dayLessons = filteredLessons.filter((l) => l.date === dateStr || (!l.date && l.dayOfWeek === dayOfWeek));
+                const hasLessons = dayLessons.length > 0;
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => handleOpenScheduleForDate(dateStr)}
+                    title={`${t('calendar.scheduleFor', 'Запланировать на')} ${dayNum}`}
+                    className={cn(
+                      'group h-20 rounded-xl border p-1.5 flex flex-col justify-between text-left transition-all cursor-pointer',
+                      dayNum === 2
+                        ? 'border-blue-500 bg-blue-50/30 hover:border-blue-600 hover:shadow-xs'
+                        : 'border-slate-100 hover:border-blue-300 hover:bg-blue-50/20 hover:shadow-xs'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={cn('text-[11px] font-bold', dayNum === 2 ? 'text-blue-600' : 'text-slate-700')}>
+                        {dayNum}
+                      </span>
+                      <Plus className="h-3 w-3 text-slate-300 opacity-0 group-hover:opacity-100 text-blue-600 transition-opacity" />
+                    </div>
+                    {hasLessons && (
+                      <div className="space-y-0.5">
+                        <span className="block rounded bg-blue-100 px-1 py-0.5 text-[9px] font-semibold text-blue-800 truncate">
+                          {dayLessons.length === 1 ? '1 урок' : `${dayLessons.length} урока`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

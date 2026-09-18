@@ -3,6 +3,8 @@
 import { TimelineInteraction, INITIAL_STUDENTS } from './mockData';
 import { getStoredStudents } from './studentStorage';
 
+export type { TimelineInteraction };
+
 const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
 
 /**

@@ -39,6 +39,8 @@ import { syncLeadNameCascade } from '@/lib/data/nameCascadeSync';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
+import { saveTaskToStorage } from '@/lib/data/taskStorage';
+import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
@@ -679,6 +681,126 @@ export default function LeadDetailsPage() {
 
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isOutcomeModalOpen, setIsOutcomeModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleCloseAll = () => {
+      setIsEditModalOpen(false);
+      setIsRecordPaymentOpen(false);
+      setIsDeductModalOpen(false);
+      setIsEnrollModalOpen(false);
+      setIsCreateTaskModalOpen(false);
+      setIsOutcomeModalOpen(false);
+    };
+    window.addEventListener('close-all-modals', handleCloseAll);
+    return () => window.removeEventListener('close-all-modals', handleCloseAll);
+  }, []);
+
+  const handleOutcomeSelected = (outcomeType: 'trial' | 'thinking' | 'no_response' | 'lost') => {
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+    let newStatus: FullLeadData['status'] = lead.status;
+    let interactionContent = '';
+    let taskTitle = '';
+    let taskDueDays = 0;
+    let taskPriority: FullTaskData['priority'] = 'medium';
+
+    if (outcomeType === 'trial') {
+      newStatus = 'trial_scheduled';
+      interactionContent = `Итог контакта: Согласован пробный урок по курсу «${lead.directionOrCourse}». Назначена подготовка.`;
+      taskTitle = `Провести пробный урок: ${lead.studentName || lead.name}`;
+      taskDueDays = 1;
+      taskPriority = 'high';
+    } else if (outcomeType === 'thinking') {
+      newStatus = 'thinking';
+      interactionContent = `Итог контакта: Клиент взял паузу на обдумывание / согласование графика.`;
+      taskTitle = `Контроль решения (думают): ${lead.name}`;
+      taskDueDays = 2;
+      taskPriority = 'medium';
+    } else if (outcomeType === 'no_response') {
+      newStatus = 'no_response';
+      interactionContent = `Итог контакта: Не ответил на звонок / сообщение. Запланирован повторный контакт.`;
+      taskTitle = `Повторный звонок (не ответил): ${lead.name}`;
+      taskDueDays = 1;
+      taskPriority = 'high';
+    } else if (outcomeType === 'lost') {
+      newStatus = 'lost';
+      interactionContent = `Итог контакта: Отказ от обучения. Заявка переведена в архив.`;
+    }
+
+    const newInteraction: TimelineInteraction = {
+      id: `int_${Date.now()}`,
+      studentId: lead.convertedStudentId,
+      occurredAt: `${dateFormatted}, ${timeFormatted}`,
+      channel: 'phone',
+      type: outcomeType === 'trial' ? 'trial' : 'follow_up',
+      author: userName || 'Администратор',
+      content: interactionContent,
+      result: outcomeType === 'trial' ? 'Пробное назначено' : outcomeType === 'thinking' ? 'Думают' : outcomeType === 'no_response' ? 'Не ответил' : 'Отказ',
+    };
+
+    const updatedInteractions = [newInteraction, ...lead.interactions];
+    const nextDate = new Date(Date.now() + taskDueDays * 24 * 60 * 60 * 1000);
+    const nextDateFormatted = nextDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+
+    const updatedLead: FullLeadData = {
+      ...lead,
+      status: newStatus,
+      nextAction: taskTitle || lead.nextAction,
+      nextActionDate: taskDueDays > 0 ? `Через ${taskDueDays} дн. (${nextDateFormatted})` : lead.nextActionDate,
+      interactions: updatedInteractions,
+    };
+
+    setLead(updatedLead);
+
+    const idx = INITIAL_LEADS.findIndex((l) => l.id === lead.id);
+    if (idx !== -1) {
+      INITIAL_LEADS[idx] = updatedLead;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        const list: FullLeadData[] = stored ? JSON.parse(stored) : [];
+        const foundIdx = list.findIndex((l) => l.id === lead.id);
+        if (foundIdx !== -1) {
+          list[foundIdx] = updatedLead;
+        } else {
+          list.unshift(updatedLead);
+        }
+        localStorage.setItem('crm_leads_v2', JSON.stringify(list));
+        import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updatedLead));
+      } catch (e) {
+        console.error('Failed to persist lead outcome', e);
+      }
+    }
+
+    if (taskTitle) {
+      try {
+        const taskDueIso = nextDate.toISOString().slice(0, 10);
+        saveTaskToStorage({
+          id: `task_${Date.now()}`,
+          title: taskTitle,
+          taskType: 'CRM Сделка',
+          leadId: lead.id,
+          leadName: lead.name,
+          dueDate: taskDueIso,
+          dueDateFormatted: nextDateFormatted,
+          status: 'open',
+          priority: taskPriority,
+          assignedTo: lead.assignedTo || 'Елена Менеджер',
+          description: interactionContent,
+          isOverdue: false,
+        });
+      } catch (err) {
+        console.error('Failed to create follow-up task', err);
+      }
+    }
+
+    setIsOutcomeModalOpen(false);
+    toast.success(`Итог контакта зафиксирован. Статус воронки: ${newStatus}`);
+  };
 
   const getInitialStudentData = (): CreateStudentInitialData => {
     const isAdult = lead.clientType === 'adult_student';
@@ -768,6 +890,7 @@ export default function LeadDetailsPage() {
     setIsEnrollModalOpen(false);
     setConversionSuccess(true);
     toast.success(`Лид успешно сконвертирован! Карточка ученика «${newStudent.name}» сохранена.`);
+    router.push(`/students/${newStudent.id}?tab=education`);
   };
 
   return (
@@ -804,16 +927,38 @@ export default function LeadDetailsPage() {
                 Потенциальный ученик: <strong className="text-slate-800">{lead.studentName}</strong> {lead.studentAge && `(${lead.studentAge})`}
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-600">
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <a href={`tel:${lead.contact}`} className="hover:text-blue-600 font-medium">{lead.contact}</a>
+                  <a href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`} className="hover:text-blue-600 font-medium">{lead.contact}</a>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => triggerWhatsAppContact({
+                    phone: lead.contact,
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    author: userName || 'Администратор',
+                  })}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer text-xs"
+                >
+                  WhatsApp
+                </button>
                 {lead.telegram && (
-                  <div className="flex items-center gap-1.5 text-blue-600 font-medium">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => triggerTelegramContact({
+                      telegram: lead.telegram,
+                      phone: lead.contact,
+                      leadId: lead.id,
+                      leadName: lead.name,
+                      author: userName || 'Администратор',
+                    })}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 font-bold border border-sky-200 hover:bg-sky-100 transition-colors cursor-pointer text-xs"
+                  >
+                    <MessageSquare className="h-3 w-3" />
                     <span>{lead.telegram}</span>
-                  </div>
+                  </button>
                 )}
                 <div className="flex items-center gap-1.5 text-slate-500">
                   <User className="h-3.5 w-3.5 text-slate-400" />
@@ -891,6 +1036,14 @@ export default function LeadDetailsPage() {
 
           {/* Quick Actions */}
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsOutcomeModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-purple-300 bg-purple-50 px-3.5 py-2 text-xs font-bold text-purple-700 shadow-xs hover:bg-purple-100 hover:border-purple-400 transition-all cursor-pointer"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+              Записать итог контакта
+            </button>
             <button
               type="button"
               onClick={() => setIsRecordPaymentOpen(true)}
@@ -1458,8 +1611,8 @@ export default function LeadDetailsPage() {
 
       {/* EDIT LEAD MODAL */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-t-2xl sm:rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-0 sm:my-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
@@ -1681,8 +1834,8 @@ export default function LeadDetailsPage() {
 
       {/* LEAD RECORD PAYMENT MODAL (Оплата до квалификации) */}
       {isRecordPaymentOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -1815,8 +1968,8 @@ export default function LeadDetailsPage() {
 
       {/* LEAD DEDUCT FROM DEPOSIT MODAL (Списание средств с баланса лида) */}
       {isDeductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
@@ -1905,6 +2058,122 @@ export default function LeadDetailsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* RECORD CONTACT OUTCOME BOTTOM SHEET MODAL (Requirement: 4 buttons) */}
+      {isOutcomeModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
+          <div className="relative flex flex-col w-full max-w-lg max-h-[90vh] rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl border border-slate-100 overflow-hidden">
+            {/* Sticky Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 p-4 sm:p-5 bg-slate-50/90 sticky top-0 z-10 shrink-0">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Записать итог контакта</h3>
+                <p className="text-xs text-slate-500">Лид: {lead.name} • {lead.directionOrCourse}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOutcomeModalOpen(false)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body: 4 Action Buttons */}
+            <div className="p-4 sm:p-6 space-y-3 overflow-y-auto flex-1">
+              {/* BUTTON 1: TRIAL */}
+              <button
+                type="button"
+                onClick={() => handleOutcomeSelected('trial')}
+                className="w-full flex items-start gap-3.5 p-3.5 rounded-xl border border-purple-200 bg-purple-50/40 hover:bg-purple-100/60 hover:border-purple-300 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 font-bold shrink-0 text-lg group-hover:scale-105 transition-transform">
+                  🎯
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Пробное занятие</span>
+                    <span className="text-[11px] font-semibold text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-full">Статус: Пробное</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Клиент готов к пробному уроку. Переводит в «Пробное назначено» и ставит задачу на проведение.
+                  </p>
+                </div>
+              </button>
+
+              {/* BUTTON 2: THINKING */}
+              <button
+                type="button"
+                onClick={() => handleOutcomeSelected('thinking')}
+                className="w-full flex items-start gap-3.5 p-3.5 rounded-xl border border-teal-200 bg-teal-50/40 hover:bg-teal-100/60 hover:border-teal-300 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700 font-bold shrink-0 text-lg group-hover:scale-105 transition-transform">
+                  🤔
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Думают / Счёт отправлен</span>
+                    <span className="text-[11px] font-semibold text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded-full">Задача +2 дня</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Взяли паузу или согласовывают расписание. Ставит задачу на повторный контакт через 2 дня.
+                  </p>
+                </div>
+              </button>
+
+              {/* BUTTON 3: NO RESPONSE */}
+              <button
+                type="button"
+                onClick={() => handleOutcomeSelected('no_response')}
+                className="w-full flex items-start gap-3.5 p-3.5 rounded-xl border border-amber-200 bg-amber-50/40 hover:bg-amber-100/60 hover:border-amber-300 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-bold shrink-0 text-lg group-hover:scale-105 transition-transform">
+                  📞
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Не ответил</span>
+                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">Перезвон +1 день</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Сброс звонка или неотвеченное сообщение. Ставит задачу перезвонить завтра.
+                  </p>
+                </div>
+              </button>
+
+              {/* BUTTON 4: LOST */}
+              <button
+                type="button"
+                onClick={() => handleOutcomeSelected('lost')}
+                className="w-full flex items-start gap-3.5 p-3.5 rounded-xl border border-rose-200 bg-rose-50/40 hover:bg-rose-100/60 hover:border-rose-300 text-left transition-all group cursor-pointer"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700 font-bold shrink-0 text-lg group-hover:scale-105 transition-transform">
+                  ❌
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-900">Отказ</span>
+                    <span className="text-[11px] font-semibold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-full">Статус: Потерян</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Не устроила стоимость или расписание. Фиксирует отказ и архивирует заявку.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Sticky Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end sticky bottom-0 z-10 shrink-0 pb-[calc(14px+env(safe-area-inset-bottom,0px))]">
+              <button
+                type="button"
+                onClick={() => setIsOutcomeModalOpen(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       )}

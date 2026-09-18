@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock, MapPin, Video, Check, Users, BookOpen, Send, Sparkles } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, Video, Check, Users, BookOpen, Send, Sparkles, AlertCircle } from 'lucide-react';
 import { FullLessonData, TimelineInteraction } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
-import { saveLessonToStorage } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -40,28 +40,87 @@ export function ScheduleLessonModal({
   const [topic, setTopic] = useState('');
   const [homework, setHomework] = useState('');
   const [isOnline, setIsOnline] = useState(true);
-  const [onlineUrl, setOnlineUrl] = useState('https://meet.google.com/new');
+  const [onlineUrl, setOnlineUrl] = useState('https://zoom.us/j/teachermaria');
   const [isTrial, setIsTrial] = useState(false);
   const [notifyParents, setNotifyParents] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+
+  // Helper to sync fields when group changes
+  const applyGroupDefaults = (grpId: string, currentGroups = groups) => {
+    const g = currentGroups.find((grp) => grp.id === grpId);
+    if (!g) return;
+
+    if (g.room) setRoom(g.room);
+
+    // Auto-pull schedule times from group (e.g. "Пн, Чт • 18:45–20:15")
+    if (g.schedule) {
+      const timeMatch = g.schedule.match(/(\d{1,2}:\d{2})\s*[–\-]\s*(\d{1,2}:\d{2})/);
+      if (timeMatch) {
+        setStartTime(timeMatch[1]);
+        setEndTime(timeMatch[2]);
+      }
+    }
+
+    // Auto-pull Zoom link for teacher
+    const teacherName = g.teacherName || '';
+    if (teacherName.toLowerCase().includes('мария')) {
+      setOnlineUrl('https://zoom.us/j/teacher-maria-english');
+    } else if (teacherName.toLowerCase().includes('денис')) {
+      setOnlineUrl('https://zoom.us/j/teacher-denis-robotics');
+    } else if (teacherName.toLowerCase().includes('ольга')) {
+      setOnlineUrl('https://zoom.us/j/teacher-olga-math');
+    } else if (teacherName.toLowerCase().includes('алексей')) {
+      setOnlineUrl('https://zoom.us/j/teacher-alexey-phys');
+    } else {
+      setOnlineUrl(`https://zoom.us/my/${encodeURIComponent(teacherName.toLowerCase().replace(/\s+/g, ''))}`);
+    }
+
+    if (g.room && g.room.toLowerCase().includes('онлайн')) {
+      setIsOnline(true);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       const stored = getStoredGroups();
       setGroups(stored);
-      if (defaultGroupId) {
-        setGroupId(defaultGroupId);
-        const g = stored.find((grp) => grp.id === defaultGroupId);
-        if (g) setRoom(g.room || 'Онлайн (Zoom 1)');
-      } else if (stored.length > 0 && !groupId) {
-        setGroupId(stored[0].id);
-        setRoom(stored[0].room || 'Онлайн (Zoom 1)');
-      }
+      const targetId = defaultGroupId || (stored.length > 0 ? stored[0].id : '1');
+      setGroupId(targetId);
+      applyGroupDefaults(targetId, stored);
+
       if (initialDate) {
         setDate(initialDate);
       }
     }
   }, [isOpen, initialDate, defaultGroupId]);
+
+  // Close all modals event listener
+  useEffect(() => {
+    const handleCloseAll = () => onClose();
+    window.addEventListener('close-all-modals', handleCloseAll);
+    return () => window.removeEventListener('close-all-modals', handleCloseAll);
+  }, [onClose]);
+
+  // Real-time conflict detection
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const existing = getStoredLessons();
+      const conflict = existing.find((l) =>
+        l.date === date &&
+        (l.groupId === groupId) &&
+        !(endTime <= l.startTime || startTime >= l.endTime)
+      );
+      if (conflict) {
+        setConflictWarning(`Внимание: В это время (${conflict.startTime}–${conflict.endTime}) у группы уже есть урок «${conflict.topic}»`);
+      } else {
+        setConflictWarning(null);
+      }
+    } catch {
+      setConflictWarning(null);
+    }
+  }, [isOpen, date, startTime, endTime, groupId]);
 
   if (!isOpen) return null;
 
@@ -75,11 +134,24 @@ export function ScheduleLessonModal({
     room: 'Онлайн (Zoom 1)',
   };
 
+  const handleGroupChange = (newGroupId: string) => {
+    setGroupId(newGroupId);
+    applyGroupDefaults(newGroupId);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Conflict confirmation if detected
+      if (conflictWarning) {
+        if (!confirm(`${conflictWarning}\n\nВы уверены, что хотите добавить занятие?`)) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       const dateFormatted = new Date(date).toLocaleDateString(locale, {
         day: '2-digit',
         month: 'short',
@@ -116,7 +188,7 @@ export function ScheduleLessonModal({
         room,
         topic: topic.trim() || 'Плановое занятие',
         homework: homework.trim() || undefined,
-        onlineMeetingUrl: isOnline ? (onlineUrl.trim() || 'https://meet.google.com/new') : undefined,
+        onlineMeetingUrl: isOnline ? (onlineUrl.trim() || 'https://zoom.us/j/school') : undefined,
         status: 'scheduled',
         isTrial,
         students: enrolledStudents,
@@ -146,71 +218,17 @@ export function ScheduleLessonModal({
           author: userName || newLesson.teacherName || 'Преподаватель',
           channel: 'other',
           type: 'organizational',
-          content: `📅 Запланировано новое занятие: «${newLesson.groupName}» на ${dateFormatted} в ${startTime}–${endTime}. Тема: «${newLesson.topic}». Аудитория: ${room}.`,
+          content: `📅 Запланировано занятие: «${newLesson.groupName}» на ${dateFormatted} в ${startTime}–${endTime}. Аудитория/ссылка: ${isOnline ? onlineUrl : room}.`,
         };
 
         saveInteractionToStorage(interaction);
       }
 
-      // 3. Send notification if requested
-      if (notifyParents && enrolledStudents.length > 0) {
-        const recipientsList: Array<{
-          studentId: string;
-          studentName: string;
-          parentName?: string;
-          email?: string;
-          telegram?: string;
-          channel?: 'email' | 'telegram' | 'both';
-        }> = [];
-
-        enrolledStudents.forEach((st) => {
-          const fullStudent = allStudents.find((s) => s.id === st.id);
-          const parent = fullStudent?.parents?.[0];
-          if (parent) {
-            recipientsList.push({
-              studentId: st.id,
-              studentName: st.name,
-              parentName: `${parent.firstName} ${parent.lastName}`,
-              email: parent.email,
-              telegram: parent.telegram,
-              channel: (parent.preferredChannel?.toLowerCase() as any) || (parent.email && parent.telegram ? 'both' : parent.telegram ? 'telegram' : 'email'),
-            });
-          } else if (fullStudent) {
-            recipientsList.push({
-              studentId: st.id,
-              studentName: st.name,
-              email: (fullStudent as any).email,
-              telegram: fullStudent.telegram,
-              channel: 'email',
-            });
-          }
-        });
-
-        if (recipientsList.length > 0) {
-          fetch('/api/lessons/notify/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'schedule',
-              lessonId: newLesson.id,
-              groupName: newLesson.groupName,
-              courseName: newLesson.courseName,
-              lessonDate: dateFormatted,
-              lessonTime: `${startTime}–${endTime}`,
-              room: newLesson.room,
-              onlineMeetingUrl: newLesson.onlineMeetingUrl,
-              teacherName: newLesson.teacherName,
-              topic: newLesson.topic,
-              recipients: recipientsList,
-            }),
-          }).catch((err) => console.warn('Notification error:', err));
-        }
-      }
-
+      // 3. Dispatch events to refresh cache
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: newLesson }));
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
 
-      toast.success(`Занятие «${newLesson.groupName}» (${dateFormatted}) успешно создано и сохранено в базе данных!`);
+      toast.success(`Занятие «${newLesson.groupName}» (${dateFormatted}) успешно запланировано!`);
 
       if (onScheduled) {
         onScheduled(newLesson);
@@ -225,50 +243,62 @@ export function ScheduleLessonModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-blue-600 to-indigo-700 p-5 text-white rounded-t-3xl">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-md shadow-inner text-white">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs">
+      <div className="relative flex flex-col w-full max-w-lg max-h-[92vh] rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Sticky Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 bg-linear-to-r from-blue-600 to-indigo-700 p-4 sm:p-5 text-white sticky top-0 z-10 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-md shadow-inner text-white">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-white tracking-tight">{t('modal.scheduleLesson.title', 'Запланировать занятие')}</h2>
-              <p className="text-xs text-blue-100">{t('calendar.subtitle', 'Создание нового урока с синхронизацией в расписании')}</p>
+              <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight">
+                {t('modal.scheduleLesson.title', 'Запланировать занятие')}
+              </h2>
+              <p className="text-[11px] sm:text-xs text-blue-100">
+                {selectedGroup.teacherName ? `Преподаватель: ${selectedGroup.teacherName}` : 'Синхронизация с Zoom и расписанием'}
+              </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-full p-2 text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
+            className="rounded-lg p-2 text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
+            aria-label="Закрыть"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Scrollable Form Body */}
+        <form id="schedule-lesson-form" onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Conflict Warning Banner */}
+          {conflictWarning && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>{conflictWarning}</span>
+            </div>
+          )}
+
+          {/* GROUP SELECTOR */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
               {t('modal.selectGroup', 'Учебная группа')} *
             </label>
             <select
               value={groupId}
-              onChange={(e) => {
-                setGroupId(e.target.value);
-                const g = groups.find((grp) => grp.id === e.target.value);
-                if (g && g.room) setRoom(g.room);
-              }}
+              onChange={(e) => handleGroupChange(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
             >
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name} ({g.courseName || t('calendar.filterCourse', 'Курс')}) • {g.teacherName || t('hero.teacher', 'Преподаватель')}
+                  {g.name} ({g.courseName || t('calendar.filterCourse', 'Курс')}) • {g.teacherName || 'Преподаватель'}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* DATE & TIME (AUTO-FILLED) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">{t('modal.lessonDate', 'Дата')} *</label>
@@ -302,6 +332,7 @@ export function ScheduleLessonModal({
             </div>
           </div>
 
+          {/* TOPIC & HOMEWORK */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
               {t('hero.topic', 'Тема занятия')}
@@ -311,7 +342,7 @@ export function ScheduleLessonModal({
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Например: Unit 3: Conditionals and Future in the Past"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
@@ -324,10 +355,11 @@ export function ScheduleLessonModal({
               value={homework}
               onChange={(e) => setHomework(e.target.value)}
               placeholder="Например: Прочитать стр. 45-48, подготовить диалог"
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
+          {/* ROOM & ONLINE */}
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
               {t('lesson.roomFormat', 'Аудитория / Локация')}
@@ -356,11 +388,14 @@ export function ScheduleLessonModal({
 
             {isOnline && (
               <div className="pt-1">
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+                  Ссылка Zoom / Google Meet (подтянута для {selectedGroup.teacherName || 'преподавателя'}):
+                </label>
                 <input
                   type="url"
                   value={onlineUrl}
                   onChange={(e) => setOnlineUrl(e.target.value)}
-                  placeholder="https://meet.google.com/..."
+                  placeholder="https://zoom.us/j/..."
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-blue-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -377,39 +412,29 @@ export function ScheduleLessonModal({
                 🎯 {t('status.trial', 'Пробный урок для новых учеников')}
               </span>
             </label>
-
-            <label className="flex items-center gap-2.5 cursor-pointer pt-1 border-t border-slate-200/60">
-              <input
-                type="checkbox"
-                checked={notifyParents}
-                onChange={(e) => setNotifyParents(e.target.checked)}
-                className="h-4 w-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs font-semibold text-slate-700">
-                ✉️ {t('modal.notifyParents', 'Разослать дату и время родителям (Email / Telegram)')}
-              </span>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
-            >
-              {t('action.cancel', 'Отмена')}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <Check className="h-4 w-4" />
-              {isSubmitting ? t('common.saving', 'Сохранение...') : t('action.scheduleLesson', 'Запланировать занятие')}
-            </button>
           </div>
         </form>
+
+        {/* Sticky Footer */}
+        <div className="flex items-center justify-end gap-2.5 p-4 border-t border-slate-100 bg-white sticky bottom-0 z-10 shrink-0 pb-[calc(14px+env(safe-area-inset-bottom,0px))]">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+          >
+            {t('action.cancel', 'Отмена')}
+          </button>
+          <button
+            type="submit"
+            form="schedule-lesson-form"
+            disabled={isSubmitting}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" />
+            {isSubmitting ? t('common.saving', 'Сохранение...') : t('action.scheduleLesson', 'Запланировать занятие')}
+          </button>
+        </div>
       </div>
     </div>
   );

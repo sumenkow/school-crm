@@ -30,6 +30,7 @@ import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/moc
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { softDeleteLead, restoreLead, getStoredLeads } from '@/lib/data/leadStorage';
+import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -37,11 +38,12 @@ import { useLanguage } from '@/context/LanguageContext';
 export default function CrmPage() {
   const router = useRouter();
   const toast = useToast();
-  const { userName } = useRole();
+  const { role, userName } = useRole();
   const { t } = useLanguage();
   const [leads, setLeads] = useState<FullLeadData[]>(() => getStoredLeads(true, true));
   const [tabFilter, setTabFilter] = useState<'active' | 'deleted'>('active');
   const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'table'>('grid');
+  const [mobileStageFilter, setMobileStageFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -218,13 +220,33 @@ export default function CrmPage() {
     return matchesSearch && matchesDirection;
   });
 
+  if (role === 'teacher') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 bg-white rounded-2xl border border-slate-200 shadow-xs">
+        <div className="h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
+          <AlertTriangle className="h-7 w-7" />
+        </div>
+        <h2 className="text-lg font-bold text-slate-900 mb-1">Доступ ограничен</h2>
+        <p className="text-xs text-slate-500 max-w-sm mb-5">
+          У вас установлена роль Преподавателя. Раздел CRM и база потенциальных клиентов доступны только администраторам и владельцу школы.
+        </p>
+        <Link
+          href="/schedule"
+          className="rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
+        >
+          Перейти к расписанию
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Title & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('crm.title', 'CRM Лиды и Воронка')}</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{t('crm.title', 'CRM Лиды и Воронка')}</h1>
+          <p className="text-xs sm:text-sm text-slate-500">
             {t('crm.subtitle', 'Управление обращениями, пробными уроками и конверсией в постоянных учеников')}
           </p>
         </div>
@@ -256,7 +278,7 @@ export default function CrmPage() {
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors cursor-pointer shrink-0"
           >
             <Plus className="h-4 w-4" />
             {t('action.createLead', 'Новый лид')}
@@ -277,7 +299,7 @@ export default function CrmPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
             <Filter className="h-3.5 w-3.5" />
             <span>{t('crm.filterCourse', 'Курс:')}</span>
@@ -293,7 +315,8 @@ export default function CrmPage() {
             </select>
           </div>
 
-          <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+          {/* Desktop View Switcher (Hidden on Mobile) */}
+          <div className="hidden md:flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
             <button
               onClick={() => setViewMode('grid')}
               title={t('crm.viewGrid', 'Сетка (На одном листе)')}
@@ -303,7 +326,7 @@ export default function CrmPage() {
               )}
             >
               <LayoutGrid className="h-3.5 w-3.5 text-purple-600" />
-              <span>{t('crm.viewGrid', 'Сетка (На одном листе)')}</span>
+              <span>{t('crm.viewGrid', 'Сетка')}</span>
             </button>
             <button
               onClick={() => setViewMode('kanban')}
@@ -314,7 +337,7 @@ export default function CrmPage() {
               )}
             >
               <Columns className="h-3.5 w-3.5 text-blue-600" />
-              <span>{t('crm.viewBoard', 'Доска (Горизонтально)')}</span>
+              <span>{t('crm.viewBoard', 'Доска')}</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
@@ -330,6 +353,50 @@ export default function CrmPage() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Horizontal Stage Chips (Scrollable) */}
+      {tabFilter === 'active' && (
+        <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 -mx-2 px-2 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setMobileStageFilter('all')}
+            className={cn(
+              'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all',
+              mobileStageFilter === 'all'
+                ? 'bg-purple-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            )}
+          >
+            Все ({displayedLeads.length})
+          </button>
+          {columns.map((col) => {
+            const count = displayedLeads.filter((l) => l.status === col.key).length;
+            return (
+              <button
+                key={col.key}
+                type="button"
+                onClick={() => setMobileStageFilter(col.key)}
+                className={cn(
+                  'shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5',
+                  mobileStageFilter === col.key
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                )}
+              >
+                <span>{col.label}</span>
+                <span
+                  className={cn(
+                    'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                    mobileStageFilter === col.key ? 'bg-white/20 text-white' : col.badgeColor
+                  )}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* VIEW: DELETED LEADS TABLE */}
       {tabFilter === 'deleted' && (
@@ -384,8 +451,44 @@ export default function CrmPage() {
         </div>
       )}
 
-      {/* VIEW 1: GRID MODE (ALL ON ONE SHEET / SCREEN, SCROLLS DOWN) */}
-      {viewMode === 'grid' && (
+      {/* MOBILE LIST: Single column of cards filtered by mobileStageFilter */}
+      {tabFilter === 'active' && (
+        <div className="md:hidden space-y-2.5">
+          {(() => {
+            const mobileLeads = mobileStageFilter === 'all'
+              ? displayedLeads
+              : displayedLeads.filter((l) => l.status === mobileStageFilter);
+
+            if (mobileLeads.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-slate-200 bg-white text-center">
+                  <p className="text-xs text-slate-400">В этом статусе нет заявок</p>
+                </div>
+              );
+            }
+
+            return mobileLeads.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                columns={columns}
+                onQuickStatusChange={handleQuickStatusChange}
+                onOpen={() => router.push(`/crm/leads/${lead.id}`)}
+                onCopyPhone={() => {
+                  navigator.clipboard.writeText(lead.contact);
+                  toast.success(`Номер скопирован: ${lead.contact}`);
+                }}
+                onDeleteLead={handleDeleteLead}
+              />
+            ));
+          })()}
+        </div>
+      )}
+
+      {/* DESKTOP VIEWS (GRID / KANBAN / TABLE) */}
+      <div className="hidden md:block space-y-6">
+        {/* VIEW 1: GRID MODE (ALL ON ONE SHEET / SCREEN, SCROLLS DOWN) */}
+        {viewMode === 'grid' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {columns.map((col) => {
             const colLeads = displayedLeads.filter((l) => l.status === col.key);
@@ -591,6 +694,7 @@ export default function CrmPage() {
           </table>
         </div>
       )}
+      </div>
 
       {/* Modal to create new lead */}
       <CreateLeadModal
@@ -689,15 +793,35 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone, onD
             >
               <Copy size={11} />
             </button>
-            <a
-              href={`https://wa.me/${lead.contact.replace(/\D/g, '')}`}
-              target="_blank"
-              rel="noreferrer"
-              className="px-1 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[9px]"
-              title="WhatsApp"
+            <button
+              type="button"
+              onClick={() => triggerWhatsAppContact({
+                phone: lead.contact,
+                leadId: lead.id,
+                leadName: lead.name,
+                author: 'Администратор',
+              })}
+              className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[9px] cursor-pointer"
+              title="Написать в WhatsApp"
             >
               WA
-            </a>
+            </button>
+            {lead.telegram && (
+              <button
+                type="button"
+                onClick={() => triggerTelegramContact({
+                  telegram: lead.telegram,
+                  phone: lead.contact,
+                  leadId: lead.id,
+                  leadName: lead.name,
+                  author: 'Администратор',
+                })}
+                className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-bold hover:bg-sky-100 text-[9px] cursor-pointer"
+                title="Написать в Telegram"
+              >
+                TG
+              </button>
+            )}
             <a
               href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
               className="p-0.5 rounded text-blue-600 hover:bg-blue-50"

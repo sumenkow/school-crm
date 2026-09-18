@@ -2,6 +2,7 @@ import { Student, Parent, StudentParentRelation, Group, Lesson, Attendance, Paym
 
 export interface TimelineInteraction {
   id: string;
+  leadId?: string;
   studentId?: string;
   studentName?: string;
   parentId?: string;

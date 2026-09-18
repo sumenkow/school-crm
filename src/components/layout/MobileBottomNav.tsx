@@ -89,6 +89,11 @@ export function MobileBottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('close-all-modals'));
+              }
+            }}
             className="flex flex-col items-center justify-center flex-1 h-full py-1 text-center no-underline transition-transform active:scale-95"
             style={{
               color: active ? 'var(--md-on-secondary-container, #101C2B)' : 'var(--md-on-surface-variant, #41484F)',

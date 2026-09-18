@@ -289,9 +289,107 @@ function StudentsContent() {
         </div>
       )}
 
-      {/* Students Table */}
+      {/* Students Table (Desktop) & Cards List (Mobile) */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-        <div className="overflow-x-auto">
+        {/* Mobile Cards List (< 768px) */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredStudents.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-500">
+              {statusFilter === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
+            </div>
+          ) : (
+            filteredStudents.map((student) => (
+              <div
+                key={student.id}
+                onClick={() => {
+                  if (statusFilter !== 'deleted') {
+                    router.push(`/students/${student.id}`);
+                  }
+                }}
+                className="p-3.5 space-y-2 active:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={cn(
+                        'flex h-9 w-9 items-center justify-center rounded-full font-bold text-xs shrink-0 shadow-2xs',
+                        student.studentType === 'adult_student'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      )}
+                    >
+                      {student.studentType === 'adult_student' ? <GraduationCap size={16} /> : student.name[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-slate-900 text-sm truncate">{student.name}</h3>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {student.studentType === 'adult_student' ? 'Студент (18+)' : student.parent ? student.parent : 'Школьник'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1">
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 font-bold text-[10px]',
+                        student.status === 'active' && 'bg-emerald-100 text-emerald-800',
+                        student.status === 'trial' && 'bg-purple-100 text-purple-800',
+                        student.status === 'paused' && 'bg-amber-100 text-amber-800',
+                        student.isDeleted && 'bg-rose-100 text-rose-800'
+                      )}
+                    >
+                      {student.status === 'active' && 'Активен'}
+                      {student.status === 'trial' && 'Пробный'}
+                      {student.status === 'paused' && 'Пауза'}
+                      {student.isDeleted && 'Удален'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 text-xs pt-1 border-t border-slate-100">
+                  <div className="min-w-0 truncate">
+                    <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md truncate inline-block max-w-[170px]">
+                      {student.group}
+                    </span>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {student.debtFormatted && student.debtFormatted !== '0 € (0 ₽)' ? (
+                      <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
+                        Долг: {student.debtFormatted}
+                      </span>
+                    ) : student.depositBalance !== undefined && student.depositBalance > 0 ? (
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                        Депозит: {student.depositFormatted}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-emerald-700">
+                        ✓ Оплачено {student.subscriptionEnd && student.subscriptionEnd !== '—' ? `(до ${student.subscriptionEnd})` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {statusFilter === 'deleted' && (
+                  <div className="pt-2 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => {
+                        restoreStudent(student.id);
+                        refreshStudents();
+                        toast.success(`Ученик ${student.name} восстановлен`);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Восстановить
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-700">
               <tr>
