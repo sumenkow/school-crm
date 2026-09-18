@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MessageCircle, Calendar, User, CheckCircle2, Clock, Send, AlertCircle } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
@@ -12,6 +13,7 @@ interface TaskModalProps {
 
 export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalProps) {
   const toast = useToast();
+  const [mounted, setMounted] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Array<{ id: string; author: string; text: string; time: string }>>([
     { id: '1', author: 'Администратор', text: 'Отправлен шаблон напоминания в WhatsApp', time: 'Сегодня, 10:15' },
@@ -19,7 +21,11 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
   ]);
   const [status, setStatus] = useState<'in_progress' | 'waiting' | 'resolved'>('in_progress');
 
-  if (!isOpen || !taskData) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !taskData || !mounted) return null;
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +67,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
 
   const phoneFormatted = (taskData.phone || '+79991234567').replace(/\D/g, '');
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div 
         className="fixed inset-0" 
@@ -70,7 +76,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
       <div className="relative w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-2xl bg-white sm:rounded-2xl shadow-xl overflow-hidden z-10 flex flex-col">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="flex-shrink-0 px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
             <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${taskData.color || 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
               {taskData.label || 'Задача'}
@@ -88,7 +94,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-6 overflow-y-auto overscroll-contain space-y-6 flex-1 min-h-0 pb-10">
           
           {/* Context Block */}
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3">
@@ -117,7 +123,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
           </div>
 
           {/* Task Params */}
-          <div className="grid grid-cols-3 gap-4 bg-white p-3 rounded-xl border border-slate-200/80">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-3 rounded-xl border border-slate-200/80">
             <div>
               <p className="text-[11px] text-slate-400 font-medium uppercase">Ответственный</p>
               <div className="flex items-center gap-1.5 mt-1">
@@ -137,7 +143,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
               <select 
                 value={status} 
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="mt-1 text-xs font-bold border border-slate-200 rounded px-2 py-0.5 bg-slate-50 text-slate-700"
+                className="mt-1 w-full text-xs font-bold border border-slate-200 rounded px-2 py-1.5 bg-slate-50 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 <option value="in_progress">В работе</option>
                 <option value="waiting">Ожидает ответа</option>
@@ -182,7 +188,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+28px)] sm:pb-4 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] flex items-center justify-between">
           <button 
             type="button"
             onClick={() => toast.success('Срок перенесен на завтра')}
@@ -201,6 +207,8 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
+

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UserCheck, Phone, Check, GraduationCap, School, Info, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { FullLeadData, INITIAL_LEADS, splitFullName, buildFullName } from '@/lib/data/mockData';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
@@ -13,6 +14,7 @@ interface CreateLeadModalProps {
 }
 
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
+  const [mounted, setMounted] = useState(false);
   // Mobile Quick Mode vs Detailed
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -45,6 +47,10 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [studentNotes, setStudentNotes] = useState('');
   const [comment, setComment] = useState('');
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Close all modals event listener from navigation
   useEffect(() => {
     const handleCloseAll = () => {
@@ -54,7 +60,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     return () => window.removeEventListener('close-all-modals', handleCloseAll);
   }, [onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const quickDirections = [
     { label: 'Английский', value: 'Английский язык' },
@@ -174,7 +180,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     onClose();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex flex-col sm:items-center sm:justify-center bg-black/50 p-0 sm:p-4 backdrop-blur-xs">
       <div className="relative flex flex-col w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-xl sm:rounded-2xl bg-white shadow-2xl border-0 sm:border sm:border-slate-100 overflow-hidden">
         {/* Sticky Header */}
@@ -199,7 +205,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
         </div>
 
         {/* Scrollable Form Body */}
-        <form id="create-lead-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:p-6 space-y-4 pb-6">
+        <form id="create-lead-form" onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:p-6 space-y-4 pb-10">
           {/* FIELD 1: NAME */}
           <div>
             <label className="text-xs font-bold text-slate-800 flex items-center gap-1 mb-1">
@@ -474,7 +480,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
         </form>
 
         {/* Sticky Action Footer */}
-        <div className="flex-shrink-0 p-4 bg-white border-t border-slate-100 pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.05)] flex items-center justify-end gap-2.5">
+        <div className="flex-shrink-0 px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+28px)] sm:pb-4 bg-white border-t border-slate-200 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
@@ -491,6 +497,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
+
