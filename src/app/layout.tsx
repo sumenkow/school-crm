@@ -37,11 +37,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ru"
-      className={`${roboto.variable} h-full`}
-    >
-      <body className="min-h-full flex flex-col" style={{ backgroundColor: 'var(--md-background)', color: 'var(--md-on-background)' }}>
+    <html lang="ru" className={`${roboto.variable}`}>
+      <body className="flex flex-col" style={{ backgroundColor: 'var(--md-background)', color: 'var(--md-on-background)' }}>
         <RoleProvider>
           <LanguageProvider>
             <ToastProvider>

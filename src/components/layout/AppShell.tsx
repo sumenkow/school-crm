@@ -74,10 +74,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden w-full h-full">
-        <TopBar onOpenMobile={() => setMobileOpen(true)} />
+      <div className="flex flex-col flex-1 h-full min-h-0 min-w-0 overflow-hidden">
+        <div className="flex-shrink-0">
+          <TopBar onOpenMobile={() => setMobileOpen(true)} />
+        </div>
         <main
-          className="flex-1 h-full overflow-y-auto relative mobile-touch-scroll p-3 sm:p-5 md:p-6 w-full min-w-0"
+          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-5 md:p-6 w-full min-w-0"
           style={{
             paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
           }}
