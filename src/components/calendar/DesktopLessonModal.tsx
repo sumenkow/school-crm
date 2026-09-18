@@ -85,6 +85,11 @@ export function DesktopLessonModal({
 
   if (!isOpen || !lesson || !mounted) return null;
 
+  const handleMarkAllPresent = () => {
+    setAttendance((prev) => prev.map((s) => ({ ...s, status: 'present' })));
+    toast.success('Все ученики отмечены как присутствующие');
+  };
+
   const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'excused') => {
     setAttendance((prev) =>
       prev.map((s) => (s.studentId === studentId ? { ...s, status } : s))
@@ -360,7 +365,18 @@ export function DesktopLessonModal({
               <label className="text-xs font-bold text-slate-700 uppercase">
                 Посещаемость учеников ({attendance.length})
               </label>
-              <span className="text-xs text-slate-400">Синхронизируется с балансом</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleMarkAllPresent}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
+                  title="Поставить статус 'Был' всем ученикам группы"
+                >
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Отметить всех</span>
+                </button>
+                <span className="text-xs text-slate-400">Синхронизируется с балансом</span>
+              </div>
             </div>
 
             <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white">
