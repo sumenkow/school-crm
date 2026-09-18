@@ -2,13 +2,15 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, CreditCard, Users, UserCheck, AlertCircle, MessageCircle, Calendar } from 'lucide-react';
+import { Plus, CreditCard, Users, UserCheck, AlertCircle, MessageCircle } from 'lucide-react';
 import { DashboardStateReturn } from '../hooks/useDashboardState';
 import { ProfileSettingsSheet } from '@/components/layout/ProfileSettingsSheet';
 import { TaskModal } from '@/components/dashboard/TaskModal';
 import { TeacherModal } from '@/components/dashboard/TeacherModal';
 import { QuickActionDrawer } from '@/components/dashboard/QuickActionDrawer';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
+import { LeadDrawer } from '@/components/crm/LeadDrawer';
+import { StudentDrawer } from '@/components/students/StudentDrawer';
 
 interface DashboardMobileProps extends DashboardStateReturn {
   onOpenReport: () => void;
@@ -32,7 +34,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
           <button
             type="button"
             onClick={actions.openCreateLead}
-            className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition-transform flex items-center gap-1"
+            className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
           >
             <Plus size={14} /> Лид
           </button>
@@ -51,7 +53,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         {/* Карточка 1: Выручка */}
         <div 
           onClick={() => router.push('/finance')}
-          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs active:bg-slate-50 cursor-pointer space-y-1"
+          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs cursor-pointer active:scale-[0.98] transition-transform space-y-1"
         >
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Выручка</span>
@@ -64,7 +66,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         {/* Карточка 2: Ученики */}
         <div 
           onClick={() => router.push('/students')}
-          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs active:bg-slate-50 cursor-pointer space-y-1"
+          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs cursor-pointer active:scale-[0.98] transition-transform space-y-1"
         >
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ученики</span>
@@ -79,7 +81,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         {/* Карточка 3: Лиды в работе */}
         <div 
           onClick={() => router.push('/crm')}
-          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs active:bg-slate-50 cursor-pointer space-y-1"
+          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs cursor-pointer active:scale-[0.98] transition-transform space-y-1"
         >
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Лиды в работе</span>
@@ -94,7 +96,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         {/* Карточка 4: Долги */}
         <div 
           onClick={() => router.push('/finance')}
-          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs active:bg-slate-50 cursor-pointer space-y-1"
+          className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs cursor-pointer active:scale-[0.98] transition-transform space-y-1"
         >
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Долги</span>
@@ -119,7 +121,10 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         <div className="p-2 space-y-2">
           
           {/* Задача 1: Пробный урок */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+          <div 
+            onClick={() => actions.openTask({ id: '1', name: 'Даниил Морозов', label: 'Пробный урок', description: 'Завтра в 16:00 • Робототехника', phone: '+79991112233' })}
+            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 cursor-pointer active:scale-[0.98] transition-transform"
+          >
             <div className="min-w-0 pr-2">
               <span className="text-[9px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded inline-block mb-0.5">
                 Пробный урок
@@ -129,15 +134,21 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             </div>
             <button
               type="button"
-              onClick={() => actions.openDrawer('trial', '1', { name: 'Даниил Морозов', phone: '+79991112233' })}
-              className="h-8 px-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                actions.openTask({ id: '1', name: 'Даниил Морозов', label: 'Пробный урок', description: 'Завтра в 16:00 • Робототехника', phone: '+79991112233' });
+              }}
+              className="h-8 px-3 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs cursor-pointer"
             >
               Урок
             </button>
           </div>
 
           {/* Задача 2: Новый лид */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+          <div 
+            onClick={() => actions.openLead({ id: 'lead_olga', name: 'Ольга', contact: '+79992223344', directionOrCourse: 'Английский B1', source: 'Сайт', assignedTo: 'Елена', status: 'new', createdAt: new Date().toISOString(), interactions: [] })}
+            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 cursor-pointer active:scale-[0.98] transition-transform"
+          >
             <div className="min-w-0 pr-2">
               <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded inline-block mb-0.5">
                 Новый лид
@@ -147,15 +158,21 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             </div>
             <button
               type="button"
-              onClick={() => window.open('https://wa.me/79992223344', '_blank')}
-              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open('https://wa.me/79992223344', '_blank');
+              }}
+              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center gap-1 cursor-pointer"
             >
               <MessageCircle size={13} /> WhatsApp
             </button>
           </div>
 
           {/* Задача 3: Долг по оплате */}
-          <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50">
+          <div 
+            onClick={() => actions.openTask({ id: 'debt_artem', name: 'Артем Васильев', label: 'Долг по оплате', description: 'Просрочка 150 € • Абонемент', phone: '+79993334455' })}
+            className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 cursor-pointer active:scale-[0.98] transition-transform"
+          >
             <div className="min-w-0 pr-2">
               <span className="text-[9px] font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded inline-block mb-0.5">
                 Долг по оплате
@@ -165,8 +182,11 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             </div>
             <button
               type="button"
-              onClick={() => window.open('https://wa.me/79993334455', '_blank')}
-              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center gap-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open('https://wa.me/79993334455', '_blank');
+              }}
+              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center gap-1 cursor-pointer"
             >
               <MessageCircle size={13} /> Напомнить
             </button>
@@ -175,7 +195,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         </div>
       </div>
 
-      {/* Modals & Sheets */}
+      {/* Modals & Sheets Mounted at Root */}
       <ProfileSettingsSheet
         isOpen={data.isProfileOpen}
         onClose={actions.closeProfile}
@@ -192,6 +212,22 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
         isOpen={!!data.selectedTeacher}
         teacherData={data.selectedTeacher}
         onClose={actions.closeTeacher}
+      />
+
+      <LeadDrawer
+        isOpen={data.isLeadDrawerOpen}
+        lead={data.selectedLead}
+        onClose={actions.closeLead}
+        onConverted={(studentId) => {
+          actions.closeLead();
+          actions.openStudent({ id: studentId, name: data.selectedLead?.name || 'Ученик' });
+        }}
+      />
+
+      <StudentDrawer
+        isOpen={data.isStudentDrawerOpen}
+        studentData={data.selectedStudent}
+        onClose={actions.closeStudent}
       />
 
       <CreateLeadModal
@@ -213,3 +249,4 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
     </div>
   );
 }
+

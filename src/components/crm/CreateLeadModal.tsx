@@ -209,6 +209,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             <input
               type="text"
               required
+              enterKeyHint="next"
               value={clientType === 'school_student' ? parentFullName : studentFullName}
               onChange={(e) => {
                 if (clientType === 'school_student') {
@@ -219,7 +220,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 }
               }}
               placeholder="Например: Анна Смирнова"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
             />
           </div>
 
@@ -233,13 +234,14 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </label>
               <input
                 type="tel"
+                enterKeyHint="next"
                 value={contact}
                 onChange={(e) => {
                   const val = e.target.value;
                   setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
                 }}
                 placeholder="+7 (999) 000-00-00"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
               />
             </div>
             <div>
@@ -248,10 +250,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               </label>
               <input
                 type="text"
+                enterKeyHint="next"
                 value={telegram}
                 onChange={(e) => setTelegram(e.target.value)}
                 placeholder="@username"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white placeholder:text-slate-400"
               />
             </div>
           </div>
