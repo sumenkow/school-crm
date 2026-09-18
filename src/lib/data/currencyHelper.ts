@@ -116,6 +116,19 @@ export function convertEurToRub(amountEur: number, customRate?: number): number 
 }
 
 /**
+ * Formats a single currency amount without floating-point artefacts.
+ * - RUB: Math.round, non-breaking space thousands separator → "15\u00A0600 ₽"
+ * - EUR: exactly 2 decimal places                          → "74,13 €"
+ */
+export function formatCurrency(amount: number, currency: 'RUB' | 'EUR'): string {
+  if (currency === 'EUR') {
+    return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  }
+  // Use Math.round to eliminate floating-point fractions (e.g. 776 589,317 → 776 589)
+  return `${Math.round(amount).toLocaleString('ru-RU').replace(/\s/g, '\u00A0')} ₽`;
+}
+
+/**
  * Formats amount in dual currency with primary and converted secondary currency.
  * E.g.: "15 600 ₽ (≈ 156 €)" or "156 € (≈ 15 600 ₽)"
  */
@@ -128,13 +141,13 @@ export function formatDualCurrency(
 
   if (baseCurrency === 'RUB') {
     const eur = convertRubToEur(amount, rate);
-    const rubFormatted = `${amount.toLocaleString('ru-RU')} ₽`;
-    const eurFormatted = `${eur.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+    const rubFormatted = formatCurrency(Math.round(amount), 'RUB');
+    const eurFormatted = formatCurrency(eur, 'EUR');
     return `${rubFormatted} (≈ ${eurFormatted})`;
   } else {
     const rub = convertEurToRub(amount, rate);
-    const eurFormatted = `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
-    const rubFormatted = `${rub.toLocaleString('ru-RU')} ₽`;
+    const eurFormatted = formatCurrency(amount, 'EUR');
+    const rubFormatted = formatCurrency(rub, 'RUB');
     return `${eurFormatted} (≈ ${rubFormatted})`;
   }
 }
@@ -149,8 +162,8 @@ export function formatExecutiveDualCurrency(
 ): { rubFormatted: string; eurFormatted: string; fullLabel: string } {
   const rate = customRate || getEurRubRate();
   const eur = convertRubToEur(amountRub, rate);
-  const rubFormatted = `${amountRub.toLocaleString('ru-RU')} ₽`;
-  const eurFormatted = `${eur.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
+  const rubFormatted = formatCurrency(amountRub, 'RUB');
+  const eurFormatted = formatCurrency(eur, 'EUR');
 
   return {
     rubFormatted,
@@ -220,8 +233,8 @@ export function calculateMultiCurrencyTotals(
   const totalEur = Math.round((eurDirect + rubInEur) * 100) / 100;
   const totalRub = rubDirect + eurInRub;
 
-  const formattedTotalEur = `${totalEur.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`;
-  const formattedTotalRub = `${totalRub.toLocaleString('ru-RU')} ₽`;
+  const formattedTotalEur = formatCurrency(totalEur, 'EUR');
+  const formattedTotalRub = formatCurrency(totalRub, 'RUB');
   const formattedPrimaryWithSecondary = `${formattedTotalEur} (≈ ${formattedTotalRub})`;
 
   let breakdownSummary = '';

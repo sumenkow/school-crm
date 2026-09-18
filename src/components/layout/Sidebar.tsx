@@ -191,7 +191,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   };
 
   const navSections =
-    role === 'owner' ? getOwnerNav() :
+    (role === 'owner' || role === 'developer') ? getOwnerNav() :
     role === 'admin' ? getAdminNav() :
     getTeacherNav();
 

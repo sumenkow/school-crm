@@ -17,7 +17,8 @@ import {
   Phone,
   CheckCircle2,
   RefreshCw,
-  Bell
+  Bell,
+  Copy
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -269,17 +270,29 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 5 }: Upcomin
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setSelectedStudentId(item.studentId);
-                      setSelectedParentId(item.parentId);
-                      setPaymentModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition-colors shadow-2xs"
-                  >
-                    <CreditCard size={12} />
-                    Оплатить
-                  </button>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => {
+                        setSelectedStudentId(item.studentId);
+                        setSelectedParentId(item.parentId);
+                        setPaymentModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition-colors shadow-2xs"
+                    >
+                      <CreditCard size={12} />
+                      Внести оплату
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://pay.crm.ru/${item.studentId}`);
+                        toast.success('Ссылка на оплату скопирована');
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
+                      title="Скопировать ссылку на оплату"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

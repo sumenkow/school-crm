@@ -1671,13 +1671,14 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                   <div
                     key={trial.id}
                     className={cn(
-                      'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all',
+                      'flex flex-col gap-2 p-3.5 rounded-xl border transition-all',
                       trial.attended
                         ? 'bg-emerald-50/50 border-emerald-200'
                         : 'bg-white border-slate-200 shadow-2xs'
                     )}
                   >
-                    <div className="space-y-1">
+                    {/* Row 1: Lesson & Student Info */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono font-bold text-xs bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-md">
                           {trial.time}
@@ -1690,26 +1691,11 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                           {trial.room} • Преподаватель: {trial.teacher}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600 flex items-center gap-2">
-                        <span>Родитель: <strong>{trial.parent}</strong> ({trial.phone})</span>
-                        <span className="text-slate-400">•</span>
-                        <span className={cn(
-                          'text-[10px] font-bold px-2 py-0.2 rounded-full',
-                          trial.attended
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-700'
-                        )}>
-                          {trial.attended ? 'Явка подтверждена' : trial.status}
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                       <button
                         type="button"
                         onClick={() => handleToggleTrialAttended(trial.id, trial.student)}
                         className={cn(
-                          'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                          'px-3 py-1 rounded-lg text-[11px] font-bold transition-all shrink-0',
                           trial.attended
                             ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                             : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
@@ -1717,22 +1703,44 @@ function AdminDashboard({ onOpenReport }: { onOpenReport: () => void }) {
                       >
                         {trial.attended ? 'Пришел на урок' : 'Отметить явку'}
                       </button>
-                      <a
-                        href={`https://wa.me/${trial.phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
-                      >
-                        <MessageCircle size={13} />
-                        WhatsApp
-                      </a>
-                      <a
-                        href={`tel:${trial.phone.replace(/[^0-9+]/g, '')}`}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors"
-                        title="Позвонить родителю"
-                      >
-                        <PhoneCall size={15} />
-                      </a>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-px w-full bg-slate-100 my-0.5"></div>
+
+                    {/* Row 2: Parent & Links */}
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <p className="text-xs text-slate-600 flex items-center gap-2">
+                        <span>Родитель: <strong>{trial.parent}</strong> ({trial.phone})</span>
+                        <span className="text-slate-400">•</span>
+                        <span className={cn(
+                          'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                          trial.attended
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-slate-100 text-slate-700'
+                        )}>
+                          {trial.attended ? 'Явка подтверждена' : trial.status}
+                        </span>
+                      </p>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={`https://wa.me/${trial.phone.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors"
+                        >
+                          <MessageCircle size={12} />
+                          WhatsApp
+                        </a>
+                        <a
+                          href={`tel:${trial.phone.replace(/[^0-9+]/g, '')}`}
+                          className="p-1 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                          title="Позвонить родителю"
+                        >
+                          <PhoneCall size={14} />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 ))}

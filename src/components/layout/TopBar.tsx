@@ -16,7 +16,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ onOpenMobile }: TopBarProps) {
-  const { role, userName, userEmail } = useRole();
+  const { role, userName, userEmail, setRole, isDevAccount, accountRole, isOwnerAccount } = useRole();
   const { language, setLanguage, t } = useLanguage();
   const toast = useToast();
   const [scrolled, setScrolled] = useState(false);
@@ -382,6 +382,33 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
               <User size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
               {t('topbar.profile', 'Карточка профиля')}
             </button>
+
+            {/* Developer/Owner Role Switcher */}
+            {(isDevAccount || isOwnerAccount) && (
+              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--md-outline-variant)', borderBottom: '1px solid var(--md-outline-variant)', margin: '4px 0' }}>
+                <p className="md-label-small mb-2 text-gray-500">View as:</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setRole(accountRole === 'developer' ? 'developer' : 'owner')}
+                    className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${role === 'developer' || role === 'owner' ? 'bg-purple-100 text-purple-700' : 'hover:bg-black/5 text-gray-600'}`}
+                  >
+                    {accountRole === 'developer' ? 'Dev' : 'Owner'}
+                  </button>
+                  <button
+                    onClick={() => setRole('admin')}
+                    className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${role === 'admin' ? 'bg-blue-100 text-blue-700' : 'hover:bg-black/5 text-gray-600'}`}
+                  >
+                    Admin
+                  </button>
+                  <button
+                    onClick={() => setRole('teacher')}
+                    className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${role === 'teacher' ? 'bg-green-100 text-green-700' : 'hover:bg-black/5 text-gray-600'}`}
+                  >
+                    Teacher
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Logout */}
             <button
