@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Search, LogOut, ChevronDown, User, Calendar, Globe } from 'lucide-react';
+import { Search, LogOut, ChevronDown, User, Calendar, Globe } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage, LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
@@ -95,18 +95,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
         boxShadow: scrolled ? 'var(--md-elevation-2)' : 'none',
       }}
     >
-      {/* Mobile menu button (44px touch target) */}
-      <button
-        onClick={onOpenMobile}
-        className="lg:hidden flex items-center justify-center touch-target-44 rounded-full active:bg-black/10 transition-colors"
-        style={{
-          border: 'none', background: 'transparent',
-          color: 'var(--md-on-surface)', cursor: 'pointer',
-        }}
-        aria-label="Открыть меню"
-      >
-        <Menu size={22} />
-      </button>
+
 
       {/* Desktop & Tablet Search Bar */}
       <div
