@@ -94,6 +94,23 @@ export default function CrmPage() {
     }
   };
 
+  // Support for Windows vertical mouse wheel horizontal scrolling
+  React.useEffect(() => {
+    const el = kanbanRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // If user scrolls vertically without shift key, convert to horizontal scroll
+      if (e.deltaY !== 0 && e.deltaX === 0 && !e.shiftKey) {
+        e.preventDefault();
+        el.scrollBy({ left: e.deltaY * 0.8, behavior: 'auto' });
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [viewMode]);
+
   // Regulated 8 statuses from Section 12
   const columns = [
     { key: 'new', label: t('crm.stageNew', 'Новые'), badgeColor: 'bg-blue-100 text-blue-800' },
