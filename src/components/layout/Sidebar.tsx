@@ -202,7 +202,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
   const drawerContent = (
     <div
-      className="flex flex-col h-full overflow-y-auto overflow-x-hidden transition-all duration-200"
+      className="flex flex-col h-full overflow-hidden transition-all duration-200"
       style={{
         width: collapsed ? '76px' : '256px',
         backgroundColor: 'var(--md-surface-container-low)',
@@ -390,7 +390,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
     <>
       {/* Desktop: permanent collapsible drawer */}
       <div
-        className="hidden md:block flex-shrink-0 h-full overflow-y-auto transition-all duration-200"
+        className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-200"
         style={{ width: collapsed ? '76px' : '256px' }}
       >
         {drawerContent}
