@@ -1411,7 +1411,11 @@ export default function StudentDetailsPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-xs font-semibold text-blue-600 uppercase">{grp.courseName}</span>
-                      <h4 className="text-base font-bold text-slate-900 mt-0.5">{grp.name}</h4>
+                      <h4 className="text-base font-bold text-slate-900 mt-0.5">
+                        <Link href={`/groups/${grp.id}`} className="hover:text-blue-600 hover:underline transition-colors">
+                          {grp.name}
+                        </Link>
+                      </h4>
                     </div>
                     <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
                       Активна
@@ -1421,7 +1425,12 @@ export default function StudentDetailsPage() {
                   <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
                     <div className="flex justify-between">
                       <span className="text-slate-400">Преподаватель:</span>
-                      <span className="font-semibold text-slate-800">{grp.teacherName}</span>
+                      <Link
+                        href={`/teachers/${(grp as any).teacherId || '1'}`}
+                        className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
+                      >
+                        {grp.teacherName}
+                      </Link>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Расписание:</span>
@@ -1441,7 +1450,7 @@ export default function StudentDetailsPage() {
                     >
                       Исключить из группы
                     </button>
-                    <Link href={`/groups`} className="text-xs font-semibold text-blue-600 hover:underline">
+                    <Link href={`/groups/${grp.id}?tab=journal`} className="text-xs font-semibold text-blue-600 hover:underline">
                       Журнал группы →
                     </Link>
                   </div>

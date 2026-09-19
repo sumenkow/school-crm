@@ -342,7 +342,7 @@ export function StudentProfileDesktop({
             <div className="space-y-0.5">
               {/* 1st Line: Group Name */}
               <Link
-                href={`/calendar/lessons/${(student.groups[0] as any).nextLessonId || student.groups[0].id}`}
+                href={`/groups/${student.groups[0].id}`}
                 className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
               >
                 {student.groups[0].name}

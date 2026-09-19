@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { INITIAL_GROUPS, FullGroupData, INITIAL_STUDENTS } from '@/lib/data/mockData';
 import {
   ArrowLeft,
@@ -130,7 +130,25 @@ export default function GroupDetailsPage() {
     setIsEditModalOpen(false);
   };
 
-  const [activeTab, setActiveTab] = useState<'students' | 'lessons' | 'settings'>('students');
+  const searchParams = useSearchParams();
+  const initialTabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'students' | 'lessons' | 'settings'>(() => {
+    if (initialTabParam === 'journal' || initialTabParam === 'lessons') {
+      return 'lessons';
+    }
+    return 'students';
+  });
+
+  React.useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'journal' || tabParam === 'lessons') {
+      setActiveTab('lessons');
+    } else if (tabParam === 'students') {
+      setActiveTab('students');
+    } else if (tabParam === 'settings') {
+      setActiveTab('settings');
+    }
+  }, [searchParams]);
 
   // Dynamic automatic calculation of free spots (Principle 9: One Source of Truth)
   const enrolledCount = group.students.length;
