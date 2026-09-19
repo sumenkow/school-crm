@@ -192,16 +192,24 @@ export default function StudentDetailsPage() {
     };
   }, [studentId]);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>(() => {
-    if (tabParam && ['profile', 'education', 'attendance', 'teacher_comments', 'finance', 'timeline', 'tasks'].includes(tabParam)) {
-      return tabParam as any;
+  const [activeTab, setActiveTab] = useState<'education' | 'finance' | 'profile' | 'tasks' | 'timeline'>(() => {
+    if (tabParam) {
+      if (['attendance', 'teacher_comments', 'education', 'academic'].includes(tabParam)) return 'education';
+      if (['finance', 'profile', 'family', 'tasks', 'timeline'].includes(tabParam)) {
+        if (tabParam === 'family') return 'profile';
+        return tabParam as any;
+      }
     }
-    return 'profile';
+    return 'education';
   });
 
   useEffect(() => {
-    if (tabParam && ['profile', 'education', 'attendance', 'teacher_comments', 'finance', 'timeline', 'tasks'].includes(tabParam)) {
-      setActiveTab(tabParam as any);
+    if (tabParam) {
+      if (['attendance', 'teacher_comments', 'education', 'academic'].includes(tabParam)) {
+        setActiveTab('education');
+      } else if (['finance', 'profile', 'family', 'tasks', 'timeline'].includes(tabParam)) {
+        setActiveTab(tabParam === 'family' ? 'profile' : (tabParam as any));
+      }
     }
   }, [tabParam]);
 
@@ -659,12 +667,38 @@ export default function StudentDetailsPage() {
       content: newTeacherCommentText.trim(),
     };
 
-    const updatedComments = [newComment, ...(student.teacherComments || [])];
+    const categoryLabelMap: Record<string, string> = {
+      progress: 'Успеваемость и прогресс',
+      homework: 'Домашнее задание',
+      behavior: 'Поведение',
+      general: 'Общий отзыв',
+    };
 
-    setStudent((prev) => ({
-      ...prev,
+    const commentInteraction: TimelineInteraction = {
+      id: `int_tc_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      occurredAt: 'Только что',
+      channel: 'other',
+      type: 'other',
+      author: userName || 'Преподаватель',
+      content: `[${newTeacherCommentGroup}] ${newTeacherCommentText.trim()}`,
+      result: `Отзыв преподавателя: ${categoryLabelMap[newTeacherCommentCategory] || 'Отзыв'}`,
+    };
+
+    saveInteractionToStorage(commentInteraction);
+
+    const updatedComments = [newComment, ...(student.teacherComments || [])];
+    const updatedInteractions = [commentInteraction, ...(student.interactions || [])];
+
+    const updatedStudent: FullStudentData = {
+      ...student,
       teacherComments: updatedComments,
-    }));
+      interactions: updatedInteractions,
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
 
     // Sync with in-memory INITIAL_STUDENTS
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id);
@@ -672,12 +706,17 @@ export default function StudentDetailsPage() {
       INITIAL_STUDENTS[idx] = {
         ...INITIAL_STUDENTS[idx],
         teacherComments: updatedComments,
+        interactions: updatedInteractions,
       };
     }
 
+    // Trigger reactive window events for Timeline and Realtime
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: commentInteraction }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+
     setNewTeacherCommentText('');
     setNewTeacherCommentTopic('');
-    toast.success('Комментарий преподавателя добавлен в карточку ученика!');
+    toast.success('Комментарий преподавателя сохранен и опубликован в Timeline!');
   };
 
   const handleDeductDeposit = () => {
@@ -1234,13 +1273,11 @@ export default function StudentDetailsPage() {
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
-          { key: 'profile', label: `${t('students.tabFamily', 'Профиль и Семья')}` },
-          { key: 'education', label: `${t('students.tabAcademic', 'Обучение и Группы')}` },
-          { key: 'attendance', label: `${t('students.tabAttendance', 'Посещаемость')} (${student.attendanceStats.attendanceRate})` },
-          { key: 'teacher_comments', label: `${t('teacher.teacherComments', 'Комментарии учителя')} (${(student.teacherComments || []).length})` },
-          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')}` }] : []),
-          { key: 'timeline', label: `Timeline (${student.interactions.length})` },
+          { key: 'education', label: `Обучение (${student.attendanceStats.attendanceRate})` },
+          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Оплаты и баланс')}` }] : []),
+          { key: 'profile', label: `${t('students.tabFamily', 'Семья и контакты')}` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${student.tasks.filter((t) => t.status === 'open').length})` },
+          { key: 'timeline', label: `Timeline (${student.interactions.length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -1372,178 +1409,165 @@ export default function StudentDetailsPage() {
         </div>
       )}
 
-      {/* TAB 2: ОБУЧЕНИЕ И ГРУППЫ */}
+      {/* TAB 1: ЕДИНАЯ МОНОЛИТНАЯ ВКЛАДКА «ОБУЧЕНИЕ» */}
       {activeTab === 'education' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Текущие зачисления (Enrollments)</h3>
-              <p className="text-xs text-slate-500">Ученик может параллельно обучаться в нескольких группах (например, грамматика и разговорный клуб)</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsEnrollGroupModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Зачислить в группу
-            </button>
-          </div>
-
-          {student.groups.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-              <BookOpen className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-semibold text-slate-700">Ученик пока не зачислен ни в одну группу</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 mb-3">Выберите группу для начала посещения занятий</p>
+        <div className="space-y-6">
+          {/* БЛОК 1: ВЕРХНЯЯ ПАНЕЛЬ КУРСОВ (ДВУХКОЛОНОЧНАЯ СЕТКА) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Текущие зачисления и группы</h3>
+                <p className="text-xs text-slate-500">Ученик может параллельно обучаться на нескольких предметах</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsEnrollGroupModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Зачислить в группу
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {student.groups.map((grp) => (
-                <div key={grp.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-semibold text-blue-600 uppercase">{grp.courseName}</span>
-                      <h4 className="text-base font-bold text-slate-900 mt-0.5">
-                        <Link href={`/groups/${grp.id}`} className="hover:text-blue-600 hover:underline transition-colors">
-                          {grp.name}
-                        </Link>
-                      </h4>
-                    </div>
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                      Активна
-                    </span>
-                  </div>
 
-                  <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Преподаватель:</span>
-                      <Link
-                        href={`/teachers/${(grp as any).teacherId || '1'}`}
-                        className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
+            {student.groups.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                <BookOpen className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-700">Ученик пока не зачислен ни в одну группу</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 mb-3">Выберите группу для начала посещения занятий</p>
+                <button
+                  type="button"
+                  onClick={() => setIsEnrollGroupModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Зачислить в группу
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {student.groups.map((grp) => (
+                  <div key={grp.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">{grp.courseName}</span>
+                          <h4 className="text-base font-bold text-slate-900 mt-0.5">
+                            <Link href={`/groups/${grp.id}`} className="hover:text-blue-600 hover:underline transition-colors">
+                              {grp.name}
+                            </Link>
+                          </h4>
+                        </div>
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                          Активна
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Преподаватель:</span>
+                          <Link
+                            href={`/teachers/${(grp as any).teacherId || '1'}`}
+                            className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
+                          >
+                            {grp.teacherName}
+                          </Link>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Расписание:</span>
+                          <span className="font-medium text-slate-800">{grp.schedule}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Дата зачисления:</span>
+                          <span>{grp.joinedAt}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 flex items-center justify-between border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGroup(grp.id, grp.name)}
+                        className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
                       >
-                        {grp.teacherName}
+                        Исключить из группы
+                      </button>
+                      <Link href={`/groups/${grp.id}?tab=journal`} className="text-xs font-semibold text-blue-600 hover:underline">
+                        Журнал группы →
                       </Link>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Расписание:</span>
-                      <span className="font-medium text-slate-800">{grp.schedule}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Дата зачисления:</span>
-                      <span>{grp.joinedAt}</span>
-                    </div>
                   </div>
+                ))}
 
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                {/* If student is enrolled in only 1 group, fill 2nd column with invitation to enroll in 2nd course */}
+                {student.groups.length === 1 && (
+                  <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-5 flex flex-col items-center justify-center text-center space-y-3 min-h-[190px] hover:border-blue-300 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-800">Второй курс не выбран</h4>
+                      <p className="text-[11px] text-slate-500 mt-1 max-w-[220px]">
+                        Ученик посещает 1 курс. Можно зачислить во вторую группу для параллельного обучения.
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleRemoveGroup(grp.id, grp.name)}
-                      className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
+                      onClick={() => setIsEnrollGroupModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors shadow-xs"
                     >
-                      Исключить из группы
+                      + Зачислить на 2-й курс
                     </button>
-                    <Link href={`/groups/${grp.id}?tab=journal`} className="text-xs font-semibold text-blue-600 hover:underline">
-                      Журнал группы →
-                    </Link>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: ПОСЕЩАЕМОСТЬ */}
-      {activeTab === 'attendance' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-              <span className="text-xs text-slate-400">Процент посещения:</span>
-              <p className="text-2xl font-extrabold text-emerald-600 mt-1">{student.attendanceStats.attendanceRate}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-              <span className="text-xs text-slate-400">Всего уроков:</span>
-              <p className="text-2xl font-extrabold text-slate-900 mt-1">{student.attendanceStats.totalLessons}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-              <span className="text-xs text-slate-400">Присутствовал:</span>
-              <p className="text-2xl font-extrabold text-blue-600 mt-1">{student.attendanceStats.presentCount}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-              <span className="text-xs text-slate-400">Пропущено:</span>
-              <p className="text-2xl font-extrabold text-rose-600 mt-1">{student.attendanceStats.absentCount}</p>
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">История последних занятий</h4>
-            </div>
-            <div className="divide-y divide-slate-100 text-xs">
-              {student.attendanceStats.history.map((item, idx) => (
-                <div key={idx} className="p-4 flex items-center justify-between hover:bg-slate-50/60">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">{item.date}</span>
-                      <span className="text-slate-500">• {item.groupName}</span>
-                    </div>
-                    <p className="text-slate-600 mt-0.5">{item.topic}</p>
-                    {item.notes && <p className="text-[11px] text-amber-600 mt-0.5">Причина: {item.notes}</p>}
-                  </div>
-                  <span
-                    className={cn(
-                      'rounded-full px-2.5 py-1 font-bold text-[11px]',
-                      item.status === 'present'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : item.status === 'rescheduled'
-                        ? 'bg-purple-100 text-purple-800'
-                        : item.status === 'cancelled'
-                        ? 'bg-slate-100 text-slate-700'
-                        : 'bg-rose-100 text-rose-800'
-                    )}
-                  >
-                    {item.status === 'present'
-                      ? 'Был'
-                      : item.status === 'rescheduled'
-                      ? 'Перенос'
-                      : item.status === 'cancelled'
-                      ? 'Отменено'
-                      : 'Пропуск'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+          {/* БЛОК 2: СВОДНЫЕ KPI ПОСЕЩАЕМОСТИ */}
+          {(() => {
+            const rawRate = parseInt(student.attendanceStats.attendanceRate) || 0;
+            const rateBadgeColor =
+              rawRate >= 90
+                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                : rawRate >= 70
+                ? 'text-amber-700 bg-amber-50 border-amber-200'
+                : 'text-rose-700 bg-rose-50 border-rose-200';
 
-      {/* TAB: КОММЕНТАРИИ УЧИТЕЛЯ (ТАЙМЛАЙН) */}
-      {activeTab === 'teacher_comments' && (
-        <div className="space-y-6">
-          {/* Header & Add Comment Form */}
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className={cn('rounded-2xl border p-4 shadow-xs', rateBadgeColor)}>
+                  <span className="text-xs font-semibold text-slate-600">Процент посещаемости:</span>
+                  <p className="text-2xl font-extrabold mt-1">{student.attendanceStats.attendanceRate}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <span className="text-xs text-slate-400">Всего уроков:</span>
+                  <p className="text-2xl font-extrabold text-slate-900 mt-1">{student.attendanceStats.totalLessons}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <span className="text-xs text-slate-400">Присутствовал:</span>
+                  <p className="text-2xl font-extrabold text-blue-600 mt-1">{student.attendanceStats.presentCount}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <span className="text-xs text-slate-400">Пропущено:</span>
+                  <p className="text-2xl font-extrabold text-rose-600 mt-1">{student.attendanceStats.absentCount}</p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* БЛОК 3: ФОРМА ДОБАВЛЕНИЯ КОММЕНТАРИЯ ПРЕПОДАВАТЕЛЯ */}
           <div className="rounded-2xl border border-purple-200/80 bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <MessageSquarePlus className="h-4 w-4 text-purple-600" />
-                  Комментарии и отзывы преподавателей
-                </h3>
-              </div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <MessageSquarePlus className="h-4 w-4 text-purple-600" />
+                Оставить отзыв или комментарий преподавателя
+              </h3>
             </div>
 
-            {/* Quick Add Teacher Comment Form */}
             <form onSubmit={handleAddTeacherComment} className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="text-slate-600 font-medium block mb-1">Группа / занятие:</label>
+                  <label className="text-slate-600 font-medium block mb-1">Группа / предмет:</label>
                   <select
                     value={newTeacherCommentGroup}
                     onChange={(e) => setNewTeacherCommentGroup(e.target.value)}
@@ -1584,7 +1608,7 @@ export default function StudentDetailsPage() {
               </div>
 
               <textarea
-                rows={3}
+                rows={2}
                 value={newTeacherCommentText}
                 onChange={(e) => setNewTeacherCommentText(e.target.value)}
                 placeholder="Напишите комментарий об ученике (активность на уроке, пробелы, рекомендации)..."
@@ -1600,67 +1624,96 @@ export default function StudentDetailsPage() {
                   className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  Добавить в таймлайн ученика
+                  Сохранить и отправить в Timeline
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Teacher Comments Timeline */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Хронология комментариев преподавателей ({student.teacherComments?.length || 0})
-            </h4>
+          {/* БЛОК 4: ЕДИНАЯ ЛЕНТА ЗАНЯТИЙ И ОТЗЫВОВ */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden space-y-0">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                История проведенных занятий и отзывов ({student.attendanceStats.history.length})
+              </h4>
+              <span className="text-[11px] text-slate-400">От новых к более старым</span>
+            </div>
 
-            {(!student.teacherComments || student.teacherComments.length === 0) ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-xs text-slate-400">
-                Комментариев преподавателя пока нет. Вы можете оставить первый комментарий через форму выше или при заполнении журнала посещаемости.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {student.teacherComments.map((tc) => {
-                  const categoryBadge = {
-                    progress: { label: 'Успеваемость и прогресс', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-                    homework: { label: 'Домашнее задание', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-                    behavior: { label: 'Поведение', color: 'bg-amber-100 text-amber-800 border-amber-200' },
-                    general: { label: 'Общий отзыв', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-                  }[tc.category] || { label: 'Отзыв', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+            <div className="divide-y divide-slate-100 text-xs">
+              {student.attendanceStats.history.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  История проведенных занятий пока отсутствует
+                </div>
+              ) : (
+                student.attendanceStats.history.map((item, idx) => {
+                  // Find matching teacher feedback for this lesson/date/group
+                  const matchingComments = (student.teacherComments || []).filter((tc) => {
+                    const tcDate = tc.date ? tc.date.split(',')[0].trim() : '';
+                    const itemDate = item.date ? item.date.trim() : '';
+                    return (
+                      (tc.groupName && item.groupName && tc.groupName.toLowerCase() === item.groupName.toLowerCase()) ||
+                      (tcDate && itemDate && tcDate === itemDate) ||
+                      (tc.lessonTopic && item.topic && tc.lessonTopic.toLowerCase() === item.topic.toLowerCase())
+                    );
+                  });
 
                   return (
-                    <div
-                      key={tc.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 text-xs shadow-xs space-y-2.5 hover:shadow-sm transition-all"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm">{tc.author}</span>
-                          <span className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold border', categoryBadge.color)}>
-                            {categoryBadge.label}
-                          </span>
-                          {tc.groupName && (
-                            <span className="rounded-md bg-purple-50 text-purple-700 px-2 py-0.5 text-[10px] font-semibold border border-purple-100">
-                              {tc.groupName}
-                            </span>
-                          )}
-                          {tc.lessonTopic && (
-                            <span className="text-[11px] text-slate-500 font-medium">
-                              Тема: {tc.lessonTopic}
-                            </span>
-                          )}
+                    <div key={idx} className="p-4 space-y-2.5 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900">{item.date}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-semibold text-blue-600">{item.groupName}</span>
+                          </div>
+                          <p className="text-slate-600">{item.topic || 'Занятие по расписанию'}</p>
+                          {item.notes && <p className="text-[11px] text-amber-600">Причина: {item.notes}</p>}
                         </div>
-                        <span className="text-[11px] text-slate-400 shrink-0 font-medium">
-                          {tc.date}
+
+                        <span
+                          className={cn(
+                            'rounded-full px-2.5 py-1 font-bold text-[11px]',
+                            item.status === 'present'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : item.status === 'rescheduled'
+                              ? 'bg-purple-100 text-purple-800'
+                              : item.status === 'cancelled'
+                              ? 'bg-slate-100 text-slate-700'
+                              : 'bg-rose-100 text-rose-800'
+                          )}
+                        >
+                          {item.status === 'present'
+                            ? 'Был'
+                            : item.status === 'rescheduled'
+                            ? 'Перенос'
+                            : item.status === 'cancelled'
+                            ? 'Отменено'
+                            : 'Пропуск'}
                         </span>
                       </div>
 
-                      <p className="text-slate-800 leading-relaxed text-xs whitespace-pre-line">
-                        {tc.content}
-                      </p>
+                      {/* NESTED TEACHER COMMENTS (if any) */}
+                      {matchingComments.length > 0 && (
+                        <div className="mt-2 rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-xs space-y-2">
+                          <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">
+                            💬 Отзыв преподавателя к этому уроку:
+                          </span>
+                          {matchingComments.map((comment) => (
+                            <div key={comment.id} className="space-y-1 border-t border-purple-100/60 pt-1.5 first:border-0 first:pt-0">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-bold text-slate-900">{comment.author}</span>
+                                <span className="text-slate-400">{comment.date}</span>
+                              </div>
+                              <p className="text-slate-700 italic">«{comment.content}»</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
         </div>
       )}
