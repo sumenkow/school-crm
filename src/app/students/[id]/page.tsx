@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
@@ -59,10 +59,13 @@ import type { FullTaskData } from '@/lib/data/mockData';
 export default function StudentDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const { role, userName } = useRole();
   const { t } = useLanguage();
   const studentId = params.id as string;
+  const tabParam = searchParams.get('tab');
+  const actionParam = searchParams.get('action');
 
   const [student, setStudent] = useState<FullStudentData>(() => {
     return getStudentById(studentId) || INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
@@ -124,7 +127,18 @@ export default function StudentDetailsPage() {
     };
   }, [studentId]);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'education' | 'attendance' | 'teacher_comments' | 'finance' | 'timeline' | 'tasks'>(() => {
+    if (tabParam && ['profile', 'education', 'attendance', 'teacher_comments', 'finance', 'timeline', 'tasks'].includes(tabParam)) {
+      return tabParam as any;
+    }
+    return 'profile';
+  });
+
+  useEffect(() => {
+    if (tabParam && ['profile', 'education', 'attendance', 'teacher_comments', 'finance', 'timeline', 'tasks'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
 
   // Next Upcoming Lesson State
   const [upcomingLesson, setUpcomingLesson] = useState<FullLessonData | null>(null);
@@ -1133,7 +1147,10 @@ export default function StudentDetailsPage() {
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => {
+              setActiveTab(tab.key as any);
+              window.history.replaceState(null, '', `/students/${studentId}?tab=${tab.key}`);
+            }}
             className={cn(
               'pb-3 px-3 border-b-2 whitespace-nowrap transition-all',
               activeTab === tab.key

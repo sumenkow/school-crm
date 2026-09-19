@@ -425,7 +425,7 @@ function StudentsContent() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('students.title', 'Ученики школы')}</h1>
           <p className="text-sm text-slate-600">
-            {t('students.subtitle', 'Единая база учащихся и совершеннолетних студентов')} • Всего: {activeStudents.length} (активных: {activeStudents.filter(s => s.status === 'active').length})
+            {t('students.subtitle', 'Единая база учеников и студентов')} • Всего: {activeStudents.length} (активных: {activeStudents.filter(s => s.status === 'active').length})
           </p>
         </div>
         <div className="flex items-center gap-2">

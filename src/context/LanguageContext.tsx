@@ -358,7 +358,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
 
     // Students
     'students.title': 'Ученики школы',
-    'students.subtitle': 'Единая база учеников и совершеннолетних студентов',
+    'students.subtitle': 'Единая база учеников и студентов',
     'students.search': 'Поиск по имени ученика, родителю или группе...',
     'students.filterAll': 'Все ученики',
     'students.filterActive': 'Активные',
