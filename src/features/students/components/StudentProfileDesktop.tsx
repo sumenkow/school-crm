@@ -324,9 +324,19 @@ export function StudentProfileDesktop({
               >
                 Преподаватель: {student.groups[0]?.teacherName || (student as any).teacherName || 'Мария Иванова'}
               </Link>
-              <span className="text-[11px] text-slate-400 block truncate">
-                → {upcomingLesson ? `${upcomingLesson.date} • ${upcomingLesson.startTime}` : (student.groups[0]?.schedule || 'Ср 21 сен, 18:45')}
-              </span>
+              {upcomingLesson && upcomingLesson.date ? (
+                <Link
+                  href={`/calendar/lessons/${upcomingLesson.id}`}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
+                  title="Перейти к карточке ближайшего урока"
+                >
+                  → Следующее занятие: {upcomingLesson.date}{upcomingLesson.startTime ? `, ${upcomingLesson.startTime}` : ''}
+                </Link>
+              ) : (
+                <span className="text-[11px] text-slate-400 block truncate">
+                  → Следующее занятие: —
+                </span>
+              )}
             </div>
           ) : (
             <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
