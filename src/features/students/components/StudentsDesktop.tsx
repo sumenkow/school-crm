@@ -267,15 +267,14 @@ export function StudentsDesktop({
                   {/* 3. КУРС */}
                   <td className="px-3.5 py-3">
                     {student.groups.length > 0 ? (
-                      <div className="min-w-0">
-                        <Link
-                          href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
-                          className="text-xs font-semibold text-blue-600 hover:underline block truncate"
-                        >
-                          {student.groups[0].name}
-                        </Link>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
-                          <span className="truncate">→ {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}</span>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link
+                            href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
+                            className="text-xs font-semibold text-blue-600 hover:underline truncate"
+                          >
+                            {student.groups[0].name}
+                          </Link>
                           {student.groups.length > 1 && (
                             <div
                               className="relative shrink-0 inline-flex items-center"
@@ -318,6 +317,9 @@ export function StudentsDesktop({
                             </div>
                           )}
                         </div>
+                        <span className="text-[11px] text-slate-400 block truncate">
+                          → {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}
+                        </span>
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400 select-none">— Без группы</span>
