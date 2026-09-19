@@ -88,11 +88,11 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-3.5 py-3">
+            <th className="px-3.5 py-3 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
-                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
               >
                 <span>УЧЕНИК</span>
                 {sortField === 'name' ? (
@@ -102,14 +102,14 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-3.5 py-3">КУРС</th>
-            <th className="px-3.5 py-3">УЧИТЕЛЬ</th>
+            <th className="px-3.5 py-3 text-center">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-3.5 py-3 text-center">КУРС</th>
+            <th className="px-3.5 py-3 text-center">УЧИТЕЛЬ</th>
             <th className="px-3.5 py-3 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
-                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
               >
                 <span>ПОСЕЩАЕМОСТЬ</span>
                 {sortField === 'attendanceRate' ? (
@@ -119,11 +119,11 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3">
+            <th className="px-3.5 py-3 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
-                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
               >
                 <span>СТАТУС ОПЛАТЫ</span>
                 {sortField === 'finance' ? (
@@ -134,7 +134,7 @@ export function StudentsDesktop({
               </button>
             </th>
             {statusFilter === 'deleted' && (
-              <th className="px-3.5 py-3 text-right">ДЕЙСТВИЕ</th>
+              <th className="px-3.5 py-3 text-center">ДЕЙСТВИЕ</th>
             )}
           </tr>
         </thead>
@@ -378,41 +378,46 @@ export function StudentsDesktop({
                   <td className="px-3.5 py-3">
                     <Link
                       href={`/students/${student.id}?tab=finance`}
-                      className="block group"
+                      className="block group min-w-0"
                     >
                       {student.financeStatus === 'active_sub' && (
-                        <div>
+                        <div className="space-y-0.5">
                           <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
                             ✓ Оплачено до {formattedPaidUntil}
                           </span>
-                          <div className="text-[10px] text-slate-400 mt-0.5">абонемент</div>
+                          <div className="text-[11px] text-slate-500 font-medium truncate">
+                            Баланс: {student.netBalanceEur > 0 ? `+${student.netBalanceEur} €` : `${student.netBalanceEur} €`} <span className="text-slate-400 font-normal">• абонемент</span>
+                          </div>
                         </div>
                       )}
                       {student.financeStatus === 'deposit' && (
-                        <div>
+                        <div className="space-y-0.5">
                           <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
                             Депозит: +{student.balanceEur} €
                           </span>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
-                            {student.balanceRub?.toLocaleString('ru-RU')} ₽
+                          <div className="text-[11px] font-semibold text-emerald-600 truncate">
+                            Баланс: +{student.balanceEur} € <span className="text-slate-400 font-normal">({student.balanceRub?.toLocaleString('ru-RU')} ₽)</span>
                           </div>
                         </div>
                       )}
                       {student.financeStatus === 'debt' && (
-                        <div>
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2 py-0.5 rounded-lg whitespace-nowrap inline-block">
+                        <div className="space-y-0.5">
+                          <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap inline-block">
                             Долг: -{student.debtEur} €
                           </span>
-                          <div className="text-[10px] text-slate-500 font-medium mt-0.5">
-                            {student.debtRub?.toLocaleString('ru-RU')} ₽
+                          <div className="text-[11px] font-semibold text-rose-600 truncate">
+                            Баланс: -{student.debtEur} € <span className="text-rose-400 font-normal">(-{student.debtRub?.toLocaleString('ru-RU')} ₽)</span>
                           </div>
                         </div>
                       )}
                       {student.financeStatus === 'trial' && (
-                        <div>
-                          <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
+                        <div className="space-y-0.5">
+                          <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-block">
                             Пробный
                           </span>
+                          <div className="text-[11px] text-purple-700 font-medium truncate">
+                            Баланс: 0 € <span className="text-slate-400 font-normal">(пробный урок)</span>
+                          </div>
                         </div>
                       )}
                     </Link>
