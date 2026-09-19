@@ -69,12 +69,12 @@ export function StudentsDesktop({
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
           <col className="w-[44px]" />   {/* Чекбокс */}
-          <col className="w-[22%]" />    {/* Ученик */}
-          <col className="w-[20%]" />    {/* Представитель */}
-          <col className="w-[19%]" />    {/* Курс */}
-          <col className="w-[12%]" />    {/* Учитель */}
-          <col className="w-[10%]" />    {/* Посещаемость */}
-          <col className="w-[17%]" />    {/* Статус оплаты */}
+          <col className="w-[19%]" />    {/* Ученик */}
+          <col className="w-[21%]" />    {/* Представитель */}
+          <col className="w-[17%]" />    {/* Курс */}
+          <col className="w-[13%]" />    {/* Учитель */}
+          <col className="w-[11%]" />    {/* Посещаемость */}
+          <col className="w-[19%]" />    {/* Статус оплаты */}
         </colgroup>
 
         <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -88,11 +88,11 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-3.5 py-3 text-center">
+            <th className="px-3.5 py-3 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
-                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
+                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
               >
                 <span>УЧЕНИК</span>
                 {sortField === 'name' ? (
@@ -102,9 +102,9 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3 text-center">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-3.5 py-3 text-center">КУРС</th>
-            <th className="px-3.5 py-3 text-center">УЧИТЕЛЬ</th>
+            <th className="px-3.5 py-3 text-left">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-3.5 py-3 text-left">КУРС</th>
+            <th className="px-3.5 py-3 text-left">УЧИТЕЛЬ</th>
             <th className="px-3.5 py-3 text-center">
               <button
                 type="button"
@@ -119,11 +119,11 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3 text-center">
+            <th className="px-3.5 py-3 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
-                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
+                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
               >
                 <span>СТАТУС ОПЛАТЫ</span>
                 {sortField === 'finance' ? (
