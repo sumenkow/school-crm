@@ -17,14 +17,14 @@ import { getStoredStudents, restoreStudent } from '@/lib/data/studentStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z" />
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
   </svg>
 );
 
 const TelegramIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.562 8.161c-.18.717-.962 4.084-1.362 5.771-.169.714-.433.954-.688.977-.557.051-.98-.368-1.52-.722-.845-.553-1.323-.897-2.143-1.437-.948-.624-.334-.967.207-1.529.142-.147 2.607-2.389 2.656-2.597.006-.026.012-.123-.046-.175s-.144-.034-.206-.02c-.088.02-1.488.946-4.2 2.778-.397.272-.757.406-1.079.399-.356-.008-1.041-.202-1.55-.368-.626-.204-1.123-.312-1.08-.66.023-.181.272-.367.747-.557 2.928-1.275 4.88-2.115 5.857-2.52 2.791-1.157 3.372-1.358 3.75-1.364.083-.001.27.02.39.118.101.082.13.193.143.271.013.078.028.256.015.395z" />
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.536-.196 1.006.128.833.942z" />
   </svg>
 );
 
@@ -90,15 +90,15 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     id: g.id || `g_${idx}`,
     name: g.name || 'Группа',
     schedule: g.schedule || 'Пн/Чт 18:45',
-    room: (g as any).room || 'Аудитория 204',
+    room: (g as any).room || 'Ауд. 204',
     teacherName: g.teacherName || 'Мария Иванова',
     nextLessonId: `l_${s.id}_g_${g.id || idx}`,
-    nextLessonDate: '21 сен, 18:45',
+    nextLessonDate: 'Ср 21 сен, 18:45',
   }));
 
   const firstGroup = groupsList[0];
   const groupId = firstGroup?.id;
-  const groupName = firstGroup ? `${firstGroup.name} (${firstGroup.schedule || ''})`.trim() : undefined;
+  const groupName = firstGroup ? `${firstGroup.name}` : undefined;
   const teacherName = firstGroup?.teacherName || 'Мария Иванова';
 
   let teacherId = 't1';
@@ -107,7 +107,7 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   else if (teacherName.toLowerCase().includes('анна') || teacherName.toLowerCase().includes('алексей')) teacherId = 't4';
 
   const nextLessonId = `l_${s.id}_next`;
-  const nextLessonDate = '21 сен, 18:45';
+  const nextLessonDate = 'Ср 21 сен, 18:45';
 
   const attendanceRateStr = s.attendanceStats?.attendanceRate || '100%';
   const attendanceRateNum = parseInt(attendanceRateStr.replace(/\D/g, ''), 10) || 100;
@@ -172,6 +172,14 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
 type SortField = 'name' | 'attendanceRate' | 'finance';
 type SortOrder = 'default' | 'asc' | 'desc';
 
+const teachersList = [
+  { id: 'all', name: 'Все преподаватели' },
+  { id: 't1', name: 'Мария Иванова' },
+  { id: 't2', name: 'Денис Смирнов' },
+  { id: 't3', name: 'Ольга Соколова' },
+  { id: 't4', name: 'Анна Кузнецова' },
+];
+
 function StudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,6 +193,7 @@ function StudentsContent() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(filterParam === 'absences' ? 'absences' : 'all');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -244,9 +253,10 @@ function StudentsContent() {
   const activeTeacherObj = useMemo(() => {
     if (!activeTeacherIdFromUrl) return null;
     const found = students.find((s) => s.teacherId === activeTeacherIdFromUrl);
+    const teacherMeta = teachersList.find((t) => t.id === activeTeacherIdFromUrl);
     return {
       teacherId: activeTeacherIdFromUrl,
-      teacherName: found?.teacherName || 'Преподаватель',
+      teacherName: teacherMeta?.name || found?.teacherName || 'Преподаватель',
     };
   }, [activeTeacherIdFromUrl, students]);
 
@@ -307,6 +317,18 @@ function StudentsContent() {
 
       if (!matchesSearch) return false;
 
+      // Teacher filter
+      if (selectedTeacherId !== 'all') {
+        const teacherMeta = teachersList.find((t) => t.id === selectedTeacherId);
+        const targetTeacherName = teacherMeta?.name.toLowerCase() || '';
+        const matchesTeacher =
+          s.teacherId === selectedTeacherId ||
+          (s.teacherName && s.teacherName.toLowerCase().includes(targetTeacherName)) ||
+          s.groups.some((g) => g.teacherName && g.teacherName.toLowerCase().includes(targetTeacherName));
+
+        if (!matchesTeacher) return false;
+      }
+
       if (statusFilter === 'deleted') {
         return Boolean(s.isDeleted);
       }
@@ -339,7 +361,7 @@ function StudentsContent() {
     }
 
     return result;
-  }, [students, searchTerm, statusFilter, sortField, sortOrder]);
+  }, [students, searchTerm, statusFilter, selectedTeacherId, sortField, sortOrder]);
 
   const churnRiskCount = activeStudents.filter((s) => s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3)).length;
 
@@ -419,7 +441,7 @@ function StudentsContent() {
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
           <input
             type="text"
@@ -435,6 +457,21 @@ function StudentsContent() {
             <Filter className="h-3.5 w-3.5" />
             <span>{t('action.filter', 'Фильтр')}:</span>
           </div>
+
+          {/* Teacher Select Filter */}
+          <select
+            value={selectedTeacherId}
+            onChange={(e) => setSelectedTeacherId(e.target.value)}
+            className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+          >
+            {teachersList.map((tItem) => (
+              <option key={tItem.id} value={tItem.id}>
+                {tItem.name}
+              </option>
+            ))}
+          </select>
+
+          {/* Status Select Filter */}
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -443,7 +480,7 @@ function StudentsContent() {
                 router.replace('/students');
               }
             }}
-            className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
           >
             <option value="all">{t('students.filterAll', 'Все ученики')} ({activeStudents.length})</option>
             <option value="absences">{t('students.filterAbsences', 'Риск оттока: 3+ пропуска')} ({churnRiskCount})</option>
@@ -503,8 +540,8 @@ function StudentsContent() {
         </div>
       )}
 
-      {/* Students Table (Desktop) & Cards List (Mobile) */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+      {/* Students Table (Desktop 100% Fit) & Cards List (Mobile) */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {/* Mobile Cards List (< 768px) */}
         <div className="md:hidden divide-y divide-slate-100">
           {filteredStudents.length === 0 ? (
@@ -603,12 +640,12 @@ function StudentsContent() {
           )}
         </div>
 
-        {/* Desktop Table (>= 768px, strictly hidden md:block) */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+        {/* Desktop Table (>= 768px, strictly hidden md:block, 100% FIT) */}
+        <div className="hidden md:block w-full overflow-visible">
+          <table className="table-fixed w-full text-left text-xs border-collapse">
             <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="py-3.5 pl-4 pr-2 w-10 text-center">
+                <th className="w-[3%] py-3.5 pl-3 pr-1 text-center">
                   <input
                     type="checkbox"
                     checked={allFilteredSelected}
@@ -617,7 +654,7 @@ function StudentsContent() {
                     title="Выбрать всех"
                   />
                 </th>
-                <th className="py-3.5 px-3">
+                <th className="w-[21%] py-3.5 px-2.5">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('name')}
@@ -631,16 +668,16 @@ function StudentsContent() {
                     )}
                   </button>
                 </th>
-                <th className="px-4 py-3.5">РОДИТЕЛЬ / СВЯЗЬ</th>
-                <th className="px-4 py-3.5">ГРУППА / БЛИЖАЙШИЙ УРОК</th>
-                <th className="px-4 py-3.5">ПРЕПОДАВАТЕЛЬ</th>
-                <th className="px-4 py-3.5">
+                <th className="w-[21%] px-2.5 py-3.5">РОДИТЕЛЬ / СВЯЗЬ</th>
+                <th className="w-[21%] px-2.5 py-3.5">КУРС / УРОК</th>
+                <th className="w-[14%] px-2.5 py-3.5">УЧИТЕЛЬ</th>
+                <th className="w-[8%] px-2.5 py-3.5">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('attendanceRate')}
                     className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
                   >
-                    <span>ПОСЕЩАЕМОСТЬ</span>
+                    <span>ПОСЕЩЕНИЕ</span>
                     {sortField === 'attendanceRate' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
@@ -648,13 +685,13 @@ function StudentsContent() {
                     )}
                   </button>
                 </th>
-                <th className="px-4 py-3.5">
+                <th className="w-[12%] px-2.5 py-3.5">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('finance')}
                     className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
                   >
-                    <span>ОПЛАТА И БАЛАНС</span>
+                    <span>БАЛАНС</span>
                     {sortField === 'finance' ? (
                       sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
@@ -663,7 +700,7 @@ function StudentsContent() {
                   </button>
                 </th>
                 {statusFilter === 'deleted' && (
-                  <th className="py-3.5 pl-3 pr-4 text-right">ДЕЙСТВИЕ</th>
+                  <th className="w-[10%] py-3.5 pl-2 pr-3 text-right">ДЕЙСТВИЕ</th>
                 )}
               </tr>
             </thead>
@@ -692,7 +729,7 @@ function StudentsContent() {
                       )}
                     >
                       {/* Checkbox */}
-                      <td className="py-3 pl-4 pr-2 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 pl-3 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -702,8 +739,8 @@ function StudentsContent() {
                       </td>
 
                       {/* 1. Ученик с аватаром-индикатором */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-3">
+                      <td className="py-2.5 px-2.5">
+                        <div className="flex items-center gap-2.5">
                           <div className="relative shrink-0">
                             <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
                               {student.initials}
@@ -737,9 +774,9 @@ function StudentsContent() {
                         </div>
                       </td>
 
-                      {/* 2. Родитель и правые кнопки связи */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center justify-between gap-2 max-w-[260px]">
+                      {/* 2. Родитель и брендовые иконки WhatsApp / Telegram */}
+                      <td className="py-2.5 px-2.5">
+                        <div className="flex items-center justify-between gap-1.5 max-w-full">
                           <div className="min-w-0">
                             {student.parentId ? (
                               <Link
@@ -755,29 +792,32 @@ function StudentsContent() {
                             <a
                               href={`tel:${(student.parentPhone || '').replace(/\D/g, '')}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-slate-500 hover:text-slate-800 block"
+                              className="text-xs text-slate-500 hover:text-slate-800 block truncate"
                             >
                               {student.parentPhone}
                             </a>
                           </div>
 
                           {student.parentPhone && student.parentPhone !== '—' && (
-                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {/* WhatsApp Authentic Brand Button */}
                               <a
                                 href={`https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 title="Написать в WhatsApp"
-                                className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 shadow-2xs cursor-pointer"
                               >
                                 <WhatsAppIcon className="w-4 h-4" />
                               </a>
+
+                              {/* Telegram Authentic Brand Button */}
                               <a
                                 href={student.telegram ? `https://t.me/${student.telegram.replace('@', '')}` : `https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 title="Написать в Telegram"
-                                className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded-lg bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 shadow-2xs cursor-pointer"
                               >
                                 <TelegramIcon className="w-4 h-4" />
                               </a>
@@ -786,24 +826,24 @@ function StudentsContent() {
                         </div>
                       </td>
 
-                      {/* 3. Группа / Урок с Popover для 2+ курсов */}
-                      <td className="py-3 px-4">
+                      {/* 3. Группа / Урок с Поповером (w-72 bottom-full left-0 mb-2) */}
+                      <td className="py-2.5 px-2.5">
                         {student.groups.length > 0 ? (
                           <div className="flex items-center gap-1.5 min-w-0">
                             <div className="min-w-0">
                               <Link
                                 href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-xs font-semibold text-blue-600 hover:underline block truncate max-w-[160px]"
+                                className="text-xs font-semibold text-blue-600 hover:underline block truncate max-w-[150px]"
                               >
                                 {student.groups[0].name}
                               </Link>
-                              <span className="text-[11px] text-slate-400 block mt-0.5">
-                                ↳ {student.groups[0].nextLessonDate || '21 сен, 18:45'}
+                              <span className="text-[11px] text-slate-400 block mt-0.5 truncate">
+                                ↳ {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}
                               </span>
                             </div>
 
-                            {/* Badge & Popover for 2+ courses */}
+                            {/* Badge & Hover Popover (w-72 bottom-full left-0 mb-2) */}
                             {student.groups.length > 1 && (
                               <div
                                 className="relative shrink-0"
@@ -811,33 +851,37 @@ function StudentsContent() {
                                 onMouseLeave={() => setActiveCoursePopoverId(null)}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <span className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-1.5 py-0.5 rounded cursor-help font-semibold transition-colors">
+                                <span className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] px-1.5 py-0.5 rounded font-semibold cursor-pointer transition-colors">
                                   +{student.groups.length - 1} курс
                                 </span>
 
                                 {/* Popover */}
                                 {activeCoursePopoverId === student.id && (
-                                  <div className="absolute left-0 top-6 z-50 w-64 bg-slate-900 text-white p-3 rounded-xl shadow-2xl space-y-2 text-xs animate-in fade-in duration-150">
-                                    <span className="text-[10px] font-bold uppercase text-slate-400 block border-b border-slate-800 pb-1">
+                                  <div className="absolute left-0 bottom-full mb-2 z-50 w-72 p-3.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150">
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
                                       Дополнительные курсы ({student.groups.length - 1})
-                                    </span>
-                                    {student.groups.slice(1).map((g) => (
-                                      <div key={g.id} className="space-y-0.5">
-                                        <div className="font-bold text-blue-300">{g.name}</div>
-                                        <div className="text-[11px] text-slate-300">
-                                          {g.schedule} • {g.room}
+                                    </div>
+                                    <div className="space-y-2.5">
+                                      {student.groups.slice(1).map((g) => (
+                                        <div key={g.id} className="space-y-1">
+                                          <div className="font-bold text-white text-sm">{g.name}</div>
+                                          <div className="text-slate-300 text-xs flex items-center gap-1.5">
+                                            <span>🗓 {g.schedule}</span>
+                                            {g.room && <span>• {g.room}</span>}
+                                          </div>
+                                          <div className="text-slate-400 text-[11px]">
+                                            Преподаватель: {g.teacherName}
+                                          </div>
+                                          <Link
+                                            href={`/calendar/lessons/${g.nextLessonId || g.id}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                                          >
+                                            Перейти к уроку →
+                                          </Link>
                                         </div>
-                                        <div className="text-[10px] text-slate-400">
-                                          Учитель: {g.teacherName}
-                                        </div>
-                                        <Link
-                                          href={`/calendar/lessons/${g.nextLessonId || g.id}`}
-                                          className="text-[10px] text-blue-400 hover:underline block pt-0.5 font-semibold"
-                                        >
-                                          Перейти к уроку →
-                                        </Link>
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -853,21 +897,19 @@ function StudentsContent() {
                         )}
                       </td>
 
-                      {/* 4. Преподаватель (с модалкой карточки) */}
-                      <td className="py-3 px-4">
+                      {/* 4. Преподаватель (Без эмодзи) */}
+                      <td className="py-2.5 px-2.5" onClick={(e) => e.stopPropagation()}>
                         {student.teacherId ? (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenTeacherModal(student.teacherId!, student.teacherName);
-                            }}
-                            className="text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors text-left cursor-pointer"
+                            onClick={() => handleOpenTeacherModal(student.teacherId!, student.teacherName)}
+                            className="text-xs font-medium text-slate-700 hover:text-blue-600 hover:underline transition-colors text-left truncate block max-w-full cursor-pointer"
+                            title="Открыть расписание преподавателя"
                           >
-                            👨‍🏫 {student.teacherName}
+                            {student.teacherName}
                           </button>
                         ) : (
-                          <span className="text-xs text-slate-400">—</span>
+                          <span className="text-xs text-slate-400 select-none">—</span>
                         )}
                       </td>
 
@@ -878,7 +920,7 @@ function StudentsContent() {
                           handleOpenStudentDrawer(student.id, 'attendance');
                         }}
                         title="Открыть журнал посещаемости"
-                        className="py-3 px-4 hover:bg-slate-100/80 cursor-pointer transition-colors"
+                        className="py-2.5 px-2.5 hover:bg-slate-100/80 cursor-pointer transition-colors"
                       >
                         <span
                           className={cn(
@@ -901,10 +943,10 @@ function StudentsContent() {
                           handleOpenStudentDrawer(student.id, 'finance');
                         }}
                         title="Открыть детализацию счета (Курс конвертации: 1 € = 100 ₽)"
-                        className="py-3 px-4 whitespace-nowrap hover:bg-slate-100/80 cursor-pointer transition-colors"
+                        className="py-2.5 px-2.5 whitespace-nowrap hover:bg-slate-100/80 cursor-pointer transition-colors"
                       >
                         {student.financeStatus === 'active_sub' && (
-                          <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                          <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md truncate max-w-full">
                             ✓ Оплачено до {student.paidUntil || '28.09.2026'}
                           </span>
                         )}
@@ -932,7 +974,7 @@ function StudentsContent() {
                       </td>
 
                       {statusFilter === 'deleted' && (
-                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-2.5 pl-2 pr-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => {
