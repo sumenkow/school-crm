@@ -219,12 +219,12 @@ export function StudentsDesktop({
                         >
                           {parentCleanName}
                         </Link>
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-1.5 min-w-0">
                           <a
                             href={phoneClean ? `tel:${phoneClean}` : '#'}
                             onClick={(e) => e.stopPropagation()}
                             title="Позвонить по телефону"
-                            className="font-mono text-xs text-slate-500 hover:text-blue-600 hover:underline truncate block"
+                            className="font-mono text-[11px] text-slate-500 hover:text-blue-600 hover:underline whitespace-nowrap block shrink-0"
                           >
                             {student.parentPhone || '—'}
                           </a>
