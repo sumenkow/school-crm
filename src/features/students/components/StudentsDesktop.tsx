@@ -220,25 +220,16 @@ export function StudentsDesktop({
                           {parentCleanName}
                         </Link>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-xs text-slate-500 truncate">
+                          <a
+                            href={phoneClean ? `tel:${phoneClean}` : '#'}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Позвонить по телефону"
+                            className="font-mono text-xs text-slate-500 hover:text-blue-600 hover:underline truncate block"
+                          >
                             {student.parentPhone || '—'}
-                          </span>
+                          </a>
                           {phoneClean && (
                             <div className="flex items-center gap-1 shrink-0">
-                              {/* Copy button */}
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopyPhone(e, student.parentPhone || '', student.id)}
-                                title="Скопировать номер"
-                                className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
-                              >
-                                {copiedPhoneId === student.id ? (
-                                  <Check className="w-3 h-3 text-emerald-600" />
-                                ) : (
-                                  <Copy className="w-3 h-3" />
-                                )}
-                              </button>
-
                               {/* WhatsApp button */}
                               <a
                                 href={`https://wa.me/${phoneClean}`}
@@ -262,16 +253,6 @@ export function StudentsDesktop({
                               >
                                 <TelegramIcon className="w-3.5 h-3.5" />
                               </a>
-
-                              {/* Phone call button */}
-                              <a
-                                href={`tel:${phoneClean}`}
-                                onClick={(e) => e.stopPropagation()}
-                                title="Позвонить"
-                                className="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
-                              >
-                                <Phone className="w-3 h-3" />
-                              </a>
                             </div>
                           )}
                         </div>
@@ -286,61 +267,57 @@ export function StudentsDesktop({
                   {/* 3. КУРС */}
                   <td className="px-3.5 py-3">
                     {student.groups.length > 0 ? (
-                      <div className="flex items-center gap-1 min-w-0">
-                        <div className="min-w-0 flex-1">
-                          <Link
-                            href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
-                            className="text-xs font-semibold text-blue-600 hover:underline block truncate"
-                          >
-                            {student.groups[0].name}
-                          </Link>
-                          <span className="text-[11px] text-slate-400 block truncate">
-                            → {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}
-                          </span>
+                      <div className="min-w-0">
+                        <Link
+                          href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
+                          className="text-xs font-semibold text-blue-600 hover:underline block truncate"
+                        >
+                          {student.groups[0].name}
+                        </Link>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
+                          <span className="truncate">→ {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}</span>
+                          {student.groups.length > 1 && (
+                            <div
+                              className="relative shrink-0 inline-flex items-center"
+                              onMouseEnter={() => setActiveCoursePopoverId(student.id)}
+                              onMouseLeave={() => setActiveCoursePopoverId(null)}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded cursor-pointer hover:bg-blue-100 transition-colors">
+                                +{student.groups.length - 1}
+                              </span>
+
+                              {/* Popover */}
+                              {activeCoursePopoverId === student.id && (
+                                <div className="absolute left-0 bottom-full mb-2 z-50 w-72 p-3.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150 font-normal">
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
+                                    Дополнительные курсы ({student.groups.length - 1})
+                                  </div>
+                                  <div className="space-y-2.5">
+                                    {student.groups.slice(1).map((g) => (
+                                      <div key={g.id} className="space-y-1">
+                                        <div className="font-bold text-white text-sm">{g.name}</div>
+                                        <div className="text-slate-300 text-xs flex items-center gap-1.5">
+                                          <span>🗓 {g.schedule}</span>
+                                          {g.room && <span>• {g.room}</span>}
+                                        </div>
+                                        <div className="text-slate-400 text-[11px]">
+                                          Преподаватель: {g.teacherName}
+                                        </div>
+                                        <Link
+                                          href={`/calendar/lessons/${g.nextLessonId || g.id}`}
+                                          className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                                        >
+                                          Перейти к уроку →
+                                        </Link>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-
-                        {/* Ultracompact badge +1 (22x18px) with popover */}
-                        {student.groups.length > 1 && (
-                          <div
-                            className="relative shrink-0"
-                            onMouseEnter={() => setActiveCoursePopoverId(student.id)}
-                            onMouseLeave={() => setActiveCoursePopoverId(null)}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="w-[22px] h-[18px] inline-flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-[10px] rounded border border-blue-200 ml-1.5 cursor-pointer">
-                              +{student.groups.length - 1}
-                            </span>
-
-                            {/* Popover */}
-                            {activeCoursePopoverId === student.id && (
-                              <div className="absolute left-0 bottom-full mb-2 z-50 w-72 p-3.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
-                                  Дополнительные курсы ({student.groups.length - 1})
-                                </div>
-                                <div className="space-y-2.5">
-                                  {student.groups.slice(1).map((g) => (
-                                    <div key={g.id} className="space-y-1">
-                                      <div className="font-bold text-white text-sm">{g.name}</div>
-                                      <div className="text-slate-300 text-xs flex items-center gap-1.5">
-                                        <span>🗓 {g.schedule}</span>
-                                        {g.room && <span>• {g.room}</span>}
-                                      </div>
-                                      <div className="text-slate-400 text-[11px]">
-                                        Преподаватель: {g.teacherName}
-                                      </div>
-                                      <Link
-                                        href={`/calendar/lessons/${g.nextLessonId || g.id}`}
-                                        className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
-                                      >
-                                        Перейти к уроку →
-                                      </Link>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400 select-none">— Без группы</span>
