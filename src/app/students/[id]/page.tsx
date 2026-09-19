@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
@@ -124,6 +125,70 @@ export default function StudentDetailsPage() {
     });
     return () => {
       window.removeEventListener('crm-students-changed', handleSync);
+    };
+  }, [studentId]);
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Auto-save status listeners
+  useEffect(() => {
+    const handleSavingStart = () => setIsSaving(true);
+    const handleSavingEnd = () => setIsSaving(false);
+
+    window.addEventListener('crm-student-save-start', handleSavingStart);
+    window.addEventListener('crm-student-save-end', handleSavingEnd);
+    return () => {
+      window.removeEventListener('crm-student-save-start', handleSavingStart);
+      window.removeEventListener('crm-student-save-end', handleSavingEnd);
+    };
+  }, []);
+
+  // Supabase Realtime Channel subscription for cross-user sync
+  useEffect(() => {
+    if (!studentId) return;
+
+    let supabaseClient: any = null;
+    let channel: any = null;
+
+    import('@/lib/supabase/client')
+      .then(({ createClient }) => {
+        supabaseClient = createClient();
+        channel = supabaseClient
+          .channel(`student-details-${studentId}`)
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'students', filter: `id=eq.${studentId}` },
+            () => {
+              const fresh = getStudentById(studentId);
+              if (fresh) setStudent(fresh);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'tasks', filter: `student_id=eq.${studentId}` },
+            () => {
+              const fresh = getStudentById(studentId);
+              if (fresh) setStudent(fresh);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'interactions', filter: `student_id=eq.${studentId}` },
+            () => {
+              const fresh = getStudentById(studentId);
+              if (fresh) setStudent(fresh);
+            }
+          )
+          .subscribe();
+      })
+      .catch((err) => {
+        console.warn('Realtime channel error:', err);
+      });
+
+    return () => {
+      if (supabaseClient && channel) {
+        supabaseClient.removeChannel(channel);
+      }
     };
   }, [studentId]);
 
@@ -745,8 +810,38 @@ export default function StudentDetailsPage() {
         <span className="text-slate-800 font-semibold">{student.firstName} {student.lastName}</span>
       </div>
 
-      {/* Hero Header Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+      {/* Desktop Header Component */}
+      <StudentProfileDesktop
+        student={student}
+        finSummary={finSummary}
+        studentDeposit={studentDeposit}
+        studentOverdueDebt={studentOverdueDebt}
+        upcomingLesson={upcomingLesson}
+        role={role}
+        isSaving={isSaving}
+        onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
+        onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
+        onOpenEditStudentModal={handleOpenEditStudentModal}
+        onConvertAdultModal={() => {
+          setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
+          setStudentDirectTelegram(student.telegram || '');
+          setIsConvertAdultModalOpen(true);
+        }}
+        onDeleteStudent={() => {
+          if (confirm(`Вы уверены, что хотите переместить ученика ${student.firstName} ${student.lastName} в удаленные? Его можно восстановить в любой момент.`)) {
+            softDeleteStudent(student.id);
+            toast.success(`Ученик ${student.firstName} ${student.lastName} перемещен в удаленные`);
+            router.push('/students');
+          }
+        }}
+        onSelectTab={(tabKey) => {
+          setActiveTab(tabKey as any);
+          window.history.replaceState(null, '', `/students/${studentId}?tab=${tabKey}`);
+        }}
+      />
+
+      {/* Mobile Hero Header Card */}
+      <div className="block md:hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-2xl shadow-sm">
@@ -1123,15 +1218,17 @@ export default function StudentDetailsPage() {
         </div>
       </div>
 
-      {/* UPCOMING PAYMENT DEADLINE ALERT */}
+      {/* UPCOMING PAYMENT DEADLINE ALERT (Mobile only) */}
       {role !== 'teacher' && (
-        <UpcomingPaymentAlert
-          item={getUpcomingPaymentForStudent(student.id)}
-          onPaymentRecorded={() => {
-            const fresh = getStudentById(student.id);
-            if (fresh) setStudent(fresh);
-          }}
-        />
+        <div className="block md:hidden">
+          <UpcomingPaymentAlert
+            item={getUpcomingPaymentForStudent(student.id)}
+            onPaymentRecorded={() => {
+              const fresh = getStudentById(student.id);
+              if (fresh) setStudent(fresh);
+            }}
+          />
+        </div>
       )}
 
       {/* Tabs navigation */}
