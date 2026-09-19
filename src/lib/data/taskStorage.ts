@@ -51,6 +51,10 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
           priority: task.priority as 'low' | 'medium' | 'high',
           assignedTo: task.assigned_to || fallback?.assignedTo || 'Елена Менеджер',
           description: task.description || fallback?.description || undefined,
+          completedAt: fallback?.completedAt,
+          completedBy: fallback?.completedBy,
+          result: fallback?.result,
+          rescheduledReason: fallback?.rescheduledReason,
           isOverdue: task.status === 'open' && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0))
         };
       });
@@ -83,8 +87,22 @@ export function saveTaskToStorage(task: FullTaskData): void {
     INITIAL_TASKS.unshift(task);
   }
 
-  // 2. Direct write to Supabase
+  // 2. Direct write to localStorage & Supabase
   if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(TASKS_STORAGE_KEY);
+      let localTasks: FullTaskData[] = saved ? JSON.parse(saved) : [];
+      const idx = localTasks.findIndex((t) => t.id === task.id);
+      if (idx >= 0) {
+        localTasks[idx] = task;
+      } else {
+        localTasks.unshift(task);
+      }
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(localTasks));
+    } catch (e) {
+      console.error('Error writing tasks to localStorage:', e);
+    }
+
     try {
       const supabase = createClient();
       supabase.from('tasks').upsert({

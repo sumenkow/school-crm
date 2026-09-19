@@ -212,8 +212,8 @@ export function getCombinedStudentTimeline(
   // Stored interactions matching this student or any of their parents
   stored.forEach((i) => {
     if (
-      i.studentId === studentId ||
-      (i.parentId && parentIds.includes(i.parentId))
+      (i.studentId && String(i.studentId) === String(studentId)) ||
+      (i.parentId && parentIds.map(String).includes(String(i.parentId)))
     ) {
       map.set(i.id, i);
     }
@@ -225,9 +225,12 @@ export function getCombinedStudentTimeline(
     : INITIAL_STUDENTS;
 
   allKnownStudents.forEach((st) => {
-    if (st.parents?.some((p) => parentIds.includes(p.id)) || st.id === studentId) {
+    if (st.parents?.some((p) => parentIds.map(String).includes(String(p.id))) || String(st.id) === String(studentId)) {
       (st.interactions || []).forEach((i) => {
-        if (i.studentId === studentId || (i.parentId && parentIds.includes(i.parentId))) {
+        if (
+          (i.studentId && String(i.studentId) === String(studentId)) ||
+          (i.parentId && parentIds.map(String).includes(String(i.parentId)))
+        ) {
           map.set(i.id, i);
         }
       });

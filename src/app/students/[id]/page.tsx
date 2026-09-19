@@ -1103,28 +1103,24 @@ export default function StudentDetailsPage() {
 
   const handleCompleteTaskWithOutcome = async (taskId: string, outcome: string) => {
     const perfUser = userName || 'Администратор';
-    const nowIso = new Date().toISOString();
-
-    setStudent((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              status: 'done' as const,
-              completedAt: nowIso,
-              completedBy: perfUser,
-              result: outcome.trim() || undefined,
-            }
-          : t
-      ),
-    }));
 
     try {
-      await updateUnifiedTaskStatus(taskId, 'done', {
+      const updated = await updateUnifiedTaskStatus(taskId, 'done', {
         comment: outcome.trim() || 'Результат зафиксирован',
         performedBy: perfUser,
       });
+
+      setStudent((prev) => {
+        const parentIds = (prev.parents || []).map((p) => p.id);
+        const newTasks = prev.tasks.map((t) => (t.id === taskId ? ((updated as any) || { ...t, status: 'done', result: outcome.trim() }) : t));
+        const newCombined = getCombinedStudentTimeline(prev.id, prev.interactions, parentIds);
+        return {
+          ...prev,
+          tasks: newTasks,
+          interactions: newCombined,
+        };
+      });
+
       toast.success('Результат задачи зафиксирован!');
       setSelectedTaskForModal(null);
     } catch (err) {
@@ -1144,25 +1140,24 @@ export default function StudentDetailsPage() {
     }
     const perfUser = userName || 'Администратор';
 
-    setStudent((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              dueDate: newDueDate,
-              rescheduledReason: reason.trim(),
-            }
-          : t
-      ),
-    }));
-
     try {
-      await updateUnifiedTaskStatus(taskId, 'open', {
+      const updated = await updateUnifiedTaskStatus(taskId, 'open', {
         comment: reason.trim(),
         newDueDate,
         performedBy: perfUser,
       });
+
+      setStudent((prev) => {
+        const parentIds = (prev.parents || []).map((p) => p.id);
+        const newTasks = prev.tasks.map((t) => (t.id === taskId ? ((updated as any) || { ...t, dueDate: newDueDate, rescheduledReason: reason.trim() }) : t));
+        const newCombined = getCombinedStudentTimeline(prev.id, prev.interactions, parentIds);
+        return {
+          ...prev,
+          tasks: newTasks,
+          interactions: newCombined,
+        };
+      });
+
       toast.success('Срок задачи перенесен!');
       setSelectedTaskForModal(null);
     } catch (err) {

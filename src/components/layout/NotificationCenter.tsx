@@ -68,12 +68,13 @@ export function NotificationCenter() {
 
     const notifs: ManagerNotificationItem[] = [];
 
+    const isManagerOrDev = role === 'developer' || role === 'owner' || role === 'admin';
+
     tasks.forEach((t) => {
       // 1. Task completed notification
       if (t.status === 'done' && t.completedAt) {
         const executor = t.completedBy || t.assignedTo || 'Администратор';
-        // Rule: Creator != Executor
-        if (executor !== currentUserName) {
+        if (isManagerOrDev || executor !== currentUserName) {
           const ts = new Date(t.completedAt).getTime() || Date.now();
           const notifId = `notif_done_${t.id}_${ts}`;
           notifs.push({
@@ -100,8 +101,8 @@ export function NotificationCenter() {
       // 2. Task rescheduled notification
       if (t.rescheduledReason && t.status !== 'done') {
         const executor = t.assignedTo || 'Администратор';
-        if (executor !== currentUserName) {
-          const ts = Date.now(); // fallback timestamp
+        if (isManagerOrDev || executor !== currentUserName) {
+          const ts = Date.now();
           const notifId = `notif_resched_${t.id}`;
           notifs.push({
             id: notifId,
