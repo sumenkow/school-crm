@@ -746,38 +746,106 @@ export default function StudentDetailsPage() {
     setIsEmailStatementModalOpen(true);
   };
 
-  const handleSendEmailStatement = () => {
-    if (!representativeEmail) return;
-    setIsEmailStatementModalOpen(false);
-    toast.success(`Выписка успешно отправлена на ${representativeEmail}`);
+  const [isSendingEmailStatement, setIsSendingEmailStatement] = useState(false);
+
+  const handleSendEmailStatement = async () => {
+    if (!representativeEmail || isSendingEmailStatement) return;
+    setIsSendingEmailStatement(true);
 
     const periodLabel = statementPeriod === 'current_month' ? 'За текущий месяц' : 'За всё время обучения';
-    const emailInteraction: TimelineInteraction = {
-      id: `int_email_${Date.now()}`,
-      studentId: student.id,
-      studentName: `${student.firstName} ${student.lastName}`,
-      parentId: targetParent?.id,
-      parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
-      occurredAt: 'Только что',
-      channel: 'email',
-      type: 'other',
-      author: userName || 'Сотрудник',
-      content: `Выписка по оплатам и урокам (${periodLabel}) отправлена на ${representativeEmail}.`,
-      result: `Выписка отправлена на ${representativeEmail}`,
-    };
+    const depositBalanceEUR = student.finance?.deposit?.balance || 120;
+    const overdueDebtEUR = (student.finance?.payments || [])
+      .filter((p) => p.status === 'overdue')
+      .reduce((sum, p) => sum + (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0), 0);
 
-    saveInteractionToStorage(emailInteraction);
+    // Prepare ledger items for email
+    const rawPayments = (student.finance?.payments || []).map((p, idx) => ({
+      id: `pay_${p.id || idx}`,
+      type: 'deposit' as const,
+      date: p.date || '15.09.2026',
+      description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
+      method: p.method || 'Карта / СБП',
+      amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
+      balanceEUR: depositBalanceEUR,
+    }));
 
-    const updatedInteractions = [emailInteraction, ...(student.interactions || [])];
-    const updatedStudent: FullStudentData = {
-      ...student,
-      interactions: updatedInteractions,
-    };
-    setStudent(updatedStudent);
-    saveStudentToStorage(updatedStudent);
+    const rawDeductions = (student.attendanceStats?.history || [])
+      .filter((h) => h.status === 'present' || h.status === 'absent')
+      .map((h, idx) => ({
+        id: `att_${idx}`,
+        type: 'deduction' as const,
+        date: h.date,
+        description: `Списание за занятие: ${h.groupName || 'Групповое занятие'} (${h.topic || 'Проведено'})`,
+        method: 'Автоматически по уроку',
+        amountEUR: -(customPricePerLesson || 12),
+        balanceEUR: Math.max(0, depositBalanceEUR - (idx + 1) * (customPricePerLesson || 12)),
+      }));
 
-    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: emailInteraction }));
-    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    const allItems = [...rawPayments, ...rawDeductions];
+    const filteredLedger = statementPeriod === 'current_month'
+      ? allItems.slice(0, 15)
+      : allItems;
+
+    try {
+      const response = await fetch('/api/reports/statement/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          toEmail: representativeEmail,
+          representativeName,
+          studentName: `${student.firstName} ${student.lastName}`,
+          periodLabel,
+          depositBalance: depositBalanceEUR,
+          debtBalance: overdueDebtEUR,
+          currencySymbol: '€',
+          ledgerItems: filteredLedger,
+          senderName: userName || 'Администрация школы',
+        }),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok || !resData.success) {
+        toast.error(resData.error || 'Ошибка отправки выписки через Resend API');
+        setIsSendingEmailStatement(false);
+        return;
+      }
+
+      toast.success(`Выписка успешно отправлена на ${representativeEmail}`);
+      setIsEmailStatementModalOpen(false);
+
+      const emailInteraction: TimelineInteraction = {
+        id: `int_email_${Date.now()}`,
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        parentId: targetParent?.id,
+        parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
+        occurredAt: 'Только что',
+        channel: 'email',
+        type: 'other',
+        author: userName || 'Сотрудник',
+        content: `Выписка по оплатам и урокам (${periodLabel}) успешно отправлена на e-mail ${representativeEmail} через Resend.`,
+        result: `Отправлено на ${representativeEmail}`,
+      };
+
+      saveInteractionToStorage(emailInteraction);
+
+      const updatedInteractions = [emailInteraction, ...(student.interactions || [])];
+      const updatedStudent: FullStudentData = {
+        ...student,
+        interactions: updatedInteractions,
+      };
+      setStudent(updatedStudent);
+      saveStudentToStorage(updatedStudent);
+
+      window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: emailInteraction }));
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    } catch (err: any) {
+      console.error('Error sending statement:', err);
+      toast.error(err.message || 'Сетевая ошибка при отправке выписки');
+    } finally {
+      setIsSendingEmailStatement(false);
+    }
   };
 
   const handleSavePricePerLesson = () => {
@@ -3068,10 +3136,11 @@ export default function StudentDetailsPage() {
               </button>
               <button
                 type="button"
+                disabled={isSendingEmailStatement}
                 onClick={handleSendEmailStatement}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
               >
-                Отправить отчет
+                {isSendingEmailStatement ? 'Отправка...' : 'Отправить отчет'}
               </button>
             </div>
           </div>
