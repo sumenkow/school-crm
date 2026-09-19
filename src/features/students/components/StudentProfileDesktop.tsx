@@ -259,21 +259,19 @@ export function StudentProfileDesktop({
                     <span>Редактировать профиль</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoreDropdownOpen(false);
-                      onConvertAdultModal();
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors font-medium cursor-pointer"
-                  >
-                    <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                    <span>
-                      {student.studentType === 'adult_student'
-                        ? 'Студент'
-                        : 'Сменить категорию на студента'}
-                    </span>
-                  </button>
+                  {student.studentType !== 'adult_student' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreDropdownOpen(false);
+                        onConvertAdultModal();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors font-medium cursor-pointer"
+                    >
+                      <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
+                      <span>Сменить категорию на студента</span>
+                    </button>
+                  )}
 
                   {role !== 'teacher' && (
                     <>
