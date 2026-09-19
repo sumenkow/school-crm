@@ -355,7 +355,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                   )}
                 >
                   <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                  <span>Взрослый (18+)</span>
+                  <span>Студент</span>
                 </button>
               </div>
             </div>

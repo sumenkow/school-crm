@@ -168,7 +168,7 @@ export function EnrollStudentFromLeadModal({
           channel: 'other',
           type: 'initial_contact',
           author: 'Система CRM',
-          content: `Ученик (${studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}) успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».${lead.finance?.deposit?.balance ? ` Сохранен депозит с этапа лида: ${lead.finance.deposit.balanceFormatted}.` : ''}`,
+          content: `Ученик (${studentType === 'adult_student' ? 'Студент' : 'Школьник'}) успешно зачислен из Лида «${lead.name}» в группу «${targetGroup.name}».${lead.finance?.deposit?.balance ? ` Сохранен депозит с этапа лида: ${lead.finance.deposit.balanceFormatted}.` : ''}`,
           result: 'Зачисление завершено'
         }
       ]
@@ -275,7 +275,7 @@ export function EnrollStudentFromLeadModal({
                     : 'text-slate-600 hover:text-slate-900'
                 )}
               >
-                Студент 18+ (Самостоятельный)
+                Студент (Самостоятельный)
               </button>
             </div>
 
@@ -412,7 +412,7 @@ export function EnrollStudentFromLeadModal({
             <div className="rounded-2xl border border-purple-200 bg-purple-50/30 p-3.5 flex items-center gap-3 text-xs text-purple-900">
               <GraduationCap className="h-5 w-5 text-purple-600 shrink-0" />
               <div>
-                <span className="font-bold">Самостоятельный взрослый студент (18+)</span>
+                <span className="font-bold">Самостоятельный студент</span>
                 <p className="text-purple-700 text-[11px] mt-0.5">
                   Уведомления, ссылки и расчеты будут направляться напрямую на контакты студента ({lead.contact || 'контакт указан'}).
                 </p>

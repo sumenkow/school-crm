@@ -429,7 +429,7 @@ export default function GroupDetailsPage() {
                       >
                         {availableStudentsFromDb.map((s) => (
                           <option key={s.id} value={s.id}>
-                            {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? t('students.filterAdult', 'Студент (18+)') : t('students.filterSchool', 'Школьник')} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
+                            {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? t('students.filterAdult', 'Студент') : t('students.filterSchool', 'Школьник')} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
                           </option>
                         ))}
                       </select>

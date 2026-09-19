@@ -294,7 +294,7 @@ export default function StudentDetailsPage() {
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор школы',
-      content: `Ученик достиг совершеннолетия и конвертирован в статус «Студент (18+)». Прямой контакт: ${directPhone}. Данные родителей (${parentsNames || 'нет'}) сохранены как семейные контакты.`,
+      content: `Ученик достиг совершеннолетия и конвертирован в статус «Студент». Прямой контакт: ${directPhone}. Данные родителей (${parentsNames || 'нет'}) сохранены как семейные контакты.`,
       result: 'Конвертация в совершеннолетнего студента завершена',
     };
 
@@ -306,7 +306,7 @@ export default function StudentDetailsPage() {
       notes: [
         student.notes,
         studentOccupation ? `Род занятий: ${studentOccupation}` : '',
-        `Конвертирован в студента (18+) ${new Date().toLocaleDateString('ru-RU')}. Данные родителей унаследованы.`
+        `Конвертирован в студента ${new Date().toLocaleDateString('ru-RU')}. Данные родителей унаследованы.`
       ].filter(Boolean).join('\n\n'),
       interactions: [conversionInteraction, ...student.interactions],
     };
@@ -315,7 +315,7 @@ export default function StudentDetailsPage() {
     saveStudentToStorage(updatedStudent);
     saveInteractionToStorage(conversionInteraction);
     setIsConvertAdultModalOpen(false);
-    toast.success(`Ученик успешно конвертирован в статус «Студент (18+)» с сохранением данных родителей!`);
+    toast.success(`Ученик успешно конвертирован в статус «Студент» с сохранением данных родителей!`);
   };
 
   const handleOpenEditStudentModal = () => {
@@ -367,7 +367,7 @@ export default function StudentDetailsPage() {
       changes.push(`Статус: ${student.status} → ${newStatus}`);
     }
     if (newStudentType !== student.studentType) {
-      changes.push(`Тип: ${student.studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'} → ${newStudentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}`);
+      changes.push(`Тип: ${student.studentType === 'adult_student' ? 'Студент' : 'Школьник'} → ${newStudentType === 'adult_student' ? 'Студент' : 'Школьник'}`);
     }
     if (newNotes !== student.notes) {
       changes.push('Заметки и особенности');
@@ -767,7 +767,7 @@ export default function StudentDetailsPage() {
                   {student.studentType === 'adult_student' ? (
                     <>
                       <GraduationCap className="h-3 w-3" />
-                      {t('students.filterAdult', 'Студент (18+)')}
+                      {t('students.filterAdult', 'Студент')}
                     </>
                   ) : (
                     <>
@@ -847,12 +847,12 @@ export default function StudentDetailsPage() {
                 title="Ученик достиг совершеннолетия: перевести на самостоятельное взаимодействие с сохранением данных родителей"
               >
                 <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                {t('student.convertType', 'Конвертировать в студента (18+)')}
+                {t('student.convertType', 'Конвертировать в студента')}
               </button>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50/80 px-3 py-1.5 text-xs font-medium text-purple-700 border border-purple-200/80">
                 <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
-                {t('students.filterAdult', 'Студент (18+)')}
+                {t('students.filterAdult', 'Студент')}
               </span>
             )}
             <button
@@ -2550,7 +2550,7 @@ export default function StudentDetailsPage() {
                   <GraduationCap className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Конвертация в студента (18+)</h3>
+                  <h3 className="text-base font-bold text-slate-900">Конвертация в студента</h3>
                   <p className="text-xs text-slate-500">Переход на самостоятельное обучение с сохранением семьи</p>
                 </div>
               </div>
@@ -2638,7 +2638,7 @@ export default function StudentDetailsPage() {
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
                 >
                   <GraduationCap className="h-4 w-4" />
-                  Подтвердить перевод в студента (18+)
+                  Подтвердить перевод в студента
                 </button>
               </div>
             </form>

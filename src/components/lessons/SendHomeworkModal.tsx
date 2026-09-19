@@ -152,7 +152,7 @@ export default function SendHomeworkModal({
           studentId: st.id,
           studentName: studentFullName,
           parentName: st.studentType === 'adult_student' ? studentFullName : undefined,
-          parentRelationship: st.studentType === 'adult_student' ? 'Студент (18+)' : 'Основной контакт',
+          parentRelationship: st.studentType === 'adult_student' ? 'Студент' : 'Основной контакт',
           email: directEmail,
           telegram: directTelegram,
           preferredChannel: 'email',

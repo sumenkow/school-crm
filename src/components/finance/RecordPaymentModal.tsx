@@ -357,7 +357,7 @@ export function RecordPaymentModal({
                 <Lock className="h-3.5 w-3.5 text-slate-400" />
                 <span>{selectedStudent?.firstName} {selectedStudent?.lastName}</span>
                 <span className="ml-auto text-[11px] font-normal text-slate-500">
-                  {selectedStudent?.studentType === 'adult_student' ? 'Студент 18+' : 'Школьник'}
+                  {selectedStudent?.studentType === 'adult_student' ? 'Студент' : 'Школьник'}
                 </span>
               </div>
             ) : allowedStudents && allowedStudents.length > 0 ? (

@@ -489,7 +489,7 @@ function StudentsContent() {
             <option value="trial">{t('status.trial', 'Пробные')}</option>
             <option value="paused">{t('status.paused', 'На паузе')}</option>
             <option value="school_student">{t('students.filterSchool', 'Школьники (с родителями)')}</option>
-            <option value="adult_student">{t('students.filterAdult', 'Студенты 18+ (самостоятельные)')}</option>
+            <option value="adult_student">{t('students.filterAdult', 'Студенты')}</option>
             <option value="deleted">Удаленные ({deletedCount})</option>
           </select>
         </div>
@@ -575,7 +575,7 @@ function StudentsContent() {
                     <div className="min-w-0">
                       <h3 className="font-bold text-slate-900 text-sm truncate">{student.name}</h3>
                       <p className="text-[11px] text-slate-500 truncate">
-                        {student.isAdult ? 'Студент (18+)' : student.parentName ? student.parentName : 'Школьник'}
+                        {student.isAdult ? 'Студент' : student.parentName ? student.parentName : 'Школьник'}
                       </p>
                     </div>
                   </div>

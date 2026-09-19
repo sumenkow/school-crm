@@ -202,8 +202,8 @@ export function CreateStudentModal({
       type: 'status_change',
       author: 'Администратор школы',
       content: initialData?.sourceLeadId
-        ? `Ученик успешно зачислен из карточки лида (${isAdult ? 'Студент 18+' : 'Школьник'}). Заполнена карточка и создан профиль.`
-        : `Создана карточка (${isAdult ? 'Студент 18+' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
+        ? `Ученик успешно зачислен из карточки лида (${isAdult ? 'Студент' : 'Школьник'}). Заполнена карточка и создал профиль.`
+        : `Создана карточка (${isAdult ? 'Студент' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
       result: 'Карточка ученика сохранена',
       targetType: isAdult ? 'student' : 'parent',
       targetName: isAdult ? fullName : (effParentFullName || 'Родитель'),
@@ -439,7 +439,7 @@ export function CreateStudentModal({
                 )}
               >
                 <GraduationCap className="h-4 w-4 text-purple-600" />
-                <span>🎓 Студент / Взрослый (18+)</span>
+                <span>🎓 Студент</span>
               </button>
             </div>
           </div>
