@@ -4,24 +4,16 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Phone,
-  MessageSquare,
   Plus,
   CheckSquare,
   Edit,
   GraduationCap,
   Trash2,
-  ChevronDown,
-  Cloud,
-  RefreshCw,
-  Calendar,
-  Wallet,
-  AlertTriangle,
   MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullStudentData, FullLessonData } from '@/lib/data/mockData';
 import { formatAgeAndGrade, formatBirthDate } from '@/lib/data/studentAgeHelper';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -61,8 +53,8 @@ export function StudentProfileDesktop({
   finSummary,
   studentDeposit,
   studentOverdueDebt,
+  upcomingLesson,
   role,
-  isSaving = false,
   onOpenPaymentModal,
   onOpenCreateTaskModal,
   onOpenEditStudentModal,
@@ -70,18 +62,12 @@ export function StudentProfileDesktop({
   onDeleteStudent,
   onSelectTab,
 }: StudentProfileDesktopProps) {
-  const [isContactDropdownOpen, setIsContactDropdownOpen] = useState(false);
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
-
-  const contactRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns on click outside
+  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (contactRef.current && !contactRef.current.contains(event.target as Node)) {
-        setIsContactDropdownOpen(false);
-      }
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
         setIsMoreDropdownOpen(false);
       }
@@ -97,6 +83,10 @@ export function StudentProfileDesktop({
   const cleanParentName = primaryParent
     ? `${primaryParent.firstName} ${primaryParent.lastName}`.replace(/\s*\([^)]*\)/, '').trim()
     : '';
+
+  // Age & Grade text
+  const birthDateStr = student.birthDate ? formatBirthDate(student.birthDate) : '';
+  const ageGradeStr = formatAgeAndGrade(student.birthDate, student.grade);
 
   // Attendance calculation
   const attendanceRateNum = typeof student.attendanceStats?.attendanceRate === 'number'
@@ -170,59 +160,59 @@ export function StudentProfileDesktop({
                 </span>
               </div>
 
-              {/* Bottom line: Age/Grade, Phone, Telegram, Sync Status */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                {(student.birthDate || student.grade) && (
-                  <span className="font-medium text-slate-700">
-                    {formatBirthDate(student.birthDate)}
-                    {student.birthDate && formatAgeAndGrade(student.birthDate, student.grade) && ' · '}
-                    {formatAgeAndGrade(student.birthDate, student.grade)}
+              {/* Bottom line: Age/Grade, Phone with WA/TG buttons */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                {(birthDateStr || ageGradeStr) && (
+                  <span className="font-semibold text-slate-800">
+                    {birthDateStr}
+                    {birthDateStr && ageGradeStr && ' · '}
+                    {ageGradeStr}
                   </span>
                 )}
 
                 {student.phone && (
-                  <a
-                    href={phoneClean ? `tel:${phoneClean}` : '#'}
-                    className="inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 hover:underline font-mono text-[11px]"
-                  >
-                    <Phone className="h-3 w-3 text-slate-400" />
-                    {student.phone}
-                  </a>
-                )}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <a
+                      href={phoneClean ? `tel:${phoneClean}` : '#'}
+                      className="inline-flex items-center gap-1 text-slate-700 hover:text-blue-600 hover:underline font-mono text-[11px] font-semibold"
+                    >
+                      <Phone className="h-3 w-3 text-slate-400" />
+                      {student.phone}
+                    </a>
+                    {phoneClean && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* WhatsApp icon button */}
+                        <a
+                          href={`https://wa.me/${phoneClean}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-5 h-5 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                          title="Написать в WhatsApp"
+                        >
+                          <WhatsAppIcon className="w-3 h-3" />
+                        </a>
 
-                {student.telegram && (
-                  <a
-                    href={`https://t.me/${telegramClean}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 hover:underline text-[11px]"
-                  >
-                    <TelegramIcon className="h-3 w-3 text-blue-500" />
-                    {student.telegram}
-                  </a>
+                        {/* Telegram icon button */}
+                        <a
+                          href={telegramClean ? `https://t.me/${telegramClean}` : `https://wa.me/${phoneClean}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                          title="Написать в Telegram"
+                        >
+                          <TelegramIcon className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
-
-                {/* Cloud Sync Indicator */}
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 border-l border-slate-200 pl-3">
-                  {isSaving ? (
-                    <>
-                      <RefreshCw className="h-3 w-3 text-amber-500 animate-spin" />
-                      <span className="text-amber-600 font-semibold">Сохранение...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Cloud className="h-3 w-3 text-emerald-500" />
-                      <span className="text-slate-400">Синхронизировано</span>
-                    </>
-                  )}
-                </span>
               </div>
             </div>
           </div>
 
           {/* Right: Action Hierarchy Bar */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* 1. + Внести оплату (Primary contrast button) */}
+            {/* 1. + Внести оплату */}
             {role !== 'teacher' && (
               <button
                 type="button"
@@ -244,48 +234,7 @@ export function StudentProfileDesktop({
               Создать задачу
             </button>
 
-            {/* 3. 💬 Связь ▾ Dropdown */}
-            <div className="relative" ref={contactRef}>
-              <button
-                type="button"
-                onClick={() => setIsContactDropdownOpen(!isContactDropdownOpen)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-                <span>Связь</span>
-                <ChevronDown className="h-3 w-3 text-slate-400" />
-              </button>
-
-              {isContactDropdownOpen && (
-                <div className="absolute right-0 mt-2 z-50 w-48 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
-                  {phoneClean ? (
-                    <a
-                      href={`https://wa.me/${phoneClean}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
-                      onClick={() => setIsContactDropdownOpen(false)}
-                    >
-                      <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
-                      <span>WhatsApp</span>
-                    </a>
-                  ) : null}
-
-                  <a
-                    href={telegramClean ? `https://t.me/${telegramClean}` : `https://wa.me/${phoneClean}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-700 transition-colors"
-                    onClick={() => setIsContactDropdownOpen(false)}
-                  >
-                    <TelegramIcon className="h-4 w-4 text-[#229ED9]" />
-                    <span>Telegram</span>
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* 4. ··· (Ещё) Dropdown */}
+            {/* 3. ··· (Ещё) Dropdown */}
             <div className="relative" ref={moreRef}>
               <button
                 type="button"
@@ -321,8 +270,8 @@ export function StudentProfileDesktop({
                     <GraduationCap className="h-3.5 w-3.5 text-purple-600" />
                     <span>
                       {student.studentType === 'adult_student'
-                        ? 'Студент 18+'
-                        : 'Сменить категорию на 18+'}
+                        ? 'Студент'
+                        : 'Сменить категорию на студента'}
                     </span>
                   </button>
 
@@ -375,18 +324,21 @@ export function StudentProfileDesktop({
               >
                 Преподаватель: {student.groups[0]?.teacherName || (student as any).teacherName || 'Мария Иванова'}
               </Link>
+              <span className="text-[11px] text-slate-400 block truncate">
+                → {upcomingLesson ? `${upcomingLesson.date} • ${upcomingLesson.startTime}` : (student.groups[0]?.schedule || 'Ср 21 сен, 18:45')}
+              </span>
             </div>
           ) : (
             <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
           )}
         </div>
 
-        {/* Block 2: ПРЕДСТАВИТЕЛЬ */}
+        {/* Block 2: ПРЕДСТАВИТЕЛЬ (Bugfix: display parent if present in student.parents regardless of adult_student) */}
         <div className="pl-4 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             ПРЕДСТАВИТЕЛЬ
           </span>
-          {student.studentType !== 'adult_student' && primaryParent ? (
+          {primaryParent ? (
             <div className="space-y-0.5">
               <Link
                 href={`/parents/${primaryParent.id}`}

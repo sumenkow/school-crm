@@ -1325,43 +1325,6 @@ export default function StudentDetailsPage() {
               )}
             </div>
 
-            {/* Teaser for Teacher Comments on Profile tab */}
-            <div className="rounded-2xl border border-purple-200/80 bg-gradient-to-r from-purple-50/50 via-white to-purple-50/30 p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageSquarePlus className="h-4 w-4 text-purple-600" />
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Комментарии учителя ({(student.teacherComments || []).length})
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('teacher_comments')}
-                  className="text-xs font-bold text-purple-700 hover:underline"
-                >
-                  Все комментарии учителя →
-                </button>
-              </div>
-
-              {(student.teacherComments || []).length === 0 ? (
-                <p className="text-xs text-slate-500 bg-white p-3 rounded-xl border border-purple-100">
-                  Преподаватели пока не оставляли комментариев. Комментарии можно оставлять в журнале посещаемости или во вкладке «Комментарии учителя».
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {(student.teacherComments || []).slice(0, 2).map((tc) => (
-                    <div key={tc.id} className="rounded-xl border border-purple-100 bg-white p-3 text-xs space-y-1 shadow-2xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-slate-900">{tc.author}</span>
-                        <span className="text-[11px] text-slate-400">{tc.date}</span>
-                      </div>
-                      <p className="text-slate-700 leading-relaxed line-clamp-2">{tc.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Parents List (One or Multiple Parents) */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
