@@ -55,6 +55,8 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
           completedBy: fallback?.completedBy,
           result: fallback?.result,
           rescheduledReason: fallback?.rescheduledReason,
+          rescheduledBy: fallback?.rescheduledBy,
+          rescheduledAt: fallback?.rescheduledAt,
           isOverdue: task.status === 'open' && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0))
         };
       });

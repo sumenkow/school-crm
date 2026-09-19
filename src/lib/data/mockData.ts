@@ -1673,6 +1673,8 @@ export interface FullTaskData {
   completedBy?: string;
   result?: string;
   rescheduledReason?: string;
+  rescheduledBy?: string;
+  rescheduledAt?: string;
 }
 
 export const INITIAL_TASKS: FullTaskData[] = [

@@ -61,20 +61,40 @@ export function NotificationCenter() {
     } catch {}
   };
 
+  // Helper to check if an action was performed by current logged-in user
+  const isSelfAction = (executor: string, cUserName: string, cRole: string): boolean => {
+    if (!executor) return false;
+    const execClean = executor.trim().toLowerCase();
+    const userClean = (cUserName || '').trim().toLowerCase();
+
+    if (userClean && execClean === userClean) return true;
+
+    // Strict role title matching for generic accounts
+    if (cRole === 'admin' && (execClean === 'администратор' || execClean.includes('админ'))) return true;
+    if (cRole === 'developer' && (execClean === 'разработчик' || execClean.includes('девелопер'))) return true;
+    if (cRole === 'owner' && (execClean === 'владелец' || execClean === 'руководитель')) return true;
+
+    return false;
+  };
+
   // Build notifications list from tasks
   const loadNotifications = async () => {
+    const isManagerOrDev = role === 'developer' || role === 'owner' || role === 'admin';
+    if (!isManagerOrDev) {
+      setNotifications([]);
+      return;
+    }
+
     const tasks = await getStoredTasks();
     const currentUserName = userName || 'Руководитель';
-
     const notifs: ManagerNotificationItem[] = [];
-
-    const isManagerOrDev = role === 'developer' || role === 'owner' || role === 'admin';
 
     tasks.forEach((t) => {
       // 1. Task completed notification
       if (t.status === 'done' && t.completedAt) {
         const executor = t.completedBy || t.assignedTo || 'Администратор';
-        if (isManagerOrDev || executor !== currentUserName) {
+        // Only notify OTHER managers/devs, suppress self-actions
+        if (!isSelfAction(executor, currentUserName, role)) {
           const ts = new Date(t.completedAt).getTime() || Date.now();
           const notifId = `notif_done_${t.id}_${ts}`;
           notifs.push({
@@ -100,10 +120,11 @@ export function NotificationCenter() {
 
       // 2. Task rescheduled notification
       if (t.rescheduledReason && t.status !== 'done') {
-        const executor = t.assignedTo || 'Администратор';
-        if (isManagerOrDev || executor !== currentUserName) {
-          const ts = Date.now();
-          const notifId = `notif_resched_${t.id}`;
+        const executor = t.rescheduledBy || t.assignedTo || 'Администратор';
+        // Only notify OTHER managers/devs, suppress self-actions
+        if (!isSelfAction(executor, currentUserName, role)) {
+          const ts = t.rescheduledAt ? new Date(t.rescheduledAt).getTime() : Date.now();
+          const notifId = `notif_resched_${t.id}_${ts}`;
           notifs.push({
             id: notifId,
             taskId: t.id,
@@ -113,7 +134,9 @@ export function NotificationCenter() {
             performedBy: executor,
             actionType: 'rescheduled',
             quoteText: `Перенос на ${t.dueDateFormatted || t.dueDate}: «${t.rescheduledReason}»`,
-            occurredAt: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+            occurredAt: t.rescheduledAt
+              ? new Date(t.rescheduledAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+              : new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
             timestamp: ts,
             isRead: readIds.has(notifId),
           });
@@ -132,11 +155,13 @@ export function NotificationCenter() {
     const handleSync = () => loadNotifications();
     window.addEventListener('crm-tasks-changed', handleSync);
     window.addEventListener('crm-notifications-changed', handleSync);
+    window.addEventListener('crm-role-changed', handleSync);
     return () => {
       window.removeEventListener('crm-tasks-changed', handleSync);
       window.removeEventListener('crm-notifications-changed', handleSync);
+      window.removeEventListener('crm-role-changed', handleSync);
     };
-  }, [userName, readIds.size]);
+  }, [userName, role, readIds.size]);
 
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
 

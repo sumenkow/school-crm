@@ -178,7 +178,9 @@ export async function updateUnifiedTaskStatus(
     completedAt: newStatus === 'done' ? new Date().toISOString() : (newStatus === 'open' ? undefined : target.completedAt),
     completedBy: newStatus === 'done' ? performerName : (newStatus === 'open' ? undefined : target.completedBy),
     result: options?.comment && newStatus === 'done' ? options.comment : target.result,
-    rescheduledReason: options?.newDueDate && options?.comment ? options.comment : (target as any).rescheduledReason,
+    rescheduledReason: options?.newDueDate && options?.comment ? options.comment : target.rescheduledReason,
+    rescheduledBy: options?.newDueDate ? performerName : target.rescheduledBy,
+    rescheduledAt: options?.newDueDate ? new Date().toISOString() : target.rescheduledAt,
   };
 
   // 1. Save to Task Storage

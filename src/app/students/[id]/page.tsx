@@ -1149,7 +1149,7 @@ export default function StudentDetailsPage() {
 
       setStudent((prev) => {
         const parentIds = (prev.parents || []).map((p) => p.id);
-        const newTasks = prev.tasks.map((t) => (t.id === taskId ? ((updated as any) || { ...t, dueDate: newDueDate, rescheduledReason: reason.trim() }) : t));
+        const newTasks = prev.tasks.map((t) => (t.id === taskId ? ((updated as any) || { ...t, dueDate: newDueDate, rescheduledReason: reason.trim(), rescheduledBy: perfUser, rescheduledAt: new Date().toISOString() }) : t));
         const newCombined = getCombinedStudentTimeline(prev.id, prev.interactions, parentIds);
         return {
           ...prev,
