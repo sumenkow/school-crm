@@ -2495,14 +2495,6 @@ export default function StudentDetailsPage() {
               <h3 className="text-sm font-bold text-slate-900">Задачи по ученику и семье</h3>
               <p className="text-xs text-slate-500">Управление оперативными задачами и фиксация результатов</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsCreateTaskModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Новая задача
-            </button>
           </div>
 
           {(() => {
@@ -2515,8 +2507,20 @@ export default function StudentDetailsPage() {
                 {/* Active Tasks List */}
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-xs divide-y divide-slate-100 overflow-hidden">
                   {activeTasks.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-xs">
-                      Активных задач нет. Все задачи выполнены!
+                    <div className="p-8 text-center space-y-3">
+                      <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500 stroke-1" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">Нет активных задач по ученику</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Все текущие поручения и напоминания выполнены</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateTaskModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Создать задачу
+                      </button>
                     </div>
                   ) : (
                     activeTasks.map((task) => {
@@ -2600,11 +2604,11 @@ export default function StudentDetailsPage() {
                     <button
                       type="button"
                       onClick={() => setShowCompletedTasks(!showCompletedTasks)}
-                      className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold text-slate-600 hover:bg-slate-100/70 transition-colors"
+                      className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold text-slate-600 hover:bg-slate-100/70 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        <span>Выполненные задачи ({completedTasks.length})</span>
+                        <span>Показать выполненные задачи ({completedTasks.length})</span>
                       </div>
                       <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform duration-200', showCompletedTasks && 'rotate-180')} />
                     </button>
@@ -2621,7 +2625,7 @@ export default function StudentDetailsPage() {
                               setTaskOutcomeComment('');
                               setRescheduleReason('');
                             }}
-                            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group opacity-75 hover:opacity-100"
+                            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group opacity-85 hover:opacity-100"
                           >
                             <div className="flex items-start gap-3">
                               <button
@@ -2630,7 +2634,7 @@ export default function StudentDetailsPage() {
                                   e.stopPropagation();
                                   handleToggleTask(task.id);
                                 }}
-                                className="mt-0.5 text-emerald-500 hover:text-slate-400 transition-colors"
+                                className="mt-0.5 text-emerald-500 hover:text-slate-400 transition-colors cursor-pointer"
                                 title="Вернуть в работу"
                               >
                                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -2639,14 +2643,17 @@ export default function StudentDetailsPage() {
                                 <h4 className="text-sm font-medium text-slate-500 line-through">
                                   {task.title}
                                 </h4>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                  Выполнено: {task.completedAt ? new Date(task.completedAt).toLocaleDateString('ru-RU') : 'Ранее'}
-                                  {task.completedBy ? ` · ${task.completedBy}` : ` · ${task.assignedTo}`}
-                                  {task.result && <span className="block text-slate-600 font-normal italic mt-0.5">«{task.result}»</span>}
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  Выполнил: <strong>{task.completedBy || task.assignedTo}</strong> · {task.completedAt ? new Date(task.completedAt).toLocaleDateString('ru-RU') : 'Ранее'}
                                 </p>
+                                {task.result && (
+                                  <p className="text-xs text-slate-600 font-normal italic mt-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                    💬 Результат: "{task.result}"
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            <span className="rounded-full bg-slate-100 text-slate-600 px-2.5 py-0.5 text-[10px] font-semibold border border-slate-200">
+                            <span className="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-0.5 text-[10px] font-semibold border border-emerald-200">
                               Выполнено
                             </span>
                           </div>
@@ -3226,9 +3233,33 @@ export default function StudentDetailsPage() {
                       <span className="text-slate-500">Тип задачи:</span>
                       <span className="font-medium text-slate-700">{selectedTaskForModal.taskType || 'Звонок / Согласование'}</span>
                     </div>
+
+                    {/* Task Description Display */}
+                    {selectedTaskForModal.description && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-slate-700 block mb-0.5 font-semibold">Описание задачи:</span>
+                        <p className="text-slate-800 bg-white p-2.5 rounded-xl border border-slate-200 font-normal leading-relaxed text-xs">
+                          {selectedTaskForModal.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Reschedule History Display */}
+                    {selectedTaskForModal.rescheduledReason && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-amber-800 block mb-0.5 font-semibold text-xs flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5 text-amber-600" />
+                          История переноса срока:
+                        </span>
+                        <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/70 text-amber-900 text-xs">
+                          Перенесено. Причина: «{selectedTaskForModal.rescheduledReason}»
+                        </div>
+                      </div>
+                    )}
+
                     {selectedTaskForModal.result && (
                       <div className="pt-2 border-t border-slate-200">
-                        <span className="text-slate-500 block mb-0.5 font-semibold">Зафиксированный результат:</span>
+                        <span className="text-slate-700 block mb-0.5 font-semibold">Зафиксированный результат:</span>
                         <p className="text-slate-800 bg-white p-2 rounded-lg border border-slate-200 font-normal">
                           {selectedTaskForModal.result}
                         </p>
