@@ -69,12 +69,12 @@ export function StudentsDesktop({
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
           <col className="w-[44px]" />   {/* Чекбокс */}
-          <col className="w-[18%]" />    {/* Ученик */}
+          <col className="w-[22%]" />    {/* Ученик */}
           <col className="w-[20%]" />    {/* Представитель */}
-          <col className="w-[20%]" />    {/* Курс */}
-          <col className="w-[15%]" />    {/* Учитель */}
-          <col className="w-[11%]" />    {/* Посещаемость */}
-          <col className="w-[16%]" />    {/* Статус оплаты */}
+          <col className="w-[19%]" />    {/* Курс */}
+          <col className="w-[12%]" />    {/* Учитель */}
+          <col className="w-[10%]" />    {/* Посещаемость */}
+          <col className="w-[17%]" />    {/* Статус оплаты */}
         </colgroup>
 
         <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -197,11 +197,11 @@ export function StudentsDesktop({
                       <div className="min-w-0">
                         <Link
                           href={`/students/${student.id}`}
-                          className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                          className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block"
                         >
                           {student.name}
                         </Link>
-                        <span className="text-[11px] text-slate-400 block truncate">
+                        <span className="text-[11px] text-slate-400 block">
                           {student.isAdult ? 'Студент' : 'Школьник'}
                         </span>
                       </div>
