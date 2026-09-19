@@ -35,6 +35,7 @@ export interface ParentNameUpdate {
   telegram?: string;
   whatsapp?: string;
   preferredChannel?: string;
+  notes?: string;
 }
 
 export interface LeadNameUpdate {
@@ -276,6 +277,7 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
             telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
             whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
             preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
+            notes: parentData.notes !== undefined ? parentData.notes : (p as any).notes,
           };
         }
         return p;
@@ -307,6 +309,7 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
                 telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
                 whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
                 preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
+                notes: parentData.notes !== undefined ? parentData.notes : (p as any).notes,
               };
             }
             return p;
@@ -393,18 +396,21 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
     import('@/lib/supabase/client').then(({ createClient }) => {
       try {
         const supabase = createClient();
+        const parentUpdateObj: Record<string, any> = {
+          first_name: firstName,
+          last_name: lastName,
+          updated_at: new Date().toISOString(),
+        };
+        if (parentData.phone !== undefined) parentUpdateObj.phone = parentData.phone || null;
+        if (parentData.email !== undefined) parentUpdateObj.email = parentData.email || null;
+        if (parentData.telegram !== undefined) parentUpdateObj.telegram = parentData.telegram || null;
+        if (parentData.whatsapp !== undefined) parentUpdateObj.whatsapp = parentData.whatsapp || null;
+        if (parentData.preferredChannel !== undefined) parentUpdateObj.preferred_channel = (parentData.preferredChannel === 'both' ? 'email' : (parentData.preferredChannel?.toLowerCase() as any));
+        if (parentData.notes !== undefined) parentUpdateObj.notes = parentData.notes || null;
+
         supabase
           .from('parents')
-          .update({
-            first_name: firstName,
-            last_name: lastName,
-            phone: parentData.phone || null,
-            email: parentData.email || null,
-            telegram: parentData.telegram || null,
-            whatsapp: parentData.whatsapp || null,
-            preferred_channel: (parentData.preferredChannel === 'both' ? 'email' : (parentData.preferredChannel?.toLowerCase() as any)) || undefined,
-            updated_at: new Date().toISOString(),
-          })
+          .update(parentUpdateObj)
           .eq('id', parentId)
           .then(() => {}, () => {});
 

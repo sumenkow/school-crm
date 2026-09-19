@@ -719,38 +719,49 @@ export default function ParentDetailsPage() {
     const previousChannel = parent.preferredChannel;
     const newChannel = editForm.preferredChannel;
 
+    const updatedFirstName = editForm.firstName.trim() || parent.firstName;
+    const updatedLastName = editForm.lastName.trim() || parent.lastName;
+    const updatedPhone = editForm.phone.trim() || parent.phone;
+    const updatedTelegram = editForm.telegram.trim() || parent.telegram;
+    const updatedWhatsapp = editForm.whatsapp.trim() || parent.whatsapp;
+    const updatedEmail = editForm.email.trim() || parent.email;
+    const updatedChannel = editForm.preferredChannel || parent.preferredChannel;
+    const updatedNotes = editForm.notes;
+
+    // 1. Update React state immediately
     setParent((prev) => ({
       ...prev,
-      firstName: editForm.firstName.trim() || prev.firstName,
-      lastName: editForm.lastName.trim() || prev.lastName,
-      phone: editForm.phone.trim() || prev.phone,
-      telegram: editForm.telegram.trim() || prev.telegram,
-      whatsapp: editForm.whatsapp.trim() || prev.whatsapp,
-      email: editForm.email.trim() || prev.email,
-      preferredChannel: editForm.preferredChannel,
-      notes: editForm.notes,
+      firstName: updatedFirstName,
+      lastName: updatedLastName,
+      phone: updatedPhone,
+      telegram: updatedTelegram,
+      whatsapp: updatedWhatsapp,
+      email: updatedEmail,
+      preferredChannel: updatedChannel,
+      notes: updatedNotes,
       children: editChildren,
     }));
 
-    const allStudents = getStoredStudents();
     const currentFamilyChildIds = new Set(editChildren.map((c) => c.id));
 
+    // 2. Update all stored students (localStorage)
+    const allStudents = getStoredStudents();
     allStudents.forEach((student) => {
       const isNowInFamily = currentFamilyChildIds.has(student.id);
-      const hadParentBefore = student.parents?.some((p) => p.id === parent.id);
 
       if (isNowInFamily) {
         if (!student.parents || student.parents.length === 0) {
           student.parents = [
             {
               id: parent.id,
-              firstName: editForm.firstName.trim() || parent.firstName,
-              lastName: editForm.lastName.trim() || parent.lastName,
-              phone: editForm.phone.trim() || parent.phone,
-              telegram: editForm.telegram.trim() || parent.telegram,
-              whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
-              email: editForm.email.trim() || parent.email,
-              preferredChannel: (editForm.preferredChannel as any) || 'telegram',
+              firstName: updatedFirstName,
+              lastName: updatedLastName,
+              phone: updatedPhone,
+              telegram: updatedTelegram,
+              whatsapp: updatedWhatsapp,
+              email: updatedEmail,
+              preferredChannel: (updatedChannel as any) || 'telegram',
+              notes: updatedNotes,
               relationshipType: 'Родитель',
               isPrimary: true,
             },
@@ -760,36 +771,87 @@ export default function ParentDetailsPage() {
             p.id === parent.id
               ? {
                   ...p,
-                  firstName: editForm.firstName.trim() || parent.firstName,
-                  lastName: editForm.lastName.trim() || parent.lastName,
-                  phone: editForm.phone.trim() || parent.phone,
-                  telegram: editForm.telegram.trim() || parent.telegram,
-                  whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
-                  email: editForm.email.trim() || parent.email,
+                  firstName: updatedFirstName,
+                  lastName: updatedLastName,
+                  phone: updatedPhone,
+                  telegram: updatedTelegram,
+                  whatsapp: updatedWhatsapp,
+                  email: updatedEmail,
+                  preferredChannel: (updatedChannel as any) || p.preferredChannel,
+                  notes: updatedNotes !== undefined ? updatedNotes : (p as any).notes,
                 }
               : p
           );
         }
-        saveStudentToStorage(student);
+      } else {
+        // Child was unlinked in family edit modal
+        if (student.parents) {
+          student.parents = student.parents.filter((p) => p.id !== parent.id);
+        }
+      }
+      saveStudentToStorage(student);
+    });
+
+    // 3. Update INITIAL_STUDENTS in-memory array directly
+    INITIAL_STUDENTS.forEach((student) => {
+      const isNowInFamily = currentFamilyChildIds.has(student.id);
+      if (isNowInFamily) {
+        if (!student.parents || student.parents.length === 0) {
+          student.parents = [
+            {
+              id: parent.id,
+              firstName: updatedFirstName,
+              lastName: updatedLastName,
+              phone: updatedPhone,
+              telegram: updatedTelegram,
+              whatsapp: updatedWhatsapp,
+              email: updatedEmail,
+              preferredChannel: (updatedChannel as any) || 'telegram',
+              notes: updatedNotes,
+              relationshipType: 'Родитель',
+              isPrimary: true,
+            },
+          ];
+        } else {
+          student.parents = student.parents.map((p) =>
+            p.id === parent.id
+              ? {
+                  ...p,
+                  firstName: updatedFirstName,
+                  lastName: updatedLastName,
+                  phone: updatedPhone,
+                  telegram: updatedTelegram,
+                  whatsapp: updatedWhatsapp,
+                  email: updatedEmail,
+                  preferredChannel: (updatedChannel as any) || p.preferredChannel,
+                  notes: updatedNotes !== undefined ? updatedNotes : (p as any).notes,
+                }
+              : p
+          );
+        }
+      } else if (student.parents) {
+        student.parents = student.parents.filter((p) => p.id !== parent.id);
       }
     });
 
-    // Cascade parent name to payments, tasks, timeline, leads
+    // 4. Cascade parent name/details to payments, tasks, timeline, leads, storage & Supabase
     syncParentNameCascade(parent.id, {
-      firstName: editForm.firstName.trim() || parent.firstName,
-      lastName: editForm.lastName.trim() || parent.lastName,
-      phone: editForm.phone.trim() || parent.phone,
-      email: editForm.email.trim() || parent.email,
-      telegram: editForm.telegram.trim() || parent.telegram,
-      whatsapp: editForm.whatsapp.trim() || parent.whatsapp,
+      firstName: updatedFirstName,
+      lastName: updatedLastName,
+      phone: updatedPhone,
+      email: updatedEmail,
+      telegram: updatedTelegram,
+      whatsapp: updatedWhatsapp,
+      preferredChannel: updatedChannel,
+      notes: updatedNotes,
     });
 
-    // Log channel change interaction if modified
+    // 5. Log channel change interaction if modified
     if (newChannel && newChannel !== previousChannel) {
       const channelInteraction: TimelineInteraction = {
         id: `int_channel_${Date.now()}`,
         parentId: parent.id,
-        parentName: `${editForm.firstName.trim() || parent.firstName} ${editForm.lastName.trim() || parent.lastName}`,
+        parentName: `${updatedFirstName} ${updatedLastName}`,
         occurredAt: 'Только что',
         createdAt: new Date().toISOString(),
         channel: (newChannel.toLowerCase().includes('email') ? 'email' : newChannel.toLowerCase().includes('tele') ? 'telegram' : 'other') as any,
@@ -798,7 +860,7 @@ export default function ParentDetailsPage() {
         content: `Способ связи изменен на: «${newChannel}». Настройки сохранены в базу.`,
         result: 'Обновлен предпочтительный канал',
         targetType: 'parent',
-        targetName: `${editForm.firstName.trim() || parent.firstName} ${editForm.lastName.trim() || parent.lastName}`,
+        targetName: `${updatedFirstName} ${updatedLastName}`,
         targetRole: 'Родитель',
       };
       saveInteractionToStorage(channelInteraction);
