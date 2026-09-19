@@ -27,6 +27,41 @@ const TelegramIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => 
   </svg>
 );
 
+function formatNextLessonText(dateStr?: string, timeStr?: string): string {
+  if (!dateStr) return '—';
+
+  let formattedDate = dateStr;
+  let dayOfWeek = '';
+
+  let d: Date | null = null;
+  if (dateStr.includes('.')) {
+    const parts = dateStr.split('.');
+    if (parts.length === 3) {
+      d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      formattedDate = `${parts[0].padStart(2, '0')}.${parts[1].padStart(2, '0')}.${parts[2]}`;
+    } else if (parts.length === 2) {
+      const year = new Date().getFullYear();
+      d = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      formattedDate = `${parts[0].padStart(2, '0')}.${parts[1].padStart(2, '0')}.${year}`;
+    }
+  } else if (dateStr.includes('-')) {
+    d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      formattedDate = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+    }
+  }
+
+  if (d && !isNaN(d.getTime())) {
+    const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    dayOfWeek = days[d.getDay()];
+  }
+
+  const prefix = dayOfWeek ? `${dayOfWeek}, ${formattedDate}` : formattedDate;
+  const timeSuffix = timeStr ? ` в ${timeStr}` : '';
+  return `${prefix}${timeSuffix}`;
+}
+
 export interface StudentProfileDesktopProps {
   student: FullStudentData;
   finSummary: {
@@ -305,6 +340,7 @@ export function StudentProfileDesktop({
           </span>
           {student.groups.length > 0 ? (
             <div className="space-y-0.5">
+              {/* 1st Line: Group Name */}
               <Link
                 href={`/calendar/lessons/${(student.groups[0] as any).nextLessonId || student.groups[0].id}`}
                 className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
@@ -316,25 +352,29 @@ export function StudentProfileDesktop({
                   </span>
                 )}
               </Link>
-              <Link
-                href={`/teachers/${(student as any).teacherId || '1'}`}
-                className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
-              >
-                Преподаватель: {student.groups[0]?.teacherName || (student as any).teacherName || 'Мария Иванова'}
-              </Link>
+
+              {/* 2nd Line: Next Lesson info without arrow */}
               {upcomingLesson && upcomingLesson.date ? (
                 <Link
                   href={`/calendar/lessons/${upcomingLesson.id}`}
                   className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
                   title="Перейти к карточке ближайшего урока"
                 >
-                  → Следующее занятие: {upcomingLesson.date}{upcomingLesson.startTime ? `, ${upcomingLesson.startTime}` : ''}
+                  Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
                 </Link>
               ) : (
                 <span className="text-[11px] text-slate-400 block truncate">
-                  → Следующее занятие: —
+                  Следующее занятие: —
                 </span>
               )}
+
+              {/* 3rd Line: Teacher Name */}
+              <Link
+                href={`/teachers/${(student as any).teacherId || '1'}`}
+                className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
+              >
+                Преподаватель: {student.groups[0]?.teacherName || (student as any).teacherName || 'Мария Иванова'}
+              </Link>
             </div>
           ) : (
             <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
