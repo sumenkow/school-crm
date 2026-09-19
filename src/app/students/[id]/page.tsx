@@ -55,6 +55,7 @@ import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper'
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { formatAgeAndGrade, formatGradeRussian, formatBirthDate } from '@/lib/data/studentAgeHelper';
+import { DatePicker } from '@/components/common/DatePicker';
 import type { Task } from '@/types';
 import type { FullTaskData } from '@/lib/data/mockData';
 
@@ -3282,18 +3283,12 @@ export default function StudentDetailsPage() {
               {/* TAB CONTENT: RESCHEDULE */}
               {taskModalTab === 'reschedule' && (
                 <div className="space-y-3">
-                  <div>
-                    <label className="block font-semibold text-slate-700 mb-1">
-                      Новый срок выполнения
-                    </label>
-                    <input
-                      type="text"
-                      value={rescheduleNewDate}
-                      onChange={(e) => setRescheduleNewDate(e.target.value)}
-                      placeholder="25.09.2026"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    />
-                  </div>
+                  <DatePicker
+                    label="Новый срок выполнения"
+                    value={rescheduleNewDate}
+                    onChange={(iso) => setRescheduleNewDate(iso)}
+                    required
+                  />
 
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">

@@ -7,6 +7,7 @@ import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockDa
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { createUnifiedTask } from '@/lib/data/taskManager';
 import { useRole } from '@/context/RoleContext';
+import { DatePicker } from '@/components/common/DatePicker';
 
 export interface StudentTaskScope {
   id: string;
@@ -196,67 +197,99 @@ export function CreateTaskModal({
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-700">Тип задачи</label>
-              <select
-                value={taskType}
-                onChange={(e) => setTaskType(e.target.value as FullTaskData['taskType'])}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-              >
-                <option value="CRM Сделка">CRM Сделка</option>
-                <option value="Retention">Забота / Retention</option>
-                <option value="Финансы">Финансы / Оплата</option>
-                <option value="Продление">Продление абонемента</option>
-                <option value="Оргвопрос">Оргвопрос</option>
-              </select>
+              <label className="text-xs font-medium text-slate-700 block mb-1">Приоритет задачи</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPriority('high')}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    priority === 'high'
+                      ? 'bg-rose-100 text-rose-800 border-rose-300 ring-2 ring-rose-400/20'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  )}
+                >
+                  🚨 Срочно (Высокий)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('medium')}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    priority === 'medium'
+                      ? 'bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400/20'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  )}
+                >
+                  ⚡ Средний
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPriority('low')}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    priority === 'low'
+                      ? 'bg-slate-200 text-slate-800 border-slate-300 ring-2 ring-slate-400/20'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  )}
+                >
+                  ☕ Низкий
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">Приоритет</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as FullTaskData['priority'])}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-              >
-                <option value="high">Высокий (Срочно)</option>
-                <option value="medium">Средний</option>
-                <option value="low">Низкий</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-slate-700">Срок (Дата)</label>
-              <input
-                type="date"
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-700">Тип задачи</label>
+                <select
+                  value={taskType}
+                  onChange={(e) => setTaskType(e.target.value as FullTaskData['taskType'])}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-hidden bg-white"
+                >
+                  <option value="CRM Сделка">CRM Сделка</option>
+                  <option value="Retention">Забота / Retention</option>
+                  <option value="Финансы">Финансы / Оплата</option>
+                  <option value="Продление">Продление абонемента</option>
+                  <option value="Оргвопрос">Оргвопрос</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700">Ответственный сотрудник</label>
+                <select
+                  value={assignedTo}
+                  onChange={(e) => setAssignedTo(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-hidden bg-white"
+                >
+                  <option value="Елена Менеджер">Елена Менеджер</option>
+                  <option value="Александр Руководитель">Александр Руководитель</option>
+                  <option value="Мария Иванова">Мария Иванова (Преподаватель)</option>
+                  {userName && !['Елена Менеджер', 'Александр Руководитель', 'Мария Иванова'].includes(userName) && (
+                    <option value={userName}>{userName} (Я)</option>
+                  )}
+                </select>
+              </div>
+            </div>
+
+            {/* Interactive Visual DatePicker (No Keyboard Text Input) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <DatePicker
+                label="Срок (Дата дедлайна)"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                onChange={(iso) => setDueDate(iso)}
+                required
               />
+              <div>
+                <label className="text-xs font-medium text-slate-700 block mb-1">Время</label>
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-hidden bg-white"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">Время</label>
-              <input
-                type="time"
-                value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-slate-700">Ответственный сотрудник</label>
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-            >
-              <option value="Елена Менеджер">Елена Менеджер</option>
-              <option value="Александр Руководитель">Александр Руководитель</option>
-              <option value="Мария Иванова">Мария Иванова (Преподаватель)</option>
-            </select>
           </div>
 
           {/* Link to Entity */}

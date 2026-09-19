@@ -266,6 +266,7 @@ export async function updateUnifiedTaskStatus(
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: updatedTask }));
     window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: timelineItem }));
+    window.dispatchEvent(new CustomEvent('crm-notifications-changed', { detail: updatedTask }));
   }
 
   // 4. Notify Owner on task completion or rescheduling

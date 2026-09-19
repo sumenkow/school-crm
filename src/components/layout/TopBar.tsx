@@ -7,6 +7,7 @@ import { useLanguage, LANGUAGE_LABELS, SupportedLanguage } from '@/context/Langu
 import { useToast } from '@/context/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
+import { NotificationCenter } from '@/components/layout/NotificationCenter';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { UserProfileModal } from '@/components/profile/UserProfileModal';
 import { CountryFlag } from '@/components/common/CountryFlag';
@@ -223,6 +224,9 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
           <span className="tracking-tight text-xs">{currentDate}</span>
         </div>
       )}
+
+      {/* Manager Notification Center Bell 🔔 */}
+      <NotificationCenter />
 
       {/* User avatar + dropdown */}
       <div ref={menuRef} style={{ position: 'relative' }}>
