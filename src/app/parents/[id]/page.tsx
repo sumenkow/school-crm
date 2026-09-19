@@ -196,9 +196,13 @@ export default function ParentDetailsPage() {
     };
   }, [parent.children]);
 
+  // Reconcile debts once on mount
+  useEffect(() => {
+    reconcileAllStudentDepositsAndDebts();
+  }, []);
+
   useEffect(() => {
     const refreshParent = () => {
-      reconcileAllStudentDepositsAndDebts();
       const allStudents = getStoredStudents();
       const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
       const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
@@ -240,13 +244,13 @@ export default function ParentDetailsPage() {
       if (matchedParent || linkedChildren.length > 0) {
         setParent((prev) => ({
           ...prev,
-          firstName: matchedParent?.firstName || prev.firstName,
-          lastName: matchedParent?.lastName || prev.lastName,
-          phone: matchedParent?.phone || prev.phone,
-          telegram: matchedParent?.telegram || prev.telegram,
-          whatsapp: matchedParent?.whatsapp || prev.whatsapp,
-          email: matchedParent?.email || prev.email,
-          preferredChannel: matchedParent?.preferredChannel || prev.preferredChannel,
+          firstName: matchedParent?.firstName ?? prev.firstName,
+          lastName: matchedParent?.lastName ?? prev.lastName,
+          phone: matchedParent?.phone ?? prev.phone,
+          telegram: matchedParent?.telegram ?? prev.telegram,
+          whatsapp: matchedParent?.whatsapp ?? prev.whatsapp,
+          email: matchedParent?.email ?? prev.email,
+          preferredChannel: matchedParent?.preferredChannel ?? prev.preferredChannel,
           notes: matchedParent?.notes !== undefined ? matchedParent.notes : prev.notes,
           children: linkedChildren.length > 0 ? linkedChildren : prev.children,
         }));
@@ -275,18 +279,31 @@ export default function ParentDetailsPage() {
 
   const handleSaveNotes = () => {
     const allStudents = getStoredStudents();
-    let updatedAny = false;
 
     allStudents.forEach((st) => {
       if (st.parents?.some((p) => p.id === parent.id)) {
         st.parents = st.parents.map((p) => (p.id === parent.id ? { ...p, notes: editedNotes } : p));
-        saveStudentToStorage(st);
-        updatedAny = true;
       }
+    });
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_students_v2', JSON.stringify(allStudents));
+    }
+
+    INITIAL_STUDENTS.forEach((st) => {
+      if (st.parents?.some((p) => p.id === parent.id)) {
+        st.parents = st.parents.map((p) => (p.id === parent.id ? { ...p, notes: editedNotes } : p));
+      }
+    });
+
+    syncParentNameCascade(parent.id, {
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      notes: editedNotes,
     });
 
     setParent((prev) => ({ ...prev, notes: editedNotes }));
     setIsEditingNotes(false);
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
     success('Заметки о родителе сохранены');
   };
 
@@ -789,8 +806,11 @@ export default function ParentDetailsPage() {
           student.parents = student.parents.filter((p) => p.id !== parent.id);
         }
       }
-      saveStudentToStorage(student);
     });
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_students_v2', JSON.stringify(allStudents));
+    }
 
     // 3. Update INITIAL_STUDENTS in-memory array directly
     INITIAL_STUDENTS.forEach((student) => {
