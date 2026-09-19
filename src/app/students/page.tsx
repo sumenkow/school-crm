@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Filter, Plus, Phone, AlertTriangle, GraduationCap, RotateCcw, Trash2 } from 'lucide-react';
+import { Search, Filter, Plus, AlertTriangle, GraduationCap, RotateCcw, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { TeacherQuickViewModal } from '@/components/dashboard/TeacherQuickViewModal';
+import { StudentDrawer } from '@/components/students/StudentDrawer';
+import { BulkActionsBar } from '@/components/students/BulkActionsBar';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
@@ -26,6 +28,16 @@ const TelegramIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
   </svg>
 );
 
+export interface GroupEnrollment {
+  id: string;
+  name: string;
+  schedule?: string;
+  room?: string;
+  teacherName?: string;
+  nextLessonId?: string;
+  nextLessonDate?: string;
+}
+
 export interface StudentListItem {
   id: string;
   initials: string;
@@ -38,6 +50,7 @@ export interface StudentListItem {
   parentRelation?: string;
   parentPhone?: string;
   telegram?: string;
+  groups: GroupEnrollment[];
   groupId?: string;
   groupName?: string;
   nextLessonId?: string;
@@ -47,14 +60,16 @@ export interface StudentListItem {
   attendanceRate: number;
   financeStatus: 'active_sub' | 'deposit' | 'debt' | 'trial';
   paidUntil?: string;
-  balanceEur?: number;
-  balanceRub?: number;
-  debtEur?: number;
-  debtRub?: number;
+  balanceEur: number;
+  balanceRub: number;
+  debtEur: number;
+  debtRub: number;
+  netBalanceEur: number;
   isChurnRisk?: boolean;
   absentLessons?: number;
   isDeleted?: boolean;
   deletedAt?: string;
+  rawStudentObj: FullStudentData;
 }
 
 export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
@@ -70,9 +85,20 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   const parentPhone = primaryParent?.phone || s.phone || '—';
   const telegram = primaryParent?.telegram || s.telegram;
 
-  const firstGroup = s.groups?.[0];
+  const rawGroups = s.groups || [];
+  const groupsList: GroupEnrollment[] = rawGroups.map((g, idx) => ({
+    id: g.id || `g_${idx}`,
+    name: g.name || 'Группа',
+    schedule: g.schedule || 'Пн/Чт 18:45',
+    room: (g as any).room || 'Аудитория 204',
+    teacherName: g.teacherName || 'Мария Иванова',
+    nextLessonId: `l_${s.id}_g_${g.id || idx}`,
+    nextLessonDate: '21 сен, 18:45',
+  }));
+
+  const firstGroup = groupsList[0];
   const groupId = firstGroup?.id;
-  const groupName = firstGroup?.name || (s.groups && s.groups.length > 0 ? s.groups.map(g => g.name).join(', ') : undefined);
+  const groupName = firstGroup ? `${firstGroup.name} (${firstGroup.schedule || ''})`.trim() : undefined;
   const teacherName = firstGroup?.teacherName || 'Мария Иванова';
 
   let teacherId = 't1';
@@ -120,6 +146,7 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     parentRelation,
     parentPhone,
     telegram,
+    groups: groupsList,
     groupId,
     groupName,
     nextLessonId,
@@ -133,25 +160,40 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     balanceRub: finSummary.depositRub,
     debtEur: finSummary.debt,
     debtRub: finSummary.debtRub,
+    netBalanceEur: finSummary.netBalance,
     isChurnRisk,
     absentLessons,
     isDeleted: Boolean(s.isDeleted || (s as any).is_deleted),
     deletedAt: s.deletedAt || (s as any).deleted_at,
+    rawStudentObj: s,
   };
 }
+
+type SortField = 'name' | 'attendanceRate' | 'finance';
+type SortOrder = 'default' | 'asc' | 'desc';
 
 function StudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const filterParam = searchParams.get('filter');
   const toast = useToast();
   const { t } = useLanguage();
+
+  const activeStudentIdFromUrl = searchParams.get('id');
+  const activeTabFromUrl = (searchParams.get('tab') as 'profile' | 'learning' | 'finance' | 'attendance') || 'profile';
+  const activeTeacherIdFromUrl = searchParams.get('teacherId');
+  const filterParam = searchParams.get('filter');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState(filterParam === 'absences' ? 'absences' : 'all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
-  const [selectedTeacherName, setSelectedTeacherName] = useState<string>('Преподаватель');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Cyclic Sort States
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('default');
+
+  // Popover state for +N courses hover
+  const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
 
   useEffect(() => {
     if (filterParam === 'absences') {
@@ -192,41 +234,166 @@ function StudentsContent() {
     toast.success(`Ученик ${newStudent.name} успешно добавлен в базу!`);
   };
 
-  const handleOpenTeacherModal = (tId?: string, tName?: string) => {
-    if (!tId) return;
-    setSelectedTeacherId(tId);
-    setSelectedTeacherName(tName || 'Преподаватель');
+  // Deep Link Modal Triggers
+  const activeDrawerStudentObj = useMemo(() => {
+    if (!activeStudentIdFromUrl) return null;
+    const found = students.find((s) => s.id === activeStudentIdFromUrl);
+    return found ? found.rawStudentObj : null;
+  }, [activeStudentIdFromUrl, students]);
+
+  const activeTeacherObj = useMemo(() => {
+    if (!activeTeacherIdFromUrl) return null;
+    const found = students.find((s) => s.teacherId === activeTeacherIdFromUrl);
+    return {
+      teacherId: activeTeacherIdFromUrl,
+      teacherName: found?.teacherName || 'Преподаватель',
+    };
+  }, [activeTeacherIdFromUrl, students]);
+
+  const handleOpenStudentDrawer = (id: string, tab?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('id', id);
+    if (tab) params.set('tab', tab);
+    else params.delete('tab');
+    router.push(`/students?${params.toString()}`, { scroll: false });
+  };
+
+  const handleCloseStudentDrawer = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('id');
+    params.delete('tab');
+    const newQuery = params.toString();
+    router.push(newQuery ? `/students?${newQuery}` : '/students', { scroll: false });
+  };
+
+  const handleOpenTeacherModal = (teacherId: string, teacherName?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('teacherId', teacherId);
+    router.push(`/students?${params.toString()}`, { scroll: false });
+  };
+
+  const handleCloseTeacherModal = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('teacherId');
+    const newQuery = params.toString();
+    router.push(newQuery ? `/students?${newQuery}` : '/students', { scroll: false });
+  };
+
+  // Cyclic Sort Handler
+  const handleSortToggle = (field: SortField) => {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortOrder('asc');
+    } else if (sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else if (sortOrder === 'desc') {
+      setSortField(null);
+      setSortOrder('default');
+    } else {
+      setSortOrder('asc');
+    }
   };
 
   const activeStudents = students.filter((s) => !s.isDeleted);
   const deletedStudents = students.filter((s) => s.isDeleted);
   const deletedCount = deletedStudents.length;
 
-  const filteredStudents = students.filter((s) => {
-    const matchesSearch =
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.groupName && s.groupName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (s.parentName && s.parentName.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredStudents = useMemo(() => {
+    let result = students.filter((s) => {
+      const matchesSearch =
+        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.groupName && s.groupName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (s.parentName && s.parentName.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    if (!matchesSearch) return false;
+      if (!matchesSearch) return false;
 
-    if (statusFilter === 'deleted') {
-      return Boolean(s.isDeleted);
+      if (statusFilter === 'deleted') {
+        return Boolean(s.isDeleted);
+      }
+
+      if (s.isDeleted) return false;
+
+      if (statusFilter === 'all') return true;
+      if (statusFilter === 'absences') {
+        return s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3);
+      }
+      if (statusFilter === 'school_student' || statusFilter === 'adult_student') {
+        return s.studentType === statusFilter;
+      }
+      return s.status === statusFilter;
+    });
+
+    if (sortField && sortOrder !== 'default') {
+      result = [...result].sort((a, b) => {
+        if (sortField === 'name') {
+          return sortOrder === 'asc' ? a.name.localeCompare(b.name, 'ru') : b.name.localeCompare(a.name, 'ru');
+        }
+        if (sortField === 'attendanceRate') {
+          return sortOrder === 'asc' ? a.attendanceRate - b.attendanceRate : b.attendanceRate - a.attendanceRate;
+        }
+        if (sortField === 'finance') {
+          return sortOrder === 'asc' ? a.netBalanceEur - b.netBalanceEur : b.netBalanceEur - a.netBalanceEur;
+        }
+        return 0;
+      });
     }
 
-    if (s.isDeleted) return false;
-
-    if (statusFilter === 'all') return true;
-    if (statusFilter === 'absences') {
-      return s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3);
-    }
-    if (statusFilter === 'school_student' || statusFilter === 'adult_student') {
-      return s.studentType === statusFilter;
-    }
-    return s.status === statusFilter;
-  });
+    return result;
+  }, [students, searchTerm, statusFilter, sortField, sortOrder]);
 
   const churnRiskCount = activeStudents.filter((s) => s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3)).length;
+
+  // Master Checkbox State
+  const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selectedIds.includes(s.id));
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredStudents.map((s) => s.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelectRow = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Actions Handlers
+  const handleBulkWhatsApp = () => {
+    const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+    const phones = selectedStudents.map((s) => s.parentPhone).filter(Boolean);
+    toast.success(`Подготовлена рассылка в WhatsApp для ${phones.length} контактов!`);
+  };
+
+  const handleBulkChangeTeacher = () => {
+    const newTeacher = prompt('Введите имя нового преподавателя (например: Денис Смирнов):');
+    if (!newTeacher) return;
+    toast.success(`Преподаватель успешно изменен на «${newTeacher}» для ${selectedIds.length} учеников!`);
+    setSelectedIds([]);
+  };
+
+  const handleBulkExport = () => {
+    const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      ['ФИО,Тип,Родитель,Телефон,Группа,Посещаемость,Баланс EUR']
+        .concat(
+          selectedStudents.map(
+            (s) => `"${s.name}","${s.studentType}","${s.parentName || '—'}","${s.parentPhone || ''}","${s.groupName || ''}","${s.attendanceRate}%","${s.netBalanceEur} €"`
+          )
+        )
+        .join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `students_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Выгружен файл экспорта (${selectedStudents.length} записей)`);
+  };
 
   return (
     <div className="space-y-6">
@@ -350,7 +517,7 @@ function StudentsContent() {
                 key={student.id}
                 onClick={() => {
                   if (statusFilter !== 'deleted') {
-                    router.push(`/students/${student.id}`);
+                    handleOpenStudentDrawer(student.id);
                   }
                 }}
                 className="p-3.5 space-y-2 active:bg-slate-50 transition-colors cursor-pointer"
@@ -438,15 +605,63 @@ function StudentsContent() {
 
         {/* Desktop Table (>= 768px, strictly hidden md:block) */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs border-collapse">
             <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="py-3.5 pl-4 pr-3">УЧЕНИК</th>
+                <th className="py-3.5 pl-4 pr-2 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Выбрать всех"
+                  />
+                </th>
+                <th className="py-3.5 px-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('name')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>УЧЕНИК</span>
+                    {sortField === 'name' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    )}
+                  </button>
+                </th>
                 <th className="px-4 py-3.5">РОДИТЕЛЬ / СВЯЗЬ</th>
                 <th className="px-4 py-3.5">ГРУППА / БЛИЖАЙШИЙ УРОК</th>
                 <th className="px-4 py-3.5">ПРЕПОДАВАТЕЛЬ</th>
-                <th className="px-4 py-3.5">ПОСЕЩАЕМОСТЬ</th>
-                <th className="px-4 py-3.5">ОПЛАТА И БАЛАНС</th>
+                <th className="px-4 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('attendanceRate')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>ПОСЕЩАЕМОСТЬ</span>
+                    {sortField === 'attendanceRate' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    )}
+                  </button>
+                </th>
+                <th className="px-4 py-3.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('finance')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>ОПЛАТА И БАЛАНС</span>
+                    {sortField === 'finance' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    )}
+                  </button>
+                </th>
                 {statusFilter === 'deleted' && (
                   <th className="py-3.5 pl-3 pr-4 text-right">ДЕЙСТВИЕ</th>
                 )}
@@ -455,191 +670,300 @@ function StudentsContent() {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={statusFilter === 'deleted' ? 7 : 6} className="py-8 text-center text-slate-500">
+                  <td colSpan={statusFilter === 'deleted' ? 8 : 7} className="py-8 text-center text-slate-500">
                     {statusFilter === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
-                    {/* 1. Ученик с аватаром-индикатором */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative shrink-0">
-                          <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
-                            {student.initials}
-                          </div>
-                          <span
-                            className={cn(
-                              'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white',
-                              student.status === 'active'
-                                ? 'bg-emerald-500'
-                                : student.status === 'trial'
-                                ? 'bg-purple-500'
-                                : 'bg-amber-500'
-                            )}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <Link
-                            href={`/students/${student.id}`}
-                            className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
-                          >
-                            {student.name}
-                          </Link>
-                          <span className="text-[11px] text-slate-400">
-                            {student.isAdult ? 'Студент (18+)' : 'Школьник'}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
+                filteredStudents.map((student) => {
+                  const isSelected = selectedIds.includes(student.id);
 
-                    {/* 2. Родитель и правые кнопки связи */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center justify-between gap-2 max-w-[260px]">
-                        <div className="min-w-0">
-                          {student.parentId ? (
-                            <Link
-                              href={`/parents/${student.parentId}`}
-                              className="text-xs font-medium text-slate-800 hover:text-blue-600 truncate block"
-                            >
-                              {student.parentName} <span className="text-slate-400 font-normal">({student.parentRelation})</span>
-                            </Link>
-                          ) : (
-                            <span className="text-xs text-slate-400 font-medium">Самостоятельно (18+)</span>
-                          )}
-                          <a
-                            href={`tel:${(student.parentPhone || '').replace(/\D/g, '')}`}
-                            className="text-xs text-slate-500 hover:text-slate-800 block"
-                          >
-                            {student.parentPhone}
-                          </a>
-                        </div>
-
-                        {student.parentPhone && student.parentPhone !== '—' && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <a
-                              href={`https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Написать в WhatsApp"
-                              className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer"
-                            >
-                              <WhatsAppIcon className="w-4 h-4" />
-                            </a>
-                            <a
-                              href={student.telegram ? `https://t.me/${student.telegram.replace('@', '')}` : `https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Написать в Telegram"
-                              className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer"
-                            >
-                              <TelegramIcon className="w-4 h-4" />
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* 3. Группа / Урок */}
-                    <td className="py-3 px-4">
-                      {student.groupId ? (
-                        <div>
-                          <Link
-                            href={`/calendar/lessons/${student.nextLessonId || student.groupId}`}
-                            className="text-xs font-semibold text-blue-600 hover:underline block truncate max-w-[200px]"
-                          >
-                            {student.groupName}
-                          </Link>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">
-                            ↳ {student.nextLessonDate || '21 сен, 18:45'}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">— Без группы</span>
+                  return (
+                    <tr
+                      key={student.id}
+                      onClick={() => {
+                        if (statusFilter !== 'deleted') {
+                          handleOpenStudentDrawer(student.id);
+                        }
+                      }}
+                      className={cn(
+                        'h-14 transition-colors border-b border-slate-100 cursor-pointer',
+                        isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
                       )}
-                    </td>
-
-                    {/* 4. Преподаватель (с модалкой карточки) */}
-                    <td className="py-3 px-4">
-                      {student.teacherId ? (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenTeacherModal(student.teacherId, student.teacherName)}
-                          className="text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors text-left cursor-pointer"
-                        >
-                          👨‍🏫 {student.teacherName}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-
-                    {/* 5. Посещаемость */}
-                    <td className="py-3 px-4">
-                      <span
-                        className={cn(
-                          'text-xs font-bold',
-                          student.attendanceRate >= 90
-                            ? 'text-emerald-600'
-                            : student.attendanceRate >= 75
-                            ? 'text-amber-600'
-                            : 'text-rose-600'
-                        )}
-                      >
-                        {student.attendanceRate}%
-                      </span>
-                    </td>
-
-                    {/* 6. Оплата и баланс */}
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      {student.financeStatus === 'active_sub' && (
-                        <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                          ✓ Оплачено до {student.paidUntil || '28.09.2026'}
-                        </span>
-                      )}
-                      {student.financeStatus === 'deposit' && (
-                        <div>
-                          <div className="text-xs font-bold text-emerald-600">+{student.balanceEur} €</div>
-                          <div className="text-[10px] text-slate-400">Депозит (+{student.balanceRub?.toLocaleString('ru-RU')} ₽)</div>
-                        </div>
-                      )}
-                      {student.financeStatus === 'debt' && (
-                        <div>
-                          <div className="text-xs font-bold text-rose-600">-{student.debtEur} €</div>
-                          <div className="text-[10px] text-rose-500 font-medium">Долг (-{student.debtRub?.toLocaleString('ru-RU')} ₽)</div>
-                        </div>
-                      )}
-                      {student.financeStatus === 'trial' && (
-                        <span className="inline-flex items-center text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
-                          Пробный урок
-                        </span>
-                      )}
-                    </td>
-
-                    {statusFilter === 'deleted' && (
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            restoreStudent(student.id);
-                            refreshStudents();
-                            toast.success(`Ученик ${student.name} восстановлен`);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                          Восстановить
-                        </button>
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3 pl-4 pr-2 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(student.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
                       </td>
-                    )}
-                  </tr>
-                ))
+
+                      {/* 1. Ученик с аватаром-индикатором */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-3">
+                          <div className="relative shrink-0">
+                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200">
+                              {student.initials}
+                            </div>
+                            <span
+                              className={cn(
+                                'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white',
+                                student.status === 'active'
+                                  ? 'bg-emerald-500'
+                                  : student.status === 'trial'
+                                  ? 'bg-purple-500'
+                                  : 'bg-amber-500'
+                              )}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <Link
+                              href={`/students?id=${student.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenStudentDrawer(student.id);
+                              }}
+                              className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                            >
+                              {student.name}
+                            </Link>
+                            <span className="text-[11px] text-slate-400">
+                              {student.isAdult ? 'Студент (18+)' : 'Школьник'}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. Родитель и правые кнопки связи */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-between gap-2 max-w-[260px]">
+                          <div className="min-w-0">
+                            {student.parentId ? (
+                              <Link
+                                href={`/parents/${student.parentId}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs font-medium text-slate-800 hover:text-blue-600 truncate block"
+                              >
+                                {student.parentName} <span className="text-slate-400 font-normal">({student.parentRelation})</span>
+                              </Link>
+                            ) : (
+                              <span className="text-xs text-slate-400 font-medium">Самостоятельно (18+)</span>
+                            )}
+                            <a
+                              href={`tel:${(student.parentPhone || '').replace(/\D/g, '')}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-slate-500 hover:text-slate-800 block"
+                            >
+                              {student.parentPhone}
+                            </a>
+                          </div>
+
+                          {student.parentPhone && student.parentPhone !== '—' && (
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <a
+                                href={`https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Написать в WhatsApp"
+                                className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <WhatsAppIcon className="w-4 h-4" />
+                              </a>
+                              <a
+                                href={student.telegram ? `https://t.me/${student.telegram.replace('@', '')}` : `https://wa.me/${(student.parentPhone || '').replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Написать в Telegram"
+                                className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <TelegramIcon className="w-4 h-4" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 3. Группа / Урок с Popover для 2+ курсов */}
+                      <td className="py-3 px-4">
+                        {student.groups.length > 0 ? (
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="min-w-0">
+                              <Link
+                                href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs font-semibold text-blue-600 hover:underline block truncate max-w-[160px]"
+                              >
+                                {student.groups[0].name}
+                              </Link>
+                              <span className="text-[11px] text-slate-400 block mt-0.5">
+                                ↳ {student.groups[0].nextLessonDate || '21 сен, 18:45'}
+                              </span>
+                            </div>
+
+                            {/* Badge & Popover for 2+ courses */}
+                            {student.groups.length > 1 && (
+                              <div
+                                className="relative shrink-0"
+                                onMouseEnter={() => setActiveCoursePopoverId(student.id)}
+                                onMouseLeave={() => setActiveCoursePopoverId(null)}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-1.5 py-0.5 rounded cursor-help font-semibold transition-colors">
+                                  +{student.groups.length - 1} курс
+                                </span>
+
+                                {/* Popover */}
+                                {activeCoursePopoverId === student.id && (
+                                  <div className="absolute left-0 top-6 z-50 w-64 bg-slate-900 text-white p-3 rounded-xl shadow-2xl space-y-2 text-xs animate-in fade-in duration-150">
+                                    <span className="text-[10px] font-bold uppercase text-slate-400 block border-b border-slate-800 pb-1">
+                                      Дополнительные курсы ({student.groups.length - 1})
+                                    </span>
+                                    {student.groups.slice(1).map((g) => (
+                                      <div key={g.id} className="space-y-0.5">
+                                        <div className="font-bold text-blue-300">{g.name}</div>
+                                        <div className="text-[11px] text-slate-300">
+                                          {g.schedule} • {g.room}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400">
+                                          Учитель: {g.teacherName}
+                                        </div>
+                                        <Link
+                                          href={`/calendar/lessons/${g.nextLessonId || g.id}`}
+                                          className="text-[10px] text-blue-400 hover:underline block pt-0.5 font-semibold"
+                                        >
+                                          Перейти к уроку →
+                                        </Link>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-slate-400 cursor-default select-none"
+                          >
+                            — Без группы
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 4. Преподаватель (с модалкой карточки) */}
+                      <td className="py-3 px-4">
+                        {student.teacherId ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenTeacherModal(student.teacherId!, student.teacherName);
+                            }}
+                            className="text-xs font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors text-left cursor-pointer"
+                          >
+                            👨‍🏫 {student.teacherName}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+
+                      {/* 5. Посещаемость (Cell Affordance -> Attendance Tab) */}
+                      <td
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenStudentDrawer(student.id, 'attendance');
+                        }}
+                        title="Открыть журнал посещаемости"
+                        className="py-3 px-4 hover:bg-slate-100/80 cursor-pointer transition-colors"
+                      >
+                        <span
+                          className={cn(
+                            'text-xs font-bold',
+                            student.attendanceRate >= 90
+                              ? 'text-emerald-600'
+                              : student.attendanceRate >= 75
+                              ? 'text-amber-600'
+                              : 'text-rose-600'
+                          )}
+                        >
+                          {student.attendanceRate}%
+                        </span>
+                      </td>
+
+                      {/* 6. Оплата и баланс (Cell Affordance -> Finance Tab) */}
+                      <td
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenStudentDrawer(student.id, 'finance');
+                        }}
+                        title="Открыть детализацию счета (Курс конвертации: 1 € = 100 ₽)"
+                        className="py-3 px-4 whitespace-nowrap hover:bg-slate-100/80 cursor-pointer transition-colors"
+                      >
+                        {student.financeStatus === 'active_sub' && (
+                          <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            ✓ Оплачено до {student.paidUntil || '28.09.2026'}
+                          </span>
+                        )}
+                        {student.financeStatus === 'deposit' && (
+                          <div>
+                            <div className="text-xs font-bold text-emerald-600">+{student.balanceEur} €</div>
+                            <div className="text-[10px] text-slate-400 font-medium">
+                              {student.balanceRub?.toLocaleString('ru-RU')} ₽
+                            </div>
+                          </div>
+                        )}
+                        {student.financeStatus === 'debt' && (
+                          <div>
+                            <div className="text-xs font-bold text-rose-600">-{student.debtEur} €</div>
+                            <div className="text-[10px] text-rose-500 font-medium">
+                              -{student.debtRub?.toLocaleString('ru-RU')} ₽
+                            </div>
+                          </div>
+                        )}
+                        {student.financeStatus === 'trial' && (
+                          <span className="inline-flex items-center text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                            Пробный урок
+                          </span>
+                        )}
+                      </td>
+
+                      {statusFilter === 'deleted' && (
+                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              restoreStudent(student.id);
+                              refreshStudents();
+                              toast.success(`Ученик ${student.name} восстановлен`);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Восстановить
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Floating Bulk Operations Bar */}
+      <BulkActionsBar
+        selectedCount={selectedIds.length}
+        onWhatsAppBroadcast={handleBulkWhatsApp}
+        onChangeTeacher={handleBulkChangeTeacher}
+        onExport={handleBulkExport}
+        onClearSelection={() => setSelectedIds([])}
+      />
 
       {/* Create Student Modal */}
       <CreateStudentModal
@@ -648,11 +972,19 @@ function StudentsContent() {
         onCreated={handleStudentCreated}
       />
 
-      {/* Teacher Quick View Modal */}
+      {/* Student Drawer with Deep Link & Initial Tab support */}
+      <StudentDrawer
+        isOpen={Boolean(activeStudentIdFromUrl)}
+        studentData={activeDrawerStudentObj}
+        initialTab={activeTabFromUrl}
+        onClose={handleCloseStudentDrawer}
+      />
+
+      {/* Teacher Quick View Modal with Deep Link support */}
       <TeacherQuickViewModal
-        teacherId={selectedTeacherId}
-        teacherName={selectedTeacherName}
-        onClose={() => setSelectedTeacherId(null)}
+        teacherId={activeTeacherIdFromUrl}
+        teacherName={activeTeacherObj?.teacherName}
+        onClose={handleCloseTeacherModal}
       />
     </div>
   );

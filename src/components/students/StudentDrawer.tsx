@@ -5,12 +5,20 @@ import { useToast } from '@/context/ToastContext';
 interface StudentDrawerProps {
   isOpen: boolean;
   studentData: any;
+  initialTab?: 'profile' | 'learning' | 'finance' | 'attendance';
   onClose: () => void;
 }
 
-export function StudentDrawer({ isOpen, studentData, onClose }: StudentDrawerProps) {
+export function StudentDrawer({ isOpen, studentData, initialTab = 'profile', onClose }: StudentDrawerProps) {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'profile' | 'learning' | 'finance'>('profile');
+  const targetTab = initialTab === 'attendance' ? 'learning' : initialTab;
+  const [activeTab, setActiveTab] = React.useState<'profile' | 'learning' | 'finance'>(targetTab);
+
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab === 'attendance' ? 'learning' : initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen || !studentData) return null;
 
