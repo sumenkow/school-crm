@@ -33,6 +33,7 @@ import {
   CheckSquare,
   Sparkles,
   ChevronRight,
+  ChevronDown,
   UserCheck,
   FileText,
   Check,
@@ -56,6 +57,146 @@ import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { formatAgeAndGrade, formatGradeRussian, formatBirthDate } from '@/lib/data/studentAgeHelper';
 import type { Task } from '@/types';
 import type { FullTaskData } from '@/lib/data/mockData';
+
+function parseLedgerTimestamp(dateStr: string): number {
+  if (!dateStr) return 0;
+  let cleaned = dateStr.trim();
+  let timeStr = '12:00';
+  if (cleaned.includes(',')) {
+    const parts = cleaned.split(',');
+    cleaned = parts[0].trim();
+    timeStr = parts[1].trim();
+  }
+  if (cleaned.includes('.')) {
+    const dParts = cleaned.split('.');
+    if (dParts.length === 3) {
+      const year = dParts[2].length === 4 ? dParts[2] : `20${dParts[2]}`;
+      const month = dParts[1].padStart(2, '0');
+      const day = dParts[0].padStart(2, '0');
+      const iso = `${year}-${month}-${day}T${timeStr.length === 5 ? timeStr + ':00' : '12:00:00'}`;
+      const ts = new Date(iso).getTime();
+      if (!isNaN(ts)) return ts;
+    }
+  }
+  const ts = new Date(dateStr).getTime();
+  return isNaN(ts) ? 0 : ts;
+}
+
+export function getOverdueDays(dueDateStr?: string): number {
+  if (!dueDateStr) return 0;
+  let due: Date | null = null;
+  if (dueDateStr.includes('.')) {
+    const parts = dueDateStr.split('.').map((p) => p.trim());
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      let year = parseInt(parts[2], 10);
+      if (year < 100) year += 2000;
+      due = new Date(year, month, day);
+    }
+  } else if (dueDateStr.includes('-')) {
+    due = new Date(dueDateStr);
+  }
+  if (!due || isNaN(due.getTime())) return 0;
+
+  const now = new Date();
+  const baseline = new Date(2026, 8, 19); // 19.09.2026
+  const compareDate = now.getTime() > baseline.getTime() ? now : baseline;
+
+  compareDate.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+
+  const diffMs = compareDate.getTime() - due.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
+}
+
+export interface LedgerEventItem {
+  id: string;
+  type: 'deposit' | 'deduction';
+  date: string;
+  timestamp: number;
+  description: string;
+  method: string;
+  amountEUR: number;
+  runningBalanceEUR: number;
+}
+
+export function buildChronologicalLedger(student: FullStudentData, customPricePerLesson: number): LedgerEventItem[] {
+  const rawPayments = (student.finance?.payments || []).map((p, idx) => ({
+    id: `pay_${p.id || idx}`,
+    type: 'deposit' as const,
+    date: p.date ? (p.date.includes(',') ? p.date : `${p.date}, 10:00`) : '01.09.2026, 10:00',
+    description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
+    method: p.method || 'Карта / СБП',
+    amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
+  }));
+
+  const rawDeductions = (student.attendanceStats?.history || [])
+    .filter((h) => h.status === 'present' || h.status === 'absent')
+    .map((h, idx) => {
+      const isManual = (h as any).isManualAdmin || (h as any).enteredBy === 'admin';
+      const teacherName = (h as any).teacherName || (h as any).author || student.groups?.[0]?.teacherName || 'Мария Иванова';
+      const initiator = isManual ? `Администратор: ${(h as any).author || 'Администрация'}` : `Преподаватель: ${teacherName}`;
+
+      const lessonDateStr = h.date ? (h.date.includes(',') ? h.date : `${h.date}, 18:45`) : '08.09.2026, 18:45';
+
+      return {
+        id: `ded_${idx}`,
+        type: 'deduction' as const,
+        date: lessonDateStr,
+        description: `Списание за занятие от ${h.date || 'занятие'}: «${h.topic || 'Урок'}» (${h.groupName || student.groups?.[0]?.name || 'Группа'})`,
+        method: initiator,
+        amountEUR: customPricePerLesson || 12,
+      };
+    });
+
+  let allEvents = [...rawPayments, ...rawDeductions];
+
+  if (allEvents.length === 0) {
+    allEvents = [
+      {
+        id: 'sample_1',
+        type: 'deposit',
+        date: '01.09.2026, 10:00',
+        description: 'Пополнение баланса предоплаты',
+        method: 'Карта / СБП',
+        amountEUR: 120,
+      },
+      {
+        id: 'sample_2',
+        type: 'deduction',
+        date: '08.09.2026, 18:45',
+        description: `Списание за занятие от 08.09.2026: «Разговорный клуб» (${student.groups?.[0]?.name || 'English B1'})`,
+        method: `Преподаватель: ${student.groups?.[0]?.teacherName || 'Мария Иванова'}`,
+        amountEUR: customPricePerLesson || 12,
+      },
+    ];
+  }
+
+  // 1. Sort CHRONOLOGICALLY ASCENDING (oldest to newest) to compute running balance
+  allEvents.sort((a, b) => parseLedgerTimestamp(a.date) - parseLedgerTimestamp(b.date));
+
+  // 2. Compute running balance forward in time
+  let currentBalance = 0;
+  const processed = allEvents.map((ev) => {
+    if (ev.type === 'deposit') {
+      currentBalance += ev.amountEUR;
+    } else {
+      currentBalance -= ev.amountEUR;
+    }
+    return {
+      ...ev,
+      timestamp: parseLedgerTimestamp(ev.date),
+      runningBalanceEUR: Math.max(0, currentBalance),
+    };
+  });
+
+  // 3. Sort CHRONOLOGICALLY DESCENDING (newest first) for UI display and email statement
+  processed.sort((a, b) => b.timestamp - a.timestamp);
+
+  return processed;
+}
 
 export default function StudentDetailsPage() {
   const params = useParams();
@@ -269,6 +410,11 @@ export default function StudentDetailsPage() {
   // Selected parent and task for modal window
   const [selectedParentForModal, setSelectedParentForModal] = useState<any | null>(null);
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<Task | null>(null);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [taskModalTab, setTaskModalTab] = useState<'details' | 'reschedule'>('details');
+  const [taskOutcomeComment, setTaskOutcomeComment] = useState('');
+  const [rescheduleNewDate, setRescheduleNewDate] = useState('');
+  const [rescheduleReason, setRescheduleReason] = useState('');
 
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
@@ -752,39 +898,28 @@ export default function StudentDetailsPage() {
     if (!representativeEmail || isSendingEmailStatement) return;
     setIsSendingEmailStatement(true);
 
-    const periodLabel = statementPeriod === 'current_month' ? 'За текущий месяц' : 'За всё время обучения';
+    const courseName = student.groups?.[0]?.courseName || student.groups?.[0]?.name || 'Общий курс';
+    const periodLabel = statementPeriod === 'current_month' ? 'Сентябрь 2026' : 'За всё время';
+
     const depositBalanceEUR = student.finance?.deposit?.balance || 120;
     const overdueDebtEUR = (student.finance?.payments || [])
       .filter((p) => p.status === 'overdue')
       .reduce((sum, p) => sum + (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0), 0);
 
-    // Prepare ledger items for email
-    const rawPayments = (student.finance?.payments || []).map((p, idx) => ({
-      id: `pay_${p.id || idx}`,
-      type: 'deposit' as const,
-      date: p.date || '15.09.2026',
-      description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
-      method: p.method || 'Карта / СБП',
-      amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
-      balanceEUR: depositBalanceEUR,
-    }));
-
-    const rawDeductions = (student.attendanceStats?.history || [])
-      .filter((h) => h.status === 'present' || h.status === 'absent')
-      .map((h, idx) => ({
-        id: `att_${idx}`,
-        type: 'deduction' as const,
-        date: h.date,
-        description: `Списание за занятие: ${h.groupName || 'Групповое занятие'} (${h.topic || 'Проведено'})`,
-        method: 'Автоматически по уроку',
-        amountEUR: -(customPricePerLesson || 12),
-        balanceEUR: Math.max(0, depositBalanceEUR - (idx + 1) * (customPricePerLesson || 12)),
-      }));
-
-    const allItems = [...rawPayments, ...rawDeductions];
+    // Prepare chronological ledger items for email
+    const ledgerItems = buildChronologicalLedger(student, customPricePerLesson || 12);
     const filteredLedger = statementPeriod === 'current_month'
-      ? allItems.slice(0, 15)
-      : allItems;
+      ? ledgerItems.slice(0, 15)
+      : ledgerItems;
+
+    const emailLedgerItems = filteredLedger.map((item) => ({
+      date: item.date,
+      description: item.description,
+      method: item.method,
+      amountEUR: item.type === 'deposit' ? item.amountEUR : -item.amountEUR,
+      balanceEUR: item.runningBalanceEUR,
+      type: item.type,
+    }));
 
     try {
       const response = await fetch('/api/reports/statement/send', {
@@ -795,11 +930,12 @@ export default function StudentDetailsPage() {
           representativeName,
           studentName: `${student.firstName} ${student.lastName}`,
           periodLabel,
+          courseName,
           depositBalance: depositBalanceEUR,
           debtBalance: overdueDebtEUR,
           currencySymbol: '€',
-          ledgerItems: filteredLedger,
-          senderName: userName || 'Администрация школы',
+          ledgerItems: emailLedgerItems,
+          senderName: 'You Europe',
         }),
       });
 
@@ -961,6 +1097,76 @@ export default function StudentDetailsPage() {
       toast.success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
     } catch (err) {
       console.error('Failed to update task status:', err);
+    }
+  };
+
+  const handleCompleteTaskWithOutcome = async (taskId: string, outcome: string) => {
+    const perfUser = userName || 'Администратор';
+    const nowIso = new Date().toISOString();
+
+    setStudent((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              status: 'done' as const,
+              completedAt: nowIso,
+              completedBy: perfUser,
+              result: outcome.trim() || undefined,
+            }
+          : t
+      ),
+    }));
+
+    try {
+      await updateUnifiedTaskStatus(taskId, 'done', {
+        comment: outcome.trim() || 'Результат зафиксирован',
+        performedBy: perfUser,
+      });
+      toast.success('Результат задачи зафиксирован!');
+      setSelectedTaskForModal(null);
+    } catch (err) {
+      console.error('Failed to complete task with outcome:', err);
+      toast.error('Ошибка сохранения результата задачи');
+    }
+  };
+
+  const handleRescheduleTask = async (taskId: string, newDueDate: string, reason: string) => {
+    if (!newDueDate) {
+      toast.error('Укажите новую дату выполнения');
+      return;
+    }
+    if (!reason.trim()) {
+      toast.error('Укажите причину переноса');
+      return;
+    }
+    const perfUser = userName || 'Администратор';
+
+    setStudent((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              dueDate: newDueDate,
+              rescheduledReason: reason.trim(),
+            }
+          : t
+      ),
+    }));
+
+    try {
+      await updateUnifiedTaskStatus(taskId, 'open', {
+        comment: reason.trim(),
+        newDueDate,
+        performedBy: perfUser,
+      });
+      toast.success('Срок задачи перенесен!');
+      setSelectedTaskForModal(null);
+    } catch (err) {
+      console.error('Failed to reschedule task:', err);
+      toast.error('Ошибка переноса срока задачи');
     }
   };
 
@@ -2103,62 +2309,13 @@ export default function StudentDetailsPage() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {(() => {
-                  // Build Ledger rows from payments & conducted lessons
-                  const rawPayments = (student.finance?.payments || []).map((p, idx) => ({
-                    id: `pay_${p.id || idx}`,
-                    type: 'deposit' as const,
-                    date: p.date || '15.09.2026, 14:30',
-                    description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
-                    method: p.method || 'Карта / СБП',
-                    amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
-                  }));
+                  const ledgerItems = buildChronologicalLedger(student, customPricePerLesson);
 
-                  const rawDeductions = (student.attendanceStats?.history || [])
-                    .filter((h) => h.status === 'present' || h.status === 'absent')
-                    .map((h, idx) => ({
-                      id: `ded_${idx}`,
-                      type: 'deduction' as const,
-                      date: `${h.date}, 18:00`,
-                      description: `Списание за урок: «${h.topic || 'Занятие'}» (${h.groupName})`,
-                      method: 'Автоматически по уроку',
-                      amountEUR: customPricePerLesson,
-                    }));
-
-                  let allEvents = [...rawPayments, ...rawDeductions];
-
-                  // If no records, provide sample baseline transactions
-                  if (allEvents.length === 0) {
-                    allEvents = [
-                      {
-                        id: 'sample_1',
-                        type: 'deposit',
-                        date: '01.09.2026, 10:00',
-                        description: 'Пополнение баланса предоплаты',
-                        method: 'Карта / СБП',
-                        amountEUR: 120,
-                      },
-                      {
-                        id: 'sample_2',
-                        type: 'deduction',
-                        date: '08.09.2026, 18:00',
-                        description: 'Списание за урок (Английский разговорный)',
-                        method: 'Автоматически по уроку',
-                        amountEUR: customPricePerLesson,
-                      },
-                    ];
-                  }
-
-                  // Sort newest first
-                  allEvents.sort((a, b) => b.id.localeCompare(a.id));
-
-                  // Apply filter
-                  const filtered = allEvents.filter((ev) => {
+                  const filtered = ledgerItems.filter((ev) => {
                     if (ledgerFilter === 'deposits') return ev.type === 'deposit';
                     if (ledgerFilter === 'deductions') return ev.type === 'deduction';
                     return true;
                   });
-
-                  let runningBalance = student.finance?.deposit?.balance || 120;
 
                   return filtered.map((ev) => {
                     const isPlus = ev.type === 'deposit';
@@ -2170,12 +2327,14 @@ export default function StudentDetailsPage() {
                         <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 whitespace-nowrap">{ev.date}</td>
                         <td className="px-3 py-3 font-medium text-slate-800">{ev.description}</td>
                         <td className="px-3 py-3 text-slate-500 whitespace-nowrap">
-                          {ev.method === 'Автоматически по уроку' ? (
+                          {ev.type === 'deduction' ? (
                             <span className="rounded-md bg-purple-50 text-purple-700 px-2 py-0.5 text-[10px] font-semibold border border-purple-100">
-                              ⚡ Автоматически по уроку
+                              ⚡ {ev.method}
                             </span>
                           ) : (
-                            ev.method
+                            <span className="rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-semibold border border-emerald-100">
+                              💳 {ev.method}
+                            </span>
                           )}
                         </td>
                         <td className="px-3 py-3 text-right font-bold whitespace-nowrap">
@@ -2185,7 +2344,7 @@ export default function StudentDetailsPage() {
                           <span className="text-[10px] text-slate-400 font-normal block">{displayAmtRUB}</span>
                         </td>
                         <td className="py-3 pl-3 pr-4 text-right font-semibold text-slate-800 whitespace-nowrap">
-                          {runningBalance} €
+                          {ev.runningBalanceEUR} €
                         </td>
                       </tr>
                     );
@@ -2331,60 +2490,173 @@ export default function StudentDetailsPage() {
       {activeTab === 'tasks' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900">Задачи по ученику и семье</h3>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Задачи по ученику и семье</h3>
+              <p className="text-xs text-slate-500">Управление оперативными задачами и фиксация результатов</p>
+            </div>
             <button
               type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Новая задача
             </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs divide-y divide-slate-100">
-            {student.tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => setSelectedTaskForModal(task)}
-                className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-start gap-3">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleTask(task.id);
-                    }}
-                    className="mt-0.5 text-slate-400 hover:text-blue-600"
-                    title={task.status === 'done' ? 'Отметить как невыполненную' : 'Отметить как выполненную'}
-                  >
-                    {task.status === 'done' ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                    ) : (
-                      <div className="h-4 w-4 rounded border-2 border-slate-300 hover:border-blue-500" />
+          {(() => {
+            const allTasks = student.tasks || [];
+            const activeTasks = allTasks.filter((t) => t.status !== 'done');
+            const completedTasks = allTasks.filter((t) => t.status === 'done');
+
+            return (
+              <div className="space-y-3">
+                {/* Active Tasks List */}
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-xs divide-y divide-slate-100 overflow-hidden">
+                  {activeTasks.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-xs">
+                      Активных задач нет. Все задачи выполнены!
+                    </div>
+                  ) : (
+                    activeTasks.map((task) => {
+                      const overdueDays = getOverdueDays(task.dueDate);
+                      const isOverdue = overdueDays > 0;
+
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => {
+                            setSelectedTaskForModal(task);
+                            setTaskModalTab('details');
+                            setRescheduleNewDate(task.dueDate || '');
+                            setTaskOutcomeComment('');
+                            setRescheduleReason('');
+                          }}
+                          className={cn(
+                            'p-4 flex items-center justify-between transition-colors cursor-pointer group',
+                            isOverdue ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50'
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTask(task.id);
+                              }}
+                              className="mt-0.5 text-slate-400 hover:text-emerald-600 transition-colors"
+                              title="Отметить как выполненную"
+                            >
+                              <div className="h-4 w-4 rounded border-2 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50" />
+                            </button>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                  {task.title}
+                                </h4>
+                                {isOverdue && (
+                                  <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold border border-rose-200 flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Просрочено на {overdueDays} дн.
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                                <span>
+                                  Срок:{' '}
+                                  <strong className={cn(isOverdue ? 'text-rose-600 font-bold' : 'text-slate-700')}>
+                                    {task.dueDate}
+                                  </strong>
+                                </span>
+                                <span>•</span>
+                                <span>Ответственный: <strong>{task.assignedTo}</strong></span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <span className={cn(
+                              'rounded-full px-2.5 py-0.5 text-[10px] font-semibold border',
+                              task.priority === 'high'
+                                ? 'bg-rose-100 text-rose-800 border-rose-200'
+                                : task.priority === 'medium'
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            )}>
+                              {task.priority === 'high' ? 'Срочно' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Collapsible Completed Tasks Spoiler */}
+                {completedTasks.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/60 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowCompletedTasks(!showCompletedTasks)}
+                      className="w-full px-4 py-3 flex items-center justify-between text-xs font-semibold text-slate-600 hover:bg-slate-100/70 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <span>Выполненные задачи ({completedTasks.length})</span>
+                      </div>
+                      <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform duration-200', showCompletedTasks && 'rotate-180')} />
+                    </button>
+
+                    {showCompletedTasks && (
+                      <div className="divide-y divide-slate-200/60 border-t border-slate-200/60 bg-white">
+                        {completedTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            onClick={() => {
+                              setSelectedTaskForModal(task);
+                              setTaskModalTab('details');
+                              setRescheduleNewDate(task.dueDate || '');
+                              setTaskOutcomeComment('');
+                              setRescheduleReason('');
+                            }}
+                            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group opacity-75 hover:opacity-100"
+                          >
+                            <div className="flex items-start gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTask(task.id);
+                                }}
+                                className="mt-0.5 text-emerald-500 hover:text-slate-400 transition-colors"
+                                title="Вернуть в работу"
+                              >
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                              </button>
+                              <div>
+                                <h4 className="text-sm font-medium text-slate-500 line-through">
+                                  {task.title}
+                                </h4>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  Выполнено: {task.completedAt ? new Date(task.completedAt).toLocaleDateString('ru-RU') : 'Ранее'}
+                                  {task.completedBy ? ` · ${task.completedBy}` : ` · ${task.assignedTo}`}
+                                  {task.result && <span className="block text-slate-600 font-normal italic mt-0.5">«{task.result}»</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="rounded-full bg-slate-100 text-slate-600 px-2.5 py-0.5 text-[10px] font-semibold border border-slate-200">
+                              Выполнено
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
-                  </button>
-                  <div>
-                    <h4 className={cn('text-sm font-semibold group-hover:text-blue-600 transition-colors', task.status === 'done' ? 'line-through text-slate-400' : 'text-slate-900')}>
-                      {task.title}
-                    </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Срок: <strong>{task.dueDate}</strong> • Ответственный: {task.assignedTo}
-                    </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn(
-                    'rounded-full px-2.5 py-0.5 text-[10px] font-semibold',
-                    task.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-                  )}>
-                    {task.priority === 'high' ? 'Срочно' : 'Средний'}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
-                </div>
+                )}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2860,17 +3132,22 @@ export default function StudentDetailsPage() {
         </div>
       )}
 
-      {/* TASK DETAILS MODAL (Opens on clicking task card) */}
+      {/* TASK DETAILS MODAL */}
       {selectedTaskForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={cn(
-                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold',
-                  selectedTaskForModal.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                  selectedTaskForModal.priority === 'high'
+                    ? 'bg-rose-100 text-rose-800 border-rose-200'
+                    : selectedTaskForModal.priority === 'medium'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-slate-100 text-slate-700 border-slate-200'
                 )}>
-                  {selectedTaskForModal.priority === 'high' ? 'Срочная задача' : 'Обычная задача'}
+                  {selectedTaskForModal.priority === 'high' ? 'Срочно' : selectedTaskForModal.priority === 'medium' ? 'Средний' : 'Низкий'}
                 </span>
                 <span className={cn(
                   'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
@@ -2878,6 +3155,12 @@ export default function StudentDetailsPage() {
                 )}>
                   {selectedTaskForModal.status === 'done' ? 'Выполнена' : 'В работе'}
                 </span>
+                {selectedTaskForModal.status !== 'done' && getOverdueDays(selectedTaskForModal.dueDate) > 0 && (
+                  <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[10px] font-bold border border-rose-200 flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Просрочено на {getOverdueDays(selectedTaskForModal.dueDate)} дн.
+                  </span>
+                )}
               </div>
               <button
                 type="button"
@@ -2888,46 +3171,162 @@ export default function StudentDetailsPage() {
               </button>
             </div>
 
+            {/* Task Content */}
             <div className="mt-4 space-y-3.5 text-xs">
               <div>
                 <h3 className="text-base font-bold text-slate-900">{selectedTaskForModal.title}</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Ученик: {student.firstName} {student.lastName}</p>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Срок выполнения:</span>
-                  <span className="font-bold text-slate-800">{selectedTaskForModal.dueDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Ответственный:</span>
-                  <span className="font-semibold text-slate-800">{selectedTaskForModal.assignedTo}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Тип задачи:</span>
-                  <span className="font-medium text-slate-700">{selectedTaskForModal.taskType || 'Звонок / Согласование'}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
+              {/* Navigation Tabs in Modal */}
+              <div className="flex border-b border-slate-200">
                 <button
                   type="button"
-                  onClick={() => {
-                    handleToggleTask(selectedTaskForModal.id);
-                    setSelectedTaskForModal((prev) => prev ? { ...prev, status: prev.status === 'done' ? 'open' : 'done' } : null);
-                    toast.success('Статус задачи обновлен!');
-                  }}
+                  onClick={() => setTaskModalTab('details')}
                   className={cn(
-                    'flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors',
-                    selectedTaskForModal.status === 'done'
-                      ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                    'px-3 py-2 text-xs font-semibold border-b-2 transition-colors',
+                    taskModalTab === 'details'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
                   )}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {selectedTaskForModal.status === 'done' ? 'Вернуть в работу' : 'Отметить как выполненную'}
+                  Информация / Результат
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskModalTab('reschedule')}
+                  className={cn(
+                    'px-3 py-2 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1',
+                    taskModalTab === 'reschedule'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  Перенести срок
                 </button>
               </div>
+
+              {/* TAB CONTENT: DETAILS & OUTCOME */}
+              {taskModalTab === 'details' && (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-100 space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Срок выполнения:</span>
+                      <span className={cn('font-bold', getOverdueDays(selectedTaskForModal.dueDate) > 0 && selectedTaskForModal.status !== 'done' ? 'text-rose-600' : 'text-slate-800')}>
+                        {selectedTaskForModal.dueDate}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Ответственный:</span>
+                      <span className="font-semibold text-slate-800">{selectedTaskForModal.assignedTo}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Тип задачи:</span>
+                      <span className="font-medium text-slate-700">{selectedTaskForModal.taskType || 'Звонок / Согласование'}</span>
+                    </div>
+                    {selectedTaskForModal.result && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <span className="text-slate-500 block mb-0.5 font-semibold">Зафиксированный результат:</span>
+                        <p className="text-slate-800 bg-white p-2 rounded-lg border border-slate-200 font-normal">
+                          {selectedTaskForModal.result}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Outcome Input Section */}
+                  {selectedTaskForModal.status !== 'done' && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <label className="block font-semibold text-slate-700 text-xs">
+                        Завершить с результатом (комментарий):
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={taskOutcomeComment}
+                        onChange={(e) => setTaskOutcomeComment(e.target.value)}
+                        placeholder="Опишите результат выполнения (например: «Родитель подтвердил оплату», «Дозвонились, перенесли урок»)..."
+                        className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-blue-500 focus:outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteTaskWithOutcome(selectedTaskForModal.id, taskOutcomeComment)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-xs"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Завершить с результатом
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleToggleTask(selectedTaskForModal.id);
+                        setSelectedTaskForModal(null);
+                      }}
+                      className={cn(
+                        'w-full inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors',
+                        selectedTaskForModal.status === 'done'
+                          ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                          : 'border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      )}
+                    >
+                      {selectedTaskForModal.status === 'done' ? 'Вернуть в работу' : 'Быстрое закрытие без результата'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB CONTENT: RESCHEDULE */}
+              {taskModalTab === 'reschedule' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Новый срок выполнения
+                    </label>
+                    <input
+                      type="text"
+                      value={rescheduleNewDate}
+                      onChange={(e) => setRescheduleNewDate(e.target.value)}
+                      placeholder="25.09.2026"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Причина переноса срока <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={rescheduleReason}
+                      onChange={(e) => setRescheduleReason(e.target.value)}
+                      placeholder="Укажите причину переноса (например: «Родитель просил перезвонить на следующей неделе»)..."
+                      className="w-full rounded-xl border border-slate-200 p-2.5 text-xs focus:border-blue-500 focus:outline-hidden"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setTaskModalTab('details')}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRescheduleTask(selectedTaskForModal.id, rescheduleNewDate, rescheduleReason)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs"
+                    >
+                      Сохранить новый срок
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

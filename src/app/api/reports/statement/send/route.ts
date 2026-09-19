@@ -8,11 +8,12 @@ export async function POST(request: Request) {
       representativeName,
       studentName,
       periodLabel,
+      courseName = 'Общий курс',
       depositBalance,
       debtBalance,
       currencySymbol = '€',
       ledgerItems = [],
-      senderName = 'Администрация школы',
+      senderName = 'You Europe',
     } = body;
 
     if (!toEmail || typeof toEmail !== 'string' || !toEmail.includes('@')) {
@@ -23,10 +24,11 @@ export async function POST(request: Request) {
     }
 
     const resendApiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'School CRM <onboarding@resend.dev>';
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'You Europe <onboarding@resend.dev>';
 
-    // Build responsive HTML statement email
-    const emailSubject = `💳 Финансовая выписка по обучению (${studentName || 'Ученик'})`;
+    // Build responsive HTML statement email according to spec:
+    // Subject format: YouEurope: Финансовая выписка обучение ([Отчетный месяц], [Название курса])
+    const emailSubject = `YouEurope: Финансовая выписка обучение (${periodLabel || 'За всё время'}, ${courseName})`;
 
     const formattedDeposit = typeof depositBalance === 'number' ? `${depositBalance.toLocaleString('ru-RU')} ${currencySymbol}` : `${depositBalance || 0} ${currencySymbol}`;
     const formattedDebt = typeof debtBalance === 'number' ? `${debtBalance.toLocaleString('ru-RU')} ${currencySymbol}` : `${debtBalance || 0} ${currencySymbol}`;
@@ -64,15 +66,15 @@ export async function POST(request: Request) {
             
             <!-- Header -->
             <div style="background-color: #0f172a; padding: 24px 32px; color: #ffffff;">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: #ffffff;">Финансовая выписка по обучению</h1>
-              <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Ученик: <strong style="color: #ffffff;">${studentName || 'Ученик'}</strong> • Период: <strong style="color: #e2e8f0;">${periodLabel || 'За всё время'}</strong></p>
+              <h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: #ffffff;">You Europe — Финансовая выписка по обучению</h1>
+              <p style="margin: 6px 0 0 0; font-size: 13px; color: #94a3b8;">Ученик: <strong style="color: #ffffff;">${studentName || 'Ученик'}</strong> • Курс: <strong style="color: #e2e8f0;">${courseName}</strong> • Период: <strong style="color: #e2e8f0;">${periodLabel || 'За всё время'}</strong></p>
             </div>
 
             <!-- Body -->
             <div style="padding: 24px 32px;">
               <p style="font-size: 14px; margin-top: 0; color: #334155;">Уважаемый(ая) <strong>${representativeName || 'Родитель'}</strong>,</p>
               <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
-                Направляем вам подробный отчет о движении денежных средств и состоянии личного депозита по обучению.
+                Направляем вам подробную финансовую выписку о движении денежных средств и состоянии баланса по обучению в школе You Europe.
               </p>
 
               <!-- Summary Cards -->
@@ -94,9 +96,9 @@ export async function POST(request: Request) {
               <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
                   <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 12px; color: #64748b;">
-                    <th style="padding: 10px 12px;">Дата</th>
-                    <th style="padding: 10px 12px;">Операция</th>
-                    <th style="padding: 10px 12px;">Способ</th>
+                    <th style="padding: 10px 12px;">Дата и время</th>
+                    <th style="padding: 10px 12px;">Операция и занятие</th>
+                    <th style="padding: 10px 12px;">Способ / Инициатор</th>
                     <th style="padding: 10px 12px; text-align: right;">Сумма</th>
                     <th style="padding: 10px 12px; text-align: right;">Остаток</th>
                   </tr>
@@ -109,8 +111,8 @@ export async function POST(request: Request) {
 
             <!-- Footer -->
             <div style="background-color: #f8fafc; padding: 16px 32px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #94a3b8;">
-              <p style="margin: 0;">С уважением, <strong>${senderName}</strong></p>
-              <p style="margin: 4px 0 0 0; font-size: 11px; color: #cbd5e1;">Данное письмо сгенерировано автоматически из CRM системы школы.</p>
+              <p style="margin: 0; font-size: 13px; font-weight: 600; color: #475569;">С уважением, <strong>You Europe</strong></p>
+              <p style="margin: 4px 0 0 0; font-size: 11px; color: #cbd5e1;">Данная выписка сгенерирована автоматически из CRM-системы You Europe.</p>
             </div>
 
           </div>

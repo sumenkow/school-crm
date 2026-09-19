@@ -166,13 +166,19 @@ export async function updateUnifiedTaskStatus(
   if (!target) return null;
 
   const oldStatus = target.status;
+  const performerName = options?.performedBy || target.assignedTo || 'Администратор';
+
   const updatedTask: FullTaskData = {
     ...target,
     status: newStatus,
     dueDate: options?.newDueDate || target.dueDate,
     dueDateFormatted: options?.newDueDate
-      ? new Date(options.newDueDate).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
+      ? (options.newDueDate.includes('-') ? options.newDueDate.split('-').reverse().join('.') : options.newDueDate)
       : target.dueDateFormatted,
+    completedAt: newStatus === 'done' ? new Date().toISOString() : (newStatus === 'open' ? undefined : target.completedAt),
+    completedBy: newStatus === 'done' ? performerName : (newStatus === 'open' ? undefined : target.completedBy),
+    result: options?.comment && newStatus === 'done' ? options.comment : target.result,
+    rescheduledReason: options?.newDueDate && options?.comment ? options.comment : (target as any).rescheduledReason,
   };
 
   // 1. Save to Task Storage
@@ -187,7 +193,6 @@ export async function updateUnifiedTaskStatus(
     open: 'открыта заново',
   };
   const label = statusLabels[newStatus] || newStatus;
-  const timeNow = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   // Resolve cross-entity links if missing
   let resolvedStudentId = target.studentId;
@@ -219,10 +224,20 @@ export async function updateUnifiedTaskStatus(
   const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const formattedDateTime = `${dateStr}, ${timeStr}`;
 
-  const performerName = options?.performedBy || target.assignedTo || 'Администратор';
-  const taskContent = newStatus === 'done'
-    ? `[Задача выполнена] ${target.title}. Ответственный: ${performerName}. Дата и время: ${formattedDateTime}${options?.comment ? `. Комментарий: ${options.comment}` : ''}`
-    : `Задача «${target.title}» отмечена как ${label}.${options?.comment ? ` Комментарий: ${options.comment}` : ''}${options?.newDueDate ? ` Новый срок: ${updatedTask.dueDateFormatted}` : ''}`;
+  // Formatted exact timeline strings per spec
+  let taskContent = `Задача «${target.title}» отмечена как ${label}.`;
+  if (newStatus === 'done') {
+    if (options?.comment && options.comment.trim()) {
+      taskContent = `Задача закрыта: ${target.title} · Результат: ${options.comment.trim()}`;
+    } else {
+      taskContent = `Задача выполнена: ${target.title}. Выполнил: ${performerName}`;
+    }
+  } else if (options?.newDueDate) {
+    const formattedNewDate = options.newDueDate.includes('-')
+      ? options.newDueDate.split('-').reverse().join('.')
+      : options.newDueDate;
+    taskContent = `Срок задачи "${target.title}" изменен на ${formattedNewDate}.${options.comment ? ` Причина: ${options.comment.trim()}` : ''}`;
+  }
 
   const timelineItem: TimelineInteraction = {
     id: `int_task_status_${Date.now()}`,

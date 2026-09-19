@@ -1669,6 +1669,10 @@ export interface FullTaskData {
   priority: 'high' | 'medium' | 'low';
   description?: string;
   sourceInteractionId?: string;
+  completedAt?: string;
+  completedBy?: string;
+  result?: string;
+  rescheduledReason?: string;
 }
 
 export const INITIAL_TASKS: FullTaskData[] = [

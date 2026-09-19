@@ -175,6 +175,10 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   description?: string;
+  completedAt?: string;
+  completedBy?: string;
+  result?: string;
+  rescheduledReason?: string;
 }
 
 export type PaymentStatus = 'paid' | 'expected' | 'overdue' | 'refund' | 'undefined';
