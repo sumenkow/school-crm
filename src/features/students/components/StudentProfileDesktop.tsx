@@ -460,25 +460,41 @@ export function StudentProfileDesktop({
 
         {/* Block 4: СТАТУС ОПЛАТЫ */}
         <div
-          onClick={() => onSelectTab('finance')}
-          className="pl-4 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
-          title="Перейти к финансам"
+          onClick={() => role !== 'teacher' && onSelectTab('finance')}
+          className={cn(
+            "pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
+            role !== 'teacher' ? "cursor-pointer hover:bg-slate-50/60" : "cursor-default"
+          )}
+          title={role !== 'teacher' ? "Перейти к финансам" : "Доступ к финансам ограничен"}
         >
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
             СТАТУС ОПЛАТЫ
           </span>
-          {studentOverdueDebt > 0 ? (
-            <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2 py-0.5 rounded-lg inline-block">
-              Долг: -{studentOverdueDebt} €
-            </span>
+          {role === 'teacher' ? (
+            <>
+              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
+                Обучение активно
+              </span>
+              <div className="text-[11px] text-slate-400 italic block">
+                Финансы скрыты
+              </div>
+            </>
           ) : (
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
-              ✓ Оплачено до {formattedPaidUntil}
-            </span>
+            <>
+              {studentOverdueDebt > 0 ? (
+                <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2 py-0.5 rounded-lg inline-block">
+                  Долг: -{studentOverdueDebt} €
+                </span>
+              ) : (
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
+                  ✓ Оплачено до {formattedPaidUntil}
+                </span>
+              )}
+              <div className="text-[11px] text-slate-500 font-medium truncate">
+                Депозит: {finSummary.formattedDeposit || '0 €'}
+              </div>
+            </>
           )}
-          <div className="text-[11px] text-slate-500 font-medium truncate">
-            Депозит: {finSummary.formattedDeposit || '0 €'}
-          </div>
         </div>
       </div>
     </div>

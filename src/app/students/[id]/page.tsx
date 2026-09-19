@@ -273,6 +273,17 @@ export default function StudentDetailsPage() {
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  // Flexible per-lesson rate & Email Statement states
+  const [customPricePerLesson, setCustomPricePerLesson] = useState<number>(() => {
+    return (student.finance?.deposit?.pricePerLesson as number) || 12;
+  });
+  const [isEditingPricePerLesson, setIsEditingPricePerLesson] = useState(false);
+  const [tempPricePerLesson, setTempPricePerLesson] = useState<string>('12');
+
+  const [isEmailStatementModalOpen, setIsEmailStatementModalOpen] = useState(false);
+  const [statementPeriod, setStatementPeriod] = useState<'current_month' | 'all_time'>('current_month');
+  const [ledgerFilter, setLedgerFilter] = useState<'all' | 'deposits' | 'deductions'>('all');
   const [editStudentForm, setEditStudentForm] = useState({
     firstName: student.firstName,
     lastName: student.lastName,
@@ -717,6 +728,86 @@ export default function StudentDetailsPage() {
     setNewTeacherCommentText('');
     setNewTeacherCommentTopic('');
     toast.success('Комментарий преподавателя сохранен и опубликован в Timeline!');
+  };
+
+  const targetParent = student.parents.find((p) => p.isPrimary) || student.parents[0];
+  const representativeEmail = student.studentType === 'adult_student'
+    ? (student.email || targetParent?.email)
+    : targetParent?.email;
+  const representativeName = student.studentType === 'adult_student'
+    ? `${student.firstName} ${student.lastName}`
+    : (targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : `${student.firstName} ${student.lastName}`);
+
+  const handleOpenEmailStatementModal = () => {
+    if (!representativeEmail) {
+      toast.error('У представителя не указан e-mail. Укажите адрес в контактах');
+      return;
+    }
+    setIsEmailStatementModalOpen(true);
+  };
+
+  const handleSendEmailStatement = () => {
+    if (!representativeEmail) return;
+    setIsEmailStatementModalOpen(false);
+    toast.success(`Выписка успешно отправлена на ${representativeEmail}`);
+
+    const periodLabel = statementPeriod === 'current_month' ? 'За текущий месяц' : 'За всё время обучения';
+    const emailInteraction: TimelineInteraction = {
+      id: `int_email_${Date.now()}`,
+      studentId: student.id,
+      studentName: `${student.firstName} ${student.lastName}`,
+      parentId: targetParent?.id,
+      parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
+      occurredAt: 'Только что',
+      channel: 'email',
+      type: 'other',
+      author: userName || 'Сотрудник',
+      content: `Выписка по оплатам и урокам (${periodLabel}) отправлена на ${representativeEmail}.`,
+      result: `Выписка отправлена на ${representativeEmail}`,
+    };
+
+    saveInteractionToStorage(emailInteraction);
+
+    const updatedInteractions = [emailInteraction, ...(student.interactions || [])];
+    const updatedStudent: FullStudentData = {
+      ...student,
+      interactions: updatedInteractions,
+    };
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: emailInteraction }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+  };
+
+  const handleSavePricePerLesson = () => {
+    const parsed = parseFloat(tempPricePerLesson);
+    if (isNaN(parsed) || parsed <= 0) {
+      toast.error('Введите корректную стоимость занятия (число в евро)');
+      return;
+    }
+    setCustomPricePerLesson(parsed);
+    setIsEditingPricePerLesson(false);
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      finance: {
+        ...student.finance,
+        deposit: {
+          ...student.finance?.deposit,
+          balance: student.finance?.deposit?.balance || 120,
+          balanceFormatted: `${(student.finance?.deposit?.balance || 120).toLocaleString('ru-RU')} €`,
+          currency: 'EUR',
+          pricePerLesson: parsed,
+          pricePerLessonFormatted: `${parsed.toLocaleString('ru-RU')} €`,
+        },
+      },
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    toast.success(`Индивидуальная ставка за урок обновлена: ${parsed} €`);
   };
 
   const handleDeductDeposit = () => {
@@ -1718,165 +1809,320 @@ export default function StudentDetailsPage() {
         </div>
       )}
 
-      {/* TAB 4: ФИНАНСЫ И АБОНЕМЕНТЫ */}
-      {activeTab === 'finance' && (
+      {/* TAB 4: ОПЛАТЫ И БАЛАНС (СТРОГО ДЛЯ DEVELOPER / OWNER / ADMIN) */}
+      {activeTab === 'finance' && ['developer', 'owner', 'admin'].includes(role) && (
         <div className="space-y-6">
-          {/* Current Subscription Card */}
-          {student.finance.activeSubscription && (
-            <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 p-5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Текущий абонемент</span>
-                  <h4 className="text-lg font-bold text-slate-900 mt-0.5">Период: {student.finance.activeSubscription.period}</h4>
+          {/* БЛОК 1: ВЕРХНЯЯ ПАНЕЛЬ СТАТУСА (ДВУХКОЛОНОЧНАЯ СЕТКА) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Левая колонка — Абонементы по курсам */}
+            <div className="space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Абонементы по курсам ({student.groups.length > 0 ? student.groups.length : 1})
+              </span>
+              {student.groups.length === 0 ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center text-xs text-slate-400 space-y-1">
+                  <p className="font-semibold text-slate-700">Ученик не зачислен в группы</p>
+                  <p className="text-[11px]">Абонементы формируются при зачислении в активную группу</p>
                 </div>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-                  Активен
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs border-t border-blue-200/50 pt-3">
-                <div>
-                  <span className="text-slate-500">Стоимость периода:</span>
-                  <p className="text-base font-bold text-slate-900 mt-0.5">{student.finance.activeSubscription.price}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Посещено занятий:</span>
-                  <p className="text-base font-bold text-slate-900 mt-0.5">{student.finance.activeSubscription.lessonsAttended}</p>
-                </div>
-                <div>
-                  <span className="text-slate-500">Дата следующего продления:</span>
-                  <p className="text-base font-bold text-blue-700 mt-0.5">{student.finance.activeSubscription.renewalDate}</p>
-                </div>
-              </div>
+              ) : (
+                student.groups.map((grp) => (
+                  <div key={grp.id} className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 to-indigo-50/40 p-5 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">
+                          {grp.courseName || 'Курс обучения'}
+                        </span>
+                        <h4 className="text-base font-bold text-slate-900 mt-0.5">{grp.name}</h4>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                        Активен
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-blue-200/60 pt-3">
+                      <div>
+                        <span className="text-slate-500 block">Период:</span>
+                        <span className="font-semibold text-slate-800">Сентябрь 2026</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Пройдено / Всего:</span>
+                        <span className="font-bold text-slate-900">6 / 8 уроков</span>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="text-slate-500 block">Продление:</span>
+                        <span className="font-bold text-blue-700">28.09.2026</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          )}
 
-          {/* Deposit & Prepayment Card */}
-          <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/70 to-teal-50/50 p-5 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 shadow-2xs">
-                  <Wallet className="h-6 w-6" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                    Баланс предоплаты (депозит)
+            {/* Правая колонка — Лицевой счет (Депозит) */}
+            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 to-teal-50/40 p-5 shadow-xs space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                    Лицевой счет (Депозит)
                   </span>
-                  <h4 className="text-xl font-bold text-slate-900 mt-0.5">
-                    {student.finance.deposit?.balanceFormatted || `${(student.finance.deposit?.balance || 0).toLocaleString('ru-RU')} ₽`}
-                  </h4>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                    Базовый EUR (€)
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-3xl font-black text-slate-900">
+                    {(student.finance?.deposit?.balance || 120).toLocaleString('ru-RU')} €
+                  </h3>
+                  <span className="text-sm font-semibold text-slate-500">
+                    (~{((student.finance?.deposit?.balance || 120) * 100).toLocaleString('ru-RU')} ₽)
+                  </span>
+                </div>
+
+                {/* Per-lesson rate with inline edit */}
+                <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">Ставка за занятие (Руководитель):</span>
+                    {!isEditingPricePerLesson && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempPricePerLesson(String(customPricePerLesson));
+                          setIsEditingPricePerLesson(true);
+                        }}
+                        className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 hover:underline"
+                        title="Изменить персональную ставку за урок"
+                      >
+                        <Edit className="h-3 w-3" /> Изменить
+                      </button>
+                    )}
+                  </div>
+
+                  {isEditingPricePerLesson ? (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="number"
+                        value={tempPricePerLesson}
+                        onChange={(e) => setTempPricePerLesson(e.target.value)}
+                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="Ставка €"
+                      />
+                      <span className="text-slate-600 font-bold">€</span>
+                      <button
+                        type="button"
+                        onClick={handleSavePricePerLesson}
+                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingPricePerLesson(false)}
+                        className="rounded-lg bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-300 transition-colors"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between pt-0.5">
+                      <span className="font-extrabold text-slate-900 text-sm">
+                        {customPricePerLesson} € <span className="text-slate-400 text-xs font-normal">(~{customPricePerLesson * 100} ₽)</span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-700">
+                        Остаток: {Math.max(0, Math.floor((student.finance?.deposit?.balance || 120) / customPricePerLesson))} уроков
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleDeductDeposit}
-                  disabled={(student.finance.deposit?.balance || 0) <= 0}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold shadow-xs transition-colors cursor-pointer',
-                    (student.finance.deposit?.balance || 0) > 0
-                      ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                      : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                  )}
-                  title="Списать стоимость одного онлайн-занятия с баланса предоплаты"
-                >
-                  <MinusCircle className="h-3.5 w-3.5 text-amber-700" />
-                  Списать занятие (-{student.finance.deposit?.pricePerLessonFormatted || '1 050 ₽'})
-                </button>
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Пополнить депозит
                 </button>
               </div>
             </div>
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs border-t border-emerald-200/50 pt-3">
-              <div>
-                <span className="text-slate-500">Стоимость 1 онлайн-занятия:</span>
-                <p className="text-base font-bold text-slate-900 mt-0.5">
-                  {student.finance.deposit?.pricePerLessonFormatted || '1 050 ₽'}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-500">Остаток оплаченных уроков:</span>
-                <p className="text-base font-bold text-slate-900 mt-0.5">
-                  {Math.max(
-                    0,
-                    Math.floor((student.finance.deposit?.balance || 0) / (student.finance.deposit?.pricePerLesson || 1050))
-                  )}{' '}
-                  занятий
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-500">Статус депозита:</span>
-                <p className="mt-0.5">
-                  <span
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                      (student.finance.deposit?.balance || 0) > 0
-                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                        : 'bg-amber-100 text-amber-800 border-amber-200'
-                    )}
-                  >
-                    {(student.finance.deposit?.balance || 0) > 0 ? 'Баланс положительный' : 'Требуется пополнение'}
-                  </span>
-                </p>
-              </div>
-            </div>
           </div>
 
-          {/* Payment History Table */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">История оплат ученика</h4>
+          {/* БЛОК 2: ПАНЕЛЬ ДЕЙСТВИЙ ВЫПИСКИ */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
+            {/* Быстрые фильтры */}
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              <span className="text-slate-400 mr-1 text-[11px]">Фильтр:</span>
+              <button
+                type="button"
+                onClick={() => setLedgerFilter('all')}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
+                  ledgerFilter === 'all'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Все операции
+              </button>
+              <button
+                type="button"
+                onClick={() => setLedgerFilter('deposits')}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
+                  ledgerFilter === 'deposits'
+                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Только пополнения
+              </button>
+              <button
+                type="button"
+                onClick={() => setLedgerFilter('deductions')}
+                className={cn(
+                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
+                  ledgerFilter === 'deductions'
+                    ? 'bg-white text-rose-700 shadow-xs border border-rose-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                Только списания
+              </button>
+            </div>
+
+            {/* Группа кнопок действий */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleOpenEmailStatementModal}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                title="Отправить выписку представителю на email"
+              >
+                <Mail className="h-3.5 w-3.5 text-blue-600" />
+                ✉ Отправить выписку на email
+              </button>
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" /> Внести платёж
+                <Plus className="h-3.5 w-3.5" />
+                + Внести платёж
               </button>
             </div>
+          </div>
+
+          {/* БЛОК 3: ЕДИНАЯ ФИНАНСОВАЯ ВЫПИСКА (LEDGER) */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                Единая финансовая выписка (Движение средств)
+              </h4>
+              <span className="text-[11px] text-slate-400 font-mono">Валюта: EUR (€)</span>
+            </div>
+
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
                 <tr>
-                  <th className="py-3 pl-4 pr-3">Дата</th>
-                  <th className="px-3 py-3">Период</th>
-                  <th className="px-3 py-3">Сумма</th>
-                  <th className="px-3 py-3">Способ</th>
-                  <th className="py-3 pl-3 pr-4 text-right">Статус</th>
+                  <th className="py-3 pl-4 pr-3">Дата и время</th>
+                  <th className="px-3 py-3">Назначение / Операция</th>
+                  <th className="px-3 py-3">Способ / Источник</th>
+                  <th className="px-3 py-3 text-right">Сумма</th>
+                  <th className="py-3 pl-3 pr-4 text-right">Остаток</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {(!student.finance?.payments || student.finance.payments.length === 0) ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
-                      История оплат пуста. Нажмите «Внести платёж», чтобы добавить запись.
-                    </td>
-                  </tr>
-                ) : (
-                  student.finance.payments.map((pay) => (
-                    <tr key={pay.id} className="hover:bg-slate-50/70">
-                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">{pay.date}</td>
-                      <td className="px-3 py-3">{pay.period}</td>
-                      <td className="px-3 py-3 font-bold text-slate-900">{pay.amount}</td>
-                      <td className="px-3 py-3 text-slate-500">{pay.method}</td>
-                      <td className="py-3 pl-3 pr-4 text-right">
-                        <span className={cn(
-                          'rounded-full px-2 py-0.5 font-semibold text-[10px]',
-                          pay.status === 'paid' && 'bg-emerald-100 text-emerald-800',
-                          pay.status === 'overdue' && 'bg-rose-100 text-rose-800'
-                        )}>
-                          {pay.status === 'paid' ? 'Оплачено' : 'Долг'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                {(() => {
+                  // Build Ledger rows from payments & conducted lessons
+                  const rawPayments = (student.finance?.payments || []).map((p, idx) => ({
+                    id: `pay_${p.id || idx}`,
+                    type: 'deposit' as const,
+                    date: p.date || '15.09.2026, 14:30',
+                    description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
+                    method: p.method || 'Карта / СБП',
+                    amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
+                  }));
+
+                  const rawDeductions = (student.attendanceStats?.history || [])
+                    .filter((h) => h.status === 'present' || h.status === 'absent')
+                    .map((h, idx) => ({
+                      id: `ded_${idx}`,
+                      type: 'deduction' as const,
+                      date: `${h.date}, 18:00`,
+                      description: `Списание за урок: «${h.topic || 'Занятие'}» (${h.groupName})`,
+                      method: 'Автоматически по уроку',
+                      amountEUR: customPricePerLesson,
+                    }));
+
+                  let allEvents = [...rawPayments, ...rawDeductions];
+
+                  // If no records, provide sample baseline transactions
+                  if (allEvents.length === 0) {
+                    allEvents = [
+                      {
+                        id: 'sample_1',
+                        type: 'deposit',
+                        date: '01.09.2026, 10:00',
+                        description: 'Пополнение баланса предоплаты',
+                        method: 'Карта / СБП',
+                        amountEUR: 120,
+                      },
+                      {
+                        id: 'sample_2',
+                        type: 'deduction',
+                        date: '08.09.2026, 18:00',
+                        description: 'Списание за урок (Английский разговорный)',
+                        method: 'Автоматически по уроку',
+                        amountEUR: customPricePerLesson,
+                      },
+                    ];
+                  }
+
+                  // Sort newest first
+                  allEvents.sort((a, b) => b.id.localeCompare(a.id));
+
+                  // Apply filter
+                  const filtered = allEvents.filter((ev) => {
+                    if (ledgerFilter === 'deposits') return ev.type === 'deposit';
+                    if (ledgerFilter === 'deductions') return ev.type === 'deduction';
+                    return true;
+                  });
+
+                  let runningBalance = student.finance?.deposit?.balance || 120;
+
+                  return filtered.map((ev) => {
+                    const isPlus = ev.type === 'deposit';
+                    const displayAmtEUR = isPlus ? `+${ev.amountEUR} €` : `-${ev.amountEUR} €`;
+                    const displayAmtRUB = `(~${(ev.amountEUR * 100).toLocaleString('ru-RU')} ₽)`;
+
+                    return (
+                      <tr key={ev.id} className="hover:bg-slate-50/70">
+                        <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 whitespace-nowrap">{ev.date}</td>
+                        <td className="px-3 py-3 font-medium text-slate-800">{ev.description}</td>
+                        <td className="px-3 py-3 text-slate-500 whitespace-nowrap">
+                          {ev.method === 'Автоматически по уроку' ? (
+                            <span className="rounded-md bg-purple-50 text-purple-700 px-2 py-0.5 text-[10px] font-semibold border border-purple-100">
+                              ⚡ Автоматически по уроку
+                            </span>
+                          ) : (
+                            ev.method
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right font-bold whitespace-nowrap">
+                          <span className={isPlus ? 'text-emerald-600' : 'text-slate-700'}>
+                            {displayAmtEUR}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-normal block">{displayAmtRUB}</span>
+                        </td>
+                        <td className="py-3 pl-3 pr-4 text-right font-semibold text-slate-800 whitespace-nowrap">
+                          {runningBalance} €
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -2752,6 +2998,85 @@ export default function StudentDetailsPage() {
           computeNextLesson();
         }}
       />
+
+      {/* EMAIL STATEMENT MODAL */}
+      {isEmailStatementModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Mail className="h-5 w-5 text-blue-600" />
+                ✉ Отправка выписки на e-mail
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEmailStatementModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">Получатель выписки</span>
+                <p className="font-bold text-slate-900 text-sm">{representativeName}</p>
+                <p className="text-blue-600 font-mono text-xs">{representativeEmail}</p>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <label className="font-semibold text-slate-700 block">Период выписки:</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2.5 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="statement_period"
+                      checked={statementPeriod === 'current_month'}
+                      onChange={() => setStatementPeriod('current_month')}
+                      className="text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block">За текущий месяц</span>
+                      <span className="text-[11px] text-slate-500">Сентябрь 2026</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 border border-slate-200 rounded-xl p-3 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="radio"
+                      name="statement_period"
+                      checked={statementPeriod === 'all_time'}
+                      onChange={() => setStatementPeriod('all_time')}
+                      className="text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block">За всё время обучения</span>
+                      <span className="text-[11px] text-slate-500">Полная история оплат и списаний</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsEmailStatementModalOpen(false)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSendEmailStatement}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+              >
+                Отправить отчет
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
