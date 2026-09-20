@@ -60,6 +60,7 @@ export interface ChildDetails {
   group: string;
   studentType?: string;
   nextLesson?: string;
+  teacherName?: string;
 }
 
 export interface ParentRecord {
@@ -90,7 +91,16 @@ const INITIAL_PARENTS: ParentRecord[] = [
     whatsapp: '+79991234567',
     preferredChannel: 'Telegram',
     relationshipType: 'Мама',
-    children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens', studentType: 'Школьник', nextLesson: 'Пн, Чт • 18:45' }],
+    children: [
+      {
+        id: '1',
+        name: 'Иван Смирнов',
+        group: 'English B1 Teens',
+        studentType: 'Школьник',
+        nextLesson: 'Пн, Чт • 18:45',
+        teacherName: 'Мария Иванова',
+      },
+    ],
     totalPaid: '120 €',
     balanceStatus: 'paid',
   },
@@ -103,8 +113,22 @@ const INITIAL_PARENTS: ParentRecord[] = [
     preferredChannel: 'WhatsApp',
     relationshipType: 'Отец',
     children: [
-      { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior', studentType: 'Школьник', nextLesson: 'Ср 15:00, Сб 11:00' },
-      { id: 's18', name: 'Артём Кузнецов', group: 'Robotics Junior, Kids Math Safari', studentType: 'Школьник', nextLesson: 'Ср 15:00, Сб 11:00' },
+      {
+        id: '2',
+        name: 'Мария Кузнецова',
+        group: 'Robotics Junior',
+        studentType: 'Школьник',
+        nextLesson: 'Ср 15:00, Сб 11:00',
+        teacherName: 'Денис Смирнов',
+      },
+      {
+        id: 's18',
+        name: 'Артём Кузнецов',
+        group: 'Robotics Junior, Kids Math Safari',
+        studentType: 'Школьник',
+        nextLesson: 'Ср 15:00, Сб 11:00',
+        teacherName: 'Денис Смирнов',
+      },
     ],
     totalPaid: '540 €',
     balanceStatus: 'debt',
@@ -118,8 +142,22 @@ const INITIAL_PARENTS: ParentRecord[] = [
     preferredChannel: 'Telegram',
     relationshipType: 'Мама',
     children: [
-      { id: 's6', name: 'Максим Захаров', group: 'English B1 Teens', studentType: 'Школьник', nextLesson: 'Пн, Чт • 18:45' },
-      { id: '4', name: 'Сергей Попов', group: 'Robotics Junior', studentType: 'Школьник', nextLesson: 'Ср 15:00' },
+      {
+        id: 's6',
+        name: 'Максим Захаров',
+        group: 'English B1 Teens',
+        studentType: 'Школьник',
+        nextLesson: 'Пн, Чт • 18:45',
+        teacherName: 'Мария Иванова',
+      },
+      {
+        id: '4',
+        name: 'Сергей Попов',
+        group: 'Robotics Junior',
+        studentType: 'Школьник',
+        nextLesson: 'Ср 15:00, Сб 11:00',
+        teacherName: 'Денис Смирнов',
+      },
     ],
     totalPaid: '280 €',
     balanceStatus: 'debt',
@@ -132,7 +170,16 @@ const INITIAL_PARENTS: ParentRecord[] = [
     whatsapp: '+79993456789',
     preferredChannel: 'Phone',
     relationshipType: 'Мама',
-    children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1', studentType: 'Школьник', nextLesson: 'Вт, Пт • 17:00' }],
+    children: [
+      {
+        id: '3',
+        name: 'Анна Васильева',
+        group: 'Kids English A1',
+        studentType: 'Школьник',
+        nextLesson: 'Вт, Пт • 17:00',
+        teacherName: 'Ольга Соколова',
+      },
+    ],
     totalPaid: '0 €',
     balanceStatus: 'debt',
   },
@@ -249,6 +296,7 @@ function getMergedParents(): ParentRecord[] {
         const formattedGroups = groupNames.length > 0 ? Array.from(new Set(groupNames)).join(', ') : 'Основной курс';
         const stCategory = st.studentType === 'adult_student' ? 'Студент' : 'Школьник';
         const stNextLesson = st.groups?.[0]?.schedule || 'Ср 21 сен, 18:45';
+        const stTeacher = st.groups?.[0]?.teacherName || 'Мария Иванова';
 
         const childInfo: ChildDetails = {
           id: st.id,
@@ -256,6 +304,7 @@ function getMergedParents(): ParentRecord[] {
           group: formattedGroups,
           studentType: stCategory,
           nextLesson: stNextLesson,
+          teacherName: stTeacher,
         };
 
         addOrMergeParent({
@@ -290,6 +339,7 @@ function getMergedParents(): ParentRecord[] {
         ...c,
         studentType: studentObj?.studentType === 'adult_student' ? 'Студент' : 'Школьник',
         nextLesson: studentObj?.groups?.[0]?.schedule || c.nextLesson || 'Ср 21 сен, 18:45',
+        teacherName: studentObj?.groups?.[0]?.teacherName || c.teacherName || 'Мария Иванова',
       });
     }
     const uniqueChildren = Array.from(uniqueChildrenMap.values());
@@ -352,7 +402,9 @@ function getMergedParents(): ParentRecord[] {
     });
   });
 
-  return result;
+  // Unique Parents map deduplication before returning
+  const uniqueParents = Array.from(new Map(result.map((p) => [p.id, p])).values());
+  return uniqueParents;
 }
 
 type SortField = 'name' | 'child' | 'balance';
@@ -373,9 +425,8 @@ export default function ParentsPage() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [quickFilter, setQuickFilter] = useState<'all' | 'debt' | 'deleted'>('all');
 
-  // Toolbar Filters
+  // Toolbar Course Filter
   const [courseFilter, setCourseFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('name');
@@ -445,8 +496,11 @@ export default function ParentsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const activeParents = parents.filter((p) => !p.isDeleted);
-  const deletedParents = parents.filter((p) => p.isDeleted);
+  // Guaranteed Unique Parents Array
+  const uniqueParents = Array.from(new Map(parents.map((p) => [p.id, p])).values());
+
+  const activeParents = uniqueParents.filter((p) => !p.isDeleted);
+  const deletedParents = uniqueParents.filter((p) => p.isDeleted);
   const debtParentsCount = activeParents.filter((p) => (p.debtBalance && p.debtBalance > 0) || p.balanceStatus === 'debt').length;
 
   // Extract unique course list for course selector
@@ -461,6 +515,7 @@ export default function ParentsPage() {
 
   const currentList = quickFilter === 'deleted' ? deletedParents : activeParents;
 
+  // Strict search & filter matching
   const filteredParents = currentList.filter((p) => {
     // Quick filter tab
     if (quickFilter === 'debt' && (!p.debtBalance || p.debtBalance <= 0) && p.balanceStatus !== 'debt') return false;
@@ -471,21 +526,15 @@ export default function ParentsPage() {
       if (!matchesCourse) return false;
     }
 
-    // Payment status filter dropdown
-    if (statusFilter === 'debt') {
-      if ((!p.debtBalance || p.debtBalance <= 0) && p.balanceStatus !== 'debt') return false;
-    } else if (statusFilter === 'paid') {
-      if (p.debtBalance && p.debtBalance > 0) return false;
-    }
-
-    // Search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
+    // Strict Search Matching (checks ONLY parent name, parent phone, or child name)
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
       const nameMatch = p.name.toLowerCase().includes(term);
-      const phoneMatch = p.phone.includes(term);
+      const phoneMatch = p.phone.includes(term) || normalizePhone(p.phone).includes(normalizePhone(term));
       const childMatch = p.children.some((c) => c.name.toLowerCase().includes(term));
       return nameMatch || phoneMatch || childMatch;
     }
+
     return true;
   });
 
@@ -513,6 +562,7 @@ export default function ParentsPage() {
     return 0;
   });
 
+  const isFiltered = searchTerm.trim() !== '' || courseFilter !== 'all' || quickFilter !== 'all';
   const allFilteredSelected = sortedParents.length > 0 && sortedParents.every((p) => selectedIds.includes(p.id));
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -549,17 +599,19 @@ export default function ParentsPage() {
 
   return (
     <div className="space-y-5">
-      {/* PAGE HEADER */}
+      {/* PAGE HEADER (Task 1: Concise title & counter "X из Y") */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-baseline gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('parents.title', 'Родители и контакты')}</h1>
-          <p className="text-sm text-slate-600">
-            {t('parents.subtitle', 'Реестр контактных лиц и законных представителей • Единый профиль семьи')} • Всего: {activeParents.length}
-          </p>
+          <span className="text-sm font-medium text-slate-500">
+            {isFiltered
+              ? `(Показано ${sortedParents.length} из ${activeParents.length})`
+              : `(${activeParents.length})`}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Filters Panel */}
+          {/* Quick Filters Panel (No Multichild Tab) */}
           <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
             <button
               onClick={() => setQuickFilter('all')}
@@ -606,18 +658,28 @@ export default function ParentsPage() {
         </div>
       </div>
 
-      {/* TOOLBAR: SEARCH + COURSE SELECTOR + STATUS SELECTOR + VIEW SWITCHER */}
+      {/* TOOLBAR: SEARCH (with ✕ clear button) + COURSE SELECTOR + VIEW SWITCHER */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[240px]">
+        {/* Search input with ✕ clear button */}
+        <div className="relative flex-1 min-w-[260px]">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('parents.search', 'Поиск по имени представителя, ребенку или телефону...')}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Поиск по имени представителя, ребенку или телефону..."
+            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              title="Очистить поиск"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -634,19 +696,6 @@ export default function ParentsPage() {
                   {cName}
                 </option>
               ))}
-            </select>
-          </div>
-
-          {/* Payment Status Selector */}
-          <div className="relative shrink-0">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-            >
-              <option value="all">Все статусы оплаты</option>
-              <option value="debt">Только долг</option>
-              <option value="paid">Оплачено</option>
             </select>
           </div>
 
@@ -684,7 +733,7 @@ export default function ParentsPage() {
 
       {/* RENDER TABLE OR GRID VIEW */}
       {viewMode === 'table' ? (
-        /* TABLE VIEW (DESKTOP FIXED TABLE 1-to-1 MATCHING STUDENTS DESKTOP) */
+        /* TABLE VIEW */
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <table className="w-full text-left text-xs table-fixed">
             <colgroup>
@@ -788,12 +837,13 @@ export default function ParentsPage() {
                     <tr
                       key={p.id}
                       className={cn(
-                        'h-16 transition-colors border-b border-slate-100',
-                        isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
+                        'transition-colors border-b border-slate-100',
+                        isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80',
+                        p.children.length > 1 ? 'py-3' : 'h-16'
                       )}
                     >
                       {/* Чекбокс */}
-                      <td className="px-3.5 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3.5 py-3 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -802,8 +852,8 @@ export default function ParentsPage() {
                         />
                       </td>
 
-                      {/* 2. ПРЕДСТАВИТЕЛЬ (Avatar + Name on Top; Phone + WA/TG on Bottom) */}
-                      <td className="px-3.5 py-3">
+                      {/* 2. ПРЕДСТАВИТЕЛЬ (Phone LEFT, Messengers RIGHT via flex justify-between) */}
+                      <td className="px-3.5 py-3 align-middle">
                         <div className="flex items-center gap-2.5">
                           <Link href={`/parents/${p.id}`} className="relative shrink-0 block">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
@@ -820,7 +870,7 @@ export default function ParentsPage() {
                               {p.name}
                             </Link>
 
-                            <div className="flex justify-between items-center w-full gap-2 min-w-0">
+                            <div className="flex items-center justify-between w-full mt-1 min-w-0">
                               <a
                                 href={`tel:${phoneClean}`}
                                 onClick={(e) => e.stopPropagation()}
@@ -862,14 +912,14 @@ export default function ParentsPage() {
                         </div>
                       </td>
 
-                      {/* 3. УЧЕНИК (Name Blue Link on Top; Category on Bottom) */}
-                      <td className="px-3.5 py-3">
+                      {/* 3. УЧЕНИК (Synchronized 1-to-1 parallel rows with КУРС) */}
+                      <td className="px-3.5 py-3 align-middle">
                         {p.children.length === 0 ? (
                           <span className="text-xs text-slate-400 font-semibold">— Без учеников</span>
                         ) : (
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             {p.children.map((c) => (
-                              <div key={c.id} className="min-w-0 space-y-0.5">
+                              <div key={c.id} className="min-w-0 space-y-0.5 min-h-[32px] flex flex-col justify-center">
                                 <Link
                                   href={`/students/${c.id}`}
                                   className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
@@ -877,7 +927,7 @@ export default function ParentsPage() {
                                 >
                                   {c.name}
                                 </Link>
-                                <span className="text-[11px] text-slate-400 block">
+                                <span className="text-[11px] text-slate-400 block truncate">
                                   {c.studentType || 'Школьник'}
                                 </span>
                               </div>
@@ -886,31 +936,74 @@ export default function ParentsPage() {
                         )}
                       </td>
 
-                      {/* 4. КУРС (Primary course badge on Top; Schedule on Bottom) */}
-                      <td className="px-3.5 py-3">
-                        {p.children.length > 0 && p.children[0].group ? (
-                          <div className="min-w-0 space-y-0.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-block truncate">
-                                {cleanGroupName(p.children[0].group)[0] || 'English B1 Teens'}
-                              </span>
-                              {p.children.length > 1 && (
-                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded shrink-0">
-                                  +{p.children.length - 1}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-slate-400 block truncate">
-                              → {p.children[0].nextLesson || 'Ср 21 сен, 18:45'}
-                            </span>
-                          </div>
-                        ) : (
+                      {/* 4. КУРС (Synchronized 1-to-1 parallel rows with УЧЕНИК + Interactive +1 Popover) */}
+                      <td className="px-3.5 py-3 align-middle">
+                        {p.children.length === 0 ? (
                           <span className="text-xs text-slate-400 select-none">— Без группы</span>
+                        ) : (
+                          <div className="space-y-2">
+                            {p.children.map((c) => {
+                              const groups = cleanGroupName(c.group);
+                              const mainGroup = groups[0] || 'English B1 Teens';
+                              const hasExtra = groups.length > 1;
+                              const popoverKey = `${p.id}_${c.id}`;
+
+                              return (
+                                <div key={c.id} className="min-w-0 space-y-0.5 min-h-[32px] flex flex-col justify-center">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-semibold px-2 py-0.5 rounded-md inline-block truncate">
+                                      {mainGroup}
+                                    </span>
+
+                                    {/* Interactive +1 Popover Badge */}
+                                    {hasExtra && (
+                                      <div
+                                        className="relative shrink-0 inline-flex items-center"
+                                        onMouseEnter={() => setActiveCoursePopoverId(popoverKey)}
+                                        onMouseLeave={() => setActiveCoursePopoverId(null)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-200 transition-colors">
+                                          +{groups.length - 1}
+                                        </span>
+
+                                        {/* Popover */}
+                                        {activeCoursePopoverId === popoverKey && (
+                                          <div className="absolute left-0 bottom-full mb-2 z-50 w-64 p-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150 font-normal">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
+                                              Дополнительные группы ({groups.length - 1})
+                                            </div>
+                                            <div className="space-y-2">
+                                              {groups.slice(1).map((gName, gIdx) => (
+                                                <div key={gIdx} className="space-y-0.5">
+                                                  <div className="font-bold text-white text-xs">{gName}</div>
+                                                  <div className="text-slate-300 text-[11px]">
+                                                    🗓 {c.nextLesson || 'Ср, Сб 15:00'}
+                                                  </div>
+                                                  <div className="text-slate-400 text-[10px]">
+                                                    Преподаватель: {c.teacherName || 'Денис Смирнов'}
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <span className="text-[11px] text-slate-400 block truncate">
+                                    → {c.nextLesson || 'Ср 21 сен, 18:45'}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </td>
 
-                      {/* 5. СТАТУС ОПЛАТЫ (1-в-1 matching StudentsDesktop) */}
-                      <td className="px-3.5 py-3">
+                      {/* 5. СТАТУС ОПЛАТЫ */}
+                      <td className="px-3.5 py-3 align-middle">
                         <Link
                           href={`/parents/${p.id}`}
                           className="block group min-w-0"
@@ -1500,6 +1593,7 @@ function CreateParentModal({
           group: groupNames.length > 0 ? groupNames.join(', ') : 'Основной курс',
           studentType: st.studentType === 'adult_student' ? 'Студент' : 'Школьник',
           nextLesson: st.groups?.[0]?.schedule || 'Ср 21 сен, 18:45',
+          teacherName: st.groups?.[0]?.teacherName || 'Мария Иванова',
         });
 
         // Save parent to student in storage
@@ -1605,6 +1699,7 @@ function CreateParentModal({
         group: newChildGroup,
         studentType: 'Школьник',
         nextLesson: 'Пн, Чт 18:45',
+        teacherName: 'Мария Иванова',
       });
     }
 
