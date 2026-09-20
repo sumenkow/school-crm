@@ -40,8 +40,27 @@ import {
 } from '@/lib/data/studentStorage';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { AddChildModal } from '@/components/parents/AddChildModal';
-import { CreateTaskModal, ParentTaskScope } from '@/components/tasks/CreateTaskModal';
 import { cn } from '@/lib/utils';
+
+const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+  </svg>
+);
+
+const TelegramIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.536-.196 1.006.128.833.942z" />
+  </svg>
+);
+
+export interface ChildDetails {
+  id: string;
+  name: string;
+  group: string;
+  studentType?: string;
+  nextLesson?: string;
+}
 
 export interface ParentRecord {
   id: string;
@@ -51,7 +70,7 @@ export interface ParentRecord {
   whatsapp?: string;
   preferredChannel: string;
   relationshipType?: string;
-  children: Array<{ id: string; name: string; group: string }>;
+  children: ChildDetails[];
   totalPaid: string;
   totalPaidEUR?: number;
   balanceStatus: string; // 'paid' | 'debt' | 'trial'
@@ -71,7 +90,7 @@ const INITIAL_PARENTS: ParentRecord[] = [
     whatsapp: '+79991234567',
     preferredChannel: 'Telegram',
     relationshipType: 'Мама',
-    children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens' }],
+    children: [{ id: '1', name: 'Иван Смирнов', group: 'English B1 Teens', studentType: 'Школьник', nextLesson: 'Пн, Чт • 18:45' }],
     totalPaid: '120 €',
     balanceStatus: 'paid',
   },
@@ -84,8 +103,8 @@ const INITIAL_PARENTS: ParentRecord[] = [
     preferredChannel: 'WhatsApp',
     relationshipType: 'Отец',
     children: [
-      { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior' },
-      { id: 's18', name: 'Артём Кузнецов', group: 'Robotics Junior, Kids Math Safari' },
+      { id: '2', name: 'Мария Кузнецова', group: 'Robotics Junior', studentType: 'Школьник', nextLesson: 'Ср 15:00, Сб 11:00' },
+      { id: 's18', name: 'Артём Кузнецов', group: 'Robotics Junior, Kids Math Safari', studentType: 'Школьник', nextLesson: 'Ср 15:00, Сб 11:00' },
     ],
     totalPaid: '540 €',
     balanceStatus: 'debt',
@@ -99,8 +118,8 @@ const INITIAL_PARENTS: ParentRecord[] = [
     preferredChannel: 'Telegram',
     relationshipType: 'Мама',
     children: [
-      { id: 's6', name: 'Максим Захаров', group: 'English B1 Teens' },
-      { id: '4', name: 'Сергей Попов', group: 'Robotics Junior' },
+      { id: 's6', name: 'Максим Захаров', group: 'English B1 Teens', studentType: 'Школьник', nextLesson: 'Пн, Чт • 18:45' },
+      { id: '4', name: 'Сергей Попов', group: 'Robotics Junior', studentType: 'Школьник', nextLesson: 'Ср 15:00' },
     ],
     totalPaid: '280 €',
     balanceStatus: 'debt',
@@ -113,7 +132,7 @@ const INITIAL_PARENTS: ParentRecord[] = [
     whatsapp: '+79993456789',
     preferredChannel: 'Phone',
     relationshipType: 'Мама',
-    children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1' }],
+    children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1', studentType: 'Школьник', nextLesson: 'Вт, Пт • 17:00' }],
     totalPaid: '0 €',
     balanceStatus: 'debt',
   },
@@ -228,11 +247,15 @@ function getMergedParents(): ParentRecord[] {
 
         const groupNames = (st.groups || []).map((g: any) => g.name || g.courseName).filter(Boolean);
         const formattedGroups = groupNames.length > 0 ? Array.from(new Set(groupNames)).join(', ') : 'Основной курс';
+        const stCategory = st.studentType === 'adult_student' ? 'Студент' : 'Школьник';
+        const stNextLesson = st.groups?.[0]?.schedule || 'Ср 21 сен, 18:45';
 
-        const childInfo = {
+        const childInfo: ChildDetails = {
           id: st.id,
           name: childFullName,
           group: formattedGroups,
+          studentType: stCategory,
+          nextLesson: stNextLesson,
         };
 
         addOrMergeParent({
@@ -260,9 +283,14 @@ function getMergedParents(): ParentRecord[] {
     let hasTrialChild = false;
 
     // Deduplicate children by child ID strictly
-    const uniqueChildrenMap = new Map<string, { id: string; name: string; group: string }>();
+    const uniqueChildrenMap = new Map<string, ChildDetails>();
     for (const c of parent.children) {
-      uniqueChildrenMap.set(c.id, c);
+      const studentObj = allStudents.find((s) => s.id === c.id);
+      uniqueChildrenMap.set(c.id, {
+        ...c,
+        studentType: studentObj?.studentType === 'adult_student' ? 'Студент' : 'Школьник',
+        nextLesson: studentObj?.groups?.[0]?.schedule || c.nextLesson || 'Ср 21 сен, 18:45',
+      });
     }
     const uniqueChildren = Array.from(uniqueChildrenMap.values());
     parent.children = uniqueChildren;
@@ -316,9 +344,9 @@ function getMergedParents(): ParentRecord[] {
       totalPaid: `${totalPaidEUR.toLocaleString('ru-RU')} € (~${(totalPaidEUR * 100).toLocaleString('ru-RU')} ₽)`,
       totalPaidEUR,
       balanceStatus,
-      depositFormatted: totalDebtEUR === 0 ? `✓ Оплачено` : undefined,
+      depositFormatted: totalDebtEUR === 0 ? `✓ Оплачено до 28.09` : undefined,
       depositBalance: totalDepositEUR,
-      debtFormatted: totalDebtEUR > 0 ? `⚠ Долг: -${totalDebtEUR} € (~${Math.round(totalDebtEUR * 100).toLocaleString('ru-RU')} ₽)` : undefined,
+      debtFormatted: totalDebtEUR > 0 ? `Долг: -${totalDebtEUR} €` : undefined,
       debtBalance: totalDebtEUR,
       isDeleted,
     });
@@ -338,6 +366,8 @@ export default function ParentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [parents, setParents] = useState<ParentRecord[]>(() => getMergedParents());
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
 
   // View Mode: Table vs Grid
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -403,10 +433,6 @@ export default function ParentsPage() {
   const [deletingParent, setDeletingParent] = useState<ParentRecord | null>(null);
   const [linkingChildParent, setLinkingChildParent] = useState<ParentRecord | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // Task modal state
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [taskModalParentScope, setTaskModalParentScope] = useState<ParentTaskScope | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -478,8 +504,6 @@ export default function ParentsPage() {
     if (sortField === 'balance') {
       const debtA = a.debtBalance || 0;
       const debtB = b.debtBalance || 0;
-      // asc: highest debt first (-84 € -> -76 € -> -72 € -> 0 €)
-      // desc: paid first (0 € -> -72 € -> -76 € -> -84 €)
       if (sortOrder === 'asc') {
         return debtB - debtA;
       } else {
@@ -488,6 +512,20 @@ export default function ParentsPage() {
     }
     return 0;
   });
+
+  const allFilteredSelected = sortedParents.length > 0 && sortedParents.every((p) => selectedIds.includes(p.id));
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(sortedParents.map((p) => p.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
 
   const handleDeleteParent = () => {
     if (!deletingParent) return;
@@ -521,7 +559,7 @@ export default function ParentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Filters Panel (Removed "Многодетные") */}
+          {/* Quick Filters Panel */}
           <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
             <button
               onClick={() => setQuickFilter('all')}
@@ -577,7 +615,7 @@ export default function ParentsPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('parents.search', 'Поиск по имени родителя, телефону или ребенку...')}
+            placeholder={t('parents.search', 'Поиск по имени представителя, ребенку или телефону...')}
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
@@ -590,7 +628,7 @@ export default function ParentsPage() {
               onChange={(e) => setCourseFilter(e.target.value)}
               className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="all">Все курсы</option>
+              <option value="all">Все курсы / группы</option>
               {allCourses.map((cName) => (
                 <option key={cName} value={cName}>
                   {cName}
@@ -607,8 +645,8 @@ export default function ParentsPage() {
               className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             >
               <option value="all">Все статусы оплаты</option>
-              <option value="debt">Только с долгом</option>
-              <option value="paid">Только оплаченные</option>
+              <option value="debt">Только долг</option>
+              <option value="paid">Оплачено</option>
             </select>
           </div>
 
@@ -646,59 +684,65 @@ export default function ParentsPage() {
 
       {/* RENDER TABLE OR GRID VIEW */}
       {viewMode === 'table' ? (
-        /* TABLE VIEW (DESKTOP FIXED TABLE WITH HEADER SORTING) */
+        /* TABLE VIEW (DESKTOP FIXED TABLE 1-to-1 MATCHING STUDENTS DESKTOP) */
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <table className="w-full text-left text-xs table-fixed">
             <colgroup>
               <col className="w-[44px]" />
-              <col className="w-[28%]" />
-              <col className="w-[22%]" />
-              <col className="w-[32%]" />
-              <col className="w-[18%]" />
+              <col className="w-[27%]" />
+              <col className="w-[23%]" />
+              <col className="w-[26%]" />
+              <col className="w-[24%]" />
             </colgroup>
-            <thead className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
+            <thead className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="py-3 pl-4 pr-1 text-center">
-                  <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
+                <th className="px-3.5 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    title="Выбрать всех"
+                  />
                 </th>
 
-                {/* РОДИТЕЛЬ (Sortable) */}
-                <th className="px-3.5 py-3">
+                {/* 2. ПРЕДСТАВИТЕЛЬ (Sortable) */}
+                <th className="px-3.5 py-3 text-left">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('name')}
                     className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
                   >
-                    <span>РОДИТЕЛЬ</span>
+                    <span>ПРЕДСТАВИТЕЛЬ</span>
                     {sortField === 'name' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
-                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     )}
                   </button>
                 </th>
 
-                {/* СВЯЗЬ (Static) */}
-                <th className="px-3.5 py-3">СВЯЗЬ</th>
-
-                {/* РЕБЕНОК (Sortable) */}
-                <th className="px-3.5 py-3">
+                {/* 3. УЧЕНИК (Sortable) */}
+                <th className="px-3.5 py-3 text-left">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('child')}
                     className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
                   >
-                    <span>РЕБЕНОК</span>
+                    <span>УЧЕНИК</span>
                     {sortField === 'child' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
-                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     )}
                   </button>
                 </th>
 
-                {/* СТАТУС ОПЛАТЫ (Sortable) */}
-                <th className="px-3.5 py-3">
+                {/* 4. КУРС (Static) */}
+                <th className="px-3.5 py-3 text-left">КУРС</th>
+
+                {/* 5. СТАТУС ОПЛАТЫ (Sortable) */}
+                <th className="px-3.5 py-3 text-left">
                   <button
                     type="button"
                     onClick={() => handleSortToggle('balance')}
@@ -706,9 +750,9 @@ export default function ParentsPage() {
                   >
                     <span>СТАТУС ОПЛАТЫ</span>
                     {sortField === 'balance' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                     ) : (
-                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     )}
                   </button>
                 </th>
@@ -717,12 +761,13 @@ export default function ParentsPage() {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {sortedParents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-400 italic">
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
                     Контакты не найдены
                   </td>
                 </tr>
               ) : (
                 sortedParents.map((p) => {
+                  const isSelected = selectedIds.includes(p.id);
                   const initials = p.name
                     .split(' ')
                     .map((n) => n[0])
@@ -731,123 +776,174 @@ export default function ParentsPage() {
                     .join('')
                     .toUpperCase() || 'Р';
 
+                  const phoneClean = normalizePhone(p.phone);
                   const formattedPhoneStr = formatPhone(p.phone);
-                  const cleanPhoneStr = normalizePhone(p.phone);
                   const waLink = p.whatsapp
                     ? `https://wa.me/${normalizePhone(p.whatsapp)}`
-                    : `https://wa.me/${cleanPhoneStr}`;
+                    : `https://wa.me/${phoneClean}`;
                   const tgHandle = (p.telegram || '').replace('@', '');
-                  const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhoneStr}`;
+                  const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${phoneClean}`;
 
                   return (
-                    <tr key={p.id} className="h-16 hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 pl-4 pr-1 text-center align-middle">
-                        <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
+                    <tr
+                      key={p.id}
+                      className={cn(
+                        'h-16 transition-colors border-b border-slate-100',
+                        isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
+                      )}
+                    >
+                      {/* Чекбокс */}
+                      <td className="px-3.5 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectRow(p.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
                       </td>
 
-                      {/* Parent Full Name + Avatar (NO relationship subtitles) */}
-                      <td className="px-3.5 py-3 align-middle">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                            {initials}
-                          </div>
-                          <div className="min-w-0 flex-1">
+                      {/* 2. ПРЕДСТАВИТЕЛЬ (Avatar + Name on Top; Phone + WA/TG on Bottom) */}
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Link href={`/parents/${p.id}`} className="relative shrink-0 block">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
+                              {initials}
+                            </div>
+                          </Link>
+
+                          <div className="min-w-0 flex-1 space-y-0.5">
                             <Link
                               href={`/parents/${p.id}`}
-                              className="font-bold text-slate-900 text-sm hover:text-blue-600 transition-colors block truncate"
-                              title={`Профиль родителя: ${p.name}`}
+                              className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                              title={p.name}
                             >
                               {p.name}
                             </Link>
-                          </div>
-                        </div>
-                      </td>
 
-                      {/* Contact Links */}
-                      <td className="px-3.5 py-3 align-middle">
-                        <div className="space-y-1">
-                          <a
-                            href={`tel:${p.phone}`}
-                            className="font-semibold text-slate-800 font-mono block text-xs hover:text-blue-600"
-                          >
-                            {formattedPhoneStr}
-                          </a>
-                          <div className="flex items-center gap-1.5">
-                            <a
-                              href={waLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-bold border border-emerald-200/80 hover:bg-emerald-100 transition-colors"
-                              title="WhatsApp"
-                            >
-                              <MessageSquare className="h-3 w-3 text-emerald-600" />
-                              WhatsApp
-                            </a>
-                            <a
-                              href={tgLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md bg-sky-50 text-sky-700 px-2 py-0.5 text-[10px] font-bold border border-sky-200/80 hover:bg-sky-100 transition-colors"
-                              title="Telegram"
-                            >
-                              <Send className="h-3 w-3 text-sky-600" />
-                              Telegram
-                            </a>
-                          </div>
-                        </div>
-                      </td>
+                            <div className="flex justify-between items-center w-full gap-2 min-w-0">
+                              <a
+                                href={`tel:${phoneClean}`}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Позвонить по телефону"
+                                className="font-mono text-[11px] text-slate-500 hover:text-blue-600 hover:underline whitespace-nowrap block shrink-0"
+                              >
+                                {formattedPhoneStr}
+                              </a>
 
-                      {/* Children List: flex justify-between (Name LEFT, Course Badge RIGHT) */}
-                      <td className="px-3.5 py-3 align-middle">
-                        <div className="space-y-1.5 w-full">
-                          {p.children.length === 0 ? (
-                            <span className="text-slate-400 italic text-xs">Нет привязанных учеников</span>
-                          ) : (
-                            p.children.map((c) => {
-                              const groupBadges = cleanGroupName(c.group);
-                              return (
-                                <div key={c.id} className="flex justify-between items-center w-full gap-3 text-xs">
-                                  <Link
-                                    href={`/students/${c.id}`}
-                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 text-left"
-                                    title={`Профиль ученика: ${c.name}`}
+                              {phoneClean && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {/* WhatsApp */}
+                                  <a
+                                    href={waLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Написать в WhatsApp"
+                                    className="w-6 h-6 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
                                   >
-                                    {c.name}
-                                  </Link>
-                                  <div className="flex flex-wrap justify-end gap-1 text-right">
-                                    {groupBadges.map((gName, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="inline-block rounded bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
-                                      >
-                                        {gName}
-                                      </span>
-                                    ))}
-                                  </div>
+                                    <WhatsAppIcon className="w-3.5 h-3.5" />
+                                  </a>
+
+                                  {/* Telegram */}
+                                  <a
+                                    href={tgLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Написать в Telegram"
+                                    className="w-6 h-6 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                                  >
+                                    <TelegramIcon className="w-3.5 h-3.5" />
+                                  </a>
                                 </div>
-                              );
-                            })
-                          )}
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </td>
 
-                      {/* Payment Status (Strictly single clean badge) */}
-                      <td className="px-3.5 py-3 align-middle">
-                        {p.debtBalance && p.debtBalance > 0 ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 text-rose-800 px-2.5 py-1 text-xs font-bold border border-rose-200 whitespace-nowrap shadow-2xs">
-                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-                            ⚠ Долг: -{p.debtBalance} € (~{Math.round(p.debtBalance * 100).toLocaleString('ru-RU')} ₽)
-                          </span>
-                        ) : p.balanceStatus === 'trial' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 text-amber-800 px-2.5 py-1 text-xs font-bold border border-amber-200 whitespace-nowrap shadow-2xs">
-                            Пробный период
-                          </span>
+                      {/* 3. УЧЕНИК (Name Blue Link on Top; Category on Bottom) */}
+                      <td className="px-3.5 py-3">
+                        {p.children.length === 0 ? (
+                          <span className="text-xs text-slate-400 font-semibold">— Без учеников</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 px-2.5 py-1 text-xs font-bold border border-emerald-200 whitespace-nowrap shadow-2xs">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            ✓ Оплачено
-                          </span>
+                          <div className="space-y-1">
+                            {p.children.map((c) => (
+                              <div key={c.id} className="min-w-0 space-y-0.5">
+                                <Link
+                                  href={`/students/${c.id}`}
+                                  className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                                  title={c.name}
+                                >
+                                  {c.name}
+                                </Link>
+                                <span className="text-[11px] text-slate-400 block">
+                                  {c.studentType || 'Школьник'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         )}
+                      </td>
+
+                      {/* 4. КУРС (Primary course badge on Top; Schedule on Bottom) */}
+                      <td className="px-3.5 py-3">
+                        {p.children.length > 0 && p.children[0].group ? (
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="bg-slate-100 text-slate-700 border border-slate-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-block truncate">
+                                {cleanGroupName(p.children[0].group)[0] || 'English B1 Teens'}
+                              </span>
+                              {p.children.length > 1 && (
+                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded shrink-0">
+                                  +{p.children.length - 1}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-400 block truncate">
+                              → {p.children[0].nextLesson || 'Ср 21 сен, 18:45'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 select-none">— Без группы</span>
+                        )}
+                      </td>
+
+                      {/* 5. СТАТУС ОПЛАТЫ (1-в-1 matching StudentsDesktop) */}
+                      <td className="px-3.5 py-3">
+                        <Link
+                          href={`/parents/${p.id}`}
+                          className="block group min-w-0"
+                        >
+                          {p.debtBalance && p.debtBalance > 0 ? (
+                            <div className="space-y-0.5">
+                              <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap inline-block">
+                                Долг: -{p.debtBalance} €
+                              </span>
+                              <div className="text-[11px] font-semibold text-rose-600 truncate">
+                                Баланс: -{p.debtBalance} € <span className="text-rose-400 font-normal">(-{Math.round(p.debtBalance * 100).toLocaleString('ru-RU')} ₽)</span>
+                              </div>
+                            </div>
+                          ) : p.balanceStatus === 'trial' ? (
+                            <div className="space-y-0.5">
+                              <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-block">
+                                Пробный
+                              </span>
+                              <div className="text-[11px] text-purple-600 font-medium truncate">
+                                Оплата не требуется
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
+                                ✓ Оплачено до 28.09
+                              </span>
+                              <div className="text-[11px] text-slate-500 font-medium truncate">
+                                Баланс: 0 € <span className="text-slate-400 font-normal">• абонемент</span>
+                              </div>
+                            </div>
+                          )}
+                        </Link>
                       </td>
                     </tr>
                   );
@@ -1391,7 +1487,7 @@ function CreateParentModal({
     }
 
     const newParentId = `p_${Date.now()}`;
-    const attachedChildren: Array<{ id: string; name: string; group: string }> = [];
+    const attachedChildren: ChildDetails[] = [];
 
     // 1. Link to existing student
     if (childMode === 'existing' && selectedStudentId) {
@@ -1402,6 +1498,8 @@ function CreateParentModal({
           id: st.id,
           name: `${st.firstName} ${st.lastName}`.trim(),
           group: groupNames.length > 0 ? groupNames.join(', ') : 'Основной курс',
+          studentType: st.studentType === 'adult_student' ? 'Студент' : 'Школьник',
+          nextLesson: st.groups?.[0]?.schedule || 'Ср 21 сен, 18:45',
         });
 
         // Save parent to student in storage
@@ -1505,6 +1603,8 @@ function CreateParentModal({
         id: newStudentId,
         name: `${newChildFirstName.trim()} ${newChildLastName.trim() || prLastName}`.trim(),
         group: newChildGroup,
+        studentType: 'Школьник',
+        nextLesson: 'Пн, Чт 18:45',
       });
     }
 
