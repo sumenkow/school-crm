@@ -186,13 +186,15 @@ const getTeacherNav = (): NavSection[] => [
   },
 ];
 
-const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: any) => {
+const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t, router }: any) => {
   const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-    return pathname.startsWith(href);
+    return pathname === href;
   };
-  const hasActive = section.items.some((i: any) => isActive(i.href));
+  const hasActive = section.items.some((i: any) => 
+    pathname === i.href || (i.href !== '/' && pathname.startsWith(i.href + '/'))
+  );
 
   useEffect(() => {
     if (hasActive && !collapsed) setIsOpen(true);
@@ -225,7 +227,10 @@ const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: a
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onCloseMobile}
+                onClick={() => {
+                  onCloseMobile();
+                  router.push(item.href);
+                }}
                 title={collapsed ? label : undefined}
                 className={"flex items-center relative transition-all duration-150 rounded-full cursor-pointer " + 
                   (collapsed ? "justify-center mx-auto" : "gap-3 px-4")
@@ -342,6 +347,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             pathname={pathname} 
             onCloseMobile={onCloseMobile} 
             t={t} 
+            router={router}
           />
         ))}
       </div>
@@ -351,7 +357,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-300" style={{ width: collapsed ? '76px' : '260px' }}>
+      <div className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-300 relative z-30" style={{ width: collapsed ? '76px' : '260px' }}>
         {drawerContent}
       </div>
 
