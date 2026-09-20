@@ -1191,7 +1191,7 @@ export default function StudentDetailsPage() {
       author: userName || 'Администратор школы',
       content: newNoteText.trim(),
       result: 'Зафиксировано в истории',
-      nextAction: newFollowUpDate ? `Связаться ${newFollowUpDate}` : undefined,
+      nextAction: newFollowUpDate ? `Связаться ${newFollowUpDate} (Создана задача)` : undefined,
       followUpDate: newFollowUpDate || undefined,
     };
 
@@ -1212,7 +1212,7 @@ export default function StudentDetailsPage() {
     // Persist to shared timeline storage
     saveInteractionToStorage(newEntry);
 
-    // Auto-create Follow-up task in Tasks tab if followUpDate is specified
+    // Auto-create Follow-up task in Tasks tab if followUpDate is specified (without generating duplicate timeline entry)
     if (newFollowUpDate) {
       const trimmedNote = newNoteText.trim();
       const shortSummary = trimmedNote.length > 55 ? `${trimmedNote.slice(0, 52)}...` : trimmedNote;
@@ -1229,6 +1229,7 @@ export default function StudentDetailsPage() {
         taskType: 'Retention',
         priority: 'medium',
         createdByName: userName || 'Администратор',
+        skipTimelineInteraction: true,
       })
         .then((newTask) => {
           setStudent((prev) => ({
@@ -2528,13 +2529,13 @@ export default function StudentDetailsPage() {
           {/* Add Interaction Form */}
           <form onSubmit={handleAddInteraction} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Добавить действие / контакт с учеником или семьей</h4>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span>С кем действие:</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start pt-1">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">С кем действие</label>
                 <select
                   value={interactionTarget}
                   onChange={(e) => setInteractionTarget(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-800"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                 >
                   <option value="student">С учеником ({student.firstName} {student.lastName})</option>
                   {student.parents.map((p) => (
@@ -2545,12 +2546,12 @@ export default function StudentDetailsPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span>Канал:</span>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Канал связи</label>
                 <select
                   value={newChannel}
                   onChange={(e) => setNewChannel(e.target.value as 'telegram' | 'whatsapp' | 'phone' | 'call')}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                 >
                   <option value="telegram">Telegram</option>
                   <option value="whatsapp">WhatsApp</option>
@@ -2559,7 +2560,7 @@ export default function StudentDetailsPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 min-w-[210px]">
+              <div className="flex flex-col gap-1">
                 <DatePicker
                   label="Дата следующего действия (Follow-up)"
                   value={newFollowUpDate}

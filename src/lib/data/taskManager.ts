@@ -22,6 +22,7 @@ export interface CreateTaskOptions {
   leadName?: string;
   createdByRole?: string;
   createdByName?: string;
+  skipTimelineInteraction?: boolean;
 }
 
 /**
@@ -102,32 +103,36 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
   // 4. Save to Storage (localStorage + Supabase fire-and-forget)
   saveTaskToStorage(newTask);
 
-  // 5. Create cross-entity Timeline interaction
-  const nowCreated = new Date();
-  const padC = (n: number) => String(n).padStart(2, '0');
-  const dateStrC = `${padC(nowCreated.getDate())}.${padC(nowCreated.getMonth() + 1)}.${nowCreated.getFullYear()}`;
-  const timeNow = `${padC(nowCreated.getHours())}:${padC(nowCreated.getMinutes())}`;
-  const timelineItem: TimelineInteraction = {
-    id: `int_task_${Date.now()}`,
-    studentId,
-    studentName,
-    parentId,
-    parentName,
-    occurredAt: `${dateStrC}, ${timeNow}`,
-    createdAt: nowCreated.toISOString(),
-    channel: 'other',
-    type: 'organizational',
-    author: options.createdByName || options.assignedTo || 'Система',
-    content: `Поставлена задача: «${newTask.title}» (Срок: ${dueDateFormatted}, Отв: ${newTask.assignedTo})`,
-    result: options.description || undefined,
-  };
+  // 5. Create cross-entity Timeline interaction (unless skipped for auto-followup tasks)
+  if (!options.skipTimelineInteraction) {
+    const nowCreated = new Date();
+    const padC = (n: number) => String(n).padStart(2, '0');
+    const dateStrC = `${padC(nowCreated.getDate())}.${padC(nowCreated.getMonth() + 1)}.${nowCreated.getFullYear()}`;
+    const timeNow = `${padC(nowCreated.getHours())}:${padC(nowCreated.getMinutes())}`;
+    const timelineItem: TimelineInteraction = {
+      id: `int_task_${Date.now()}`,
+      studentId,
+      studentName,
+      parentId,
+      parentName,
+      occurredAt: `${dateStrC}, ${timeNow}`,
+      createdAt: nowCreated.toISOString(),
+      channel: 'other',
+      type: 'organizational',
+      author: options.createdByName || options.assignedTo || 'Система',
+      content: `Поставлена задача: «${newTask.title}» (Срок: ${dueDateFormatted}, Отв: ${newTask.assignedTo})`,
+      result: options.description || undefined,
+    };
 
-  saveInteractionToStorage(timelineItem);
+    saveInteractionToStorage(timelineItem);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: timelineItem }));
+    }
+  }
 
   // 6. Notify windows
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: newTask }));
-    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: timelineItem }));
   }
 
   // 7. Telegram Bot notification (if task created by Owner/Leader, notify Admin)
