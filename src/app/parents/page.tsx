@@ -22,7 +22,10 @@ import {
   RotateCcw,
   Check,
   CheckSquare,
-  Calendar,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  Filter,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -324,6 +327,9 @@ function getMergedParents(): ParentRecord[] {
   return result;
 }
 
+type SortField = 'name' | 'child' | 'balance';
+type SortOrder = 'asc' | 'desc';
+
 export default function ParentsPage() {
   const router = useRouter();
   const { success } = useToast();
@@ -335,7 +341,15 @@ export default function ParentsPage() {
 
   // View Mode: Table vs Grid
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [quickFilter, setQuickFilter] = useState<'all' | 'debt' | 'multi_child' | 'deleted'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'debt' | 'deleted'>('all');
+
+  // Toolbar Filters
+  const [courseFilter, setCourseFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -350,6 +364,15 @@ export default function ParentsPage() {
     setViewMode(mode);
     if (typeof window !== 'undefined') {
       localStorage.setItem('parents_view_mode', mode);
+    }
+  };
+
+  const handleSortToggle = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
     }
   };
 
@@ -399,14 +422,37 @@ export default function ParentsPage() {
   const activeParents = parents.filter((p) => !p.isDeleted);
   const deletedParents = parents.filter((p) => p.isDeleted);
   const debtParentsCount = activeParents.filter((p) => (p.debtBalance && p.debtBalance > 0) || p.balanceStatus === 'debt').length;
-  const multiChildParentsCount = activeParents.filter((p) => p.children.length >= 2).length;
+
+  // Extract unique course list for course selector
+  const allCourses = Array.from(
+    new Set(
+      activeParents
+        .flatMap((p) => p.children)
+        .flatMap((c) => cleanGroupName(c.group))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'ru'));
 
   const currentList = quickFilter === 'deleted' ? deletedParents : activeParents;
 
   const filteredParents = currentList.filter((p) => {
+    // Quick filter tab
     if (quickFilter === 'debt' && (!p.debtBalance || p.debtBalance <= 0) && p.balanceStatus !== 'debt') return false;
-    if (quickFilter === 'multi_child' && p.children.length < 2) return false;
 
+    // Course filter dropdown
+    if (courseFilter !== 'all') {
+      const matchesCourse = p.children.some((c) => c.group.toLowerCase().includes(courseFilter.toLowerCase()));
+      if (!matchesCourse) return false;
+    }
+
+    // Payment status filter dropdown
+    if (statusFilter === 'debt') {
+      if ((!p.debtBalance || p.debtBalance <= 0) && p.balanceStatus !== 'debt') return false;
+    } else if (statusFilter === 'paid') {
+      if (p.debtBalance && p.debtBalance > 0) return false;
+    }
+
+    // Search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const nameMatch = p.name.toLowerCase().includes(term);
@@ -415,6 +461,32 @@ export default function ParentsPage() {
       return nameMatch || phoneMatch || childMatch;
     }
     return true;
+  });
+
+  // Apply sorting
+  const sortedParents = [...filteredParents].sort((a, b) => {
+    if (sortField === 'name') {
+      const cmp = a.name.localeCompare(b.name, 'ru');
+      return sortOrder === 'asc' ? cmp : -cmp;
+    }
+    if (sortField === 'child') {
+      const childA = a.children[0]?.name || '';
+      const childB = b.children[0]?.name || '';
+      const cmp = childA.localeCompare(childB, 'ru');
+      return sortOrder === 'asc' ? cmp : -cmp;
+    }
+    if (sortField === 'balance') {
+      const debtA = a.debtBalance || 0;
+      const debtB = b.debtBalance || 0;
+      // asc: highest debt first (-84 € -> -76 € -> -72 € -> 0 €)
+      // desc: paid first (0 € -> -72 € -> -76 € -> -84 €)
+      if (sortOrder === 'asc') {
+        return debtB - debtA;
+      } else {
+        return debtA - debtB;
+      }
+    }
+    return 0;
   });
 
   const handleDeleteParent = () => {
@@ -437,15 +509,6 @@ export default function ParentsPage() {
     setIsCreateModalOpen(false);
   };
 
-  const handleOpenCreateTask = (p: ParentRecord) => {
-    setTaskModalParentScope({
-      id: p.id,
-      name: p.name,
-      children: p.children.map((c) => ({ id: c.id, name: c.name })),
-    });
-    setIsTaskModalOpen(true);
-  };
-
   return (
     <div className="space-y-5">
       {/* PAGE HEADER */}
@@ -458,12 +521,12 @@ export default function ParentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Filters */}
+          {/* Quick Filters Panel (Removed "Многодетные") */}
           <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
             <button
               onClick={() => setQuickFilter('all')}
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
                 quickFilter === 'all'
                   ? 'bg-white text-slate-900 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -474,7 +537,7 @@ export default function ParentsPage() {
             <button
               onClick={() => setQuickFilter('debt')}
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
                 quickFilter === 'debt'
                   ? 'bg-white text-rose-700 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -483,20 +546,9 @@ export default function ParentsPage() {
               С задолженностью ({debtParentsCount})
             </button>
             <button
-              onClick={() => setQuickFilter('multi_child')}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
-                quickFilter === 'multi_child'
-                  ? 'bg-white text-blue-700 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              Многодетные ({multiChildParentsCount})
-            </button>
-            <button
               onClick={() => setQuickFilter('deleted')}
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
                 quickFilter === 'deleted'
                   ? 'bg-white text-slate-800 shadow-2xs font-bold'
                   : 'text-slate-600 hover:text-slate-900'
@@ -516,84 +568,161 @@ export default function ParentsPage() {
         </div>
       </div>
 
-      {/* SEARCH TOOLBAR & VIEW MODE SWITCHER */}
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
-        <div className="relative flex-1">
+      {/* TOOLBAR: SEARCH + COURSE SELECTOR + STATUS SELECTOR + VIEW SWITCHER */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('parents.search', 'Поиск родителя по имени, телефону или ребенку...')}
+            placeholder={t('parents.search', 'Поиск по имени родителя, телефону или ребенку...')}
             className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('table')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
-              viewMode === 'table'
-                ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-            title="Табличный вид"
-          >
-            <span>☰ Таблица</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleViewModeChange('grid')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
-              viewMode === 'grid'
-                ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-            title="Вид сеткой"
-          >
-            <span>▦ Сетка</span>
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Course Selector */}
+          <div className="relative shrink-0">
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="all">Все курсы</option>
+              {allCourses.map((cName) => (
+                <option key={cName} value={cName}>
+                  {cName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Payment Status Selector */}
+          <div className="relative shrink-0">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="all">Все статусы оплаты</option>
+              <option value="debt">Только с долгом</option>
+              <option value="paid">Только оплаченные</option>
+            </select>
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('table')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                viewMode === 'table'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+              title="Табличный вид"
+            >
+              <span>☰ Таблица</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('grid')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                viewMode === 'grid'
+                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+              title="Вид сеткой"
+            >
+              <span>▦ Сетка</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* RENDER TABLE OR GRID VIEW */}
       {viewMode === 'table' ? (
-        /* TABLE VIEW (DESKTOP FIXED TABLE WITH RHYTHM) */
+        /* TABLE VIEW (DESKTOP FIXED TABLE WITH HEADER SORTING) */
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <table className="w-full text-left text-xs table-fixed">
             <colgroup>
               <col className="w-[44px]" />
-              <col className="w-[23%]" />
+              <col className="w-[28%]" />
               <col className="w-[22%]" />
-              <col className="w-[26%]" />
-              <col className="w-[17%]" />
-              <col className="w-[12%]" />
+              <col className="w-[32%]" />
+              <col className="w-[18%]" />
             </colgroup>
             <thead className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <tr>
                 <th className="py-3 pl-4 pr-1 text-center">
                   <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
                 </th>
-                <th className="px-3.5 py-3">РОДИТЕЛЬ / ЛПР</th>
+
+                {/* РОДИТЕЛЬ (Sortable) */}
+                <th className="px-3.5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('name')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>РОДИТЕЛЬ</span>
+                    {sortField === 'name' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                    )}
+                  </button>
+                </th>
+
+                {/* СВЯЗЬ (Static) */}
                 <th className="px-3.5 py-3">СВЯЗЬ</th>
-                <th className="px-3.5 py-3">ДЕТИ (УЧЕНИКИ)</th>
-                <th className="px-3.5 py-3">СТАТУС ОПЛАТЫ</th>
-                <th className="py-3 pl-3 pr-4 text-right">ДЕЙСТВИЯ</th>
+
+                {/* РЕБЕНОК (Sortable) */}
+                <th className="px-3.5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('child')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>РЕБЕНОК</span>
+                    {sortField === 'child' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                    )}
+                  </button>
+                </th>
+
+                {/* СТАТУС ОПЛАТЫ (Sortable) */}
+                <th className="px-3.5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => handleSortToggle('balance')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                  >
+                    <span>СТАТУС ОПЛАТЫ</span>
+                    {sortField === 'balance' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="h-3 w-3 text-blue-600" /> : <ArrowDown className="h-3 w-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />
+                    )}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredParents.length === 0 ? (
+              {sortedParents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                  <td colSpan={5} className="py-8 text-center text-slate-400 italic">
                     Контакты не найдены
                   </td>
                 </tr>
               ) : (
-                filteredParents.map((p) => {
+                sortedParents.map((p) => {
                   const initials = p.name
                     .split(' ')
                     .map((n) => n[0])
@@ -610,16 +739,13 @@ export default function ParentsPage() {
                   const tgHandle = (p.telegram || '').replace('@', '');
                   const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhoneStr}`;
 
-                  const displayedChildren = p.children.slice(0, 2);
-                  const extraChildrenCount = p.children.length - 2;
-
                   return (
                     <tr key={p.id} className="h-16 hover:bg-slate-50/80 transition-colors">
                       <td className="py-3 pl-4 pr-1 text-center align-middle">
                         <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
                       </td>
 
-                      {/* Parent / LPR Name */}
+                      {/* Parent Full Name + Avatar (NO relationship subtitles) */}
                       <td className="px-3.5 py-3 align-middle">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
@@ -629,13 +755,10 @@ export default function ParentsPage() {
                             <Link
                               href={`/parents/${p.id}`}
                               className="font-bold text-slate-900 text-sm hover:text-blue-600 transition-colors block truncate"
-                              title={p.name}
+                              title={`Профиль родителя: ${p.name}`}
                             >
                               {p.name}
                             </Link>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.2 text-[10px] font-semibold text-slate-600 border border-slate-200/60 inline-block mt-0.5">
-                              {p.relationshipType || 'Родитель'}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -674,44 +797,41 @@ export default function ParentsPage() {
                         </div>
                       </td>
 
-                      {/* Children List */}
+                      {/* Children List: flex justify-between (Name LEFT, Course Badge RIGHT) */}
                       <td className="px-3.5 py-3 align-middle">
-                        <div className="space-y-1">
+                        <div className="space-y-1.5 w-full">
                           {p.children.length === 0 ? (
                             <span className="text-slate-400 italic text-xs">Нет привязанных учеников</span>
                           ) : (
-                            displayedChildren.map((c) => {
+                            p.children.map((c) => {
                               const groupBadges = cleanGroupName(c.group);
                               return (
-                                <div key={c.id} className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <div key={c.id} className="flex justify-between items-center w-full gap-3 text-xs">
                                   <Link
                                     href={`/students/${c.id}`}
-                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0"
-                                    title={`Профиль: ${c.name}`}
+                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 text-left"
+                                    title={`Профиль ученика: ${c.name}`}
                                   >
                                     {c.name}
                                   </Link>
-                                  {groupBadges.map((gName, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-block rounded bg-slate-100 border border-slate-200/80 px-1.5 py-0.2 text-[10px] font-medium text-slate-600"
-                                    >
-                                      {gName}
-                                    </span>
-                                  ))}
+                                  <div className="flex flex-wrap justify-end gap-1 text-right">
+                                    {groupBadges.map((gName, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-block rounded bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+                                      >
+                                        {gName}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </div>
                               );
                             })
                           )}
-                          {extraChildrenCount > 0 && (
-                            <span className="inline-block rounded bg-blue-50 text-blue-700 px-1.5 py-0.2 text-[10px] font-bold border border-blue-200">
-                              +{extraChildrenCount} {extraChildrenCount === 1 ? 'ребенок' : 'детей'}
-                            </span>
-                          )}
                         </div>
                       </td>
 
-                      {/* Payment Status */}
+                      {/* Payment Status (Strictly single clean badge) */}
                       <td className="px-3.5 py-3 align-middle">
                         {p.debtBalance && p.debtBalance > 0 ? (
                           <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 text-rose-800 px-2.5 py-1 text-xs font-bold border border-rose-200 whitespace-nowrap shadow-2xs">
@@ -723,35 +843,11 @@ export default function ParentsPage() {
                             Пробный период
                           </span>
                         ) : (
-                          <div className="inline-flex flex-col">
-                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 px-2.5 py-1 text-xs font-bold border border-emerald-200 whitespace-nowrap shadow-2xs">
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              ✓ Оплачено
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium pl-1 mt-0.5">Баланс: 0 €</span>
-                          </div>
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 px-2.5 py-1 text-xs font-bold border border-emerald-200 whitespace-nowrap shadow-2xs">
+                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            ✓ Оплачено
+                          </span>
                         )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3 pl-3 pr-4 text-right align-middle">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCreateTask(p)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors shadow-2xs cursor-pointer"
-                            title="Поставить задачу по родителю"
-                          >
-                            <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
-                            <span className="hidden xl:inline">Задача</span>
-                          </button>
-                          <Link
-                            href={`/parents/${p.id}`}
-                            className="inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-blue-600 transition-colors shadow-2xs"
-                          >
-                            Профиль →
-                          </Link>
-                        </div>
                       </td>
                     </tr>
                   );
@@ -763,7 +859,7 @@ export default function ParentsPage() {
       ) : (
         /* GRID VIEW (CARD VIEW) */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-          {filteredParents.map((p) => {
+          {sortedParents.map((p) => {
             const initials = p.name
               .split(' ')
               .map((n) => n[0])
@@ -786,7 +882,7 @@ export default function ParentsPage() {
                 className="relative rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between gap-3"
               >
                 <div>
-                  {/* Header: Avatar, Name, Channel, Action menu */}
+                  {/* Header: Avatar, Name, Action menu */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
@@ -800,9 +896,6 @@ export default function ParentsPage() {
                         >
                           {p.name}
                         </h3>
-                        <span className="inline-block rounded-full bg-slate-100 px-2 py-0.2 text-[10px] font-semibold text-slate-600 border border-slate-200/60">
-                          {p.relationshipType || 'Родитель'}
-                        </span>
                       </div>
                     </div>
 
@@ -819,17 +912,6 @@ export default function ParentsPage() {
                       {/* Dropdown Menu */}
                       {activeMenuId === p.id && (
                         <div className="absolute right-0 top-8 z-30 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
-                          <button
-                            onClick={() => {
-                              setActiveMenuId(null);
-                              handleOpenCreateTask(p);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
-                          >
-                            <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
-                            <span>Поставить задачу</span>
-                          </button>
-
                           <button
                             onClick={() => {
                               setActiveMenuId(null);
@@ -1071,22 +1153,7 @@ export default function ParentsPage() {
         />
       )}
 
-      {/* 4. Modal: Create Task for Parent */}
-      {isTaskModalOpen && (
-        <CreateTaskModal
-          isOpen={isTaskModalOpen}
-          onClose={() => setIsTaskModalOpen(false)}
-          parentScope={taskModalParentScope || undefined}
-          defaultParentId={taskModalParentScope?.id}
-          onCreated={(newTask) => {
-            success(`Задача "${newTask.title}" успешно создана!`);
-            setIsTaskModalOpen(false);
-            window.dispatchEvent(new Event('crm-tasks-changed'));
-          }}
-        />
-      )}
-
-      {/* 5. Modal: Create Parent (Full Version with Child Selector) */}
+      {/* 4. Modal: Create Parent (Full Version with Child Selector) */}
       {isCreateModalOpen && (
         <CreateParentModal
           onClose={() => setIsCreateModalOpen(false)}
