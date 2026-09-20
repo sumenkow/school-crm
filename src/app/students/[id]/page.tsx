@@ -223,8 +223,9 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     return {
       category: 'finance',
       icon: Banknote,
-      iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
-      channelLabel: 'Оплата / Веха',
+      iconBg: 'bg-emerald-500 text-white shadow-xs ring-2 ring-emerald-200',
+      badgeBg: 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold',
+      channelLabel: '💳 Оплата',
     };
   }
 
@@ -241,8 +242,13 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     return {
       category: 'tasks',
       icon: isDone ? CheckCircle2 : Clock,
-      iconBg: isDone ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200',
-      channelLabel: isDone ? 'Задача выполнена' : 'Задача',
+      iconBg: isDone
+        ? 'bg-emerald-500 text-white shadow-xs ring-2 ring-emerald-200'
+        : 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-200',
+      badgeBg: isDone
+        ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold'
+        : 'bg-amber-50 text-amber-800 border border-amber-300 font-bold',
+      channelLabel: isDone ? '✓ Задача выполнена' : '⚡ Задача',
     };
   }
 
@@ -261,28 +267,64 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     return {
       category: 'lead',
       icon: Filter,
-      iconBg: 'bg-indigo-50 text-indigo-600 border border-indigo-200',
+      iconBg: 'bg-indigo-500 text-white shadow-xs ring-2 ring-indigo-200',
+      badgeBg: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-bold',
       channelLabel: typeLower === 'initial_contact' ? 'Заявка с сайта' : 'История лида',
     };
   }
 
-  // 4. Communication: Phone / Meeting / Zoom
-  if (channelLower === 'phone' || channelLower === 'call' || typeLower === 'call' || contentLower.includes('звонок') || contentLower.includes('позвон')) {
+  // 4. Communication: WhatsApp
+  if (channelLower === 'whatsapp' || contentLower.includes('whatsapp') || contentLower.includes('ватсап')) {
     return {
       category: 'communication',
-      icon: PhoneCall,
-      iconBg: 'bg-amber-50 text-amber-600 border border-amber-200',
-      channelLabel: channelLower === 'call' ? 'Онлайн-встреча' : 'Телефонный звонок',
+      icon: MessageSquare,
+      iconBg: 'bg-emerald-500 text-white shadow-xs ring-2 ring-emerald-200',
+      badgeBg: 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold',
+      channelLabel: 'WhatsApp',
     };
   }
 
-  // 5. Communication: Telegram / WhatsApp / Email
-  if (channelLower === 'telegram' || channelLower === 'whatsapp' || channelLower === 'email') {
+  // 5. Communication: Telegram
+  if (channelLower === 'telegram' || contentLower.includes('telegram') || contentLower.includes('телеграм')) {
     return {
       category: 'communication',
-      icon: channelLower === 'email' ? Mail : Send,
-      iconBg: 'bg-sky-50 text-sky-600 border border-sky-200',
-      channelLabel: channelLower === 'telegram' ? 'Telegram' : channelLower === 'whatsapp' ? 'WhatsApp' : 'Email',
+      icon: Send,
+      iconBg: 'bg-sky-500 text-white shadow-xs ring-2 ring-sky-200',
+      badgeBg: 'bg-sky-50 text-sky-800 border border-sky-300 font-bold',
+      channelLabel: 'Telegram',
+    };
+  }
+
+  // 6. Communication: Phone Call
+  if (channelLower === 'phone' || contentLower.includes('звонок') || contentLower.includes('позвон')) {
+    return {
+      category: 'communication',
+      icon: PhoneCall,
+      iconBg: 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-200',
+      badgeBg: 'bg-amber-50 text-amber-800 border border-amber-300 font-bold',
+      channelLabel: 'Телефонный звонок',
+    };
+  }
+
+  // 7. Communication: Meeting / Zoom
+  if (channelLower === 'call' || typeLower === 'call' || channelLower === 'meeting' || contentLower.includes('встреч') || contentLower.includes('zoom')) {
+    return {
+      category: 'communication',
+      icon: Video,
+      iconBg: 'bg-purple-500 text-white shadow-xs ring-2 ring-purple-200',
+      badgeBg: 'bg-purple-50 text-purple-800 border border-purple-300 font-bold',
+      channelLabel: 'Онлайн-встреча',
+    };
+  }
+
+  // 8. Communication: Email
+  if (channelLower === 'email' || contentLower.includes('email') || contentLower.includes('письм')) {
+    return {
+      category: 'communication',
+      icon: Mail,
+      iconBg: 'bg-indigo-500 text-white shadow-xs ring-2 ring-indigo-200',
+      badgeBg: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-bold',
+      channelLabel: 'Email',
     };
   }
 
@@ -290,7 +332,8 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
   return {
     category: 'communication',
     icon: MessageSquare,
-    iconBg: 'bg-blue-50 text-blue-600 border border-blue-200',
+    iconBg: 'bg-blue-500 text-white shadow-xs ring-2 ring-blue-200',
+    badgeBg: 'bg-slate-100 text-slate-700 border border-slate-200 font-semibold',
     channelLabel: channelLower === 'other' ? 'Заметка' : channelLower || 'Система',
   };
 }
@@ -2516,13 +2559,12 @@ export default function StudentDetailsPage() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                <span>Дата следующего действия (Follow-up):</span>
-                <input
-                  type="date"
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 min-w-[210px]">
+                <DatePicker
+                  label="Дата следующего действия (Follow-up)"
                   value={newFollowUpDate}
-                  onChange={(e) => setNewFollowUpDate(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-800"
+                  onChange={(iso) => setNewFollowUpDate(iso)}
+                  placeholder="Выберите дату"
                 />
               </div>
             </div>
@@ -2597,20 +2639,20 @@ export default function StudentDetailsPage() {
 
               return filteredItems.map((int) => {
                 const target = getInteractionTargetInfo(int, student);
-                const { icon: ItemIcon, iconBg, channelLabel } = getTimelineCategoryAndIcon(int);
+                const { icon: ItemIcon, iconBg, badgeBg, channelLabel } = getTimelineCategoryAndIcon(int);
                 const isParentAction = target.role === 'parent';
                 const isLeadAction = target.role === 'lead';
 
                 return (
                   <div key={int.id} className="relative flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-slate-300 transition-colors">
-                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-2xs', iconBg)}>
+                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold shadow-xs', iconBg)}>
                       <ItemIcon className="h-5 w-5" />
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between flex-wrap gap-1">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center justify-between flex-wrap gap-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900 text-sm">{int.author}</span>
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                          <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] inline-flex items-center gap-1', badgeBg)}>
                             {channelLabel}
                           </span>
 
