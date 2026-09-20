@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
@@ -368,11 +369,21 @@ export default function StudentDetailsPage() {
     };
   }, []);
 
-  // Re-sync on studentId or when storage updates
+  const syncStudentData = useCallback(() => {
+    const fresh = getStudentById(studentId);
+    if (fresh) {
+      setStudent(fresh);
+      latestStudentRef.current = fresh;
+    }
+  }, [studentId]);
+
+  useFocusSync(syncStudentData);
+
   useEffect(() => {
     const loaded = getStudentById(studentId);
     if (loaded) {
       setStudent(loaded);
+      latestStudentRef.current = loaded;
     }
 
     const handleSync = (e: any) => {
@@ -384,27 +395,6 @@ export default function StudentDetailsPage() {
     };
 
     window.addEventListener('crm-students-changed', handleSync);
-    window.addEventListener('crm-payments-changed', () => {
-      const fresh = getStudentById(studentId);
-      if (fresh) {
-        setStudent(fresh);
-        latestStudentRef.current = fresh;
-      }
-    });
-    window.addEventListener('crm-groups-changed', () => {
-      const fresh = getStudentById(studentId);
-      if (fresh) {
-        setStudent(fresh);
-        latestStudentRef.current = fresh;
-      }
-    });
-    window.addEventListener('focus', () => {
-      const fresh = getStudentById(studentId);
-      if (fresh) {
-        setStudent(fresh);
-        latestStudentRef.current = fresh;
-      }
-    });
     return () => {
       window.removeEventListener('crm-students-changed', handleSync);
     };
@@ -1338,32 +1328,32 @@ export default function StudentDetailsPage() {
     }
   };
 
+  const syncStudentTimelineAndTasks = useCallback(async () => {
+    try {
+      const studentTasks = await getTasksForStudent(studentId);
+      const parentIds = (student.parents || []).map((p) => p.id);
+      const combined = getCombinedStudentTimeline(studentId, student.interactions, parentIds);
+      setStudent((prev) => ({
+        ...prev,
+        tasks: studentTasks,
+        interactions: combined,
+      }));
+    } catch {}
+  }, [studentId, student.parents, student.interactions]);
+
+  useFocusSync(syncStudentTimelineAndTasks);
+
   useEffect(() => {
     reconcileAllStudentDepositsAndDebts();
+    syncStudentTimelineAndTasks();
 
-    // Sync tasks and timeline when changed anywhere
-    const handleSync = async () => {
-      try {
-        const studentTasks = await getTasksForStudent(studentId);
-        const parentIds = (student.parents || []).map((p) => p.id);
-        const combined = getCombinedStudentTimeline(studentId, student.interactions, parentIds);
-        setStudent((prev) => ({
-          ...prev,
-          tasks: studentTasks,
-          interactions: combined,
-        }));
-      } catch {}
-    };
-
-    window.addEventListener('crm-tasks-changed', handleSync);
-    window.addEventListener('crm-timeline-interactions-changed', handleSync);
-    window.addEventListener('focus', handleSync);
+    window.addEventListener('crm-tasks-changed', syncStudentTimelineAndTasks);
+    window.addEventListener('crm-timeline-interactions-changed', syncStudentTimelineAndTasks);
     return () => {
-      window.removeEventListener('crm-tasks-changed', handleSync);
-      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
-      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('crm-tasks-changed', syncStudentTimelineAndTasks);
+      window.removeEventListener('crm-timeline-interactions-changed', syncStudentTimelineAndTasks);
     };
-  }, [studentId]);
+  }, [syncStudentTimelineAndTasks]);
 
   const finSummary = getStudentFinancialSummary(student.id);
   const studentDeposit = finSummary.deposit;

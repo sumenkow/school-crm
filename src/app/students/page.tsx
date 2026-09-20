@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Filter, Plus, AlertTriangle, GraduationCap, RotateCcw, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -216,28 +217,24 @@ function StudentsContent() {
     return list.map(mapFullStudentToListItem);
   });
 
-  const refreshStudents = () => {
+  const refreshStudents = useCallback(() => {
     const list = getStoredStudents();
     setStudents(list.map(mapFullStudentToListItem));
-  };
+  }, []);
+
+  useFocusSync(refreshStudents);
 
   useEffect(() => {
     refreshStudents();
 
-    const handleSync = () => {
-      refreshStudents();
-    };
-
-    window.addEventListener('crm-students-changed', handleSync);
-    window.addEventListener('crm-payments-changed', handleSync);
-    window.addEventListener('focus', handleSync);
+    window.addEventListener('crm-students-changed', refreshStudents);
+    window.addEventListener('crm-payments-changed', refreshStudents);
 
     return () => {
-      window.removeEventListener('crm-students-changed', handleSync);
-      window.removeEventListener('crm-payments-changed', handleSync);
-      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('crm-students-changed', refreshStudents);
+      window.removeEventListener('crm-payments-changed', refreshStudents);
     };
-  }, []);
+  }, [refreshStudents]);
 
   const handleStudentCreated = (newStudent: NewStudentData) => {
     refreshStudents();

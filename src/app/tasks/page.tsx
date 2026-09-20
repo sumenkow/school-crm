@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import {
   Plus,
   CheckSquare,
@@ -38,25 +39,21 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<FullTaskData | null>(null);
   const [selectedTask, setSelectedTask] = useState<FullTaskData | null>(null);
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     const list = await getStoredTasks();
     setTasks(list);
-  };
+  }, []);
+
+  useFocusSync(loadTasks);
 
   useEffect(() => {
     loadTasks();
 
-    const handleSync = () => {
-      loadTasks();
-    };
-
-    window.addEventListener('crm-tasks-changed', handleSync);
-    window.addEventListener('focus', handleSync);
+    window.addEventListener('crm-tasks-changed', loadTasks);
     return () => {
-      window.removeEventListener('crm-tasks-changed', handleSync);
-      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('crm-tasks-changed', loadTasks);
     };
-  }, []);
+  }, [loadTasks]);
 
   const handleTaskCreated = (newTask: FullTaskData) => {
     setTasks((prev) => [newTask, ...prev.filter((t) => t.id !== newTask.id)]);

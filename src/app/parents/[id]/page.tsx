@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData, FullLessonData } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
@@ -201,73 +202,73 @@ export default function ParentDetailsPage() {
     reconcileAllStudentDepositsAndDebts();
   }, []);
 
-  useEffect(() => {
-    const refreshParent = () => {
-      const allStudents = getStoredStudents();
-      const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
-      const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+  const refreshParent = useCallback(() => {
+    const allStudents = getStoredStudents();
+    const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
+    const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
 
-      const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
-      const uniqueStudents: typeof matchedStudents = [];
-      const seenNames = new Set<string>();
+    const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
+    const uniqueStudents: typeof matchedStudents = [];
+    const seenNames = new Set<string>();
 
-      for (const st of matchedStudents) {
-        const norm = `${st.firstName} ${st.lastName}`.toLowerCase().trim();
-        if (!seenNames.has(norm)) {
-          seenNames.add(norm);
-          uniqueStudents.push({ ...st, groups: [...(st.groups || [])] });
-        } else {
-          const existing = uniqueStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().trim() === norm);
-          if (existing && st.groups) {
-            const existingGroupIds = new Set((existing.groups || []).map((g) => g.id || g.name));
-            for (const grp of st.groups) {
-              if (!existingGroupIds.has(grp.id || grp.name)) {
-                existing.groups.push(grp);
-              }
+    for (const st of matchedStudents) {
+      const norm = `${st.firstName} ${st.lastName}`.toLowerCase().trim();
+      if (!seenNames.has(norm)) {
+        seenNames.add(norm);
+        uniqueStudents.push({ ...st, groups: [...(st.groups || [])] });
+      } else {
+        const existing = uniqueStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().trim() === norm);
+        if (existing && st.groups) {
+          const existingGroupIds = new Set((existing.groups || []).map((g) => g.id || g.name));
+          for (const grp of st.groups) {
+            if (!existingGroupIds.has(grp.id || grp.name)) {
+              existing.groups.push(grp);
             }
           }
         }
       }
+    }
 
-      const linkedChildren = uniqueStudents.map((s) => ({
-        id: s.id,
-        name: `${s.firstName} ${s.lastName}`,
-        age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-        group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
-        course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
-        teacher: s.groups[0]?.teacherName || 'Мария Иванова',
-        groups: s.groups || [],
-        status: s.status,
-        attendance: s.attendanceStats?.attendanceRate || '100%',
+    const linkedChildren = uniqueStudents.map((s) => ({
+      id: s.id,
+      name: `${s.firstName} ${s.lastName}`,
+      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
+      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
+      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
+      teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+      groups: s.groups || [],
+      status: s.status,
+      attendance: s.attendanceStats?.attendanceRate || '100%',
+    }));
+
+    if (matchedParent || linkedChildren.length > 0) {
+      setParent((prev) => ({
+        ...prev,
+        firstName: matchedParent?.firstName ?? prev.firstName,
+        lastName: matchedParent?.lastName ?? prev.lastName,
+        phone: matchedParent?.phone ?? prev.phone,
+        telegram: matchedParent?.telegram ?? prev.telegram,
+        whatsapp: matchedParent?.whatsapp ?? prev.whatsapp,
+        email: matchedParent?.email ?? prev.email,
+        preferredChannel: matchedParent?.preferredChannel ?? prev.preferredChannel,
+        notes: matchedParent?.notes !== undefined ? matchedParent.notes : prev.notes,
+        children: linkedChildren.length > 0 ? linkedChildren : prev.children,
       }));
+    }
+    setRefreshTrigger((prev) => prev + 1);
+  }, [parentId]);
 
-      if (matchedParent || linkedChildren.length > 0) {
-        setParent((prev) => ({
-          ...prev,
-          firstName: matchedParent?.firstName ?? prev.firstName,
-          lastName: matchedParent?.lastName ?? prev.lastName,
-          phone: matchedParent?.phone ?? prev.phone,
-          telegram: matchedParent?.telegram ?? prev.telegram,
-          whatsapp: matchedParent?.whatsapp ?? prev.whatsapp,
-          email: matchedParent?.email ?? prev.email,
-          preferredChannel: matchedParent?.preferredChannel ?? prev.preferredChannel,
-          notes: matchedParent?.notes !== undefined ? matchedParent.notes : prev.notes,
-          children: linkedChildren.length > 0 ? linkedChildren : prev.children,
-        }));
-      }
-      setRefreshTrigger((prev) => prev + 1);
-    };
+  useFocusSync(refreshParent);
 
+  useEffect(() => {
     refreshParent();
     window.addEventListener('crm-students-changed', refreshParent);
     window.addEventListener('crm-payments-changed', refreshParent);
-    window.addEventListener('focus', refreshParent);
     return () => {
       window.removeEventListener('crm-students-changed', refreshParent);
       window.removeEventListener('crm-payments-changed', refreshParent);
-      window.removeEventListener('focus', refreshParent);
     };
-  }, [parentId]);
+  }, [refreshParent]);
 
   // Notes inline editing
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -419,34 +420,31 @@ export default function ParentDetailsPage() {
   // Tasks for family & children
   const [familyTasks, setFamilyTasks] = useState<FullTaskData[]>([]);
 
-  useEffect(() => {
-    async function loadTasksAndTimeline() {
-      try {
-        const tasks = await getTasksForParent(parentId);
-        setFamilyTasks(tasks);
+  const loadTasksAndTimeline = useCallback(async () => {
+    try {
+      const tasks = await getTasksForParent(parentId);
+      setFamilyTasks(tasks);
 
-        const childrenIds = (parent?.children || []).map((c) => c.id);
-        const combined = getCombinedParentTimeline(parentId, childrenIds);
-        setInteractions(combined);
-      } catch (e) {
-        console.error('Failed to load family tasks/timeline:', e);
-      }
+      const childrenIds = (parent?.children || []).map((c) => c.id);
+      const combined = getCombinedParentTimeline(parentId, childrenIds);
+      setInteractions(combined);
+    } catch (e) {
+      console.error('Failed to load family tasks/timeline:', e);
     }
+  }, [parentId, parent?.children]);
+
+  useFocusSync(loadTasksAndTimeline);
+
+  useEffect(() => {
     loadTasksAndTimeline();
 
-    const handleSync = () => {
-      loadTasksAndTimeline();
-    };
-
-    window.addEventListener('crm-tasks-changed', handleSync);
-    window.addEventListener('crm-timeline-interactions-changed', handleSync);
-    window.addEventListener('focus', handleSync);
+    window.addEventListener('crm-tasks-changed', loadTasksAndTimeline);
+    window.addEventListener('crm-timeline-interactions-changed', loadTasksAndTimeline);
     return () => {
-      window.removeEventListener('crm-tasks-changed', handleSync);
-      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
-      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('crm-tasks-changed', loadTasksAndTimeline);
+      window.removeEventListener('crm-timeline-interactions-changed', loadTasksAndTimeline);
     };
-  }, [parentId, parent.children]);
+  }, [loadTasksAndTimeline]);
 
   const handleToggleParentTask = async (taskId: string) => {
     const currentTask = familyTasks.find((t) => t.id === taskId);

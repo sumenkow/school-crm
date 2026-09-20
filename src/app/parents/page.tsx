@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -457,27 +458,28 @@ export default function ParentsPage() {
     }
   };
 
-  useEffect(() => {
-    const sync = () => {
-      reconcileAllStudentDepositsAndDebts();
-      setParents(getMergedParents());
-    };
-    sync();
-    window.addEventListener('crm-students-changed', sync);
-    window.addEventListener('crm-parents-changed', sync);
-    window.addEventListener('crm-payments-changed', sync);
-    window.addEventListener('crm-lessons-changed', sync);
-    window.addEventListener('crm-tasks-changed', sync);
-    window.addEventListener('focus', sync);
-    return () => {
-      window.removeEventListener('crm-students-changed', sync);
-      window.removeEventListener('crm-parents-changed', sync);
-      window.removeEventListener('crm-payments-changed', sync);
-      window.removeEventListener('crm-lessons-changed', sync);
-      window.removeEventListener('crm-tasks-changed', sync);
-      window.removeEventListener('focus', sync);
-    };
+  const syncParents = React.useCallback(() => {
+    reconcileAllStudentDepositsAndDebts();
+    setParents(getMergedParents());
   }, []);
+
+  useFocusSync(syncParents);
+
+  useEffect(() => {
+    syncParents();
+    window.addEventListener('crm-students-changed', syncParents);
+    window.addEventListener('crm-parents-changed', syncParents);
+    window.addEventListener('crm-payments-changed', syncParents);
+    window.addEventListener('crm-lessons-changed', syncParents);
+    window.addEventListener('crm-tasks-changed', syncParents);
+    return () => {
+      window.removeEventListener('crm-students-changed', syncParents);
+      window.removeEventListener('crm-parents-changed', syncParents);
+      window.removeEventListener('crm-payments-changed', syncParents);
+      window.removeEventListener('crm-lessons-changed', syncParents);
+      window.removeEventListener('crm-tasks-changed', syncParents);
+    };
+  }, [syncParents]);
 
   // Modals state
   const [editingParent, setEditingParent] = useState<ParentRecord | null>(null);

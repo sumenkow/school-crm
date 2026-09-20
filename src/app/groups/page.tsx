@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
 import { Plus, Users, Clock, Calendar, GraduationCap, ArrowRight, Filter, Video, MoreHorizontal, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,22 +26,21 @@ export default function GroupsPage() {
   const [editingGroup, setEditingGroup] = useState<FullGroupData | null>(null);
   const [activeMenuGroupId, setActiveMenuGroupId] = useState<string | null>(null);
 
-  const refreshGroups = () => {
+  const refreshGroups = useCallback(() => {
     setGroups(getStoredGroups());
-  };
+  }, []);
+
+  useFocusSync(refreshGroups);
 
   useEffect(() => {
     refreshGroups();
-    const sync = () => refreshGroups();
-    window.addEventListener('crm-groups-changed', sync);
-    window.addEventListener('crm-students-changed', sync);
-    window.addEventListener('focus', sync);
+    window.addEventListener('crm-groups-changed', refreshGroups);
+    window.addEventListener('crm-students-changed', refreshGroups);
     return () => {
-      window.removeEventListener('crm-groups-changed', sync);
-      window.removeEventListener('crm-students-changed', sync);
-      window.removeEventListener('focus', sync);
+      window.removeEventListener('crm-groups-changed', refreshGroups);
+      window.removeEventListener('crm-students-changed', refreshGroups);
     };
-  }, []);
+  }, [refreshGroups]);
 
   // Close 3-dots menu on clicking outside
   useEffect(() => {

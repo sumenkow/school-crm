@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -50,42 +51,42 @@ export default function CrmPage() {
   const kanbanRef = useRef<HTMLDivElement>(null);
 
   // Sync leads from localStorage and in-memory stores
-  React.useEffect(() => {
-    const syncLeads = () => {
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('crm_leads_v2');
-          if (stored) {
-            const storedLeads: FullLeadData[] = JSON.parse(stored);
-            if (Array.isArray(storedLeads) && storedLeads.length > 0) {
-              const storedIds = new Set(storedLeads.map((l) => l.id));
-              const merged = [...storedLeads, ...INITIAL_LEADS.filter((l) => !storedIds.has(l.id))];
-              setLeads(merged);
-              return;
-            }
+  const syncLeads = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const storedLeads: FullLeadData[] = JSON.parse(stored);
+          if (Array.isArray(storedLeads) && storedLeads.length > 0) {
+            const storedIds = new Set(storedLeads.map((l) => l.id));
+            const merged = [...storedLeads, ...INITIAL_LEADS.filter((l) => !storedIds.has(l.id))];
+            setLeads(merged);
+            return;
           }
-          setLeads([...INITIAL_LEADS]);
-        } catch (e) {
-          console.error('Failed to parse leads from localStorage', e);
-          setLeads([...INITIAL_LEADS]);
         }
+        setLeads([...INITIAL_LEADS]);
+      } catch (e) {
+        console.error('Failed to parse leads from localStorage', e);
+        setLeads([...INITIAL_LEADS]);
       }
-    };
+    }
+  }, []);
 
+  useFocusSync(syncLeads);
+
+  useEffect(() => {
     syncLeads();
 
     window.addEventListener('crm-leads-changed', syncLeads);
     window.addEventListener('crm-students-changed', syncLeads);
     window.addEventListener('crm-names-synced', syncLeads);
-    window.addEventListener('focus', syncLeads);
 
     return () => {
       window.removeEventListener('crm-leads-changed', syncLeads);
       window.removeEventListener('crm-students-changed', syncLeads);
       window.removeEventListener('crm-names-synced', syncLeads);
-      window.removeEventListener('focus', syncLeads);
     };
-  }, []);
+  }, [syncLeads]);
 
   const scrollKanban = (direction: 'left' | 'right') => {
     if (kanbanRef.current) {

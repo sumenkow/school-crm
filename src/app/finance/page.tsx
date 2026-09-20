@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState, Suspense, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useSearchParams } from 'next/navigation';
 import {
   Plus,
@@ -75,20 +76,21 @@ function FinanceContent() {
   const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(INITIAL_SUBSCRIPTIONS);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
 
-  useEffect(() => {
-    const sync = () => {
-      setPayments(getStoredPayments());
-    };
-    sync();
-    window.addEventListener('crm-payments-changed', sync);
-    window.addEventListener('crm-students-changed', sync);
-    window.addEventListener('focus', sync);
-    return () => {
-      window.removeEventListener('crm-payments-changed', sync);
-      window.removeEventListener('crm-students-changed', sync);
-      window.removeEventListener('focus', sync);
-    };
+  const syncPayments = useCallback(() => {
+    setPayments(getStoredPayments());
   }, []);
+
+  useFocusSync(syncPayments);
+
+  useEffect(() => {
+    syncPayments();
+    window.addEventListener('crm-payments-changed', syncPayments);
+    window.addEventListener('crm-students-changed', syncPayments);
+    return () => {
+      window.removeEventListener('crm-payments-changed', syncPayments);
+      window.removeEventListener('crm-students-changed', syncPayments);
+    };
+  }, [syncPayments]);
 
   useEffect(() => {
     if (filterParam === 'overdue') {

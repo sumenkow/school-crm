@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
 import {
   BarChart3,
@@ -58,18 +59,19 @@ export default function AnalyticsPage() {
   });
   const [statusMenuOpenLeadId, setStatusMenuOpenLeadId] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    const sync = () => {
-      setLeads(getStoredLeads(true, true));
-    };
-    sync();
-    window.addEventListener('crm-leads-changed', sync);
-    window.addEventListener('focus', sync);
-    return () => {
-      window.removeEventListener('crm-leads-changed', sync);
-      window.removeEventListener('focus', sync);
-    };
+  const syncAnalyticsLeads = useCallback(() => {
+    setLeads(getStoredLeads(true, true));
   }, []);
+
+  useFocusSync(syncAnalyticsLeads);
+
+  useEffect(() => {
+    syncAnalyticsLeads();
+    window.addEventListener('crm-leads-changed', syncAnalyticsLeads);
+    return () => {
+      window.removeEventListener('crm-leads-changed', syncAnalyticsLeads);
+    };
+  }, [syncAnalyticsLeads]);
 
   if (role !== 'owner' && role !== 'developer') {
     return (

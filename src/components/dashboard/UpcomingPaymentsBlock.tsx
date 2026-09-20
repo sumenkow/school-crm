@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import {
   Calendar,
   Clock,
@@ -49,7 +50,7 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 5 }: Upcomin
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskDefaultStudentId, setTaskDefaultStudentId] = useState<string | undefined>();
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setLoading(true);
     try {
       const list = getUpcomingPayments();
@@ -59,19 +60,19 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 5 }: Upcomin
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusSync(loadData);
 
   useEffect(() => {
     loadData();
     window.addEventListener('crm-students-changed', loadData);
     window.addEventListener('crm-payments-changed', loadData);
-    window.addEventListener('focus', loadData);
     return () => {
       window.removeEventListener('crm-students-changed', loadData);
       window.removeEventListener('crm-payments-changed', loadData);
-      window.removeEventListener('focus', loadData);
     };
-  }, []);
+  }, [loadData]);
 
   const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
   const urgentCount = items.filter((i) => i.isUrgent).length;

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -154,38 +155,39 @@ function SmartActionHub() {
     return INITIAL_LEADS;
   });
 
-  useEffect(() => {
-    const sync = () => {
-      setPayments(getStoredPayments());
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = localStorage.getItem('crm_leads_v2');
-          if (stored) {
-            const parsed: FullLeadData[] = JSON.parse(stored);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const parsedIds = new Set(parsed.map((l) => l.id));
-              setLeads([...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))]);
-              return;
-            }
+  const syncDashboard = useCallback(() => {
+    setPayments(getStoredPayments());
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const parsed: FullLeadData[] = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const parsedIds = new Set(parsed.map((l) => l.id));
+            setLeads([...parsed, ...INITIAL_LEADS.filter((l) => !parsedIds.has(l.id))]);
+            return;
           }
-        } catch {}
-      }
-      setLeads([...INITIAL_LEADS]);
-    };
-    sync();
-    window.addEventListener('crm-payments-changed', sync);
-    window.addEventListener('crm-leads-changed', sync);
-    window.addEventListener('crm-students-changed', sync);
-    window.addEventListener('crm-names-synced', sync);
-    window.addEventListener('focus', sync);
-    return () => {
-      window.removeEventListener('crm-payments-changed', sync);
-      window.removeEventListener('crm-leads-changed', sync);
-      window.removeEventListener('crm-students-changed', sync);
-      window.removeEventListener('crm-names-synced', sync);
-      window.removeEventListener('focus', sync);
-    };
+        }
+      } catch {}
+    }
+    setLeads([...INITIAL_LEADS]);
   }, []);
+
+  useFocusSync(syncDashboard);
+
+  useEffect(() => {
+    syncDashboard();
+    window.addEventListener('crm-payments-changed', syncDashboard);
+    window.addEventListener('crm-leads-changed', syncDashboard);
+    window.addEventListener('crm-students-changed', syncDashboard);
+    window.addEventListener('crm-names-synced', syncDashboard);
+    return () => {
+      window.removeEventListener('crm-payments-changed', syncDashboard);
+      window.removeEventListener('crm-leads-changed', syncDashboard);
+      window.removeEventListener('crm-students-changed', syncDashboard);
+      window.removeEventListener('crm-names-synced', syncDashboard);
+    };
+  }, [syncDashboard]);
 
   const overdueList = payments.filter((p) => p.status === 'overdue');
   const firstOverdue = overdueList[0];

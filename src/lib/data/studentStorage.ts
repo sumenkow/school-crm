@@ -222,8 +222,10 @@ export function saveStudentToStorage(student: FullStudentData): void {
         }
       }).catch(() => {});
 
-      // Notify other views
-      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
+      // Notify other views if not currently reconciling
+      if (!isReconcilingGlobally) {
+        window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
+      }
     } catch (err) {
       console.error('Failed to save student to storage:', err);
     }
@@ -736,17 +738,22 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
   return { settled: totalSettled > 0, settledAmount: totalSettled };
 }
 
+let isReconcilingGlobally = false;
+
 /**
  * Reconciles all students and families so that neither an individual student nor a family
  * ever has an active debt while having unused deposit funds.
  */
 export function reconcileAllStudentDepositsAndDebts(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || isReconcilingGlobally) return;
+  isReconcilingGlobally = true;
+  let changesOccurred = false;
   try {
     const students = getStoredStudents();
     for (const s of students) {
       if ((s.finance?.deposit?.balance || 0) > 0) {
-        settleDebtsFromDeposit(s.id);
+        const res = settleDebtsFromDeposit(s.id);
+        if (res.settled) changesOccurred = true;
       }
     }
 
@@ -760,10 +767,17 @@ export function reconcileAllStudentDepositsAndDebts(): void {
       }
     }
     for (const pid of parentIds) {
-      settleFamilyDebtsFromFamilyDeposit(pid);
+      const res = settleFamilyDebtsFromFamilyDeposit(pid);
+      if (res.settled) changesOccurred = true;
+    }
+
+    if (changesOccurred && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-students-changed'));
     }
   } catch (err) {
     console.error('Failed to reconcile all student deposits and debts:', err);
+  } finally {
+    isReconcilingGlobally = false;
   }
 }
 

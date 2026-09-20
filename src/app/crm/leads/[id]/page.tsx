@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -73,40 +74,36 @@ export default function LeadDetailsPage() {
   const [leadTasks, setLeadTasks] = useState<FullTaskData[]>([]);
 
   // Sync tasks and timeline when updated anywhere in the CRM
-  useEffect(() => {
-    async function loadTasksAndTimeline() {
-      try {
-        const tasks = await getTasksForLead(leadId);
-        setLeadTasks(tasks);
+  const loadTasksAndTimeline = useCallback(async () => {
+    try {
+      const tasks = await getTasksForLead(leadId);
+      setLeadTasks(tasks);
 
-        const combinedTimeline = getCombinedLeadTimeline(leadId, lead.interactions, lead.convertedStudentId);
-        if (combinedTimeline.length !== lead.interactions.length) {
-          setLead((prev) => ({
-            ...prev,
-            interactions: combinedTimeline,
-          }));
-        }
-      } catch (e) {
-        console.error('Failed to sync lead tasks/timeline:', e);
+      const combinedTimeline = getCombinedLeadTimeline(leadId, lead.interactions, lead.convertedStudentId);
+      if (combinedTimeline.length !== lead.interactions.length) {
+        setLead((prev) => ({
+          ...prev,
+          interactions: combinedTimeline,
+        }));
       }
+    } catch (e) {
+      console.error('Failed to sync lead tasks/timeline:', e);
     }
+  }, [leadId, lead.interactions, lead.convertedStudentId]);
 
+  useFocusSync(loadTasksAndTimeline);
+
+  useEffect(() => {
     loadTasksAndTimeline();
 
-    const handleSync = () => {
-      loadTasksAndTimeline();
-    };
-
-    window.addEventListener('crm-tasks-changed', handleSync);
-    window.addEventListener('crm-timeline-interactions-changed', handleSync);
-    window.addEventListener('focus', handleSync);
+    window.addEventListener('crm-tasks-changed', loadTasksAndTimeline);
+    window.addEventListener('crm-timeline-interactions-changed', loadTasksAndTimeline);
 
     return () => {
-      window.removeEventListener('crm-tasks-changed', handleSync);
-      window.removeEventListener('crm-timeline-interactions-changed', handleSync);
-      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('crm-tasks-changed', loadTasksAndTimeline);
+      window.removeEventListener('crm-timeline-interactions-changed', loadTasksAndTimeline);
     };
-  }, [leadId, lead.convertedStudentId]);
+  }, [loadTasksAndTimeline]);
 
   const handleToggleLeadTask = async (taskId: string) => {
     const currentTask = leadTasks.find((t) => t.id === taskId);
