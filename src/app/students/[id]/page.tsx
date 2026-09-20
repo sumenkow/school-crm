@@ -42,6 +42,9 @@ import {
   X,
   ExternalLink,
   Video,
+  PhoneCall,
+  Banknote,
+  Filter,
   Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -49,7 +52,7 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import { getTasksForStudent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
+import { getTasksForStudent, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
@@ -197,6 +200,99 @@ export function buildChronologicalLedger(student: FullStudentData, customPricePe
   processed.sort((a, b) => b.timestamp - a.timestamp);
 
   return processed;
+}
+
+function getTimelineCategoryAndIcon(int: TimelineInteraction) {
+  const contentLower = (int.content || '').toLowerCase();
+  const channelLower = (int.channel || '').toLowerCase();
+  const typeLower = (int.type || '').toLowerCase();
+
+  // 1. Finance / Payments
+  if (
+    typeLower === 'payment' ||
+    contentLower.includes('оплата') ||
+    contentLower.includes('пополнение') ||
+    contentLower.includes('абонемент') ||
+    contentLower.includes('платеж') ||
+    contentLower.includes('чек') ||
+    contentLower.includes('внесен') ||
+    contentLower.includes('руб') ||
+    contentLower.includes('€') ||
+    contentLower.includes('$')
+  ) {
+    return {
+      category: 'finance',
+      icon: Banknote,
+      iconBg: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
+      channelLabel: 'Оплата / Веха',
+    };
+  }
+
+  // 2. Tasks
+  if (
+    typeLower === 'task' ||
+    typeLower === 'follow_up' ||
+    contentLower.includes('задача') ||
+    contentLower.includes('поручен') ||
+    contentLower.includes('выполнил') ||
+    contentLower.includes('перенос')
+  ) {
+    const isDone = contentLower.includes('выполнен') || contentLower.includes('закрыт');
+    return {
+      category: 'tasks',
+      icon: isDone ? CheckCircle2 : Clock,
+      iconBg: isDone ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200',
+      channelLabel: isDone ? 'Задача выполнена' : 'Задача',
+    };
+  }
+
+  // 3. Lead Lifecycle / Conversion / Funnel
+  if (
+    typeLower === 'initial_contact' ||
+    typeLower === 'trial' ||
+    typeLower === 'status_change' ||
+    contentLower.includes('лид') ||
+    contentLower.includes('воронк') ||
+    contentLower.includes('зачислен') ||
+    contentLower.includes('заявка') ||
+    contentLower.includes('этап') ||
+    (int as any).leadId
+  ) {
+    return {
+      category: 'lead',
+      icon: Filter,
+      iconBg: 'bg-indigo-50 text-indigo-600 border border-indigo-200',
+      channelLabel: typeLower === 'initial_contact' ? 'Заявка с сайта' : 'История лида',
+    };
+  }
+
+  // 4. Communication: Phone / Meeting / Zoom
+  if (channelLower === 'phone' || channelLower === 'call' || typeLower === 'call' || contentLower.includes('звонок') || contentLower.includes('позвон')) {
+    return {
+      category: 'communication',
+      icon: PhoneCall,
+      iconBg: 'bg-amber-50 text-amber-600 border border-amber-200',
+      channelLabel: channelLower === 'call' ? 'Онлайн-встреча' : 'Телефонный звонок',
+    };
+  }
+
+  // 5. Communication: Telegram / WhatsApp / Email
+  if (channelLower === 'telegram' || channelLower === 'whatsapp' || channelLower === 'email') {
+    return {
+      category: 'communication',
+      icon: channelLower === 'email' ? Mail : Send,
+      iconBg: 'bg-sky-50 text-sky-600 border border-sky-200',
+      channelLabel: channelLower === 'telegram' ? 'Telegram' : channelLower === 'whatsapp' ? 'WhatsApp' : 'Email',
+    };
+  }
+
+  // Default Fallback
+  return {
+    category: 'communication',
+    icon: MessageSquare,
+    iconBg: 'bg-blue-50 text-blue-600 border border-blue-200',
+    channelLabel: channelLower === 'other' ? 'Заметка' : channelLower || 'Система',
+  };
 }
 
 export default function StudentDetailsPage() {
@@ -690,6 +786,7 @@ export default function StudentDetailsPage() {
   const [newChannel, setNewChannel] = useState<'telegram' | 'whatsapp' | 'phone' | 'call'>('telegram');
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
   const [interactionTarget, setInteractionTarget] = useState<string>('student');
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'communication' | 'tasks' | 'finance' | 'lead'>('all');
 
   useEffect(() => {
     const parentIds = (student.parents || []).map((p) => p.id);
@@ -1072,9 +1169,39 @@ export default function StudentDetailsPage() {
     // Persist to shared timeline storage
     saveInteractionToStorage(newEntry);
 
-    toast.success(isStudent
-      ? `Действие с учеником «${student.firstName} ${student.lastName}» сохранено!`
-      : `Действие с родителем «${targetParent?.firstName} ${targetParent?.lastName}» сохранено!`
+    // Auto-create Follow-up task in Tasks tab if followUpDate is specified
+    if (newFollowUpDate) {
+      const trimmedNote = newNoteText.trim();
+      const shortSummary = trimmedNote.length > 55 ? `${trimmedNote.slice(0, 52)}...` : trimmedNote;
+
+      createUnifiedTask({
+        title: `Follow-up: ${shortSummary}`,
+        dueDate: newFollowUpDate,
+        assignedTo: userName || 'Администратор',
+        studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        parentId: targetParent?.id,
+        parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
+        description: `Автоматически создано из Timeline (${newChannel}). Заметка: «${trimmedNote}»`,
+        taskType: 'Retention',
+        priority: 'medium',
+        createdByName: userName || 'Администратор',
+      })
+        .then((newTask) => {
+          setStudent((prev) => ({
+            ...prev,
+            tasks: [newTask, ...(prev.tasks || []).filter((t) => t.id !== newTask.id)],
+          }));
+        })
+        .catch((err) => console.error('Failed to auto-create follow-up task:', err));
+    }
+
+    toast.success(
+      newFollowUpDate
+        ? `Действие сохранено и создана задача Follow-up на ${newFollowUpDate}!`
+        : isStudent
+        ? `Действие с учеником «${student.firstName} ${student.lastName}» сохранено!`
+        : `Действие с родителем «${targetParent?.firstName} ${targetParent?.lastName}» сохранено!`
     );
     setNewNoteText('');
     setNewFollowUpDate('');
@@ -2419,65 +2546,111 @@ export default function StudentDetailsPage() {
             </div>
           </form>
 
-          {/* Timeline Feed */}
+          {/* Timeline Feed Controls & Filters */}
           <div className="space-y-4">
-            {getCombinedStudentTimeline(
-              student.id,
-              student.interactions,
-              (student.parents || []).map((p) => p.id)
-            ).map((int) => {
-              const target = getInteractionTargetInfo(int, student);
-              const isParentAction = target.role === 'parent';
+            {/* Filter Chips Bar */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {[
+                { id: 'all', label: 'Все события' },
+                { id: 'communication', label: '💬 Общение и звонки' },
+                { id: 'tasks', label: '✓ Задачи' },
+                { id: 'finance', label: '💳 Оплаты' },
+                { id: 'lead', label: '⚡ История лида' },
+              ].map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setTimelineFilter(chip.id as any)}
+                  className={cn(
+                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                    timelineFilter === chip.id
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  )}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
 
-              return (
-                <div key={int.id} className="relative flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                  <div
-                    className={cn(
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      isParentAction ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
-                    )}
-                  >
-                    <MessageSquare className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-900 text-sm">{int.author}</span>
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 uppercase">
-                          {int.channel}
-                        </span>
-
-                        {isParentAction ? (
-                          <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-medium text-purple-800 border border-purple-200 flex items-center gap-1">
-                            <span className="font-bold">{target.roleLabel}:</span>
-                            <span>{target.name}</span>
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200 flex items-center gap-1">
-                            <span className="font-bold">Ученик:</span>
-                            <span>{target.name}</span>
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-slate-400">{int.occurredAt}</span>
-                    </div>
-                    <p className="text-xs text-slate-700 pt-1 leading-relaxed">{int.content}</p>
-
-                    {int.result && (
-                      <p className="text-[11px] text-emerald-700 font-medium pt-1">
-                        Результат: {int.result}
-                      </p>
-                    )}
-
-                    {int.nextAction && (
-                      <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900 border border-amber-200/60 font-medium">
-                        → Следующее действие: {int.nextAction}
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {(() => {
+              const allTimelineItems = getCombinedStudentTimeline(
+                student.id,
+                student.interactions,
+                (student.parents || []).map((p) => p.id)
               );
-            })}
+
+              const filteredItems = allTimelineItems.filter((int) => {
+                if (timelineFilter === 'all') return true;
+                const { category } = getTimelineCategoryAndIcon(int);
+                return category === timelineFilter;
+              });
+
+              if (filteredItems.length === 0) {
+                return (
+                  <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
+                    <Filter className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                    В выбранной категории событий пока нет
+                  </div>
+                );
+              }
+
+              return filteredItems.map((int) => {
+                const target = getInteractionTargetInfo(int, student);
+                const { icon: ItemIcon, iconBg, channelLabel } = getTimelineCategoryAndIcon(int);
+                const isParentAction = target.role === 'parent';
+                const isLeadAction = target.role === 'lead';
+
+                return (
+                  <div key={int.id} className="relative flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-slate-300 transition-colors">
+                    <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-2xs', iconBg)}>
+                      <ItemIcon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm">{int.author}</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                            {channelLabel}
+                          </span>
+
+                          {isLeadAction ? (
+                            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[11px] font-medium text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                              <span className="font-bold">Лид:</span>
+                              <span>{target.name}</span>
+                            </span>
+                          ) : isParentAction ? (
+                            <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[11px] font-medium text-purple-800 border border-purple-200 flex items-center gap-1">
+                              <span className="font-bold">{target.roleLabel}:</span>
+                              <span>{target.name}</span>
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200 flex items-center gap-1">
+                              <span className="font-bold">Ученик:</span>
+                              <span>{target.name}</span>
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium">{int.occurredAt}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 pt-1 leading-relaxed">{int.content}</p>
+
+                      {int.result && (
+                        <p className="text-[11px] text-emerald-700 font-medium pt-1">
+                          Результат: {int.result}
+                        </p>
+                      )}
+
+                      {int.nextAction && (
+                        <div className="mt-2 rounded-lg bg-amber-50 p-2 text-[11px] text-amber-900 border border-amber-200/60 font-medium">
+                          → Следующее действие: {int.nextAction}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       )}

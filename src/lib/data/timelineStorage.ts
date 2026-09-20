@@ -195,8 +195,36 @@ export function getCombinedLeadTimeline(
 }
 
 /**
+ * Helper to identify routine timeline noise (routine lesson attendance and micro per-lesson deductions)
+ * so they are excluded from the main Timeline feed.
+ */
+export function isRoutineTimelineNoise(item: TimelineInteraction): boolean {
+  if (!item || !item.content) return false;
+  const contentLower = item.content.toLowerCase();
+
+  // Routine lesson attendance checks (without explicit absence notes)
+  if (
+    (contentLower.includes('был на занятии') || contentLower.includes('был на уроке') || contentLower.includes('посетил урок') || contentLower.includes('присутствовал')) &&
+    !contentLower.includes('пропуск') && !contentLower.includes('не был') && !contentLower.includes('отсутств')
+  ) {
+    return true;
+  }
+
+  // Micro per-lesson deduction checks (routine per-lesson auto-deductions)
+  if (
+    (contentLower.includes('поурочное списание') || contentLower.includes('списание за урок') || contentLower.includes('микросписание')) &&
+    !contentLower.includes('оплата') && !contentLower.includes('пополнение')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Retrieves full unified timeline for a student, sorted newest on top.
- * Includes direct student interactions PLUS interactions with any of the student's parents.
+ * Includes direct student interactions PLUS interactions with any of the student's parents
+ * AND historical lead interactions from before conversion.
  */
 export function getCombinedStudentTimeline(
   studentId: string,
@@ -206,20 +234,25 @@ export function getCombinedStudentTimeline(
   const stored = getStoredInteractions();
   const map = new Map<string, TimelineInteraction>();
   
-  // Base interactions
-  baseInteractions.forEach((i) => map.set(i.id, i));
-  
-  // Stored interactions matching this student or any of their parents
-  stored.forEach((i) => {
-    if (
-      (i.studentId && String(i.studentId) === String(studentId)) ||
-      (i.parentId && parentIds.map(String).includes(String(i.parentId)))
-    ) {
+  // Base student interactions
+  baseInteractions.forEach((i) => {
+    if (!isRoutineTimelineNoise(i)) {
       map.set(i.id, i);
     }
   });
 
-  // Also check if any parent interaction was logged on other students in the family
+  // Check stored interactions matching student, lead, or parents
+  stored.forEach((i) => {
+    const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
+    const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
+    const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId === studentId;
+
+    if ((isStudentMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
+      map.set(i.id, i);
+    }
+  });
+
+  // Check all known students for matching student or parent interactions
   const allKnownStudents = typeof window !== 'undefined'
     ? [...INITIAL_STUDENTS, ...getStoredStudents()]
     : INITIAL_STUDENTS;
@@ -227,10 +260,9 @@ export function getCombinedStudentTimeline(
   allKnownStudents.forEach((st) => {
     if (st.parents?.some((p) => parentIds.map(String).includes(String(p.id))) || String(st.id) === String(studentId)) {
       (st.interactions || []).forEach((i) => {
-        if (
-          (i.studentId && String(i.studentId) === String(studentId)) ||
-          (i.parentId && parentIds.map(String).includes(String(i.parentId)))
-        ) {
+        const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
+        const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
+        if ((isStudentMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
           map.set(i.id, i);
         }
       });
@@ -283,19 +315,28 @@ export function getCombinedParentTimeline(
 
 export interface InteractionTargetInfo {
   name: string;
-  role: 'student' | 'parent';
+  role: 'student' | 'parent' | 'lead';
   roleLabel: string;
 }
 
 /**
- * Determines whether an interaction was performed with the student or with a parent,
- * returning the exact Full Name and formatted status badge ("Ученик" or "Родитель").
+ * Determines whether an interaction was performed with the student, parent, or lead,
+ * returning the exact Full Name and formatted status badge ("Ученик", "Родитель", "Лид").
  */
 export function getInteractionTargetInfo(
   int: TimelineInteraction,
   contextStudent?: { firstName: string; lastName: string; parents?: Array<{ id: string; firstName: string; lastName: string; relationshipType?: string }> },
   contextParent?: { firstName: string; lastName: string }
 ): InteractionTargetInfo {
+  // 0. If targetType is explicitly 'lead' or item has leadId without studentId
+  if (int.targetType === 'lead' || ((int as any).leadId && !int.studentId && !int.parentId)) {
+    return {
+      name: (int as any).leadName || int.targetName || 'Лид',
+      role: 'lead',
+      roleLabel: 'Лид',
+    };
+  }
+
   // 1. If targetType is explicitly 'parent'
   if (int.targetType === 'parent') {
     return {

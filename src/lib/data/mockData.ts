@@ -7,7 +7,7 @@ export interface TimelineInteraction {
   studentName?: string;
   parentId?: string;
   parentName?: string;
-  targetType?: 'student' | 'parent';
+  targetType?: 'student' | 'parent' | 'lead';
   targetName?: string;
   targetRole?: string;
   occurredAt: string;
