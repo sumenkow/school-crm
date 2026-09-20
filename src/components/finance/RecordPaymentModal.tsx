@@ -152,16 +152,23 @@ export function RecordPaymentModal({
     e.preventDefault();
     const effectiveAmountStr = amount || (currency === 'EUR' ? amountEur : amountRub);
     const cleanAmount = String(effectiveAmountStr).replace(',', '.').trim();
-    const numAmount = parseFloat(cleanAmount);
-    if (isNaN(numAmount) || numAmount <= 0) {
+    const numAmountRaw = parseFloat(cleanAmount);
+    if (isNaN(numAmountRaw) || numAmountRaw <= 0) {
       alert('Укажите корректную сумму платежа');
       return;
     }
 
-    const formattedAmount =
+    const numAmountEUR =
       currency === 'EUR'
-        ? `${numAmount.toLocaleString('ru-RU')} € (≈ ${(numAmount * rate).toLocaleString('ru-RU')} ₽)`
-        : `${numAmount.toLocaleString('ru-RU')} ₽ (≈ ${Math.round((numAmount / rate) * 100) / 100} €)`;
+        ? numAmountRaw > 10000 ? 120 : numAmountRaw
+        : Math.round((numAmountRaw / rate) * 100) / 100;
+
+    const numAmountRUB =
+      currency === 'RUB'
+        ? numAmountRaw
+        : Math.round(numAmountEUR * rate);
+
+    const formattedAmount = `${numAmountEUR.toLocaleString('ru-RU')} € (≈ ${numAmountRUB.toLocaleString('ru-RU')} ₽)`;
     const formattedDate = new Date(paymentDate).toLocaleDateString('ru-RU');
 
     const methodLabels: Record<string, string> = {
@@ -182,13 +189,13 @@ export function RecordPaymentModal({
       parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
       courseName: freshStudent.groups?.[0]?.courseName || 'Английский язык',
       groupName: freshStudent.groups?.[0]?.name || 'Основная группа',
-      amount: numAmount,
+      amount: numAmountEUR,
       amountFormatted: formattedAmount,
       paymentDate: formattedDate,
       periodLabel,
       status,
       paymentMethod,
-      currency,
+      currency: 'EUR',
       paymentType,
       recordedBy: 'Администратор',
       comment: comment || (paymentType === 'prepayment' ? 'Предоплата (списание по стоимости курса)' : autoRenewSubscription ? 'Абонемент продлен автоматически' : undefined),
@@ -202,7 +209,7 @@ export function RecordPaymentModal({
       amount: formattedAmount,
       method: methodLabel,
       status: status === 'paid' ? ('paid' as const) : ('expected' as const),
-      currency,
+      currency: 'EUR',
       paymentType,
     };
 
@@ -252,14 +259,14 @@ export function RecordPaymentModal({
 
     if (paymentType === 'prepayment' && status === 'paid') {
       const currentBalance = freshStudent.finance?.deposit?.balance || 0;
-      const newBal = currentBalance + numAmount;
-      const lessonPrice = freshStudent.finance?.deposit?.pricePerLesson || (currency === 'EUR' ? 15 : 1050);
+      const newBal = Math.round((currentBalance + numAmountEUR) * 100) / 100;
+      const lessonPrice = freshStudent.finance?.deposit?.pricePerLesson || 15;
       updatedDeposit = {
         balance: newBal,
-        balanceFormatted: `${newBal.toLocaleString('ru-RU')} ${currencySymbol}`,
-        currency,
+        balanceFormatted: `${newBal.toLocaleString('ru-RU')} €`,
+        currency: 'EUR',
         pricePerLesson: lessonPrice,
-        pricePerLessonFormatted: `${lessonPrice.toLocaleString('ru-RU')} ${currencySymbol}`,
+        pricePerLessonFormatted: `${lessonPrice.toLocaleString('ru-RU')} €`,
       };
     }
 
@@ -275,7 +282,7 @@ export function RecordPaymentModal({
         id: updatedActiveSubscription?.id || `sub_${Date.now()}`,
         name: updatedActiveSubscription?.name || 'Ежемесячный абонемент',
         period: updatedActiveSubscription?.period || '1 месяц',
-        price: updatedActiveSubscription?.price || String(numAmount),
+        price: updatedActiveSubscription?.price || String(numAmountEUR),
         status: 'active' as const,
         lessonsAttended: updatedActiveSubscription?.lessonsAttended || '0/8',
         renewalDate: nextRenewalDate,
@@ -300,7 +307,7 @@ export function RecordPaymentModal({
 
     // Auto-settle any overdue debts for this student so overdue debt block updates automatically!
     if (status === 'paid') {
-      settleOverduePayments(freshStudent.id, numAmount, parent?.id);
+      settleOverduePayments(freshStudent.id, numAmountEUR, parent?.id);
       settleStudentOverdueDebts(freshStudent.id);
       settleDebtsFromDeposit(freshStudent.id);
       if (parent?.id) {

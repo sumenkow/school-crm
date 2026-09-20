@@ -266,3 +266,45 @@ export function calculateMultiCurrencyTotals(
   };
 }
 
+/**
+ * Robust helper to parse any payment amount into base EUR.
+ * Converts RUB values (amounts > 500 or containing ₽/руб) to EUR.
+ * Guards against concatenated string outliers (> 10000 EUR).
+ */
+export function parsePaymentAmountEUR(val: any, defaultVal = 120, customRate?: number): number {
+  if (val === null || val === undefined) return defaultVal;
+
+  if (typeof val === 'number') {
+    if (isNaN(val) || val <= 0) return defaultVal;
+    if (val > 10000) {
+      // Outlier protection against concatenated strings or internal IDs
+      return defaultVal;
+    }
+    if (val > 500) {
+      return convertRubToEur(val, customRate);
+    }
+    return val;
+  }
+
+  const str = String(val).trim();
+  if (!str) return defaultVal;
+
+  const isRub = str.includes('₽') || str.toLowerCase().includes('руб');
+  const isEur = str.includes('€') || str.toLowerCase().includes('eur');
+
+  const cleaned = str.replace(/[^\d.,]/g, '').replace(',', '.');
+  const parsed = parseFloat(cleaned);
+  if (isNaN(parsed) || parsed <= 0) return defaultVal;
+
+  if (parsed > 10000) {
+    return defaultVal;
+  }
+
+  if (isRub || (!isEur && parsed > 500)) {
+    return convertRubToEur(parsed, customRate);
+  }
+
+  return parsed;
+}
+
+

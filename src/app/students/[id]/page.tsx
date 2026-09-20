@@ -9,6 +9,7 @@ import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTar
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
+import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
@@ -133,7 +134,7 @@ export function buildChronologicalLedger(student: FullStudentData, customPricePe
     date: p.date ? (p.date.includes(',') ? p.date : `${p.date}, 10:00`) : '01.09.2026, 10:00',
     description: `Пополнение депозита / абонемента (${p.period || 'Сентябрь'})`,
     method: p.method || 'Карта / СБП',
-    amountEUR: typeof p.amount === 'number' ? p.amount : (parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 120),
+    amountEUR: parsePaymentAmountEUR(p.amount, 120),
   }));
 
   const rawDeductions = (student.attendanceStats?.history || [])
@@ -141,7 +142,7 @@ export function buildChronologicalLedger(student: FullStudentData, customPricePe
     .map((h, idx) => {
       const isManual = (h as any).isManualAdmin || (h as any).enteredBy === 'admin';
       const teacherName = (h as any).teacherName || (h as any).author || student.groups?.[0]?.teacherName || 'Мария Иванова';
-      const initiator = isManual ? `Администратор: ${(h as any).author || 'Администрация'}` : `Преподаватель: ${teacherName}`;
+      const initiator = isManual ? `Администратор: ${(h as any).author || 'Администрация'}` : `Автоматически (урок)`;
 
       const lessonDateStr = h.date ? (h.date.includes(',') ? h.date : `${h.date}, 18:45`) : '08.09.2026, 18:45';
 
@@ -149,7 +150,7 @@ export function buildChronologicalLedger(student: FullStudentData, customPricePe
         id: `ded_${idx}`,
         type: 'deduction' as const,
         date: lessonDateStr,
-        description: `Списание за занятие от ${h.date || 'занятие'}: «${h.topic || 'Урок'}» (${h.groupName || student.groups?.[0]?.name || 'Группа'})`,
+        description: `Списание за занятие: ${h.topic || 'Урок'} (${h.groupName || student.groups?.[0]?.name || 'Основная группа'})`,
         method: initiator,
         amountEUR: customPricePerLesson || 12,
       };
@@ -171,8 +172,8 @@ export function buildChronologicalLedger(student: FullStudentData, customPricePe
         id: 'sample_2',
         type: 'deduction',
         date: '08.09.2026, 18:45',
-        description: `Списание за занятие от 08.09.2026: «Разговорный клуб» (${student.groups?.[0]?.name || 'English B1'})`,
-        method: `Преподаватель: ${student.groups?.[0]?.teacherName || 'Мария Иванова'}`,
+        description: `Списание за занятие: Разговорный клуб (${student.groups?.[0]?.name || 'English B1'})`,
+        method: 'Автоматически (урок)',
         amountEUR: customPricePerLesson || 12,
       },
     ];
@@ -2300,94 +2301,91 @@ export default function StudentDetailsPage() {
             </div>
 
             {/* Правая колонка — Лицевой счет (Депозит) */}
-            <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 to-teal-50/40 p-5 shadow-xs space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                    Лицевой счет (Депозит)
-                  </span>
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                    Базовый EUR (€)
-                  </span>
-                </div>
+            {(() => {
+              const ledgerItemsForWidget = buildChronologicalLedger(student, customPricePerLesson);
+              const currentCalculatedBalance = ledgerItemsForWidget[0]?.runningBalanceEUR ?? (student.finance?.deposit?.balance || 120);
+              const availableLessonsCount = Math.max(0, Math.floor(currentCalculatedBalance / (customPricePerLesson || 12)));
 
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-3xl font-black text-slate-900">
-                    {(student.finance?.deposit?.balance || 120).toLocaleString('ru-RU')} €
-                  </h3>
-                  <span className="text-sm font-semibold text-slate-500">
-                    (~{((student.finance?.deposit?.balance || 120) * 100).toLocaleString('ru-RU')} ₽)
-                  </span>
-                </div>
+              return (
+                <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 to-teal-50/40 p-5 shadow-xs space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                        Лицевой счет (Депозит)
+                      </span>
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                        Базовый EUR (€)
+                      </span>
+                    </div>
 
-                {/* Per-lesson rate with inline edit */}
-                <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">Ставка за занятие (Руководитель):</span>
-                    {!isEditingPricePerLesson && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTempPricePerLesson(String(customPricePerLesson));
-                          setIsEditingPricePerLesson(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 hover:underline"
-                        title="Изменить персональную ставку за урок"
-                      >
-                        <Edit className="h-3 w-3" /> Изменить
-                      </button>
-                    )}
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-3xl font-black text-slate-900">
+                        {currentCalculatedBalance.toLocaleString('ru-RU')} €
+                      </h3>
+                      <span className="text-sm font-semibold text-slate-500">
+                        (~{(currentCalculatedBalance * 100).toLocaleString('ru-RU')} ₽)
+                      </span>
+                    </div>
+
+                    {/* Per-lesson rate with inline edit */}
+                    <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 font-medium">Ставка за занятие (Руководитель):</span>
+                        {!isEditingPricePerLesson && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTempPricePerLesson(String(customPricePerLesson));
+                              setIsEditingPricePerLesson(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 hover:underline"
+                            title="Изменить персональную ставку за урок"
+                          >
+                            <Edit className="h-3 w-3" /> Изменить
+                          </button>
+                        )}
+                      </div>
+
+                      {isEditingPricePerLesson ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="number"
+                            value={tempPricePerLesson}
+                            onChange={(e) => setTempPricePerLesson(e.target.value)}
+                            className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            placeholder="Ставка €"
+                          />
+                          <span className="text-slate-600 font-bold">€</span>
+                          <button
+                            type="button"
+                            onClick={handleSavePricePerLesson}
+                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingPricePerLesson(false)}
+                            className="rounded-lg bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-300 transition-colors"
+                          >
+                            Отмена
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="font-extrabold text-slate-900 text-sm">
+                            {customPricePerLesson} € <span className="text-slate-400 text-xs font-normal">(~{customPricePerLesson * 100} ₽)</span>
+                          </span>
+                          <span className="text-[11px] font-semibold text-emerald-700">
+                            Остаток: {availableLessonsCount} уроков
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {isEditingPricePerLesson ? (
-                    <div className="flex items-center gap-2 pt-1">
-                      <input
-                        type="number"
-                        value={tempPricePerLesson}
-                        onChange={(e) => setTempPricePerLesson(e.target.value)}
-                        className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Ставка €"
-                      />
-                      <span className="text-slate-600 font-bold">€</span>
-                      <button
-                        type="button"
-                        onClick={handleSavePricePerLesson}
-                        className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
-                      >
-                        Сохранить
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingPricePerLesson(false)}
-                        className="rounded-lg bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-300 transition-colors"
-                      >
-                        Отмена
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between pt-0.5">
-                      <span className="font-extrabold text-slate-900 text-sm">
-                        {customPricePerLesson} € <span className="text-slate-400 text-xs font-normal">(~{customPricePerLesson * 100} ₽)</span>
-                      </span>
-                      <span className="text-[11px] font-semibold text-emerald-700">
-                        Остаток: {Math.max(0, Math.floor((student.finance?.deposit?.balance || 120) / customPricePerLesson))} уроков
-                      </span>
-                    </div>
-                  )}
                 </div>
-              </div>
-
-              <div className="pt-2 border-t border-emerald-200/60 flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Пополнить депозит
-                </button>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* БЛОК 2: ПАНЕЛЬ ДЕЙСТВИЙ ВЫПИСКИ */}
@@ -2441,8 +2439,7 @@ export default function StudentDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
                 title="Отправить выписку представителю на email"
               >
-                <Mail className="h-3.5 w-3.5 text-blue-600" />
-                ✉ Отправить выписку на email
+                Отправить выписку на email
               </button>
               <button
                 type="button"
@@ -2450,7 +2447,7 @@ export default function StudentDetailsPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
-                + Внести платёж
+                Внести платёж
               </button>
             </div>
           </div>
