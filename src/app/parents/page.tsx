@@ -841,11 +841,11 @@ export default function ParentsPage() {
                       className={cn(
                         'transition-colors border-b border-slate-100',
                         isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80',
-                        p.children.length > 1 ? 'py-3' : 'h-16'
+                        p.children.length > 1 ? 'py-2.5' : 'h-14'
                       )}
                     >
                       {/* Чекбокс */}
-                      <td className="px-3.5 py-3 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-3.5 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -855,7 +855,7 @@ export default function ParentsPage() {
                       </td>
 
                       {/* 2. ПРЕДСТАВИТЕЛЬ (Phone LEFT, Messengers RIGHT via flex justify-between) */}
-                      <td className="px-3.5 py-3 align-middle">
+                      <td className="px-3.5 py-2.5 align-middle">
                         <div className="flex items-center gap-2.5">
                           <Link href={`/parents/${p.id}`} className="relative shrink-0 block">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
@@ -915,7 +915,7 @@ export default function ParentsPage() {
                       </td>
 
                       {/* 3. УЧЕНИК (Synchronized 1-to-1 parallel rows with КУРС) */}
-                      <td className="px-3.5 py-3 align-middle">
+                      <td className="px-3.5 py-2.5 align-middle">
                         {p.children.length === 0 ? (
                           <span className="text-xs text-slate-400 font-semibold">— Без учеников</span>
                         ) : (
@@ -939,7 +939,7 @@ export default function ParentsPage() {
                       </td>
 
                       {/* 4. КУРС (Synchronized 1-to-1 parallel rows with УЧЕНИК + Interactive +1 Popover) */}
-                      <td className="px-3.5 py-3 align-middle">
+                      <td className="px-3.5 py-2.5 align-middle">
                         {p.children.length === 0 ? (
                           <span className="text-xs text-slate-400 select-none">— Без группы</span>
                         ) : (
@@ -1005,7 +1005,7 @@ export default function ParentsPage() {
                       </td>
 
                       {/* 5. СТАТУС ОПЛАТЫ */}
-                      <td className="px-3.5 py-3 align-middle">
+                      <td className="px-3.5 py-2.5 align-middle">
                         <Link
                           href={`/parents/${p.id}`}
                           className="block group min-w-0"

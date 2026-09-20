@@ -48,15 +48,17 @@ import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForParent } from '@/lib/data/upcomingPaymentsHelper';
 import { useLanguage } from '@/context/LanguageContext';
 
+import { ParentProfileDesktop } from '@/features/parents/components/ParentProfileDesktop';
+
 export default function ParentDetailsPage() {
   const params = useParams();
   const { success, error: toastError } = useToast();
-  const { userName } = useRole();
+  const { userName, role } = useRole();
   const { t } = useLanguage();
   const parentId = params.id as string;
 
   // Active tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'children' | 'finance' | 'timeline' | 'tasks'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'children' | 'finance' | 'timeline' | 'tasks'>('children');
 
   // Load parent and linked children from unified storage (supports converted leads)
   const [parent, setParent] = useState(() => {
@@ -1028,11 +1030,52 @@ export default function ParentDetailsPage() {
         <span className="text-slate-800 font-semibold">{parent.firstName} {parent.lastName}</span>
       </div>
 
-      {/* Hero Parent Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {/* Desktop Header Component */}
+      <div className="hidden md:block">
+        <ParentProfileDesktop
+          parent={parent}
+          familySummary={familyFinancialSummary}
+          upcomingPaymentAlert={getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id))[0] || null}
+          role={role || 'admin'}
+          onOpenPaymentModal={() => {
+            setPaymentModalStudentId(undefined);
+            setIsPaymentModalOpen(true);
+          }}
+          onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
+          onOpenEditParentModal={handleOpenEdit}
+          onOpenLinkChildModal={() => setIsAddChildModalOpen(true)}
+          onDeleteParent={() => {
+            if (confirm(`Вы действительно хотите удалить родителя ${parent.firstName} ${parent.lastName}?`)) {
+              success('Родитель перемещён в архив');
+            }
+          }}
+          onSelectTab={(tabKey) => setActiveTab(tabKey as any)}
+          onSendReminder={(channel) => {
+            const upcomingList = getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id));
+            const firstUpcoming = upcomingList[0];
+            const targetPhone = parent.whatsapp || parent.phone;
+            const cleanedPhone = targetPhone.replace(/[^\d]/g, '');
+            const childName = firstUpcoming?.studentName || parent.children[0]?.name || 'ребенка';
+            const text = encodeURIComponent(`Здравствуйте, ${parent.firstName}! Напоминаем об оплате обучения для ${childName}. Сумма к оплате: ${firstUpcoming?.amount || familyFinancialSummary.formattedDebt}.`);
+            if (channel === 'whatsapp') {
+              window.open(`https://wa.me/${cleanedPhone}?text=${text}`, '_blank');
+            } else {
+              const tgUsername = parent.telegram ? parent.telegram.replace('@', '') : '';
+              if (tgUsername) {
+                window.open(`https://t.me/${tgUsername}`, '_blank');
+              } else {
+                window.open(`https://t.me/+${cleanedPhone}`, '_blank');
+              }
+            }
+          }}
+        />
+      </div>
+
+      {/* Mobile Hero Parent Card */}
+      <div className="block md:hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
+        <div className="flex flex-col gap-4">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 font-bold text-blue-700 text-2xl shadow-2xs">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 font-bold text-blue-700 text-2xl shadow-2xs shrink-0">
               {parent.firstName[0]}{parent.lastName[0]}
             </div>
             <div>
@@ -1137,224 +1180,35 @@ export default function ParentDetailsPage() {
             </button>
           </div>
         </div>
-
-        {/* Quick summary strip */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3 border-t border-slate-100 pt-4 text-xs">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">{t('parents.childrenCount', 'Дети')} ({parent.children.length}):</span>
-              <button
-                type="button"
-                onClick={() => setIsAddChildModalOpen(true)}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
-                title="Добавить ребенка"
-              >
-                <Plus className="h-3 w-3" />
-                {t('common.add', 'Добавить')}
-              </button>
-            </div>
-            {parent.children.length === 0 ? (
-              <p className="font-semibold text-slate-400 mt-0.5">{t('parents.emptyChildren', 'Нет привязанных')}</p>
-            ) : (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {parent.children.map((ch) => (
-                  <Link
-                    key={ch.id}
-                    href={`/students/${ch.id}`}
-                    className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200/60 hover:bg-blue-100 transition-colors"
-                  >
-                    {ch.name.split(' ')[0]}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          <div>
-            <span className="text-slate-400">{t('students.colGroup', 'Курсы и группы')}:</span>
-            <p className="font-semibold text-slate-800 mt-0.5 truncate">
-              {parent.children.map((c) => c.group || c.course).filter(Boolean).join(', ') || 'Онлайн'}
-            </p>
-          </div>
-          <div>
-            <span className="text-slate-400">{t('tasks.filterOpen', 'Открытых задач')}:</span>
-            <p className="font-semibold text-purple-600 mt-0.5">
-              {familyTasks.filter((t) => t.status === 'open').length}
-            </p>
-          </div>
-          <div>
-            <span className="text-slate-400">{t('hero.preferredChannel', 'Предпочтительный канал')}:</span>
-            <p className="font-semibold text-slate-900 mt-0.5 flex items-center gap-1">
-              {parent.preferredChannel}
-            </p>
-          </div>
-
-          {/* 5th Column: Hero Family Balance Box */}
-          <div className={cn(
-            "rounded-xl p-2.5 border flex flex-col justify-between",
-            familyFinancialSummary.deposit > 0 && "bg-emerald-50/70 border-emerald-200",
-            familyFinancialSummary.debt > 0 && "bg-rose-50/80 border-rose-200",
-            familyFinancialSummary.deposit === 0 && familyFinancialSummary.debt === 0 && "bg-amber-50/70 border-amber-200"
-          )}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
-                {familyFinancialSummary.deposit > 0 ? (
-                  <Wallet className="h-3 w-3 text-emerald-600" />
-                ) : familyFinancialSummary.debt > 0 ? (
-                  <AlertTriangle className="h-3 w-3 text-rose-600" />
-                ) : (
-                  <Clock className="h-3 w-3 text-amber-600" />
-                )}
-                {t('hero.balance', 'Баланс семьи')}:
-              </span>
-              {familyFinancialSummary.debt > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const childWithDebt = parent.children.find((c) => {
-                      const f = childFinanceMap.get(c.id);
-                      return f && f.debt > 0;
-                    });
-                    setPaymentModalStudentId(childWithDebt?.id || parent.children[0]?.id);
-                    setIsPaymentModalOpen(true);
-                  }}
-                  className="text-[10px] font-bold text-rose-700 bg-white border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-50 transition-colors cursor-pointer"
-                >
-                  {t('action.settleDebt', 'Погасить')}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentModalStudentId(parent.children[0]?.id);
-                    setIsPaymentModalOpen(true);
-                  }}
-                  className="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 rounded px-1.5 py-0.5 hover:bg-blue-50 transition-colors cursor-pointer"
-                >
-                  {t('action.pay', 'Пополнить')}
-                </button>
-              )}
-            </div>
-            <p className={cn(
-              "font-extrabold text-sm mt-0.5",
-              familyFinancialSummary.deposit > 0 && "text-emerald-700",
-              familyFinancialSummary.debt > 0 && "text-rose-700",
-              familyFinancialSummary.deposit === 0 && familyFinancialSummary.debt === 0 && "text-slate-900"
-            )}>
-              {familyFinancialSummary.formattedNet}
-            </p>
-            <p className={cn(
-              "text-[10px] font-medium leading-tight line-clamp-1",
-              familyFinancialSummary.deposit > 0 && "text-emerald-600",
-              familyFinancialSummary.debt > 0 && "text-rose-600 font-semibold",
-              familyFinancialSummary.deposit === 0 && familyFinancialSummary.debt === 0 && "text-amber-800 font-semibold"
-            )} title={familyFinancialSummary.breakdownSummary}>
-              {familyFinancialSummary.breakdownSummary}
-            </p>
-          </div>
-        </div>
-
-        {/* Hero Block: Следующее занятие ребенка */}
-        <div className="mt-4 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-slate-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          {upcomingLesson ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-                <div className="h-10 w-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Calendar className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-bold text-blue-900">
-                      {t('hero.nextLessonChildren', 'Следующее занятие')} ({upcomingLesson.childName}):
-                    </span>
-                    <span className="rounded-md bg-blue-100/90 px-2 py-0.5 text-xs font-bold text-blue-800 border border-blue-200/60">
-                      {upcomingLesson.lesson.date} • {upcomingLesson.lesson.startTime} – {upcomingLesson.lesson.endTime}
-                    </span>
-                    <span className="text-xs font-bold text-slate-800">
-                      «{upcomingLesson.lesson.groupName}»
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    {upcomingLesson.lesson.topic && (
-                      <span><strong>{t('hero.topic', 'Тема')}:</strong> {upcomingLesson.lesson.topic}</span>
-                    )}
-                    {upcomingLesson.lesson.teacherName && (
-                      <span><strong>{t('hero.teacher', 'Преподаватель')}:</strong> {upcomingLesson.lesson.teacherName}</span>
-                    )}
-                    {upcomingLesson.lesson.room && (
-                      <span><strong>{t('hero.room', 'Место')}:</strong> {upcomingLesson.lesson.room}</span>
-                    )}
-                    {upcomingLesson.lesson.homework && (
-                      <span className="text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-medium border border-amber-200">
-                        <strong>{t('hero.homework', 'Д/З')}:</strong> {upcomingLesson.lesson.homework}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                {upcomingLesson.lesson.onlineMeetingUrl && (
-                  <a
-                    href={upcomingLesson.lesson.onlineMeetingUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
-                  >
-                    <Video className="h-3.5 w-3.5 text-blue-600" />
-                    Zoom
-                  </a>
-                )}
-                <Link
-                  href={`/calendar/lessons/${upcomingLesson.lesson.id}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors shadow-2xs"
-                >
-                  {t('action.viewCard', 'Карточка урока')} →
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-2.5 text-xs text-slate-600">
-                <Calendar className="h-4 w-4 text-slate-400" />
-                <span>{t('hero.noLessons', 'Нет запланированных занятий для детей в расписании')}</span>
-              </div>
-              <Link
-                href="/calendar"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-white border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-2xs"
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                {t('nav.calendar', 'Календарь занятий')}
-              </Link>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* UPCOMING PAYMENT DEADLINE ALERT */}
-      {(() => {
-        const upcomingList = getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id));
-        if (upcomingList.length === 0) return null;
-        return (
-          <div className="space-y-2">
-            {upcomingList.map((item) => (
-              <UpcomingPaymentAlert
-                key={item.id}
-                item={item}
-                onPaymentRecorded={() => setRefreshTrigger((prev) => prev + 1)}
-              />
-            ))}
-          </div>
-        );
-      })()}
+      {/* UPCOMING PAYMENT DEADLINE ALERT (Mobile only if rendered here) */}
+      <div className="block md:hidden">
+        {(() => {
+          const upcomingList = getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id));
+          if (upcomingList.length === 0) return null;
+          return (
+            <div className="space-y-2 mt-4">
+              {upcomingList.map((item) => (
+                <UpcomingPaymentAlert
+                  key={item.id}
+                  item={item}
+                  onPaymentRecorded={() => setRefreshTrigger((prev) => prev + 1)}
+                />
+              ))}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
-          { key: 'profile', label: `${t('students.tabFamily', 'Профиль и Семья')}` },
-          { key: 'children', label: `${t('students.tabAcademic', 'Дети и Обучение')} (${parent.children.length})` },
-          { key: 'finance', label: `${t('students.tabFinance', 'Финансы и Абонементы')} (${filteredPayments.length})` },
-          { key: 'timeline', label: `Timeline (${interactions.length})` },
+          { key: 'children', label: `${t('students.tabAcademic', 'Дети и обучение')} (${parent.children.length})` },
+          { key: 'finance', label: `${t('students.tabFinance', 'Оплаты и баланс')} (${filteredPayments.length})` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${familyTasks.filter((t) => t.status === 'open').length})` },
+          { key: 'timeline', label: `Timeline (${interactions.length})` },
+          { key: 'profile', label: `Настройки связи` },
         ].map((tab) => (
           <button
             key={tab.key}
