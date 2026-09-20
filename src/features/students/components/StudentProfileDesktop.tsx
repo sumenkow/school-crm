@@ -12,7 +12,8 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FullStudentData, FullLessonData } from '@/lib/data/mockData';
+import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { formatAgeAndGrade, formatBirthDate } from '@/lib/data/studentAgeHelper';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
@@ -338,45 +339,58 @@ export function StudentProfileDesktop({
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             КУРС И ГРУППА
           </span>
-          {student.groups.length > 0 ? (
-            <div className="space-y-0.5">
-              {/* 1st Line: Group Name */}
-              <Link
-                href={`/groups/${student.groups[0].id}`}
-                className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-              >
-                {student.groups[0].name}
-                {student.groups.length > 1 && (
-                  <span className="ml-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded">
-                    +{student.groups.length - 1}
+          {student.groups.length > 0 ? (() => {
+            const firstGrp = student.groups[0];
+            const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+            const targetGroup = storedGroups.find(g => g.id === firstGrp.id || g.name === firstGrp.name || g.courseName === firstGrp.courseName) || INITIAL_GROUPS.find(g => g.name === firstGrp.name) || INITIAL_GROUPS[0];
+            const groupHref = `/groups/${targetGroup.id}`;
+
+            const teacherName = firstGrp.teacherName || (student as any).teacherName || 'Мария Иванова';
+            const targetTeacher = INITIAL_TEACHERS.find(t => t.id === (student as any).teacherId || t.name === teacherName) || INITIAL_TEACHERS[0];
+            const teacherHref = `/teachers/${targetTeacher.id}`;
+
+            const lessonHref = upcomingLesson?.id ? `/calendar/lessons/${upcomingLesson.id}` : '/calendar';
+
+            return (
+              <div className="space-y-0.5">
+                {/* 1st Line: Group Name */}
+                <Link
+                  href={groupHref}
+                  className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
+                >
+                  {firstGrp.name}
+                  {student.groups.length > 1 && (
+                    <span className="ml-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded">
+                      +{student.groups.length - 1}
+                    </span>
+                  )}
+                </Link>
+
+                {/* 2nd Line: Next Lesson info without arrow */}
+                {upcomingLesson && upcomingLesson.date ? (
+                  <Link
+                    href={lessonHref}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
+                    title="Перейти к карточке ближайшего урока"
+                  >
+                    Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
+                  </Link>
+                ) : (
+                  <span className="text-[11px] text-slate-400 block truncate">
+                    Следующее занятие: —
                   </span>
                 )}
-              </Link>
 
-              {/* 2nd Line: Next Lesson info without arrow */}
-              {upcomingLesson && upcomingLesson.date ? (
+                {/* 3rd Line: Teacher Name */}
                 <Link
-                  href={`/calendar/lessons/${upcomingLesson.id}`}
-                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
-                  title="Перейти к карточке ближайшего урока"
+                  href={teacherHref}
+                  className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
                 >
-                  Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
+                  Преподаватель: {teacherName}
                 </Link>
-              ) : (
-                <span className="text-[11px] text-slate-400 block truncate">
-                  Следующее занятие: —
-                </span>
-              )}
-
-              {/* 3rd Line: Teacher Name */}
-              <Link
-                href={`/teachers/${(student as any).teacherId || '1'}`}
-                className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
-              >
-                Преподаватель: {student.groups[0]?.teacherName || (student as any).teacherName || 'Мария Иванова'}
-              </Link>
-            </div>
-          ) : (
+              </div>
+            );
+          })() : (
             <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
           )}
         </div>
@@ -386,35 +400,43 @@ export function StudentProfileDesktop({
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             ПРЕДСТАВИТЕЛЬ
           </span>
-          {primaryParent ? (
-            <div className="space-y-0.5">
-              <Link
-                href={`/parents/${primaryParent.id}`}
-                className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-              >
-                {cleanParentName}
-              </Link>
-              <div className="flex items-center gap-1.5">
-                <a
-                  href={primaryParent.phone ? `tel:${primaryParent.phone.replace(/\D/g, '')}` : '#'}
-                  className="text-[11px] text-slate-500 hover:text-blue-600 font-mono"
+          {primaryParent ? (() => {
+            const parentHref = primaryParent.id ? `/parents/${primaryParent.id}` : '/parents';
+            const parentPhoneClean = primaryParent.phone ? primaryParent.phone.replace(/\D/g, '') : '';
+            return (
+              <div className="space-y-0.5">
+                <Link
+                  href={parentHref}
+                  className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
                 >
-                  {primaryParent.phone || '—'}
-                </a>
-                {primaryParent.phone && (
-                  <a
-                    href={`https://wa.me/${primaryParent.phone.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-4 h-4 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-colors shrink-0"
-                    title="WhatsApp родителя"
-                  >
-                    <WhatsAppIcon className="w-2.5 h-2.5" />
-                  </a>
-                )}
+                  {cleanParentName}
+                </Link>
+                <div className="flex items-center gap-1.5">
+                  {parentPhoneClean ? (
+                    <a
+                      href={`tel:${parentPhoneClean}`}
+                      className="text-[11px] text-slate-500 hover:text-blue-600 font-mono"
+                    >
+                      {primaryParent.phone}
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 font-mono">{primaryParent.phone || '—'}</span>
+                  )}
+                  {parentPhoneClean && (
+                    <a
+                      href={`https://wa.me/${parentPhoneClean}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-4 h-4 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-colors shrink-0"
+                      title="WhatsApp родителя"
+                    >
+                      <WhatsAppIcon className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <span className="text-xs text-slate-400 font-medium block mt-1">—</span>
           )}
         </div>
