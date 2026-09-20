@@ -10,6 +10,11 @@ import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/curr
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
 
+const ALL_MONTHS = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+
 interface RecordPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -39,17 +44,32 @@ export function RecordPaymentModal({
   const [amount, setAmount] = useState('85');
   const [amountEur, setAmountEur] = useState('85');
   const [amountRub, setAmountRub] = useState(() => String(Math.round(85 * rate)));
-  const [showOwnerTemplate, setShowOwnerTemplate] = useState(false);
-  const [showParentTemplate, setShowParentTemplate] = useState(false);
+
+  // Date & Training Period
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [periodLabel, setPeriodLabel] = useState(() => {
-    return new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-  });
+
+  const now = new Date();
+  const currentMonthName = ALL_MONTHS[now.getMonth()];
+  const currentYearStr = String(now.getFullYear());
+  const nextMonthIdx = (now.getMonth() + 1) % 12;
+  const nextYearNum = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+  const nextMonthName = ALL_MONTHS[nextMonthIdx];
+  const nextYearStr = String(nextYearNum);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthName);
+  const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+  const [periodLabel, setPeriodLabel] = useState('');
+
   const [paymentMethod, setPaymentMethod] = useState<FullPaymentData['paymentMethod']>('card');
   const [status, setStatus] = useState<FullPaymentData['status']>('paid');
   const [comment, setComment] = useState('');
   const [paymentType, setPaymentType] = useState<'subscription' | 'prepayment' | 'one_time'>('subscription');
   const [autoRenewSubscription, setAutoRenewSubscription] = useState(true);
+
+  // Group / Course selection
+  const selectedStudent = allStudents.find((s) => s.id === studentId) || allStudents[0];
+  const studentGroups = selectedStudent?.groups || [];
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(() => studentGroups[0]?.id || '');
 
   useEffect(() => {
     if (initialStudentId) {
@@ -59,6 +79,27 @@ export function RecordPaymentModal({
     }
   }, [initialStudentId, allowedStudents, isOpen]);
 
+  useEffect(() => {
+    if (studentGroups.length > 0) {
+      if (!studentGroups.some((g) => g.id === selectedGroupId)) {
+        setSelectedGroupId(studentGroups[0].id);
+      }
+    } else {
+      setSelectedGroupId('');
+    }
+  }, [selectedStudent, selectedGroupId, studentGroups]);
+
+  // Sync Period Label dynamically based on paymentType & selected Month/Year
+  useEffect(() => {
+    if (paymentType === 'prepayment') {
+      setPeriodLabel('Депозит на баланс курса');
+    } else if (paymentType === 'one_time') {
+      setPeriodLabel('Разовое занятие');
+    } else {
+      setPeriodLabel(`${selectedMonth} ${selectedYear}`);
+    }
+  }, [paymentType, selectedMonth, selectedYear]);
+
   // Notifications
   const [notifyOwner, setNotifyOwner] = useState(true);
   const [notifyParent, setNotifyParent] = useState(true);
@@ -66,11 +107,14 @@ export function RecordPaymentModal({
 
   if (!isOpen) return null;
 
-  const selectedStudent = allStudents.find((s) => s.id === studentId) || allStudents[0];
   const parent = (initialParentId && selectedStudent?.parents?.find((p) => p.id === initialParentId)) || selectedStudent?.parents?.[0];
   const parentDisplayName = parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель';
-  const currencySymbol = currency === 'EUR' ? '€' : '₽';
   const selectedStudentDeposit = selectedStudent?.finance?.deposit?.balance || 0;
+  const personalRate = selectedStudent?.finance?.deposit?.pricePerLesson || 15;
+
+  const targetGroup = studentGroups.find((g) => g.id === selectedGroupId) || studentGroups[0];
+  const targetCourseName = targetGroup?.courseName || targetGroup?.name || 'Английский язык';
+  const targetGroupName = targetGroup?.name || 'Основная группа';
 
   const allStoredPayments = typeof window !== 'undefined' ? getStoredPayments() : [];
   const overduePaymentsForStudent = allStoredPayments.filter(
@@ -90,17 +134,6 @@ export function RecordPaymentModal({
     (sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 0),
     0
   );
-
-  const handleCurrencyChange = (newCur: 'RUB' | 'EUR') => {
-    setCurrency(newCur);
-    if (newCur === 'EUR') {
-      const curEur = parseFloat(amountEur) || Math.round(((parseFloat(amountRub) || 7600) / rate) * 100) / 100;
-      setAmount(String(curEur));
-    } else {
-      const curRub = parseFloat(amountRub) || Math.round((parseFloat(amountEur) || 85) * rate);
-      setAmount(String(curRub));
-    }
-  };
 
   const handleRubInput = (val: string) => {
     setAmountRub(val);
@@ -128,23 +161,24 @@ export function RecordPaymentModal({
     }
   };
 
-  const setPresetAmount = (rub: number, eur: number) => {
-    setAmountRub(String(rub));
+  const setPresetAmount = (eur: number) => {
+    const rub = Math.round(eur * rate);
     setAmountEur(String(eur));
+    setAmountRub(String(rub));
     setAmount(currency === 'EUR' ? String(eur) : String(rub));
   };
 
   const handlePaymentTypeChange = (type: 'subscription' | 'prepayment' | 'one_time') => {
     setPaymentType(type);
     if (type === 'prepayment') {
-      setPeriodLabel('Депозит на баланс курса');
       setAutoRenewSubscription(false);
+      setPresetAmount(100);
     } else if (type === 'subscription') {
-      setPeriodLabel(new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }));
       setAutoRenewSubscription(true);
+      setPresetAmount(140);
     } else {
-      setPeriodLabel('Разовое занятие');
       setAutoRenewSubscription(false);
+      setPresetAmount(personalRate);
     }
   };
 
@@ -187,8 +221,8 @@ export function RecordPaymentModal({
       studentName: `${freshStudent.firstName} ${freshStudent.lastName}`,
       parentId: parent?.id,
       parentName: parent ? `${parent.firstName} ${parent.lastName}` : undefined,
-      courseName: freshStudent.groups?.[0]?.courseName || 'Английский язык',
-      groupName: freshStudent.groups?.[0]?.name || 'Основная группа',
+      courseName: targetCourseName,
+      groupName: targetGroupName,
       amount: numAmountEUR,
       amountFormatted: formattedAmount,
       paymentDate: formattedDate,
@@ -198,7 +232,7 @@ export function RecordPaymentModal({
       currency: 'EUR',
       paymentType,
       recordedBy: 'Администратор',
-      comment: comment || (paymentType === 'prepayment' ? 'Предоплата (списание по стоимости курса)' : autoRenewSubscription ? 'Абонемент продлен автоматически' : undefined),
+      comment: comment || (paymentType === 'prepayment' ? 'Предоплата (списание по стоимости курса)' : autoRenewSubscription ? `Абонемент «${targetCourseName}» продлен` : undefined),
     };
 
     // 1. Persist to student storage
@@ -213,14 +247,14 @@ export function RecordPaymentModal({
       paymentType,
     };
 
-    let interactionContent = `Внесена оплата ${formattedAmount} за период «${periodLabel}» (способ: ${methodLabel}).`;
+    let interactionContent = `Внесена оплата ${formattedAmount} за период «${periodLabel}» (курс: ${targetCourseName}, способ: ${methodLabel}).`;
     let interactionResult = status === 'paid' ? 'Оплата получена' : 'Ожидается оплата';
 
     if (paymentType === 'prepayment') {
-      interactionContent = `Внесена предоплата / депозит ${formattedAmount} на баланс курса «${newPayment.courseName}» (способ: ${methodLabel}). Списание будет производиться по стоимости курса.`;
+      interactionContent = `Внесена предоплата / депозит ${formattedAmount} на баланс курса «${targetCourseName}» (способ: ${methodLabel}).`;
       interactionResult = status === 'paid' ? 'Предоплата внесена' : 'Ожидается предоплата';
     } else if (paymentType === 'one_time') {
-      interactionContent = `Внесена оплата ${formattedAmount} за разовое онлайн-занятие (способ: ${methodLabel}).`;
+      interactionContent = `Внесена оплата ${formattedAmount} за разовое занятие по курсу «${targetCourseName}» (способ: ${methodLabel}).`;
       interactionResult = status === 'paid' ? 'Разовая оплата' : 'Ожидается оплата';
     }
 
@@ -280,9 +314,9 @@ export function RecordPaymentModal({
 
       updatedActiveSubscription = {
         id: updatedActiveSubscription?.id || `sub_${Date.now()}`,
-        name: updatedActiveSubscription?.name || 'Ежемесячный абонемент',
-        period: updatedActiveSubscription?.period || '1 месяц',
-        price: updatedActiveSubscription?.price || String(numAmountEUR),
+        name: `${targetCourseName} (${targetGroupName})`,
+        period: periodLabel,
+        price: String(numAmountEUR),
         status: 'active' as const,
         lessonsAttended: updatedActiveSubscription?.lessonsAttended || '0/8',
         renewalDate: nextRenewalDate,
@@ -305,7 +339,6 @@ export function RecordPaymentModal({
     saveStudentToStorage(updatedStudent);
     savePaymentToStorage(newPayment);
 
-    // Auto-settle any overdue debts for this student so overdue debt block updates automatically!
     if (status === 'paid') {
       settleOverduePayments(freshStudent.id, numAmountEUR, parent?.id);
       settleStudentOverdueDebts(freshStudent.id);
@@ -315,7 +348,6 @@ export function RecordPaymentModal({
       }
     }
 
-    // 2. Dispatch events
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
       window.dispatchEvent(new CustomEvent('crm-payments-changed', { detail: newPayment }));
@@ -325,7 +357,6 @@ export function RecordPaymentModal({
       onRecorded(newPayment);
     }
 
-    // Dynamic feedback about dispatched notifications
     const notices: string[] = [];
     if (notifyOwner) notices.push('владельцу (Telegram)');
     if (notifyParent) notices.push(`родителям (${parentDisplayName} через ${parentChannel.toUpperCase()})`);
@@ -337,81 +368,99 @@ export function RecordPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 p-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 backdrop-blur-xs">
+      <div className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-xl flex flex-col">
+        {/* COMPACT HEADER (No subtitle, clean paddings) */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <CreditCard className="h-5 w-5" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CreditCard className="h-4 w-4" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Внесение оплаты</h2>
-              <p className="text-xs text-slate-500">Фиксация фактического поступления денег (1 платёж = 1 запись)</p>
-            </div>
+            <h2 className="text-sm font-bold text-slate-900">Внесение оплаты</h2>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
-            <X className="h-5 w-5" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+          >
+            <X className="h-4.5 w-4.5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="text-xs font-medium text-slate-700 block mb-1">
-              Ученик / Студент *
-            </label>
-            {lockStudent ? (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-800">
-                <Lock className="h-3.5 w-3.5 text-slate-400" />
-                <span>{selectedStudent?.firstName} {selectedStudent?.lastName}</span>
-                <span className="ml-auto text-[11px] font-normal text-slate-500">
-                  {selectedStudent?.studentType === 'adult_student' ? 'Студент' : 'Школьник'}
-                </span>
-              </div>
-            ) : allowedStudents && allowedStudents.length > 0 ? (
-              <select
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {allowedStudents.map((s) => {
-                  const studentData = allStudents.find((st) => st.id === s.id);
-                  const sDeposit = studentData?.finance?.deposit?.balance || 0;
-                  const sDebts = (studentData?.finance?.payments || [])
-                    .filter((p) => p.status === 'overdue')
-                    .reduce((sum, p) => sum + (parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
-                  const statusSuffix = sDebts > 0
-                    ? ` • Долг: -${sDebts.toLocaleString('ru-RU')} ₽`
-                    : sDeposit > 0
-                    ? ` • Депозит: +${sDeposit.toLocaleString('ru-RU')} ₽`
-                    : ' • Баланс: 0 ₽';
-                  return (
+        <form onSubmit={handleSubmit} className="p-4 px-5 space-y-3 text-xs flex-1">
+          {/* STUDENT & COURSE SELECTION */}
+          <div className="space-y-2">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
+                Ученик / Студент *
+              </label>
+              {lockStudent ? (
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800">
+                  <Lock className="h-3.5 w-3.5 text-slate-400" />
+                  <span>{selectedStudent?.firstName} {selectedStudent?.lastName}</span>
+                  <span className="ml-auto text-[10px] font-normal text-slate-500">
+                    {selectedStudent?.studentType === 'adult_student' ? 'Студент' : 'Школьник'}
+                  </span>
+                </div>
+              ) : allowedStudents && allowedStudents.length > 0 ? (
+                <select
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {allowedStudents.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {allStudents.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}{statusSuffix}
+                      {s.firstName} {s.lastName} (Родитель: {s.parents[0]?.firstName || '—'})
                     </option>
-                  );
-                })}
-              </select>
-            ) : (
-              <select
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {allStudents.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.firstName} {s.lastName} (Родитель: {s.parents[0]?.firstName || '—'} {s.parents[0]?.lastName || ''})
-                  </option>
-                ))}
-              </select>
-            )}
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Course / Group picker for multi-enrollment */}
+            {studentGroups.length > 1 ? (
+              <div>
+                <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
+                  Курс / Группа *
+                </label>
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {studentGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.courseName || g.name} ({g.name}) — {g.teacherName || 'Преподаватель'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : studentGroups.length === 1 ? (
+              <div className="flex items-center justify-between text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5">
+                <span className="text-slate-400 text-[11px]">Курс:</span>
+                <span className="font-bold text-slate-800">{targetCourseName}</span>
+                <span className="text-[10px] text-slate-400 font-mono">({targetGroupName})</span>
+              </div>
+            ) : null}
           </div>
 
+          {/* OVERDUE ALERTS (Compact) */}
           {totalOverdueForStudent > 0 && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs space-y-2">
+            <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-2.5 text-xs space-y-1.5">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="font-semibold text-rose-900 flex items-center gap-1.5">
-                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  Ученик {selectedStudent?.firstName} имеет задолженность: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
+                  <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                  Долг ученика: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {selectedStudentDeposit > 0 && (
@@ -420,14 +469,13 @@ export function RecordPaymentModal({
                       onClick={() => {
                         const res = settleDebtsFromDeposit(selectedStudent.id);
                         if (res.settled) {
-                          success(`Списано ${res.settledAmount.toLocaleString('ru-RU')} ₽ с депозита в счет погашения долга!`);
+                          success(`Списано ${res.settledAmount.toLocaleString('ru-RU')} ₽ с депозита!`);
                           onClose();
                         }
                       }}
-                      className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                      className="rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-700 transition-colors shrink-0 cursor-pointer"
                     >
-                      <Wallet className="h-3 w-3" />
-                      Списать с депозита ({selectedStudentDeposit.toLocaleString('ru-RU')} ₽)
+                      Списать с депозита
                     </button>
                   )}
                   <button
@@ -436,103 +484,74 @@ export function RecordPaymentModal({
                       setAmount(String(totalOverdueForStudent));
                       setPeriodLabel('Погашение задолженности');
                     }}
-                    className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition-colors shrink-0 cursor-pointer"
+                    className="rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-rose-700 transition-colors shrink-0 cursor-pointer"
                   >
-                    Внести оплату ({totalOverdueForStudent.toLocaleString('ru-RU')} ₽)
+                    Внести долг
                   </button>
                 </div>
               </div>
-              <p className="text-[11px] text-rose-700">
-                {selectedStudentDeposit > 0
-                  ? `На депозите ученика доступно ${selectedStudentDeposit.toLocaleString('ru-RU')} ₽. Вы можете списать долг с депозита или внести новый платёж.`
-                  : 'При внесении оплаты статус просрочки будет автоматически снят с ученика, а общая сумма задолженности школы пересчитается по оставшимся клиентам.'}
-              </p>
             </div>
           )}
 
-          {totalOverdueForStudent === 0 && totalOtherFamilyDebts > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 text-xs text-amber-900 flex items-center justify-between gap-2 flex-wrap">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Users className="h-4 w-4 text-amber-600 shrink-0" />
-                В этой семье есть задолженность по другому ребенку: <strong className="text-amber-800">{totalOtherFamilyDebts.toLocaleString('ru-RU')} ₽</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (otherFamilyDebts[0]?.studentId) {
-                    setStudentId(otherFamilyDebts[0].studentId);
-                  }
-                }}
-                className="text-[11px] font-bold text-amber-800 bg-white border border-amber-300 rounded-lg px-2.5 py-1 hover:bg-amber-100 transition-colors cursor-pointer shrink-0 shadow-2xs"
-              >
-                Переключить на {otherFamilyDebts[0]?.studentName || 'должника'}
-              </button>
-            </div>
-          )}
-
-          {/* Payment Type Selection */}
+          {/* PAYMENT TYPE SELECTION */}
           <div>
-            <label className="text-xs font-medium text-slate-700 block mb-1">
+            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
               Назначение платежа
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 type="button"
                 onClick={() => handlePaymentTypeChange('subscription')}
                 className={cn(
-                  'rounded-xl border p-2.5 text-left transition-all cursor-pointer',
+                  'rounded-xl border p-2 text-left transition-all cursor-pointer',
                   paymentType === 'subscription'
-                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 shadow-2xs'
+                    ? 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-2xs'
                     : 'border-slate-200 bg-white hover:bg-slate-50'
                 )}
               >
                 <div className="text-[11px] font-bold text-slate-900">Абонемент</div>
-                <div className="text-[10px] text-slate-500">За период / месяц</div>
+                <div className="text-[9px] text-slate-500">За месяц</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handlePaymentTypeChange('prepayment')}
                 className={cn(
-                  'rounded-xl border p-2.5 text-left transition-all cursor-pointer',
+                  'rounded-xl border p-2 text-left transition-all cursor-pointer',
                   paymentType === 'prepayment'
-                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 shadow-2xs'
+                    ? 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-2xs'
                     : 'border-slate-200 bg-white hover:bg-slate-50'
                 )}
               >
                 <div className="text-[11px] font-bold text-slate-900">Предоплата</div>
-                <div className="text-[10px] text-slate-500">Списание по курсу</div>
+                <div className="text-[9px] text-slate-500">На депозит</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handlePaymentTypeChange('one_time')}
                 className={cn(
-                  'rounded-xl border p-2.5 text-left transition-all cursor-pointer',
+                  'rounded-xl border p-2 text-left transition-all cursor-pointer',
                   paymentType === 'one_time'
-                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 shadow-2xs'
+                    ? 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500 shadow-2xs'
                     : 'border-slate-200 bg-white hover:bg-slate-50'
                 )}
               >
                 <div className="text-[11px] font-bold text-slate-900">Разово</div>
-                <div className="text-[10px] text-slate-500">Одно занятие</div>
+                <div className="text-[9px] text-slate-500">1 занятие</div>
               </button>
             </div>
-            {paymentType === 'prepayment' && (
-              <p className="mt-1.5 text-[11px] text-blue-700 bg-blue-50 border border-blue-200/60 rounded-lg p-2 leading-relaxed">
-                💡 <strong>Предоплата / Депозит</strong> зачисляется на баланс ученика. Средства списываются по стоимости курса или за каждое онлайн-занятие.
-              </p>
-            )}
           </div>
 
+          {/* CURRENCY INPUTS & DYNAMIC PRESETS */}
           <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Сумма в рублях (₽)</span>
-                  <span className="text-[10px] font-normal text-slate-400">1 € = {rate} ₽</span>
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Сумма (₽)</span>
+                  <span className="text-[9px] font-normal text-slate-400">1 € = {rate} ₽</span>
                 </label>
-                <div className="relative mt-1">
+                <div className="relative mt-0.5">
                   <input
                     type="number"
                     min="0"
@@ -540,18 +559,18 @@ export function RecordPaymentModal({
                     value={amountRub}
                     onChange={(e) => handleRubInput(e.target.value)}
                     placeholder={String(Math.round(85 * rate))}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-8 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 pr-7 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
-                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">₽</span>
+                  <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">₽</span>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Сумма в евро (€)</span>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Базовая</span>
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                  <span>Сумма (€)</span>
+                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">База</span>
                 </label>
-                <div className="relative mt-1">
+                <div className="relative mt-0.5">
                   <input
                     type="number"
                     min="0"
@@ -559,53 +578,135 @@ export function RecordPaymentModal({
                     value={amountEur}
                     onChange={(e) => handleEurInput(e.target.value)}
                     placeholder="85"
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 pr-8 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 pr-7 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
-                  <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">€</span>
+                  <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
                 </div>
               </div>
             </div>
 
-            {/* Quick amount presets (ТЗ 3.3) */}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {[
-                { label: '1 занятие', eur: 20, rub: Math.round(20 * rate) },
-                { label: 'Абонемент 4 зан.', eur: 75, rub: Math.round(75 * rate) },
-                { label: 'Абонемент 8 зан.', eur: 140, rub: Math.round(140 * rate) },
-                { label: 'Депозит', eur: 85, rub: Math.round(85 * rate) },
-              ].map((preset) => (
+            {/* DYNAMIC SMART PRESETS */}
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {paymentType === 'subscription' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setPresetAmount(75)}
+                    className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    4 занятия — 75 € (≈ {Math.round(75 * rate).toLocaleString('ru-RU')} ₽)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPresetAmount(140)}
+                    className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                  >
+                    8 занятий — 140 € (≈ {Math.round(140 * rate).toLocaleString('ru-RU')} ₽)
+                  </button>
+                </>
+              )}
+              {paymentType === 'one_time' && (
                 <button
-                  key={preset.label}
                   type="button"
-                  onClick={() => setPresetAmount(preset.rub, preset.eur)}
-                  className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                  onClick={() => setPresetAmount(personalRate)}
+                  className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
                 >
-                  {preset.label} — {preset.eur} € / {preset.rub.toLocaleString('ru-RU')} ₽
+                  1 занятие (персональная ставка) — {personalRate} € (≈ {Math.round(personalRate * rate).toLocaleString('ru-RU')} ₽)
                 </button>
-              ))}
-            </div>
-
-            <div className="mt-3">
-              <label className="text-xs font-medium text-slate-700">
-                {paymentType === 'prepayment' ? 'Назначение депозита' : 'Период обучения'}
-              </label>
-              <input
-                type="text"
-                value={periodLabel}
-                onChange={(e) => setPeriodLabel(e.target.value)}
-                placeholder={paymentType === 'prepayment' ? 'Депозит на баланс курса' : 'Сентябрь 2026'}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
+              )}
+              {paymentType === 'prepayment' && (
+                <>
+                  {[50, 100, 150].map((eur) => (
+                    <button
+                      key={eur}
+                      type="button"
+                      onClick={() => setPresetAmount(eur)}
+                      className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      +{eur} € (≈ {Math.round(eur * rate).toLocaleString('ru-RU')} ₽)
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* TRAINING PERIOD SELECTION (ONLY FOR SUBSCRIPTION) */}
+          {paymentType === 'subscription' && (
+            <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-800">
+                  Период обучения (Абонемент)
+                </label>
+                <span className="text-[9px] text-emerald-700 font-semibold">Выбор в 1 клик</span>
+              </div>
+
+              {/* 1-Click Quick Buttons */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMonth(currentMonthName);
+                    setSelectedYear(currentYearStr);
+                  }}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border',
+                    selectedMonth === currentMonthName && selectedYear === currentYearStr
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-emerald-800'
+                  )}
+                >
+                  Текущий: {currentMonthName} {currentYearStr}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMonth(nextMonthName);
+                    setSelectedYear(nextYearStr);
+                  }}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border',
+                    selectedMonth === nextMonthName && selectedYear === nextYearStr
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:text-emerald-800'
+                  )}
+                >
+                  Следующий: {nextMonthName} {nextYearStr}
+                </button>
+              </div>
+
+              {/* Month and Year Dropdowns */}
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {ALL_MONTHS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  {[2025, 2026, 2027, 2028].map((y) => (
+                    <option key={y} value={String(y)}>{y} г.</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* PAYMENT METHOD & STATUS */}
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs font-medium text-slate-700">Способ оплаты</label>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Способ оплаты</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as 'card' | 'bank_transfer' | 'cash' | 'invoice')}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
               >
                 <option value="card">Банковская карта</option>
                 <option value="bank_transfer">Перевод по СБП</option>
@@ -614,11 +715,11 @@ export function RecordPaymentModal({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-700">Статус платежа</label>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Статус платежа</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as 'paid' | 'expected' | 'overdue')}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
               >
                 <option value="paid">Оплачено (Деньги поступили)</option>
                 <option value="expected">Ожидается (Счет выставлен)</option>
@@ -626,18 +727,31 @@ export function RecordPaymentModal({
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-700">Дата платежа</label>
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-            />
+          {/* PAYMENT DATE & COMMENT (SLIM ROW) */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Дата платежа</label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-slate-600 block mb-0.5">Комментарий</label>
+              <input
+                type="text"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="№ квитанции, примечание..."
+                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
           </div>
 
           {paymentType === 'subscription' && (
-            <div className="rounded-xl bg-emerald-50/70 p-3 border border-emerald-200/60">
+            <div className="rounded-lg bg-emerald-50/70 p-2 border border-emerald-200/60">
               <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-emerald-900">
                 <input
                   type="checkbox"
@@ -645,121 +759,59 @@ export function RecordPaymentModal({
                   onChange={(e) => setAutoRenewSubscription(e.target.checked)}
                   className="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500"
                 />
-                <span>Автоматически продлить абонемент ученика на {periodLabel}</span>
+                <span>Автоматически продлить абонемент «{targetCourseName}»</span>
               </label>
             </div>
           )}
 
-          {/* Notifications Section (ТЗ 3.3: Compact view with collapsible templates) */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Bell className="h-3.5 w-3.5 text-blue-600" />
-                <span className="text-xs font-bold text-slate-900">Уведомления и квитанции</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-medium">Компактный вид</span>
-            </div>
-
-            {/* Notification 1: Owner */}
-            <div className="rounded-lg bg-white p-2 border border-slate-200/80 shadow-2xs">
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs">
-                  <input
-                    type="checkbox"
-                    checked={notifyOwner}
-                    onChange={(e) => setNotifyOwner(e.target.checked)}
-                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="font-semibold text-slate-800">Оповестить владельца школы</span>
-                </label>
-                {notifyOwner && (
-                  <button
-                    type="button"
-                    onClick={() => setShowOwnerTemplate(!showOwnerTemplate)}
-                    className="text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
-                  >
-                    {showOwnerTemplate ? 'Скрыть текст' : 'Шаблон (i)'}
-                  </button>
-                )}
-              </div>
-              {notifyOwner && showOwnerTemplate && (
-                <div className="mt-1.5 rounded bg-slate-50 px-2 py-1 text-[10px] text-slate-600 font-mono">
-                  Бот: «Поступил платёж {Number(amountEur || 0).toLocaleString('ru-RU')} € / {Number(amountRub || 0).toLocaleString('ru-RU')} ₽ ({paymentType === 'prepayment' ? 'Предоплата' : paymentType === 'one_time' ? 'Разовое' : 'Абонемент'}) от {selectedStudent.firstName} {selectedStudent.lastName} ({paymentMethod === 'card' ? 'Карта' : paymentMethod === 'bank_transfer' ? 'СБП' : paymentMethod === 'cash' ? 'Наличные' : 'Счет'})»
-                </div>
-              )}
-            </div>
-
-            {/* Notification 2: Parents */}
-            <div className="rounded-lg bg-white p-2 border border-slate-200/80 shadow-2xs">
-              <div className="flex items-center justify-between gap-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs">
-                  <input
-                    type="checkbox"
-                    checked={notifyParent}
-                    onChange={(e) => setNotifyParent(e.target.checked)}
-                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                  />
-                  <span className="font-semibold text-slate-800">Отправить чек родителю</span>
-                </label>
-                {notifyParent && (
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={parentChannel}
-                      onChange={(e) => setParentChannel(e.target.value as any)}
-                      className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 focus:outline-none"
-                    >
-                      <option value="telegram">Telegram</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="sms">SMS</option>
-                      <option value="email">Email</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setShowParentTemplate(!showParentTemplate)}
-                      className="text-[10px] text-emerald-700 hover:text-emerald-900 font-medium cursor-pointer"
-                    >
-                      {showParentTemplate ? 'Скрыть чек' : 'Шаблон (i)'}
-                    </button>
-                  </div>
-                )}
-              </div>
+          {/* COMPACT NOTIFICATIONS BAR */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-2 px-3 flex items-center justify-between gap-2 text-xs flex-wrap">
+            <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={notifyOwner}
+                onChange={(e) => setNotifyOwner(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>Оповестить владельца</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={notifyParent}
+                  onChange={(e) => setNotifyParent(e.target.checked)}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>Чек родителю</span>
+              </label>
               {notifyParent && (
-                <div className="text-[10px] text-slate-500 mt-1">
-                  Получатель: <strong className="text-slate-700">{parentDisplayName}</strong> ({parent?.phone || 'Телефон не указан'})
-                </div>
-              )}
-              {notifyParent && showParentTemplate && (
-                <div className="mt-1.5 rounded bg-emerald-50/70 border border-emerald-100 p-2 text-[10px] text-emerald-900 leading-snug">
-                  {paymentType === 'prepayment'
-                    ? `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Предоплата за обучение ${selectedStudent.firstName} на сумму ${Number(amountEur || 0).toLocaleString('ru-RU')} € (${Number(amountRub || 0).toLocaleString('ru-RU')} ₽) зачислена на баланс курса. Списание будет производиться по стоимости курса. Спасибо!»`
-                    : `Чек: «Здравствуйте, ${parent?.firstName || 'уважаемый родитель'}! Оплата обучения ${selectedStudent.firstName} на сумму ${Number(amountEur || 0).toLocaleString('ru-RU')} € (${Number(amountRub || 0).toLocaleString('ru-RU')} ₽) за ${periodLabel} подтверждена. Абонемент активен. Спасибо!»`}
-                </div>
+                <select
+                  value={parentChannel}
+                  onChange={(e) => setParentChannel(e.target.value as any)}
+                  className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-800 focus:outline-none"
+                >
+                  <option value="telegram">Telegram</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="sms">SMS</option>
+                  <option value="email">Email</option>
+                </select>
               )}
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-700">Комментарий к чеку / платежу</label>
-            <input
-              type="text"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Номер транзакции, чек или примечание..."
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+          {/* FOOTER ACTIONS */}
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               <Check className="h-4 w-4" />
               Зафиксировать платёж
