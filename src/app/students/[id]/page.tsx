@@ -229,7 +229,62 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     };
   }
 
-  // 2. Tasks
+  // 2. Communication: WhatsApp
+  if (channelLower === 'whatsapp' || contentLower.includes('whatsapp') || contentLower.includes('ватсап')) {
+    return {
+      category: 'communication',
+      icon: MessageSquare,
+      iconBg: 'bg-emerald-500 text-white shadow-xs ring-2 ring-emerald-200',
+      badgeBg: 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold',
+      channelLabel: 'WhatsApp',
+    };
+  }
+
+  // 3. Communication: Telegram
+  if (channelLower === 'telegram' || contentLower.includes('telegram') || contentLower.includes('телеграм')) {
+    return {
+      category: 'communication',
+      icon: Send,
+      iconBg: 'bg-sky-500 text-white shadow-xs ring-2 ring-sky-200',
+      badgeBg: 'bg-sky-50 text-sky-800 border border-sky-300 font-bold',
+      channelLabel: 'Telegram',
+    };
+  }
+
+  // 4. Communication: Phone Call
+  if (channelLower === 'phone' || contentLower.includes('звонок') || contentLower.includes('позвон')) {
+    return {
+      category: 'communication',
+      icon: PhoneCall,
+      iconBg: 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-200',
+      badgeBg: 'bg-amber-50 text-amber-800 border border-amber-300 font-bold',
+      channelLabel: 'Телефонный звонок',
+    };
+  }
+
+  // 5. Communication: Meeting / Zoom
+  if (channelLower === 'call' || typeLower === 'call' || channelLower === 'meeting' || contentLower.includes('встреч') || contentLower.includes('zoom')) {
+    return {
+      category: 'communication',
+      icon: Video,
+      iconBg: 'bg-purple-500 text-white shadow-xs ring-2 ring-purple-200',
+      badgeBg: 'bg-purple-50 text-purple-800 border border-purple-300 font-bold',
+      channelLabel: 'Онлайн-встреча',
+    };
+  }
+
+  // 6. Communication: Email
+  if (channelLower === 'email' || contentLower.includes('email') || contentLower.includes('письм')) {
+    return {
+      category: 'communication',
+      icon: Mail,
+      iconBg: 'bg-indigo-500 text-white shadow-xs ring-2 ring-indigo-200',
+      badgeBg: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-bold',
+      channelLabel: 'Email',
+    };
+  }
+
+  // 7. Tasks (Pure system tasks without specific channel)
   if (
     typeLower === 'task' ||
     typeLower === 'follow_up' ||
@@ -252,7 +307,7 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     };
   }
 
-  // 3. Lead Lifecycle / Conversion / Funnel
+  // 8. Lead Lifecycle / Conversion / Funnel
   if (
     typeLower === 'initial_contact' ||
     typeLower === 'trial' ||
@@ -270,61 +325,6 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
       iconBg: 'bg-indigo-500 text-white shadow-xs ring-2 ring-indigo-200',
       badgeBg: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-bold',
       channelLabel: typeLower === 'initial_contact' ? 'Заявка с сайта' : 'История лида',
-    };
-  }
-
-  // 4. Communication: WhatsApp
-  if (channelLower === 'whatsapp' || contentLower.includes('whatsapp') || contentLower.includes('ватсап')) {
-    return {
-      category: 'communication',
-      icon: MessageSquare,
-      iconBg: 'bg-emerald-500 text-white shadow-xs ring-2 ring-emerald-200',
-      badgeBg: 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold',
-      channelLabel: 'WhatsApp',
-    };
-  }
-
-  // 5. Communication: Telegram
-  if (channelLower === 'telegram' || contentLower.includes('telegram') || contentLower.includes('телеграм')) {
-    return {
-      category: 'communication',
-      icon: Send,
-      iconBg: 'bg-sky-500 text-white shadow-xs ring-2 ring-sky-200',
-      badgeBg: 'bg-sky-50 text-sky-800 border border-sky-300 font-bold',
-      channelLabel: 'Telegram',
-    };
-  }
-
-  // 6. Communication: Phone Call
-  if (channelLower === 'phone' || contentLower.includes('звонок') || contentLower.includes('позвон')) {
-    return {
-      category: 'communication',
-      icon: PhoneCall,
-      iconBg: 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-200',
-      badgeBg: 'bg-amber-50 text-amber-800 border border-amber-300 font-bold',
-      channelLabel: 'Телефонный звонок',
-    };
-  }
-
-  // 7. Communication: Meeting / Zoom
-  if (channelLower === 'call' || typeLower === 'call' || channelLower === 'meeting' || contentLower.includes('встреч') || contentLower.includes('zoom')) {
-    return {
-      category: 'communication',
-      icon: Video,
-      iconBg: 'bg-purple-500 text-white shadow-xs ring-2 ring-purple-200',
-      badgeBg: 'bg-purple-50 text-purple-800 border border-purple-300 font-bold',
-      channelLabel: 'Онлайн-встреча',
-    };
-  }
-
-  // 8. Communication: Email
-  if (channelLower === 'email' || contentLower.includes('email') || contentLower.includes('письм')) {
-    return {
-      category: 'communication',
-      icon: Mail,
-      iconBg: 'bg-indigo-500 text-white shadow-xs ring-2 ring-indigo-200',
-      badgeBg: 'bg-indigo-50 text-indigo-800 border border-indigo-300 font-bold',
-      channelLabel: 'Email',
     };
   }
 
