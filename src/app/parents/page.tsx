@@ -21,17 +21,26 @@ import {
   Wallet,
   RotateCcw,
   Check,
+  CheckSquare,
+  Calendar,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { INITIAL_STUDENTS } from '@/lib/data/mockData';
-import { getStoredStudents, reconcileAllStudentDepositsAndDebts, getDeletedParentIds, softDeleteParent, restoreParent } from '@/lib/data/studentStorage';
-import { buildChronologicalLedger } from '@/app/students/[id]/page';
+import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
+import {
+  getStoredStudents,
+  saveStudentToStorage,
+  reconcileAllStudentDepositsAndDebts,
+  getDeletedParentIds,
+  softDeleteParent,
+  restoreParent,
+} from '@/lib/data/studentStorage';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
-import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
+import { AddChildModal } from '@/components/parents/AddChildModal';
+import { CreateTaskModal, ParentTaskScope } from '@/components/tasks/CreateTaskModal';
 import { cn } from '@/lib/utils';
 
-interface ParentRecord {
+export interface ParentRecord {
   id: string;
   name: string;
   phone: string;
@@ -42,7 +51,7 @@ interface ParentRecord {
   children: Array<{ id: string; name: string; group: string }>;
   totalPaid: string;
   totalPaidEUR?: number;
-  balanceStatus: string;
+  balanceStatus: string; // 'paid' | 'debt' | 'trial'
   depositFormatted?: string;
   depositBalance?: number;
   debtFormatted?: string;
@@ -86,7 +95,10 @@ const INITIAL_PARENTS: ParentRecord[] = [
     whatsapp: '+79167773322',
     preferredChannel: 'Telegram',
     relationshipType: 'Мама',
-    children: [{ id: 's6', name: 'Максим Захаров', group: 'English B1 Teens' }],
+    children: [
+      { id: 's6', name: 'Максим Захаров', group: 'English B1 Teens' },
+      { id: '4', name: 'Сергей Попов', group: 'Robotics Junior' },
+    ],
     totalPaid: '280 €',
     balanceStatus: 'debt',
   },
@@ -100,11 +112,11 @@ const INITIAL_PARENTS: ParentRecord[] = [
     relationshipType: 'Мама',
     children: [{ id: '3', name: 'Анна Васильева', group: 'Kids English A1' }],
     totalPaid: '0 €',
-    balanceStatus: 'trial',
+    balanceStatus: 'debt',
   },
 ];
 
-function normalizePhone(phone?: string): string {
+export function normalizePhone(phone?: string): string {
   if (!phone) return '';
   let clean = phone.replace(/\D/g, '');
   if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
@@ -113,16 +125,36 @@ function normalizePhone(phone?: string): string {
   return clean;
 }
 
+export function formatPhone(phone?: string): string {
+  if (!phone) return '—';
+  const clean = normalizePhone(phone);
+  if (!clean) return phone;
+
+  if (clean.length === 11 && clean.startsWith('7')) {
+    return `+7 (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9, 11)}`;
+  }
+  if (clean.length > 6) {
+    return `+${clean.slice(0, 1)} (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9)}`;
+  }
+  return phone;
+}
+
+export function cleanGroupName(groupStr: string): string[] {
+  if (!groupStr) return ['Основной курс'];
+  return groupStr
+    .split(',')
+    .map((g) => g.replace(/\[.*?\]/g, '').replace(/•.*$/g, '').trim())
+    .filter(Boolean);
+}
+
 function getMergedParents(): ParentRecord[] {
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
   const parentMap = new Map<string, ParentRecord>();
 
-  // Helper to add or merge parent entry
   const addOrMergeParent = (rawParent: Partial<ParentRecord> & { id: string; name: string; phone: string }) => {
     const cleanP = normalizePhone(rawParent.phone);
     const cleanN = (rawParent.name || '').toLowerCase().trim();
 
-    // Find existing parent by normalized phone or normalized name + phone
     let existingKey: string | null = null;
     for (const [key, p] of parentMap.entries()) {
       const pClean = normalizePhone(p.phone);
@@ -140,13 +172,12 @@ function getMergedParents(): ParentRecord[] {
 
     if (existingKey) {
       const existing = parentMap.get(existingKey)!;
-      // Merge children
       const existingChildrenMap = new Map(existing.children.map((c) => [c.id, c]));
+
       (rawParent.children || []).forEach((c) => {
         if (!existingChildrenMap.has(c.id)) {
           existingChildrenMap.set(c.id, c);
         } else {
-          // Merge groups
           const prev = existingChildrenMap.get(c.id)!;
           const g1 = prev.group.split(',').map((s) => s.trim()).filter(Boolean);
           const g2 = c.group.split(',').map((s) => s.trim()).filter(Boolean);
@@ -181,7 +212,7 @@ function getMergedParents(): ParentRecord[] {
 
   // 1. Seed from INITIAL_PARENTS
   for (const init of INITIAL_PARENTS) {
-    addOrMergeParent({ ...init, children: [] });
+    addOrMergeParent({ ...init });
   }
 
   // 2. Aggregate from student storage
@@ -215,7 +246,7 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
-  // 3. Financial calculations per family (Derived from single source of truth for each child)
+  // 3. Financial calculations per family
   const result: ParentRecord[] = [];
   const deletedIds = typeof window !== 'undefined' ? getDeletedParentIds() : new Set<string>();
 
@@ -225,7 +256,7 @@ function getMergedParents(): ParentRecord[] {
     let totalPaidEUR = 0;
     let hasTrialChild = false;
 
-    // Deduplicate linked children
+    // Deduplicate children by child ID strictly
     const uniqueChildrenMap = new Map<string, { id: string; name: string; group: string }>();
     for (const c of parent.children) {
       uniqueChildrenMap.set(c.id, c);
@@ -240,32 +271,39 @@ function getMergedParents(): ParentRecord[] {
           hasTrialChild = true;
         }
 
-        const pricePerLesson = studentObj.finance?.deposit?.pricePerLesson || 15;
-        const ledger = buildChronologicalLedger(studentObj, pricePerLesson);
-        const childBalanceEUR = ledger[0]?.runningBalanceEUR ?? (studentObj.finance?.deposit?.balance || 0);
-
-        if (childBalanceEUR < 0) {
-          totalDebtEUR += Math.abs(childBalanceEUR);
-        } else {
-          totalDepositEUR += childBalanceEUR;
-        }
+        let childDebt = 0;
+        let childPaid = 0;
 
         (studentObj.finance?.payments || []).forEach((pay) => {
+          const amtEUR = parsePaymentAmountEUR(pay.amount, 120);
           if (pay.status === 'paid') {
-            totalPaidEUR += parsePaymentAmountEUR(pay.amount, 120);
+            childPaid += amtEUR;
+          } else if (pay.status === 'overdue' || (pay.status as any) === 'expected' || (pay.status as any) === 'pending') {
+            childDebt += amtEUR;
           }
         });
+
+        if (studentObj.finance?.activeSubscription?.status === 'expired' && childDebt === 0) {
+          const subPriceEUR = parsePaymentAmountEUR(studentObj.finance.activeSubscription.price, 120);
+          childDebt += subPriceEUR > 0 ? subPriceEUR : 76;
+        }
+
+        if (studentObj.finance?.deposit?.balance && studentObj.finance.deposit.balance < 0) {
+          childDebt += Math.abs(studentObj.finance.deposit.balance);
+        }
+
+        totalPaidEUR += childPaid;
+        totalDebtEUR += childDebt;
       }
     }
 
-    const netBalanceEUR = totalDepositEUR - totalDebtEUR;
     let balanceStatus = 'paid';
     if (totalDebtEUR > 0) {
       balanceStatus = 'debt';
-    } else if (totalDepositEUR > 0) {
-      balanceStatus = 'paid';
-    } else if (hasTrialChild) {
+    } else if (hasTrialChild && totalPaidEUR === 0) {
       balanceStatus = 'trial';
+    } else {
+      balanceStatus = 'paid';
     }
 
     const isDeleted = deletedIds.has(parent.id);
@@ -275,9 +313,9 @@ function getMergedParents(): ParentRecord[] {
       totalPaid: `${totalPaidEUR.toLocaleString('ru-RU')} € (~${(totalPaidEUR * 100).toLocaleString('ru-RU')} ₽)`,
       totalPaidEUR,
       balanceStatus,
-      depositFormatted: totalDepositEUR > 0 ? `${totalDepositEUR.toLocaleString('ru-RU')} €` : undefined,
+      depositFormatted: totalDebtEUR === 0 ? `✓ Оплачено` : undefined,
       depositBalance: totalDepositEUR,
-      debtFormatted: totalDebtEUR > 0 ? `-${totalDebtEUR.toLocaleString('ru-RU')} € (~${(totalDebtEUR * 100).toLocaleString('ru-RU')} ₽)` : undefined,
+      debtFormatted: totalDebtEUR > 0 ? `⚠ Долг: -${totalDebtEUR} € (~${Math.round(totalDebtEUR * 100).toLocaleString('ru-RU')} ₽)` : undefined,
       debtBalance: totalDebtEUR,
       isDeleted,
     });
@@ -324,11 +362,15 @@ export default function ParentsPage() {
     window.addEventListener('crm-students-changed', sync);
     window.addEventListener('crm-parents-changed', sync);
     window.addEventListener('crm-payments-changed', sync);
+    window.addEventListener('crm-lessons-changed', sync);
+    window.addEventListener('crm-tasks-changed', sync);
     window.addEventListener('focus', sync);
     return () => {
       window.removeEventListener('crm-students-changed', sync);
       window.removeEventListener('crm-parents-changed', sync);
       window.removeEventListener('crm-payments-changed', sync);
+      window.removeEventListener('crm-lessons-changed', sync);
+      window.removeEventListener('crm-tasks-changed', sync);
       window.removeEventListener('focus', sync);
     };
   }, []);
@@ -338,6 +380,10 @@ export default function ParentsPage() {
   const [deletingParent, setDeletingParent] = useState<ParentRecord | null>(null);
   const [linkingChildParent, setLinkingChildParent] = useState<ParentRecord | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Task modal state
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [taskModalParentScope, setTaskModalParentScope] = useState<ParentTaskScope | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -352,13 +398,13 @@ export default function ParentsPage() {
 
   const activeParents = parents.filter((p) => !p.isDeleted);
   const deletedParents = parents.filter((p) => p.isDeleted);
-  const debtParentsCount = activeParents.filter((p) => p.debtBalance && p.debtBalance > 0).length;
+  const debtParentsCount = activeParents.filter((p) => (p.debtBalance && p.debtBalance > 0) || p.balanceStatus === 'debt').length;
   const multiChildParentsCount = activeParents.filter((p) => p.children.length >= 2).length;
 
   const currentList = quickFilter === 'deleted' ? deletedParents : activeParents;
 
   const filteredParents = currentList.filter((p) => {
-    if (quickFilter === 'debt' && (!p.debtBalance || p.debtBalance <= 0)) return false;
+    if (quickFilter === 'debt' && (!p.debtBalance || p.debtBalance <= 0) && p.balanceStatus !== 'debt') return false;
     if (quickFilter === 'multi_child' && p.children.length < 2) return false;
 
     if (searchTerm) {
@@ -385,32 +431,19 @@ export default function ParentsPage() {
     setEditingParent(null);
   };
 
-  const handleCreateParent = (newParent: Omit<ParentRecord, 'id' | 'children' | 'totalPaid' | 'balanceStatus'>) => {
-    const cleanPhone = normalizePhone(newParent.phone);
-    if (cleanPhone) {
-      const existing = parents.find((p) => normalizePhone(p.phone) === cleanPhone);
-      if (existing) {
-        if (confirm(`Родитель с номером ${newParent.phone} уже существует в базе: ${existing.name}.\n\nПривязать ребенка к существующему профилю?`)) {
-          setLinkingChildParent(existing);
-          setIsCreateModalOpen(false);
-          return;
-        } else {
-          return;
-        }
-      }
-    }
-
-    const created: ParentRecord = {
-      ...newParent,
-      id: `p_${Date.now()}`,
-      children: [],
-      totalPaid: '0 €',
-      balanceStatus: 'paid',
-      isDeleted: false,
-    };
+  const handleCreateParent = (created: ParentRecord) => {
     setParents((prev) => [created, ...prev]);
     success(`Контакт ${created.name} добавлен в базу`);
     setIsCreateModalOpen(false);
+  };
+
+  const handleOpenCreateTask = (p: ParentRecord) => {
+    setTaskModalParentScope({
+      id: p.id,
+      name: p.name,
+      children: p.children.map((c) => ({ id: c.id, name: c.name })),
+    });
+    setIsTaskModalOpen(true);
   };
 
   return (
@@ -529,19 +562,27 @@ export default function ParentsPage() {
 
       {/* RENDER TABLE OR GRID VIEW */}
       {viewMode === 'table' ? (
-        /* TABLE VIEW (DESKTOP FIXED TABLE) */
+        /* TABLE VIEW (DESKTOP FIXED TABLE WITH RHYTHM) */
         <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
           <table className="w-full text-left text-xs table-fixed">
-            <thead className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
+            <colgroup>
+              <col className="w-[44px]" />
+              <col className="w-[23%]" />
+              <col className="w-[22%]" />
+              <col className="w-[26%]" />
+              <col className="w-[17%]" />
+              <col className="w-[12%]" />
+            </colgroup>
+            <thead className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <tr>
-                <th className="w-10 py-3 pl-4 pr-1 text-center">
+                <th className="py-3 pl-4 pr-1 text-center">
                   <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
                 </th>
-                <th className="w-64 px-3 py-3">РОДИТЕЛЬ / ЛПР</th>
-                <th className="w-56 px-3 py-3">СВЯЗЬ</th>
-                <th className="px-3 py-3">ДЕТИ (УЧЕНИКИ)</th>
-                <th className="w-56 px-3 py-3">СТАТУС ОПЛАТЫ</th>
-                <th className="w-28 py-3 pl-3 pr-4 text-right">ДЕЙСТВИЯ</th>
+                <th className="px-3.5 py-3">РОДИТЕЛЬ / ЛПР</th>
+                <th className="px-3.5 py-3">СВЯЗЬ</th>
+                <th className="px-3.5 py-3">ДЕТИ (УЧЕНИКИ)</th>
+                <th className="px-3.5 py-3">СТАТУС ОПЛАТЫ</th>
+                <th className="py-3 pl-3 pr-4 text-right">ДЕЙСТВИЯ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -561,24 +602,30 @@ export default function ParentsPage() {
                     .join('')
                     .toUpperCase() || 'Р';
 
-                  const cleanPhone = normalizePhone(p.phone);
+                  const formattedPhoneStr = formatPhone(p.phone);
+                  const cleanPhoneStr = normalizePhone(p.phone);
                   const waLink = p.whatsapp
                     ? `https://wa.me/${normalizePhone(p.whatsapp)}`
-                    : `https://wa.me/${cleanPhone}`;
+                    : `https://wa.me/${cleanPhoneStr}`;
                   const tgHandle = (p.telegram || '').replace('@', '');
-                  const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhone}`;
+                  const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhoneStr}`;
+
+                  const displayedChildren = p.children.slice(0, 2);
+                  const extraChildrenCount = p.children.length - 2;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 pl-4 pr-1 text-center">
+                    <tr key={p.id} className="h-16 hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 pl-4 pr-1 text-center align-middle">
                         <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2.5">
+
+                      {/* Parent / LPR Name */}
+                      <td className="px-3.5 py-3 align-middle">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
                             {initials}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <Link
                               href={`/parents/${p.id}`}
                               className="font-bold text-slate-900 text-sm hover:text-blue-600 transition-colors block truncate"
@@ -592,10 +639,15 @@ export default function ParentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+
+                      {/* Contact Links */}
+                      <td className="px-3.5 py-3 align-middle">
                         <div className="space-y-1">
-                          <a href={`tel:${p.phone}`} className="font-semibold text-slate-800 font-mono block text-[11px] hover:text-blue-600">
-                            {p.phone}
+                          <a
+                            href={`tel:${p.phone}`}
+                            className="font-semibold text-slate-800 font-mono block text-xs hover:text-blue-600"
+                          >
+                            {formattedPhoneStr}
                           </a>
                           <div className="flex items-center gap-1.5">
                             <a
@@ -603,6 +655,7 @@ export default function ParentsPage() {
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-bold border border-emerald-200/80 hover:bg-emerald-100 transition-colors"
+                              title="WhatsApp"
                             >
                               <MessageSquare className="h-3 w-3 text-emerald-600" />
                               WhatsApp
@@ -612,6 +665,7 @@ export default function ParentsPage() {
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 rounded-md bg-sky-50 text-sky-700 px-2 py-0.5 text-[10px] font-bold border border-sky-200/80 hover:bg-sky-100 transition-colors"
+                              title="Telegram"
                             >
                               <Send className="h-3 w-3 text-sky-600" />
                               Telegram
@@ -619,40 +673,81 @@ export default function ParentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {p.children.map((c) => (
-                            <Link
-                              key={c.id}
-                              href={`/students/${c.id}`}
-                              className="rounded-lg bg-blue-50 text-blue-800 px-2.5 py-1 text-xs font-semibold border border-blue-100 hover:bg-blue-100 transition-colors"
-                              title={`${c.name} — ${c.group}`}
-                            >
-                              {c.name} <span className="text-[10px] text-blue-500 font-normal">({c.group})</span>
-                            </Link>
-                          ))}
-                          {p.children.length === 0 && (
+
+                      {/* Children List */}
+                      <td className="px-3.5 py-3 align-middle">
+                        <div className="space-y-1">
+                          {p.children.length === 0 ? (
                             <span className="text-slate-400 italic text-xs">Нет привязанных учеников</span>
+                          ) : (
+                            displayedChildren.map((c) => {
+                              const groupBadges = cleanGroupName(c.group);
+                              return (
+                                <div key={c.id} className="flex flex-wrap items-center gap-1.5 text-xs">
+                                  <Link
+                                    href={`/students/${c.id}`}
+                                    className="font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0"
+                                    title={`Профиль: ${c.name}`}
+                                  >
+                                    {c.name}
+                                  </Link>
+                                  {groupBadges.map((gName, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block rounded bg-slate-100 border border-slate-200/80 px-1.5 py-0.2 text-[10px] font-medium text-slate-600"
+                                    >
+                                      {gName}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })
+                          )}
+                          {extraChildrenCount > 0 && (
+                            <span className="inline-block rounded bg-blue-50 text-blue-700 px-1.5 py-0.2 text-[10px] font-bold border border-blue-200">
+                              +{extraChildrenCount} {extraChildrenCount === 1 ? 'ребенок' : 'детей'}
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-3">
+
+                      {/* Payment Status */}
+                      <td className="px-3.5 py-3 align-middle">
                         {p.debtBalance && p.debtBalance > 0 ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-800 px-2.5 py-1 text-xs font-bold border border-rose-200 whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-50 text-rose-800 px-2.5 py-1 text-xs font-bold border border-rose-200 whitespace-nowrap shadow-2xs">
                             <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
                             ⚠ Долг: -{p.debtBalance} € (~{Math.round(p.debtBalance * 100).toLocaleString('ru-RU')} ₽)
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-800 px-2.5 py-1 text-xs font-bold border border-emerald-200 whitespace-nowrap">
-                            ✓ Оплачено
+                        ) : p.balanceStatus === 'trial' ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 text-amber-800 px-2.5 py-1 text-xs font-bold border border-amber-200 whitespace-nowrap shadow-2xs">
+                            Пробный период
                           </span>
+                        ) : (
+                          <div className="inline-flex flex-col">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 text-emerald-800 px-2.5 py-1 text-xs font-bold border border-emerald-200 whitespace-nowrap shadow-2xs">
+                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              ✓ Оплачено
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium pl-1 mt-0.5">Баланс: 0 €</span>
+                          </div>
                         )}
                       </td>
-                      <td className="py-3 pl-3 pr-4 text-right">
+
+                      {/* Actions */}
+                      <td className="py-3 pl-3 pr-4 text-right align-middle">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCreateTask(p)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition-colors shadow-2xs cursor-pointer"
+                            title="Поставить задачу по родителю"
+                          >
+                            <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="hidden xl:inline">Задача</span>
+                          </button>
                           <Link
                             href={`/parents/${p.id}`}
-                            className="rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-700 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors"
+                            className="inline-flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-blue-600 transition-colors shadow-2xs"
                           >
                             Профиль →
                           </Link>
@@ -677,12 +772,13 @@ export default function ParentsPage() {
               .join('')
               .toUpperCase() || 'Р';
 
-            const cleanPhone = normalizePhone(p.phone);
+            const formattedPhoneStr = formatPhone(p.phone);
+            const cleanPhoneStr = normalizePhone(p.phone);
             const waLink = p.whatsapp
               ? `https://wa.me/${normalizePhone(p.whatsapp)}`
-              : `https://wa.me/${cleanPhone}`;
+              : `https://wa.me/${cleanPhoneStr}`;
             const tgHandle = (p.telegram || '').replace('@', '');
-            const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhone}`;
+            const tgLink = tgHandle ? `https://t.me/${tgHandle}` : `https://t.me/+${cleanPhoneStr}`;
 
             return (
               <div
@@ -726,11 +822,22 @@ export default function ParentsPage() {
                           <button
                             onClick={() => {
                               setActiveMenuId(null);
+                              handleOpenCreateTask(p);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                          >
+                            <CheckSquare className="h-3.5 w-3.5 text-blue-600" />
+                            <span>Поставить задачу</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setActiveMenuId(null);
                               router.push(`/parents/${p.id}`);
                             }}
                             className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                           >
-                            <User className="h-3.5 w-3.5 text-blue-600" />
+                            <User className="h-3.5 w-3.5 text-indigo-600" />
                             <span>Открыть профиль семьи</span>
                           </button>
 
@@ -774,7 +881,7 @@ export default function ParentsPage() {
                             }}
                             className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                           >
-                            <UserPlus className="h-3.5 w-3.5 text-indigo-600" />
+                            <UserPlus className="h-3.5 w-3.5 text-blue-600" />
                             <span>Добавить / привязать ребенка</span>
                           </button>
 
@@ -795,12 +902,12 @@ export default function ParentsPage() {
                     </div>
                   </div>
 
-                  {/* Contact details with active web links */}
+                  {/* Contact details */}
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 font-mono">
                       <Phone className="h-3 w-3 text-slate-400 shrink-0" />
                       <a href={`tel:${p.phone}`} className="hover:text-blue-600 font-medium truncate">
-                        {p.phone}
+                        {formattedPhoneStr}
                       </a>
                     </div>
                     <a
@@ -841,17 +948,22 @@ export default function ParentsPage() {
                       {p.children.length === 0 ? (
                         <p className="text-[11px] text-slate-400 italic py-0.5">Нет привязанных учеников</p>
                       ) : (
-                        p.children.map((child) => (
-                          <Link
-                            key={child.id}
-                            href={`/students/${child.id}`}
-                            className="flex items-center justify-between gap-1.5 rounded-md bg-slate-50/90 px-2 py-1 text-xs hover:bg-blue-50 transition-colors"
-                            title={`${child.name} — ${child.group}`}
-                          >
-                            <span className="font-semibold text-slate-800 text-[11px] truncate">{child.name}</span>
-                            <span className="text-[10px] text-slate-500 font-medium truncate max-w-[130px]">{child.group} →</span>
-                          </Link>
-                        ))
+                        p.children.map((child) => {
+                          const groupNames = cleanGroupName(child.group);
+                          return (
+                            <Link
+                              key={child.id}
+                              href={`/students/${child.id}`}
+                              className="flex items-center justify-between gap-1.5 rounded-md bg-slate-50/90 px-2 py-1 text-xs hover:bg-blue-50 transition-colors"
+                              title={`${child.name} — ${child.group}`}
+                            >
+                              <span className="font-semibold text-slate-800 text-[11px] truncate">{child.name}</span>
+                              <span className="text-[10px] text-slate-500 font-medium truncate max-w-[130px]">
+                                {groupNames.join(', ')} →
+                              </span>
+                            </Link>
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -959,7 +1071,22 @@ export default function ParentsPage() {
         />
       )}
 
-      {/* 4. Modal: Create Parent */}
+      {/* 4. Modal: Create Task for Parent */}
+      {isTaskModalOpen && (
+        <CreateTaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => setIsTaskModalOpen(false)}
+          parentScope={taskModalParentScope || undefined}
+          defaultParentId={taskModalParentScope?.id}
+          onCreated={(newTask) => {
+            success(`Задача "${newTask.title}" успешно создана!`);
+            setIsTaskModalOpen(false);
+            window.dispatchEvent(new Event('crm-tasks-changed'));
+          }}
+        />
+      )}
+
+      {/* 5. Modal: Create Parent (Full Version with Child Selector) */}
       {isCreateModalOpen && (
         <CreateParentModal
           onClose={() => setIsCreateModalOpen(false)}
@@ -988,6 +1115,7 @@ function EditParentModal({
   const [telegram, setTelegram] = useState(parent.telegram || '');
   const [whatsapp, setWhatsapp] = useState(parent.whatsapp || '');
   const [preferredChannel, setPreferredChannel] = useState(parent.preferredChannel);
+  const [relationshipType, setRelationshipType] = useState(parent.relationshipType || 'Родитель');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -998,6 +1126,7 @@ function EditParentModal({
       telegram: telegram || undefined,
       whatsapp: whatsapp || undefined,
       preferredChannel,
+      relationshipType,
     });
   };
 
@@ -1023,15 +1152,31 @@ function EditParentModal({
             />
           </div>
 
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Телефон *</label>
-            <input
-              type="text"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Телефон *</label>
+              <input
+                type="text"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="font-semibold text-slate-700 block mb-1">Роль / Статус</label>
+              <select
+                value={relationshipType}
+                onChange={(e) => setRelationshipType(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
+              >
+                <option value="Мама">Мама</option>
+                <option value="Отец">Отец</option>
+                <option value="Опекун">Опекун</option>
+                <option value="Бабушка / Дедушка">Бабушка / Дедушка</option>
+                <option value="ЛПР">ЛПР (Законный представитель)</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -1051,7 +1196,7 @@ function EditParentModal({
                 type="text"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="+7 999 000-00-00"
+                placeholder="+7 (999) 000-00-00"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -1067,7 +1212,6 @@ function EditParentModal({
               <option value="Telegram">Telegram</option>
               <option value="WhatsApp">WhatsApp</option>
               <option value="Phone">Звонок</option>
-              <option value="both">Почта и TG</option>
             </select>
           </div>
 
@@ -1139,94 +1283,374 @@ function CreateParentModal({
   onCreate,
 }: {
   onClose: () => void;
-  onCreate: (newParent: Omit<ParentRecord, 'id' | 'children' | 'totalPaid' | 'balanceStatus'>) => void;
+  onCreate: (created: ParentRecord) => void;
 }) {
+  const { error } = useToast();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [telegram, setTelegram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [preferredChannel, setPreferredChannel] = useState('Telegram');
+  const [relationshipType, setRelationshipType] = useState('Мама');
+
+  // Child linkage options
+  const [childMode, setChildMode] = useState<'existing' | 'new' | 'none'>('existing');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [newChildFirstName, setNewChildFirstName] = useState('');
+  const [newChildLastName, setNewChildLastName] = useState('');
+  const [newChildGroup, setNewChildGroup] = useState('English B1 Teens');
+
+  const [availableStudents, setAvailableStudents] = useState<FullStudentData[]>([]);
+
+  useEffect(() => {
+    const list = getStoredStudents();
+    setAvailableStudents(list);
+    if (list.length > 0) {
+      setSelectedStudentId(list[0].id);
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCreate({
-      name,
-      phone,
+
+    const cleanP = normalizePhone(phone);
+    if (cleanP) {
+      const allParents = getMergedParents();
+      const existing = allParents.find((p) => normalizePhone(p.phone) === cleanP);
+      if (existing) {
+        error(`Контакт с номером ${phone} уже есть в базе: ${existing.name}`);
+        return;
+      }
+    }
+
+    const newParentId = `p_${Date.now()}`;
+    const attachedChildren: Array<{ id: string; name: string; group: string }> = [];
+
+    // 1. Link to existing student
+    if (childMode === 'existing' && selectedStudentId) {
+      const st = availableStudents.find((s) => s.id === selectedStudentId);
+      if (st) {
+        const groupNames = (st.groups || []).map((g: any) => g.name || g.courseName).filter(Boolean);
+        attachedChildren.push({
+          id: st.id,
+          name: `${st.firstName} ${st.lastName}`.trim(),
+          group: groupNames.length > 0 ? groupNames.join(', ') : 'Основной курс',
+        });
+
+        // Save parent to student in storage
+        const nameParts = name.trim().split(' ');
+        const prFirstName = nameParts[0] || 'Родитель';
+        const prLastName = nameParts.slice(1).join(' ') || '';
+
+        const updatedParents = [...(st.parents || [])];
+        updatedParents.push({
+          id: newParentId,
+          firstName: prFirstName,
+          lastName: prLastName,
+          phone: phone || '+7 (999) 000-00-00',
+          telegram: telegram || undefined,
+          whatsapp: whatsapp || undefined,
+          preferredChannel: preferredChannel.toLowerCase() as any,
+          relationshipType,
+          isPrimary: updatedParents.length === 0,
+        });
+
+        saveStudentToStorage({
+          ...st,
+          parents: updatedParents,
+        });
+      }
+    }
+
+    // 2. Create new child
+    if (childMode === 'new' && newChildFirstName.trim()) {
+      const newStudentId = `st_${Date.now()}`;
+      const nameParts = name.trim().split(' ');
+      const prFirstName = nameParts[0] || 'Родитель';
+      const prLastName = nameParts.slice(1).join(' ') || '';
+
+      const newStudent: FullStudentData = {
+        id: newStudentId,
+        firstName: newChildFirstName.trim(),
+        lastName: newChildLastName.trim() || prLastName,
+        studentType: 'school_student',
+        grade: '1 класс',
+        phone: phone || undefined,
+        status: 'active',
+        parents: [
+          {
+            id: newParentId,
+            firstName: prFirstName,
+            lastName: prLastName,
+            phone: phone || '+7 (999) 000-00-00',
+            telegram: telegram || undefined,
+            whatsapp: whatsapp || undefined,
+            preferredChannel: preferredChannel.toLowerCase() as any,
+            relationshipType,
+            isPrimary: true,
+          },
+        ],
+        groups: [
+          {
+            id: `g_${Date.now()}`,
+            name: newChildGroup,
+            courseName: newChildGroup,
+            teacherName: 'Мария Иванова',
+            schedule: 'Пн, Чт 18:45',
+            status: 'active',
+            joinedAt: new Date().toLocaleDateString('ru-RU'),
+          },
+        ],
+        attendanceStats: {
+          totalLessons: 0,
+          presentCount: 0,
+          absentCount: 0,
+          rescheduledCount: 0,
+          attendanceRate: '100%',
+          history: [],
+        },
+        finance: {
+          activeSubscription: {
+            period: 'Сентябрь 2026',
+            price: '7 600 ₽',
+            status: 'active',
+            lessonsAttended: '0 из 8',
+            renewalDate: '30.09.2026',
+          },
+          deposit: {
+            balance: 0,
+            balanceFormatted: '0 ₽',
+            currency: 'RUB',
+            pricePerLesson: 1050,
+            pricePerLessonFormatted: '1 050 ₽',
+          },
+          payments: [],
+        },
+        interactions: [],
+        tasks: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      saveStudentToStorage(newStudent);
+
+      attachedChildren.push({
+        id: newStudentId,
+        name: `${newChildFirstName.trim()} ${newChildLastName.trim() || prLastName}`.trim(),
+        group: newChildGroup,
+      });
+    }
+
+    const created: ParentRecord = {
+      id: newParentId,
+      name: name.trim(),
+      phone: phone.trim(),
       telegram: telegram || undefined,
       whatsapp: whatsapp || undefined,
       preferredChannel,
-    });
+      relationshipType,
+      children: attachedChildren,
+      totalPaid: '0 €',
+      balanceStatus: 'paid',
+      isDeleted: false,
+    };
+
+    onCreate(created);
+    window.dispatchEvent(new Event('crm-parents-changed'));
+    window.dispatchEvent(new Event('crm-students-changed'));
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl space-y-4 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-base font-bold text-slate-900">Новый контакт родителя</h3>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Новый контакт родителя</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Карточка законного представителя и привязка к ученику</p>
+          </div>
           <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">ФИО представителя *</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Иванова Анна Сергеевна"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Телефон *</label>
-            <input
-              type="text"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 000-00-00"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Parent Details */}
+          <div className="space-y-3">
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Telegram</label>
+              <label className="font-semibold text-slate-700 block mb-1">ФИО представителя *</label>
               <input
                 type="text"
-                value={telegram}
-                onChange={(e) => setTelegram(e.target.value)}
-                placeholder="@username"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Захарова Наталья Владимировна"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Телефон *</label>
+                <input
+                  type="text"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+7 (999) 000-00-00"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Роль / Статус</label>
+                <select
+                  value={relationshipType}
+                  onChange={(e) => setRelationshipType(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
+                >
+                  <option value="Мама">Мама</option>
+                  <option value="Отец">Отец</option>
+                  <option value="Опекун">Опекун</option>
+                  <option value="ЛПР">ЛПР (Законный представитель)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Telegram</label>
+                <input
+                  type="text"
+                  value={telegram}
+                  onChange={(e) => setTelegram(e.target.value)}
+                  placeholder="@username"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">WhatsApp</label>
+                <input
+                  type="text"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="+7 (999) 000-00-00"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">WhatsApp</label>
-              <input
-                type="text"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-                placeholder="+7 999 000-00-00"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+              <label className="font-semibold text-slate-700 block mb-1">Предпочитаемый канал связи</label>
+              <select
+                value={preferredChannel}
+                onChange={(e) => setPreferredChannel(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
+              >
+                <option value="Telegram">Telegram</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Phone">Звонок</option>
+              </select>
             </div>
           </div>
 
-          <div>
-            <label className="font-semibold text-slate-700 block mb-1">Предпочитаемый канал связи</label>
-            <select
-              value={preferredChannel}
-              onChange={(e) => setPreferredChannel(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
-            >
-              <option value="Telegram">Telegram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Phone">Звонок</option>
-            </select>
+          {/* Child Linkage Block */}
+          <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-blue-600" />
+                Привязка ученика
+              </span>
+              <div className="inline-flex rounded-md bg-white p-0.5 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setChildMode('existing')}
+                  className={cn(
+                    'px-2 py-1 text-[11px] font-bold rounded transition-all',
+                    childMode === 'existing' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600'
+                  )}
+                >
+                  Из списка
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChildMode('new')}
+                  className={cn(
+                    'px-2 py-1 text-[11px] font-bold rounded transition-all',
+                    childMode === 'new' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600'
+                  )}
+                >
+                  + Новый ребенок
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChildMode('none')}
+                  className={cn(
+                    'px-2 py-1 text-[11px] font-bold rounded transition-all',
+                    childMode === 'none' ? 'bg-slate-700 text-white shadow-2xs' : 'text-slate-600'
+                  )}
+                >
+                  Позже
+                </button>
+              </div>
+            </div>
+
+            {childMode === 'existing' && (
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Выберите ученика из реестра</label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none"
+                >
+                  {availableStudents.map((st) => (
+                    <option key={st.id} value={st.id}>
+                      {st.firstName} {st.lastName} ({st.groups?.[0]?.name || 'Основной курс'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {childMode === 'new' && (
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Имя ребенка *</label>
+                    <input
+                      type="text"
+                      required={childMode === 'new'}
+                      value={newChildFirstName}
+                      onChange={(e) => setNewChildFirstName(e.target.value)}
+                      placeholder="Максим"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Фамилия ребенка</label>
+                    <input
+                      type="text"
+                      value={newChildLastName}
+                      onChange={(e) => setNewChildLastName(e.target.value)}
+                      placeholder="Захаров"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Курс / Группа</label>
+                  <select
+                    value={newChildGroup}
+                    onChange={(e) => setNewChildGroup(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:outline-none"
+                  >
+                    <option value="English B1 Teens">English B1 Teens</option>
+                    <option value="Robotics Junior">Robotics Junior</option>
+                    <option value="Kids Math Safari">Kids Math Safari</option>
+                    <option value="Kids English A1">Kids English A1</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
@@ -1239,7 +1663,7 @@ function CreateParentModal({
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors"
+              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors cursor-pointer"
             >
               Создать контакт
             </button>
