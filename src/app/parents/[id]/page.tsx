@@ -63,10 +63,19 @@ export default function ParentDetailsPage() {
   // Load parent and linked children from unified storage (supports converted leads)
   const [parent, setParent] = useState(() => {
     const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
-    const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
-    const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+    const cleanId = String(parentId || '').trim();
+    const numId = cleanId.replace(/^p/, '');
 
-    const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
+    const isMatchingParent = (p: any) => {
+      if (!p || !p.id) return false;
+      const pid = String(p.id).trim();
+      return pid === cleanId || pid === `p${numId}` || pid.replace(/^p/, '') === numId;
+    };
+
+    const matchedStudent = allStudents.find((s) => s.parents?.some(isMatchingParent));
+    const matchedParent = matchedStudent?.parents?.find(isMatchingParent);
+
+    const matchedStudents = allStudents.filter((s) => s.parents?.some(isMatchingParent));
     const uniqueStudents: typeof matchedStudents = [];
     const seenNames = new Set<string>();
 
