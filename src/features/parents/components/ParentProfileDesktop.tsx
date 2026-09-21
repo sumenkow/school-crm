@@ -16,12 +16,14 @@ import {
   Clock,
   Wallet,
   CheckCircle2,
+  Check,
   Calendar,
   Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
+import { useToast } from '@/context/ToastContext';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -92,6 +94,8 @@ export function ParentProfileDesktop({
   onSendReminder,
 }: ParentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(false);
+  const { success } = useToast();
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -103,6 +107,24 @@ export function ParentProfileDesktop({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleCopyEmail = (emailStr: string) => {
+    if (!emailStr) return;
+    navigator.clipboard.writeText(emailStr);
+    setCopiedEmail(true);
+    success('Email скопирован в буфер обмена');
+    setTimeout(() => setCopiedEmail(false), 2000);
+  };
+
+  const handleOpenGmail = (emailStr: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!emailStr) return;
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailStr)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
 
   const phoneClean = (parent.phone || '').replace(/\D/g, '');
   const telegramClean = (parent.telegram || '').replace('@', '');
@@ -149,7 +171,7 @@ export function ParentProfileDesktop({
                 </span>
               </div>
 
-              {/* Bottom line: Phone with WA/TG buttons & Email */}
+              {/* Bottom line: Phone with WA/TG buttons & Email with 1-click copy + Gmail micro icon */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                 {parent.phone && (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -189,16 +211,35 @@ export function ParentProfileDesktop({
                 )}
 
                 {parent.email && (
-                  <span className="inline-flex items-center gap-1 text-slate-500 text-[11px]">
-                    <Mail className="h-3 w-3 text-slate-400" />
-                    {parent.email}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyEmail(parent.email!)}
+                      className="inline-flex items-center gap-1 text-slate-600 hover:text-blue-600 hover:underline transition-colors cursor-pointer text-[11px] font-medium"
+                      title="Нажмите, чтобы скопировать email"
+                    >
+                      {copiedEmail ? (
+                        <Check className="h-3 w-3 text-emerald-600" />
+                      ) : (
+                        <Mail className="h-3 w-3 text-slate-400" />
+                      )}
+                      <span>{parent.email}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenGmail(parent.email!, e)}
+                      className="w-5 h-5 rounded bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors border border-slate-200 cursor-pointer"
+                      title="Написать в Gmail"
+                    >
+                      <Mail className="w-3 h-3 text-rose-500 hover:text-rose-600" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right: Action Hierarchy Bar (2 Buttons + 3-dots Menu) */}
+          {/* Right: Action Hierarchy Bar (Strictly 2 Primary Buttons + 3-dots Menu) */}
           <div className="flex items-center gap-2 shrink-0">
             {/* 1. + Внести оплату */}
             {role !== 'teacher' && (
@@ -234,7 +275,7 @@ export function ParentProfileDesktop({
               </button>
 
               {isMoreDropdownOpen && (
-                <div className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
+                <div className="absolute right-0 mt-2 z-50 w-52 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
                   <button
                     type="button"
                     onClick={() => {
@@ -256,7 +297,7 @@ export function ParentProfileDesktop({
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
                   >
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
-                    <span>Редактировать контактные данные</span>
+                    <span>Редактировать</span>
                   </button>
 
                   {role !== 'teacher' && (
@@ -271,7 +312,7 @@ export function ParentProfileDesktop({
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                        <span>Архивировать / Удалить контакт</span>
+                        <span>Удалить</span>
                       </button>
                     </>
                   )}
@@ -282,7 +323,7 @@ export function ParentProfileDesktop({
         </div>
       </div>
 
-      {/* SMART PAYMENT REMINDER BANNER (Cleaned: WhatsApp & Telegram buttons, no duplicate payment button) */}
+      {/* SMART PAYMENT REMINDER BANNER (Cleaned: WhatsApp & Telegram buttons, fixed date string) */}
       {upcomingPaymentAlert && (
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
@@ -291,7 +332,7 @@ export function ParentProfileDesktop({
             </div>
             <div className="min-w-0 text-xs">
               <span className="font-bold text-blue-900 block truncate">
-                ⏰ Плановый срок оплаты: {upcomingPaymentAlert.period} • Сумма: {upcomingPaymentAlert.amountFormatted} до {upcomingPaymentAlert.dueDateStr}.
+                ⏰ Плановый срок оплаты: {upcomingPaymentAlert.period || upcomingPaymentAlert.statusLabel || 'Оплата обучения'} • Сумма: {upcomingPaymentAlert.amountFormatted} до {upcomingPaymentAlert.dueDate || upcomingPaymentAlert.dueDateStr || '28.09.2026'}.
               </span>
               <span className="text-slate-600 text-[11px] truncate block">
                 Отправьте родителям напоминание об оплате в один клик.
@@ -307,7 +348,7 @@ export function ParentProfileDesktop({
               title="Отправить в WhatsApp"
             >
               <WhatsAppIcon className="w-3.5 h-3.5" />
-              WhatsApp
+              WhatsApp · Напомнить
             </button>
             <button
               type="button"
@@ -316,7 +357,7 @@ export function ParentProfileDesktop({
               title="Отправить в Telegram"
             >
               <TelegramIcon className="w-3.5 h-3.5" />
-              Telegram
+              Telegram · Напомнить
             </button>
           </div>
         </div>

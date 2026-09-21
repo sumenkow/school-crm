@@ -58,7 +58,7 @@ export default function ParentDetailsPage() {
   const parentId = params.id as string;
 
   // Active tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'children' | 'finance' | 'timeline' | 'tasks'>('children');
+  const [activeTab, setActiveTab] = useState<'profile' | 'children' | 'finance' | 'timeline' | 'tasks'>('finance');
 
   // Load parent and linked children from unified storage (supports converted leads)
   const [parent, setParent] = useState(() => {
@@ -145,7 +145,13 @@ export default function ParentDetailsPage() {
   // Next Upcoming Lesson for Children
   const [upcomingLesson, setUpcomingLesson] = useState<{ lesson: FullLessonData; childName: string } | null>(null);
 
-  const computeNextLesson = () => {
+  // Stable primitive key from children IDs — prevents array-object dependency loops
+  const childrenIdsKey = useMemo(
+    () => (parent.children || []).map((c) => c.id).sort().join(','),
+    [parent.children]
+  );
+
+  const computeNextLesson = useCallback(() => {
     if (typeof window === 'undefined') return;
     const allLessons = getStoredLessons();
     const childrenIds = new Set((parent.children || []).map((c) => c.id));
@@ -164,7 +170,7 @@ export default function ParentDetailsPage() {
       const parsed = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
       return isNaN(parsed) ? 0 : parsed;
     };
-    
+
     const matching: Array<{ lesson: FullLessonData; childName: string }> = [];
 
     for (const lesson of allLessons) {
@@ -193,20 +199,20 @@ export default function ParentDetailsPage() {
     });
 
     setUpcomingLesson(matching[0] || null);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childrenIdsKey]);
 
   useEffect(() => {
     computeNextLesson();
-    const handleSync = () => computeNextLesson();
-    window.addEventListener('crm-lessons-changed', handleSync);
-    window.addEventListener('crm-groups-changed', handleSync);
-    window.addEventListener('crm-students-changed', handleSync);
+    window.addEventListener('crm-lessons-changed', computeNextLesson);
+    window.addEventListener('crm-groups-changed', computeNextLesson);
+    window.addEventListener('crm-students-changed', computeNextLesson);
     return () => {
-      window.removeEventListener('crm-lessons-changed', handleSync);
-      window.removeEventListener('crm-groups-changed', handleSync);
-      window.removeEventListener('crm-students-changed', handleSync);
+      window.removeEventListener('crm-lessons-changed', computeNextLesson);
+      window.removeEventListener('crm-groups-changed', computeNextLesson);
+      window.removeEventListener('crm-students-changed', computeNextLesson);
     };
-  }, [parent.children]);
+  }, [computeNextLesson]);
 
   // Reconcile debts once on mount
   useEffect(() => {
@@ -372,7 +378,8 @@ export default function ParentDetailsPage() {
     }
 
     return list;
-  }, [parent.children, parentId, refreshTrigger]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childrenIdsKey, parentId, refreshTrigger]);
 
   const filteredPayments = useMemo(() => {
     if (paymentChildFilter === 'all') return familyPayments;
@@ -404,7 +411,8 @@ export default function ParentDetailsPage() {
     return allStudents
       .filter((s) => childIds.has(s.id) || s.parents?.some((p) => p.id === parentId))
       .reduce((sum, s) => sum + (s.finance?.deposit?.balance || 0), 0);
-  }, [parent.children, parentId, refreshTrigger]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childrenIdsKey, parentId, refreshTrigger]);
 
   // Per-child finances for individual children cards
   const childFinanceMap = useMemo(() => {
@@ -424,7 +432,8 @@ export default function ParentDetailsPage() {
       map.set(ch.id, { deposit, debt, totalPaid: paid, currency });
     }
     return map;
-  }, [parent.children, refreshTrigger]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childrenIdsKey, refreshTrigger]);
 
   const [paymentModalStudentId, setPaymentModalStudentId] = useState<string | undefined>(undefined);
 
@@ -442,7 +451,8 @@ export default function ParentDetailsPage() {
     } catch (e) {
       console.error('Failed to load family tasks/timeline:', e);
     }
-  }, [parentId, parent?.children]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId, childrenIdsKey]);
 
   useFocusSync(loadTasksAndTimeline);
 
@@ -721,7 +731,8 @@ export default function ParentDetailsPage() {
     if (combined.length !== interactions.length) {
       setInteractions(combined);
     }
-  }, [parentId, parent.children]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId, childrenIdsKey]);
 
   const handleOpenEdit = () => {
     setEditForm({
@@ -1054,7 +1065,7 @@ export default function ParentDetailsPage() {
           onOpenEditParentModal={handleOpenEdit}
           onOpenLinkChildModal={() => setIsAddChildModalOpen(true)}
           onDeleteParent={() => {
-            if (confirm(`Вы действительно хотите удалить родителя ${parent.firstName} ${parent.lastName}?`)) {
+            if (confirm(`Удалить контакт представителя ${parent.firstName} ${parent.lastName}? Связанные ученики не будут удалены.`)) {
               success('Родитель перемещён в архив');
             }
           }}
@@ -1213,8 +1224,8 @@ export default function ParentDetailsPage() {
       {/* Tabs navigation */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
-          { key: 'children', label: `${t('students.tabAcademic', 'Дети и обучение')} (${parent.children.length})` },
           { key: 'finance', label: `${t('students.tabFinance', 'Оплаты и баланс')} (${filteredPayments.length})` },
+          { key: 'children', label: `Обучение и группы (${parent.children.length})` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${familyTasks.filter((t) => t.status === 'open').length})` },
           { key: 'timeline', label: `Timeline (${interactions.length})` },
           { key: 'profile', label: `Настройки связи` },
@@ -1816,58 +1827,33 @@ export default function ParentDetailsPage() {
                       )}
 
                       {/* Child Balance Box */}
-                      <div className="mt-3.5 rounded-xl border p-3 flex items-center justify-between gap-2 text-xs bg-white shadow-2xs">
-                        <div className="flex items-center gap-1.5">
-                          {cFinance.debt > 0 ? (
-                            <span className="font-bold text-rose-700 flex items-center gap-1">
-                              <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-                              Долг: -{cFinance.debt.toLocaleString('ru-RU')} {cFinance.currency}
-                            </span>
-                          ) : cFinance.deposit > 0 ? (
-                            <span className="font-bold text-emerald-700 flex items-center gap-1">
-                              <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                              Депозит: +{cFinance.deposit.toLocaleString('ru-RU')} {cFinance.currency}
-                            </span>
-                          ) : (
-                            <span className="font-semibold text-slate-600 flex items-center gap-1">
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
-                              Счета оплачены (0 {cFinance.currency})
-                            </span>
-                          )}
-                        </div>
+                      {/* Child Balance Display — no payment button here, payments via header */}
+                      <div className="mt-3.5 rounded-xl border p-3 flex items-center gap-1.5 text-xs bg-white shadow-2xs">
                         {cFinance.debt > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentModalStudentId(child.id);
-                              setIsPaymentModalOpen(true);
-                            }}
-                            className="rounded-lg bg-rose-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition-colors cursor-pointer"
-                          >
-                            Погасить долг
-                          </button>
+                          <span className="font-bold text-rose-700 flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
+                            Долг: -{cFinance.debt.toLocaleString('ru-RU')} {cFinance.currency}
+                          </span>
+                        ) : cFinance.deposit > 0 ? (
+                          <span className="font-bold text-emerald-700 flex items-center gap-1">
+                            <Wallet className="h-3.5 w-3.5 text-emerald-600" />
+                            Депозит: +{cFinance.deposit.toLocaleString('ru-RU')} {cFinance.currency}
+                          </span>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentModalStudentId(child.id);
-                              setIsPaymentModalOpen(true);
-                            }}
-                            className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
-                          >
-                            + Платёж
-                          </button>
+                          <span className="font-semibold text-slate-600 flex items-center gap-1">
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            Счета оплачены
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400">ID: {child.id}</span>
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
                       <Link
-                        href={`/students/${child.id}`}
+                        href={child.groups?.[0]?.id ? `/groups/${child.groups[0].id}` : `/calendar`}
                         className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
                       >
-                        Перейти в карточку ученика <ChevronRight className="w-3.5 h-3.5" />
+                        Журнал группы <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>
                   </div>
