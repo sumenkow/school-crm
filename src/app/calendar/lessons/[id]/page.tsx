@@ -211,19 +211,29 @@ export default function LessonDetailsPage() {
     studentId: string,
     newStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'not_marked'
   ) => {
-    setLesson((prev) => ({
-      ...prev,
-      students: prev.students.map((s) =>
-        s.id === studentId ? { ...s, attendanceStatus: newStatus } : s
-      ),
-    }));
+    setLesson((prev) => {
+      const updated = {
+        ...prev,
+        students: prev.students.map((s) =>
+          s.id === studentId ? { ...s, attendanceStatus: newStatus } : s
+        ),
+      };
+      saveLessonToStorage(updated);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+      return updated;
+    });
   };
 
   const handleUpdateStudentNotes = (studentId: string, notes: string) => {
-    setLesson((prev) => ({
-      ...prev,
-      students: prev.students.map((s) => (s.id === studentId ? { ...s, notes } : s)),
-    }));
+    setLesson((prev) => {
+      const updated = {
+        ...prev,
+        students: prev.students.map((s) => (s.id === studentId ? { ...s, notes } : s)),
+      };
+      saveLessonToStorage(updated);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+      return updated;
+    });
   };
 
   // Quick 1-click actions for whole group
@@ -243,18 +253,28 @@ export default function LessonDetailsPage() {
       comment: `${t('lesson.markAllPresent', 'Все ученики отмечены присутствующими')} (${lesson.students.length})`,
     };
 
-    setLesson((prev) => ({
-      ...prev,
-      students: prev.students.map((s) => ({ ...s, attendanceStatus: 'present' })),
-      timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
-    }));
+    setLesson((prev) => {
+      const updated: FullLessonData = {
+        ...prev,
+        students: prev.students.map((s) => ({ ...s, attendanceStatus: 'present' as const })),
+        timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
+      };
+      saveLessonToStorage(updated);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+      return updated;
+    });
   };
 
   const handleResetAttendance = () => {
-    setLesson((prev) => ({
-      ...prev,
-      students: prev.students.map((s) => ({ ...s, attendanceStatus: 'not_marked' })),
-    }));
+    setLesson((prev) => {
+      const updated: FullLessonData = {
+        ...prev,
+        students: prev.students.map((s) => ({ ...s, attendanceStatus: 'not_marked' as const })),
+      };
+      saveLessonToStorage(updated);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+      return updated;
+    });
   };
 
   // Add Comment to Lesson Timeline

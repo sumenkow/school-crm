@@ -1742,6 +1742,21 @@ export default function ParentDetailsPage() {
           return isNaN(ms) ? 0 : ms;
         };
 
+        const formatLessonDateWithWeekday = (l: FullLessonData) => {
+          if (!l.date) return l.dateFormatted || '';
+          const weekdays = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+          let iso = l.date;
+          if (l.date.includes('.')) {
+            const p = l.date.split('.');
+            if (p.length === 3) iso = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+          }
+          const d = new Date(iso);
+          const weekday = !isNaN(d.getDay()) ? weekdays[d.getDay()] : '';
+          const dateShort = l.dateFormatted || l.date;
+          const timeStr = l.startTime ? ` в ${l.startTime}` : '';
+          return weekday ? `${weekday}, ${dateShort}${timeStr}` : `${dateShort}${timeStr}`;
+        };
+
         return (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             {parent.children.length === 0 ? (
@@ -1767,12 +1782,6 @@ export default function ParentDetailsPage() {
                   const childGroups = child.groups && child.groups.length > 0
                     ? child.groups
                     : [{ id: '', name: child.group || 'Группа', teacherName: child.teacher || '', schedule: '', courseName: child.course || '' }];
-
-                  // Subscription data
-                  const sub = (child as any).finance?.activeSubscription;
-                  const lessonsUsed: number = sub?.lessonsUsed ?? 15;
-                  const lessonsTotal: number = sub?.lessonsTotal ?? 16;
-                  const progressPct = lessonsTotal > 0 ? Math.round((lessonsUsed / lessonsTotal) * 100) : 0;
 
                   return (
                     <div
@@ -1817,43 +1826,61 @@ export default function ParentDetailsPage() {
                       {childGroups.map((grp, gIdx) => {
                         const groupId = grp.id || '';
 
-                        // Next upcoming lesson for this group
-                        const upcoming = allLessons
+                        // Group lessons
+                        const groupLessons = allLessons.filter((l) => (groupId ? l.groupId === groupId : true));
+
+                        // Next upcoming lesson for this group (strictly future & not cancelled/completed)
+                        const upcoming = groupLessons
                           .filter((l) => {
                             if (l.status === 'cancelled' || l.status === 'completed') return false;
-                            if (groupId && l.groupId !== groupId) return false;
                             const ms = parseLessonMs(l);
-                            return ms > today;
+                            return ms >= today;
                           })
                           .sort((a, b) => parseLessonMs(a) - parseLessonMs(b))[0] || null;
 
-                        // Last completed lesson for teacher feedback
-                        const lastCompleted = allLessons
-                          .filter((l) => {
-                            if (l.status !== 'completed') return false;
-                            if (groupId && l.groupId !== groupId) return false;
-                            return l.students?.some((s) => s.id === child.id);
-                          })
-                          .sort((a, b) => parseLessonMs(b) - parseLessonMs(a))[0] || null;
+                        // Completed lessons of this group for attendance & feedback
+                        const completedGroupLessons = groupLessons.filter((l) => l.status === 'completed');
+                        const totalCompletedLessons = completedGroupLessons.length;
+                        
+                        // Lessons where student was present / attended
+                        const attendedLessonsCount = completedGroupLessons.filter((l) =>
+                          l.students?.some((s) => s.id === child.id && (s.attendanceStatus === 'present' || (s.attendanceStatus as string) === 'was' || s.attendanceStatus === 'excused'))
+                        ).length;
 
-                        const lastStudentEntry = lastCompleted?.students?.find((s) => s.id === child.id);
-                        const teacherFeedback = lastStudentEntry?.notes || null;
-                        const lastTopic = lastCompleted?.topic || null;
+                        // Attendance percentage calculation
+                        let attendancePercentage = 100;
+                        if (totalCompletedLessons > 0) {
+                          attendancePercentage = Math.round((attendedLessonsCount / totalCompletedLessons) * 100);
+                        } else if (child.attendance) {
+                          const parsedRate = parseInt(child.attendance.replace('%', ''), 10);
+                          attendancePercentage = isNaN(parsedRate) ? 100 : parsedRate;
+                        }
+
+                        // Last completed lesson with teacher feedback (student notes)
+                        const recordsWithFeedback = completedGroupLessons
+                          .filter((l) => l.students?.some((s) => s.id === child.id && s.notes && s.notes.trim() !== ''))
+                          .sort((a, b) => parseLessonMs(b) - parseLessonMs(a));
+
+                        const latestFeedbackLesson = recordsWithFeedback[0] || null;
+                        const latestFeedbackStudent = latestFeedbackLesson?.students?.find((s) => s.id === child.id);
+                        const teacherFeedback = latestFeedbackStudent?.notes || null;
+
+                        const lastCompletedLesson = completedGroupLessons.sort((a, b) => parseLessonMs(b) - parseLessonMs(a))[0] || null;
+                        const lastTopic = lastCompletedLesson?.topic || null;
 
                         return (
                           <div key={grp.id || gIdx}>
                             {/* Meta row: Course • Teacher • Schedule */}
                             <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 bg-slate-50/80 border-b border-slate-100 text-xs text-slate-600">
-                              {(grp.courseName || grp.name) && (
-                                <span className="font-semibold text-slate-800">
-                                  Курс:{' '}
-                                  <Link
-                                    href={groupId ? `/groups/${groupId}` : '#'}
-                                    className="text-blue-700 font-bold cursor-pointer hover:underline"
-                                  >
-                                    {grp.courseName || grp.name}
-                                  </Link>
-                                </span>
+                              <span className="text-slate-500 font-medium">Курс: </span>
+                              <Link
+                                href={groupId ? `/groups/${groupId}` : '#'}
+                                className="text-blue-600 hover:underline font-semibold transition-colors"
+                              >
+                                {grp.name || grp.courseName || 'Группа'}
+                              </Link>
+                              {grp.courseName && grp.courseName !== grp.name && (
+                                <span className="text-slate-400"> ({grp.courseName})</span>
                               )}
                               {grp.teacherName && (
                                 <>
@@ -1878,23 +1905,21 @@ export default function ParentDetailsPage() {
                                 </p>
                                 {upcoming ? (
                                   <>
-                                    <p className="text-xs font-bold text-slate-900">{upcoming.dateFormatted} в {upcoming.startTime}</p>
-                                    {upcoming.topic && (
-                                      <p className="text-[11px] text-slate-600 line-clamp-2">
-                                        Тема: {upcoming.topic}
-                                      </p>
-                                    )}
-                                    {upcoming.room && (
-                                      <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                                        {upcoming.onlineMeetingUrl
-                                          ? <><Video className="h-3 w-3 text-blue-500" /> Онлайн</>
-                                          : <><BookOpen className="h-3 w-3 text-slate-400" /> {upcoming.room}</>
-                                        }
-                                      </p>
-                                    )}
+                                    <p className="text-xs font-bold text-slate-900">
+                                      {formatLessonDateWithWeekday(upcoming)}
+                                    </p>
+                                    <p className="text-[11px] text-slate-600 line-clamp-2">
+                                      Тема: {upcoming.topic || 'Плановое занятие'}
+                                    </p>
+                                    <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                                      {upcoming.onlineMeetingUrl || (upcoming as any).location_type === 'online' || upcoming.room?.toLowerCase().includes('online') || upcoming.room?.toLowerCase().includes('zoom') || upcoming.room?.toLowerCase().includes('онлайн')
+                                        ? <><Video className="h-3 w-3 text-blue-500" /> Zoom (Онлайн)</>
+                                        : <><BookOpen className="h-3 w-3 text-slate-400" /> {upcoming.room ? `Кабинет ${upcoming.room}` : 'Кабинет 101'}</>
+                                      }
+                                    </p>
                                   </>
                                 ) : (
-                                  <p className="text-[11px] text-slate-400 italic">Уроков не запланировано</p>
+                                  <p className="text-[11px] text-slate-400 italic">Нет запланированных уроков</p>
                                 )}
                               </div>
 
@@ -1904,20 +1929,22 @@ export default function ParentDetailsPage() {
                                   <GraduationCap className="h-3 w-3" /> Абонемент и уроки
                                 </p>
                                 <p className="text-xs text-slate-700">
-                                  Пройдено: <strong className="text-slate-900">{lessonsUsed} из {lessonsTotal}</strong> уроков
+                                  Пройдено: <strong className="text-slate-900">{attendedLessonsCount} из {totalCompletedLessons}</strong> уроков
                                 </p>
-                                <p className="text-[11px] text-slate-500">Осталось: {Math.max(0, lessonsTotal - lessonsUsed)} занятий</p>
+                                <p className="text-[11px] text-slate-500">
+                                  Посещаемость: <strong className="text-slate-700">{attendancePercentage}%</strong>
+                                </p>
                                 {/* Progress bar */}
                                 <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                                   <div
                                     className={cn(
                                       'h-full rounded-full transition-all',
-                                      progressPct >= 80 ? 'bg-emerald-500' : progressPct >= 60 ? 'bg-amber-400' : 'bg-rose-500'
+                                      attendancePercentage >= 80 ? 'bg-emerald-500' : attendancePercentage >= 60 ? 'bg-amber-500' : 'bg-rose-500'
                                     )}
-                                    style={{ width: `${progressPct}%` }}
+                                    style={{ width: `${Math.min(100, Math.max(0, attendancePercentage))}%` }}
                                   />
                                 </div>
-                                <p className="text-[10px] text-slate-400 text-right">{progressPct}%</p>
+                                <p className="text-[10px] text-slate-400 text-right">{attendancePercentage}%</p>
                                 {/* Debt/Deposit */}
                                 {cFinance.debt > 0 && (
                                   <p className="text-[11px] font-bold text-rose-700 flex items-center gap-1 mt-1">
@@ -1944,20 +1971,13 @@ export default function ParentDetailsPage() {
                                       «{teacherFeedback}»
                                     </p>
                                     <p className="text-[10px] text-slate-400">
-                                      {lastCompleted?.dateFormatted} · {lastCompleted?.teacherName}
-                                    </p>
-                                  </>
-                                ) : lastTopic ? (
-                                  <>
-                                    <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
-                                      Последняя тема: <span className="font-medium text-slate-800">{lastTopic}</span>
-                                    </p>
-                                    <p className="text-[10px] text-slate-400">
-                                      {lastCompleted?.dateFormatted} · {lastCompleted?.teacherName}
+                                      {latestFeedbackLesson?.dateFormatted || latestFeedbackLesson?.date} • {latestFeedbackLesson?.teacherName || grp.teacherName}
                                     </p>
                                   </>
                                 ) : (
-                                  <p className="text-[11px] text-slate-400 italic">Нет данных о посещённых уроках</p>
+                                  <p className="text-[11px] text-slate-400 italic">
+                                    Преподаватель пока не оставил комментарий к прошедшим занятиям
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -1976,7 +1996,7 @@ export default function ParentDetailsPage() {
                                   setEnrollModalChildId(child.id);
                                   setSelectedGroupIdForChild('');
                                 }}
-                                className="inline-flex items-center gap-1 border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors bg-white"
+                                className="inline-flex items-center gap-1 border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors bg-white cursor-pointer"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                                 Добавить курс
