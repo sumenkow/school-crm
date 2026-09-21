@@ -143,11 +143,7 @@ export default function CalendarPage() {
   };
 
   const handleLessonClick = (lesson: FullLessonData) => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      setSelectedLessonForDesktop(lesson);
-    } else {
-      setSelectedLessonForQuickView(lesson);
-    }
+    router.push(`/calendar/lessons/${lesson.id}`);
   };
 
   const todayStr = getTodayDateStr();

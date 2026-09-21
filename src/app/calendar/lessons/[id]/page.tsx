@@ -389,10 +389,9 @@ export default function LessonDetailsPage() {
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                <Edit className="h-3.5 w-3.5 text-blue-600" />
-                {t('lesson.editParams', 'Изменить параметры урока')}
+                <span>⚙</span> {t('lesson.editTimeDate', 'Перенос / Время')}
               </button>
             </div>
             
