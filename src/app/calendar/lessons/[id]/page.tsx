@@ -35,6 +35,8 @@ import {
   ShieldCheck,
   Mail,
   Edit,
+  ChevronDown,
+  Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RescheduleLessonModal } from '@/components/calendar/RescheduleLessonModal';
@@ -45,6 +47,248 @@ import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
+
+interface LessonStudentRowProps {
+  student: FullLessonData['students'][number];
+  lesson: FullLessonData;
+  onSetAttendance: (studentId: string, status: 'present' | 'absent' | 'excused' | 'rescheduled') => void;
+  onUpdateNotes: (studentId: string, notes: string) => void;
+  t: (key: string, fallback: string) => string;
+}
+
+function LessonStudentAttendanceRow({
+  student,
+  lesson,
+  onSetAttendance,
+  onUpdateNotes,
+  t,
+}: LessonStudentRowProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const currentStatus = student.attendanceStatus || 'not_marked';
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
+
+  const parentInfo = React.useMemo(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : [];
+    const fullStudent = allStudents.find((s) => s.id === student.id);
+    const primaryParent = fullStudent?.parents?.[0];
+    const parentName = primaryParent
+      ? `${primaryParent.firstName} ${primaryParent.lastName}`.trim()
+      : 'Родитель';
+    const parentPhone = primaryParent?.phone || (fullStudent as any)?.phone || '+7 (999) 000-00-00';
+    const cleanPhone = parentPhone.replace(/\D/g, '');
+    const parentTelegram = (primaryParent?.telegram || (fullStudent as any)?.telegram || '').replace('@', '');
+    const parentEmail = primaryParent?.email || (fullStudent as any)?.email || '';
+    return { parentName, parentPhone, cleanPhone, parentTelegram, parentEmail };
+  }, [student.id]);
+
+  return (
+    <div className="py-3.5 space-y-2.5">
+      {/* ROW 1: Student info & Payment badge (Left) | Fixed Status Selector (Right w-[360px]) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Student Info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-9 w-9 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-xs shrink-0 border border-slate-200">
+            {student.name.split(' ').map((n) => n[0]).join('')}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <Link
+              href={`/students/${student.id}`}
+              className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors truncate"
+            >
+              {student.name}
+            </Link>
+            {(() => {
+              const payStatus = getStudentLessonPaymentStatus(student.id, student.isTrial);
+              return (
+                <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0', payStatus.badgeClass)}>
+                  {payStatus.label}
+                </span>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Segmented Status Selector with strictly fixed width w-[360px] */}
+        <div className="flex items-center justify-end gap-1.5 shrink-0 w-[360px]">
+          <button
+            type="button"
+            onClick={() => onSetAttendance(student.id, 'present')}
+            className={cn(
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              currentStatus === 'present'
+                ? 'bg-emerald-600 text-white shadow-2xs ring-2 ring-emerald-600/30 font-bold'
+                : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
+            )}
+          >
+            <Check className="h-3.5 w-3.5" />
+            {t('lesson.studentAttendanceWas', 'Был')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSetAttendance(student.id, 'excused')}
+            className={cn(
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              currentStatus === 'excused'
+                ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-bold'
+                : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-800'
+            )}
+          >
+            <AlertCircle className="h-3.5 w-3.5" />
+            {t('lesson.studentAttendanceExcused', 'Болел')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSetAttendance(student.id, 'absent')}
+            className={cn(
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              currentStatus === 'absent'
+                ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-600/30 font-bold'
+                : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
+            )}
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            {t('lesson.studentAttendanceAbsent', 'Пропуск')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSetAttendance(student.id, 'rescheduled')}
+            className={cn(
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              currentStatus === 'rescheduled'
+                ? 'bg-purple-600 text-white shadow-2xs ring-2 ring-purple-600/30 font-bold'
+                : 'bg-slate-100 text-slate-600 hover:bg-purple-50 hover:text-purple-700'
+            )}
+          >
+            <CalendarClock className="h-3.5 w-3.5" />
+            {t('lesson.studentAttendanceRescheduled', 'Отработка')}
+          </button>
+        </div>
+      </div>
+
+      {/* ROW 2: Feedback input (Left, flex-1) | Parent Multi-channel Dropdown (Right, shrink-0) */}
+      <div className="flex items-center justify-between gap-3 w-full">
+        <div className="flex-1 flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
+              value={student.notes || ''}
+              onChange={(e) => onUpdateNotes(student.id, e.target.value)}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-1 pl-5.5">
+            {['Отличная работа', 'Повторить слова', 'Не выполнил ДЗ', 'Активен на уроке'].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => {
+                  const cur = student.notes?.trim() || '';
+                  const updated = cur ? `${cur}. ${chip}` : chip;
+                  onUpdateNotes(student.id, updated);
+                }}
+                className="text-[9px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50 transition-colors cursor-pointer"
+              >
+                + {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Multi-channel Contact Dropdown (shown only when absent or excused) */}
+        {(currentStatus === 'absent' || currentStatus === 'excused') && (
+          <div className="relative shrink-0 self-start mt-0.5" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <Mail className="h-3.5 w-3.5 text-blue-600" />
+              <span>✉ Связаться с родителем</span>
+              <ChevronDown className="h-3 w-3 text-slate-400" />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 z-30 w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100 text-xs">
+                <a
+                  href={`https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
+                    `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors font-medium"
+                >
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">W</div>
+                  <span>Написать в WhatsApp</span>
+                </a>
+
+                <a
+                  href={parentInfo.parentTelegram ? `https://t.me/${parentInfo.parentTelegram}?text=${encodeURIComponent(
+                    `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
+                  )}` : `https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
+                    `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-colors font-medium"
+                >
+                  <div className="w-5 h-5 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">T</div>
+                  <span>Написать в Telegram</span>
+                </a>
+
+                <a
+                  href={`mailto:${parentInfo.parentEmail}?subject=${encodeURIComponent(
+                    `Пропуск занятия: ${lesson.courseName} — ${student.name}`
+                  )}&body=${encodeURIComponent(
+                    `Здравствуйте, ${parentInfo.parentName}!\n\n${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?\n\nС уважением,\nШкола`
+                  )}`}
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 transition-colors font-medium"
+                >
+                  <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">@</div>
+                  <span>Отправить на Email</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(parentInfo.parentPhone);
+                    toast.success(`Телефон родителя скопирован: ${parentInfo.parentPhone}`);
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors font-medium cursor-pointer border-t border-slate-100 mt-1"
+                >
+                  <Phone className="h-4 w-4 text-slate-500" />
+                  <span>Скопировать телефон ({parentInfo.parentPhone})</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function LessonDetailsPage() {
   const params = useParams();
@@ -639,146 +883,16 @@ export default function LessonDetailsPage() {
 
         {/* Student Attendance List */}
         <div className="divide-y divide-slate-100 border-t border-slate-100">
-          {lesson.students.map((student) => {
-            const currentStatus = student.attendanceStatus || 'not_marked';
-
-            return (
-              <div key={student.id} className="py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                {/* Student Info */}
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-xs shrink-0 border border-slate-200">
-                    {student.name.split(' ').map((n) => n[0]).join('')}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Link
-                        href={`/students/${student.id}`}
-                        className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors"
-                      >
-                        {student.name}
-                      </Link>
-                      {(() => {
-                        const payStatus = getStudentLessonPaymentStatus(student.id, student.isTrial);
-                        return (
-                          <span
-                            className={cn(
-                              'rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0',
-                              payStatus.badgeClass
-                            )}
-                          >
-                            {payStatus.label}
-                          </span>
-                        );
-                      })()}
-                    </div>
-                    <div className="mt-1.5 flex flex-col gap-1 w-full max-w-md">
-                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
-                         Обратная связь для родителей:
-                       </p>
-                       <input
-                         type="text"
-                         placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
-                         value={student.notes || ''}
-                         onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
-                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                       />
-                       <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                         {['Отличная работа', 'Повторить слова', 'Не выполнил ДЗ', 'Активен на уроке'].map((chip) => (
-                           <button
-                             key={chip}
-                             type="button"
-                             onClick={() => {
-                               const cur = student.notes?.trim() || '';
-                               const updated = cur ? `${cur}. ${chip}` : chip;
-                               handleUpdateStudentNotes(student.id, updated);
-                             }}
-                             className="text-[9px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50 transition-colors cursor-pointer"
-                           >
-                             + {chip}
-                           </button>
-                         ))}
-                       </div>
-                     </div>
-                  </div>
-                </div>
-
-                {/* Status Selector Pills */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSetStudentAttendance(student.id, 'present')}
-                    className={cn(
-                      'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
-                      currentStatus === 'present'
-                        ? 'bg-emerald-600 text-white shadow-2xs ring-2 ring-emerald-600/30 font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
-                    )}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {t('lesson.studentAttendanceWas', 'Был')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSetStudentAttendance(student.id, 'excused')}
-                    className={cn(
-                      'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
-                      currentStatus === 'excused'
-                        ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-800'
-                    )}
-                  >
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    {t('lesson.studentAttendanceExcused', 'Болел / Уважит.')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSetStudentAttendance(student.id, 'absent')}
-                    className={cn(
-                      'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
-                      currentStatus === 'absent'
-                        ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-600/30 font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
-                    )}
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    {t('lesson.studentAttendanceAbsent', 'Пропуск')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSetStudentAttendance(student.id, 'rescheduled')}
-                    className={cn(
-                      'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
-                      currentStatus === 'rescheduled'
-                        ? 'bg-purple-600 text-white shadow-2xs ring-2 ring-purple-600/30 font-bold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-purple-50 hover:text-purple-700'
-                    )}
-                  >
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    {t('lesson.studentAttendanceRescheduled', 'Отработка')}
-                  </button>
-
-                  {/* WhatsApp Notify Button if absent */}
-                  {currentStatus === 'absent' && (
-                    <a
-                      href={`https://wa.me/?text=${encodeURIComponent(
-                        `Здравствуйте! Ваш ребенок ${student.name} сегодня не был на уроке ${lesson.courseName} в группе ${lesson.groupName}. Уточните, пожалуйста, причину отсутствия.`
-                      )}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 px-2 py-1 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 transition-colors ml-1"
-                      title={t('lesson.writeToParent', 'Написать родителю')}
-                    >
-                      <MessageSquare className="h-3 w-3 text-emerald-600" />
-                      {t('lesson.writeToParent', 'Написать родителю')}
-                    </a>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {lesson.students.map((student) => (
+            <LessonStudentAttendanceRow
+              key={student.id}
+              student={student}
+              lesson={lesson}
+              onSetAttendance={handleSetStudentAttendance}
+              onUpdateNotes={handleUpdateStudentNotes}
+              t={t}
+            />
+          ))}
         </div>
       </div>
 

@@ -14,7 +14,24 @@ import {
 import { cn } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { formatAgeAndGrade, formatBirthDate } from '@/lib/data/studentAgeHelper';
+
+function formatAbsenceDate(dStr: string): string {
+  if (!dStr) return '';
+  if (dStr.includes('.')) {
+    const parts = dStr.split('.');
+    if (parts.length >= 2) {
+      const d = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      if (m >= 1 && m <= 12) {
+        return `${d} ${months[m - 1]}`;
+      }
+    }
+  }
+  return dStr.replace(/\s*202\d/, '').trim();
+}
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -128,6 +145,71 @@ export function StudentProfileDesktop({
   const attendanceRateNum = typeof student.attendanceStats?.attendanceRate === 'number'
     ? student.attendanceStats.attendanceRate
     : parseInt(String(student.attendanceStats?.attendanceRate || '100'), 10) || 100;
+
+  // Last absence computation (single source of truth)
+  const lastAbsence = React.useMemo(() => {
+    const list: Array<{ date: string; status: 'absent' | 'excused' | 'sick'; notes?: string }> = [];
+
+    // 1. From student's attendance history
+    if (student.attendanceStats?.history) {
+      for (const item of student.attendanceStats.history) {
+        const s = item.status as string;
+        if (s === 'absent' || s === 'excused' || s === 'sick') {
+          list.push({
+            date: item.date,
+            status: s as 'absent' | 'excused' | 'sick',
+            notes: item.notes,
+          });
+        }
+      }
+    }
+
+    // 2. From stored lessons
+    if (typeof window !== 'undefined') {
+      const storedLessons = getStoredLessons();
+      for (const l of storedLessons) {
+        const match = (l.students || []).find((s) => s.id === student.id);
+        if (match && (match.attendanceStatus === 'absent' || match.attendanceStatus === 'excused')) {
+          list.push({
+            date: l.dateFormatted || l.date,
+            status: match.attendanceStatus,
+            notes: match.notes,
+          });
+        }
+      }
+    }
+
+    if (list.length === 0) return null;
+
+    const parseDateToMs = (dStr: string) => {
+      if (!dStr) return 0;
+      if (dStr.includes('.')) {
+        const parts = dStr.split('.');
+        if (parts.length >= 2) {
+          const d = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const y = parts[2] ? parseInt(parts[2], 10) : 2026;
+          return new Date(y, m, d).getTime();
+        }
+      }
+      const monthsRu: Record<string, number> = {
+        'янв': 0, 'фев': 1, 'мар': 2, 'апр': 3, 'май': 4, 'мая': 4,
+        'июн': 5, 'июл': 6, 'авг': 7, 'сен': 8, 'окт': 9, 'ноя': 10, 'дек': 11
+      };
+      for (const [key, idx] of Object.entries(monthsRu)) {
+        if (dStr.toLowerCase().includes(key)) {
+          const matchNum = dStr.match(/\d+/);
+          const day = matchNum ? parseInt(matchNum[0], 10) : 1;
+          return new Date(2026, idx, day).getTime();
+        }
+      }
+      const parsed = new Date(dStr).getTime();
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    list.sort((a, b) => parseDateToMs(b.date) - parseDateToMs(a.date));
+    return list[0];
+  }, [student]);
 
   // Paid Until formatting
   const rawPaidUntil = student.finance?.activeSubscription?.renewalDate || '28.09';
@@ -483,7 +565,21 @@ export function StudentProfileDesktop({
               />
             </div>
           </div>
-          <span className="text-[10px] text-slate-400 block">Посещено уроков</span>
+          
+          {/* Last absence indicator */}
+          {lastAbsence ? (
+            lastAbsence.status === 'absent' ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 block truncate" title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : 'Пропуск без причины'}>
+                ⚠ Пропуск: {formatAbsenceDate(lastAbsence.date)} (Без причины)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 block truncate" title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : 'Болезнь / Уважительная'}>
+                🏥 Пропуск: {formatAbsenceDate(lastAbsence.date)} (Болезнь)
+              </span>
+            )
+          ) : (
+            <span className="text-[10px] text-slate-400 block truncate">Все уроки посещены</span>
+          )}
         </div>
 
         {/* Block 4: СТАТУС ОПЛАТЫ */}
