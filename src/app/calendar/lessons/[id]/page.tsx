@@ -672,17 +672,33 @@ export default function LessonDetailsPage() {
                         );
                       })()}
                     </div>
-                    <div className="mt-1.5 flex flex-col gap-1">
+                    <div className="mt-1.5 flex flex-col gap-1 w-full max-w-md">
                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                          Обратная связь для родителей:
                        </p>
                        <input
                          type="text"
-                         placeholder="Укажите успехи или на что обратить внимание дома..."
+                         placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
                          value={student.notes || ''}
                          onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
-                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 w-72 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                        />
+                       <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                         {['Отличная работа', 'Повторить слова', 'Не выполнил ДЗ', 'Активен на уроке'].map((chip) => (
+                           <button
+                             key={chip}
+                             type="button"
+                             onClick={() => {
+                               const cur = student.notes?.trim() || '';
+                               const updated = cur ? `${cur}. ${chip}` : chip;
+                               handleUpdateStudentNotes(student.id, updated);
+                             }}
+                             className="text-[9px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50 transition-colors cursor-pointer"
+                           >
+                             + {chip}
+                           </button>
+                         ))}
+                       </div>
                      </div>
                   </div>
                 </div>

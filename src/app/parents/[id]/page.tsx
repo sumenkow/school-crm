@@ -1991,22 +1991,22 @@ export default function ParentDetailsPage() {
                               </div>
 
                               {/* Col 3: Teacher feedback */}
-                              <div className="px-5 py-4 space-y-1.5">
+                              <div className="px-5 py-4 space-y-2">
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
                                   <MessageSquare className="h-3 w-3" /> Обратная связь
                                 </p>
                                 {teacherFeedback ? (
-                                  <>
-                                    <p className="text-[11px] text-slate-700 italic leading-relaxed line-clamp-3">
+                                  <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 space-y-1">
+                                    <p className="text-[10px] font-semibold text-amber-900/80">
+                                      {latestFeedbackLesson?.dateFormatted || latestFeedbackLesson?.date} · {latestFeedbackLesson?.teacherName || grp.teacherName} {grp.name ? `(${grp.name})` : ''}
+                                    </p>
+                                    <p className="text-[11px] text-slate-800 italic leading-relaxed">
                                       «{teacherFeedback}»
                                     </p>
-                                    <p className="text-[10px] text-slate-400">
-                                      {latestFeedbackLesson?.dateFormatted || latestFeedbackLesson?.date} • {latestFeedbackLesson?.teacherName || grp.teacherName}
-                                    </p>
-                                  </>
+                                  </div>
                                 ) : (
                                   <p className="text-[11px] text-slate-400 italic">
-                                    Преподаватель пока не оставил комментарий к прошедшим занятиям
+                                    Преподаватель пока не добавил комментарий к прошедшим урокам
                                   </p>
                                 )}
                               </div>

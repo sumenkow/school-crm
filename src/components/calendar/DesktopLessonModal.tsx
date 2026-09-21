@@ -1,8 +1,6 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Calendar, Clock, Video, ExternalLink, Check, Copy, User, Lock } from 'lucide-react';
+import { X, Calendar, Clock, Video, ExternalLink, Check, Copy, User, Lock, MessageSquare } from 'lucide-react';
 import { FullLessonData } from '@/lib/data/mockData';
 import { saveLessonToStorage, recordLessonAttendanceBatch } from '@/lib/data/lessonStorage';
 import { useToast } from '@/context/ToastContext';
@@ -17,7 +15,145 @@ export interface StudentAttendanceItem {
   name: string;
   status: 'present' | 'absent' | 'excused';
   chargeBalance: boolean;
+  feedback?: string;
 }
+
+const QUICK_FEEDBACK_TAGS = [
+  'Отличная работа на уроке',
+  'Повторить слова к теме',
+  'Не выполнил домашнее задание',
+  'Активно работал в группе',
+];
+
+interface LessonStudentAttendanceRowProps {
+  student: StudentAttendanceItem;
+  onStatusChange: (studentId: string, status: 'present' | 'absent' | 'excused') => void;
+  onToggleChargeBalance: (studentId: string) => void;
+  onFeedbackChange: (studentId: string, feedback: string) => void;
+}
+
+const LessonStudentAttendanceRow = memo(function LessonStudentAttendanceRow({
+  student,
+  onStatusChange,
+  onToggleChargeBalance,
+  onFeedbackChange,
+}: LessonStudentAttendanceRowProps) {
+  const [isFocused, setIsFocused] = useState(false);
+  const payStatus = getStudentLessonPaymentStatus(student.studentId);
+
+  const handleChipClick = (tag: string) => {
+    const current = student.feedback?.trim() || '';
+    const updated = current ? `${current}. ${tag}` : tag;
+    onFeedbackChange(student.studentId, updated);
+  };
+
+  return (
+    <div className="p-3.5 flex flex-col gap-2.5 bg-white hover:bg-slate-50/70 transition-colors">
+      {/* Row 1: Student info, payment status badge & status selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-xs shrink-0 border border-slate-200">
+            {student.name.split(' ').map((n) => n[0]).join('')}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-900">{student.name}</span>
+              <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border', payStatus.badgeClass)}>
+                {payStatus.label}
+              </span>
+            </div>
+            {student.status === 'absent' && (
+              <label className="mt-1 flex items-center gap-1.5 text-xs text-rose-700 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={student.chargeBalance}
+                  onChange={() => onToggleChargeBalance(student.studentId)}
+                  className="rounded text-rose-600 focus:ring-rose-500 h-3.5 w-3.5 border-rose-300"
+                />
+                <span>Списать занятие с баланса</span>
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* Segmented Attendance Controls */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button 
+            type="button"
+            onClick={() => onStatusChange(student.studentId, 'present')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
+              student.status === 'present' 
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            )}
+          >
+            🟢 Был
+          </button>
+          <button 
+            type="button"
+            onClick={() => onStatusChange(student.studentId, 'absent')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
+              student.status === 'absent' 
+                ? 'bg-rose-600 text-white border-rose-600 shadow-xs' 
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            )}
+          >
+            🔴 Пропуск
+          </button>
+          <button 
+            type="button"
+            onClick={() => onStatusChange(student.studentId, 'excused')}
+            className={cn(
+              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
+              student.status === 'excused' 
+                ? 'bg-amber-500 text-white border-amber-500 shadow-xs' 
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            )}
+          >
+            🟡 Болезнь
+          </button>
+        </div>
+      </div>
+
+      {/* Row 2: Compact Teacher Feedback Input */}
+      <div className="w-full space-y-1.5">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={student.feedback || ''}
+            onChange={(e) => onFeedbackChange(student.studentId, e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
+            className="w-full text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg px-3 py-1.5 transition-all text-slate-700 placeholder:text-slate-400"
+          />
+        </div>
+
+        {/* 1-Click Quick Chips (shown on focus or when input is empty) */}
+        {isFocused && (
+          <div className="flex flex-wrap items-center gap-1.5 pl-5.5 animate-in fade-in duration-100">
+            {QUICK_FEEDBACK_TAGS.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleChipClick(tag);
+                }}
+                className="text-[10px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/60 transition-colors cursor-pointer"
+              >
+                + {tag}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 interface DesktopLessonModalProps {
   isOpen: boolean;
@@ -77,32 +213,37 @@ export function DesktopLessonModal({
             ? 'absent'
             : 'present',
         chargeBalance: true,
+        feedback: s.notes || '',
       }));
 
       setAttendance(initialAttendance);
     }
   }, [isOpen, lesson]);
 
-  if (!isOpen || !lesson || !mounted) return null;
-
-  const handleMarkAllPresent = () => {
+  const handleMarkAllPresent = useCallback(() => {
     setAttendance((prev) => prev.map((s) => ({ ...s, status: 'present' })));
     toast.success('Все ученики отмечены как присутствующие');
-  };
+  }, [toast]);
 
-  const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'excused') => {
+  const handleStatusChange = useCallback((studentId: string, status: 'present' | 'absent' | 'excused') => {
     setAttendance((prev) =>
       prev.map((s) => (s.studentId === studentId ? { ...s, status } : s))
     );
-  };
+  }, []);
 
-  const handleToggleChargeBalance = (studentId: string) => {
+  const handleToggleChargeBalance = useCallback((studentId: string) => {
     setAttendance((prev) =>
       prev.map((s) =>
         s.studentId === studentId ? { ...s, chargeBalance: !s.chargeBalance } : s
       )
     );
-  };
+  }, []);
+
+  const handleFeedbackChange = useCallback((studentId: string, feedback: string) => {
+    setAttendance((prev) =>
+      prev.map((s) => (s.studentId === studentId ? { ...s, feedback } : s))
+    );
+  }, []);
 
   const handleCopyLink = () => {
     if (zoomUrl) {
@@ -134,7 +275,7 @@ export function DesktopLessonModal({
           studentId: a.studentId,
           studentName: a.name,
           status: a.status,
-          note: a.status === 'absent' && !a.chargeBalance ? 'Без списания баланса' : undefined,
+          note: a.feedback?.trim() || (a.status === 'absent' && !a.chargeBalance ? 'Без списания баланса' : undefined),
         })),
       });
 
@@ -157,6 +298,7 @@ export function DesktopLessonModal({
           return {
             ...s,
             attendanceStatus: att ? att.status : s.attendanceStatus,
+            notes: att?.feedback?.trim() || s.notes,
           };
         }),
       };
@@ -186,6 +328,7 @@ export function DesktopLessonModal({
           student_id: st.studentId,
           status: st.status,
           charge_balance: st.status === 'present' || (st.status === 'absent' && st.chargeBalance),
+          feedback: st.feedback?.trim() || null,
           updated_at: new Date().toISOString(),
         }));
 
@@ -200,7 +343,7 @@ export function DesktopLessonModal({
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
 
-      toast.success('Данные занятия и посещаемость сохранены');
+      toast.success('Данные занятия и обратная связь сохранены');
       onSave(updatedLesson);
       onClose();
     } catch (err: any) {
@@ -210,6 +353,8 @@ export function DesktopLessonModal({
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen || !lesson || !mounted) return null;
 
   return createPortal(
     <div className="hidden md:flex fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs items-center justify-center p-4 animate-in fade-in duration-150">
@@ -363,7 +508,7 @@ export function DesktopLessonModal({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-700 uppercase">
-                Посещаемость учеников ({attendance.length})
+                Посещаемость и обратная связь ({attendance.length})
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -375,7 +520,7 @@ export function DesktopLessonModal({
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Отметить всех</span>
                 </button>
-                <span className="text-xs text-slate-400">Синхронизируется с балансом</span>
+                <span className="text-xs text-slate-400">Синхронизируется с родителями</span>
               </div>
             </div>
 
@@ -385,75 +530,15 @@ export function DesktopLessonModal({
                   В группе нет прикрепленных учеников
                 </div>
               ) : (
-                attendance.map((st) => {
-                  const payStatus = getStudentLessonPaymentStatus(st.studentId);
-                  return (
-                    <div 
-                      key={st.studentId} 
-                      className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:bg-slate-50/70 transition-colors"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-slate-900">{st.name}</span>
-                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border', payStatus.badgeClass)}>
-                            {payStatus.label}
-                          </span>
-                        </div>
-                        {st.status === 'absent' && (
-                          <label className="mt-1 flex items-center gap-1.5 text-xs text-rose-700 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={st.chargeBalance}
-                              onChange={() => handleToggleChargeBalance(st.studentId)}
-                              className="rounded text-rose-600 focus:ring-rose-500 h-3.5 w-3.5 border-rose-300"
-                            />
-                            <span>Списать занятие с баланса</span>
-                          </label>
-                        )}
-                      </div>
-
-                      {/* Segmented Attendance Controls */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button 
-                          type="button"
-                          onClick={() => handleStatusChange(st.studentId, 'present')}
-                          className={cn(
-                            'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                            st.status === 'present' 
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          )}
-                        >
-                          🟢 Был
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleStatusChange(st.studentId, 'absent')}
-                          className={cn(
-                            'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                            st.status === 'absent' 
-                              ? 'bg-rose-600 text-white border-rose-600 shadow-xs' 
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          )}
-                        >
-                          🔴 Пропуск
-                        </button>
-                        <button 
-                          type="button"
-                          onClick={() => handleStatusChange(st.studentId, 'excused')}
-                          className={cn(
-                            'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                            st.status === 'excused' 
-                              ? 'bg-amber-500 text-white border-amber-500 shadow-xs' 
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          )}
-                        >
-                          🟡 Болезнь
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                attendance.map((st) => (
+                  <LessonStudentAttendanceRow
+                    key={st.studentId}
+                    student={st}
+                    onStatusChange={handleStatusChange}
+                    onToggleChargeBalance={handleToggleChargeBalance}
+                    onFeedbackChange={handleFeedbackChange}
+                  />
+                ))
               )}
             </div>
           </div>
@@ -486,3 +571,4 @@ export function DesktopLessonModal({
     document.body
   );
 }
+
