@@ -830,9 +830,12 @@ export default function StudentDetailsPage() {
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'communication' | 'tasks' | 'finance' | 'lead'>('all');
 
   useEffect(() => {
-    const parentIds = (student.parents || []).map((p) => p.id);
-    const combined = getCombinedStudentTimeline(student.id, student.interactions, parentIds);
-    if (combined.length !== student.interactions.length) {
+    const currentStudent = latestStudentRef.current;
+    const parentIds = (currentStudent.parents || []).map((p) => p.id);
+    const combined = getCombinedStudentTimeline(currentStudent.id, currentStudent.interactions, parentIds);
+    const prevIds = (currentStudent.interactions || []).map((i) => i.id).sort().join(',');
+    const nextIds = combined.map((i) => i.id).sort().join(',');
+    if (prevIds !== nextIds) {
       setStudent((prev) => ({ ...prev, interactions: combined }));
     }
   }, [student.id]);
@@ -1335,26 +1338,30 @@ export default function StudentDetailsPage() {
     }
   };
 
-  // Stable primitive keys — break the object-dep re-render cascade
-  const parentIdsKey = React.useMemo(
-    () => (student.parents || []).map((p) => p.id).sort().join(','),
-    [student.parents]
-  );
-  const interactionsLenKey = student.interactions?.length ?? 0;
 
   const syncStudentTimelineAndTasks = useCallback(async () => {
     try {
+      const currentStudent = latestStudentRef.current;
       const studentTasks = await getTasksForStudent(studentId);
-      const parentIds = (student.parents || []).map((p) => p.id);
-      const combined = getCombinedStudentTimeline(studentId, student.interactions, parentIds);
+      const parentIds = (currentStudent.parents || []).map((p) => p.id);
+      const combined = getCombinedStudentTimeline(studentId, currentStudent.interactions, parentIds);
+
+      // Idempotency guard: only update if task count or interaction IDs actually changed
+      const prevTaskIds = (currentStudent.tasks || []).map((t) => t.id).sort().join(',');
+      const nextTaskIds = (studentTasks || []).map((t) => t.id).sort().join(',');
+      const prevInteractionIds = (currentStudent.interactions || []).map((i) => i.id).sort().join(',');
+      const nextInteractionIds = combined.map((i) => i.id).sort().join(',');
+
+      if (prevTaskIds === nextTaskIds && prevInteractionIds === nextInteractionIds) return;
+
       setStudent((prev) => ({
         ...prev,
         tasks: studentTasks,
         interactions: combined,
       }));
     } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId, parentIdsKey, interactionsLenKey]);
+  // Only depends on stable studentId — reads live data from ref
+  }, [studentId]);
 
   useFocusSync(syncStudentTimelineAndTasks);
 
