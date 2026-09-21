@@ -186,15 +186,13 @@ const getTeacherNav = (): NavSection[] => [
   },
 ];
 
-const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t, router }: any) => {
+const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: any) => {
   const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-    return pathname === href;
+    return pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
   };
-  const hasActive = section.items.some((i: any) => 
-    pathname === i.href || (i.href !== '/' && pathname.startsWith(i.href + '/'))
-  );
+  const hasActive = section.items.some((i: any) => isActive(i.href));
 
   useEffect(() => {
     if (hasActive && !collapsed) setIsOpen(true);
@@ -227,10 +225,7 @@ const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t, rou
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => {
-                  onCloseMobile();
-                  router.push(item.href);
-                }}
+                onClick={onCloseMobile}
                 title={collapsed ? label : undefined}
                 className={"flex items-center relative transition-all duration-150 rounded-full cursor-pointer " + 
                   (collapsed ? "justify-center mx-auto" : "gap-3 px-4")
@@ -347,7 +342,6 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             pathname={pathname} 
             onCloseMobile={onCloseMobile} 
             t={t} 
-            router={router}
           />
         ))}
       </div>
