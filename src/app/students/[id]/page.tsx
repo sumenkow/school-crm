@@ -527,6 +527,12 @@ export default function StudentDetailsPage() {
     setUpcomingLesson(candidates[0] || null);
   };
 
+  // Stable primitive key from group IDs — prevents object-dep loop
+  const groupIdsKey = React.useMemo(
+    () => (student.groups || []).map((g) => g.id).sort().join(','),
+    [student.groups]
+  );
+
   useEffect(() => {
     computeNextLesson();
     const handleSync = () => computeNextLesson();
@@ -536,7 +542,8 @@ export default function StudentDetailsPage() {
       window.removeEventListener('crm-lessons-changed', handleSync);
       window.removeEventListener('crm-groups-changed', handleSync);
     };
-  }, [student.id, student.groups]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [student.id, groupIdsKey]);
 
   // Selected parent and task for modal window
   const [selectedParentForModal, setSelectedParentForModal] = useState<any | null>(null);
@@ -1328,6 +1335,13 @@ export default function StudentDetailsPage() {
     }
   };
 
+  // Stable primitive keys — break the object-dep re-render cascade
+  const parentIdsKey = React.useMemo(
+    () => (student.parents || []).map((p) => p.id).sort().join(','),
+    [student.parents]
+  );
+  const interactionsLenKey = student.interactions?.length ?? 0;
+
   const syncStudentTimelineAndTasks = useCallback(async () => {
     try {
       const studentTasks = await getTasksForStudent(studentId);
@@ -1339,7 +1353,8 @@ export default function StudentDetailsPage() {
         interactions: combined,
       }));
     } catch {}
-  }, [studentId, student.parents, student.interactions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId, parentIdsKey, interactionsLenKey]);
 
   useFocusSync(syncStudentTimelineAndTasks);
 
