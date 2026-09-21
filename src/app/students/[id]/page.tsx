@@ -1613,16 +1613,23 @@ export default function StudentDetailsPage() {
             <span className="text-slate-400">{t('finance.subscriptionEnd', 'Абонемент до')}:</span>
             <p className="font-semibold text-blue-600 mt-0.5">{student.finance.activeSubscription?.renewalDate || '—'}</p>
           </div>
-          <div
-            onClick={() => student.parents[0] && setSelectedParentForModal(student.parents[0])}
-            className="cursor-pointer hover:bg-slate-50/80 p-1 rounded-lg transition-colors group"
-            title="Нажмите, чтобы открыть карточку родителя"
-          >
-            <span className="text-slate-400">{t('students.colParent', 'Основной контакт')}:</span>
-            <p className="font-semibold text-slate-900 group-hover:text-blue-600 mt-0.5 flex items-center gap-1">
-              {student.parents[0]?.firstName} ({student.parents[0]?.relationshipType}) ↗
-            </p>
-          </div>
+          {student.parents[0] ? (
+            <Link
+              href={`/parents/${student.parents[0].id}`}
+              className="cursor-pointer hover:bg-slate-50/80 p-1 rounded-lg transition-colors group block"
+              title="Открыть карточку семьи"
+            >
+              <span className="text-slate-400">{t('students.colParent', 'Основной контакт')}:</span>
+              <p className="font-semibold text-slate-900 group-hover:text-blue-600 mt-0.5 flex items-center gap-1">
+                {student.parents[0]?.firstName} ({student.parents[0]?.relationshipType}) ↗
+              </p>
+            </Link>
+          ) : (
+            <div>
+              <span className="text-slate-400">{t('students.colParent', 'Основной контакт')}:</span>
+              <p className="font-semibold text-slate-500 mt-0.5">— не указан</p>
+            </div>
+          )}
 
           {/* 5th Column: Payment Status Badge for teacher, Hero Balance Card for admin/owner */}
           {role === 'teacher' ? (
@@ -1839,10 +1846,10 @@ export default function StudentDetailsPage() {
 
               <div className="space-y-3">
                 {student.parents.map((parent) => (
-                  <div
+                  <Link
                     key={parent.id}
-                    onClick={() => setSelectedParentForModal(parent)}
-                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 cursor-pointer hover:border-blue-400 hover:bg-white hover:shadow-sm transition-all group"
+                    href={`/parents/${parent.id}`}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3 hover:border-blue-400 hover:bg-white hover:shadow-sm transition-all group block"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1858,26 +1865,16 @@ export default function StudentDetailsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/parents/${parent.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
-                          title="Открыть полный семейный профиль родителя"
-                        >
-                          Семейный профиль →
-                        </Link>
-                        <span className="text-xs text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
-                          Детали <ChevronRight className="h-3 w-3" />
-                        </span>
-                      </div>
+                      <span className="text-xs text-blue-600 font-semibold group-hover:underline flex items-center gap-1">
+                        Семейный профиль <ChevronRight className="h-3 w-3" />
+                      </span>
                     </div>
 
                     {role !== 'teacher' ? (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">
                         <div className="flex items-center gap-2">
                           <Phone className="h-3.5 w-3.5 text-slate-400" />
-                          <a href={`tel:${parent.phone}`} className="hover:text-blue-600 font-medium">{parent.phone}</a>
+                          <span className="font-medium">{parent.phone}</span>
                         </div>
                         {parent.telegram && (
                           <div className="flex items-center gap-2">
@@ -1903,7 +1900,7 @@ export default function StudentDetailsPage() {
                         💡 {parent.notes}
                       </p>
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
