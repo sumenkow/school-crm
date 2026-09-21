@@ -74,10 +74,30 @@ export async function GET(request: NextRequest) {
 
     // If specific teacher requested
     if (teacherId) {
+      const cleaned = decodeURIComponent(teacherId).trim().toLowerCase();
       const found =
-        allTeachers.find((t) => t.id === teacherId) ||
-        mappedDbTeachers.find((t) => t.id === teacherId) ||
-        INITIAL_TEACHERS.find((t) => t.id === teacherId);
+        allTeachers.find(
+          (t) =>
+            t.id === teacherId ||
+            t.id === `t${teacherId}` ||
+            t.id.replace(/^t/, '') === teacherId.replace(/^t/, '') ||
+            t.name.toLowerCase() === cleaned ||
+            t.name.toLowerCase().includes(cleaned)
+        ) ||
+        mappedDbTeachers.find(
+          (t) =>
+            t.id === teacherId ||
+            t.id === `t${teacherId}` ||
+            t.id.replace(/^t/, '') === teacherId.replace(/^t/, '') ||
+            t.name.toLowerCase() === cleaned
+        ) ||
+        INITIAL_TEACHERS.find(
+          (t) =>
+            t.id === teacherId ||
+            t.id === `t${teacherId}` ||
+            t.id.replace(/^t/, '') === teacherId.replace(/^t/, '') ||
+            t.name.toLowerCase().includes(cleaned)
+        );
 
       return NextResponse.json({ teacher: found || null });
     }

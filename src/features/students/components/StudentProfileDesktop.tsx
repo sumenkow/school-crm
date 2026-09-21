@@ -346,7 +346,13 @@ export function StudentProfileDesktop({
             const groupHref = `/groups/${targetGroup.id}`;
 
             const teacherName = firstGrp.teacherName || (student as any).teacherName || 'Мария Иванова';
-            const targetTeacher = INITIAL_TEACHERS.find(t => t.id === (student as any).teacherId || t.name === teacherName) || INITIAL_TEACHERS[0];
+            const rawTId = (student as any).teacherId || (firstGrp as any).teacherId;
+            const targetTeacher = INITIAL_TEACHERS.find(
+              (t) =>
+                (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
+                t.name === teacherName ||
+                t.name.includes(teacherName)
+            ) || INITIAL_TEACHERS[0];
             const teacherHref = `/teachers/${targetTeacher.id}`;
 
             const lessonHref = upcomingLesson?.id ? `/calendar/lessons/${upcomingLesson.id}` : '/calendar';

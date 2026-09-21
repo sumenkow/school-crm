@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
-import { INITIAL_STUDENTS, INITIAL_GROUPS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
@@ -1988,12 +1988,22 @@ export default function StudentDetailsPage() {
                       <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
                         <div className="flex justify-between">
                           <span className="text-slate-400">Преподаватель:</span>
-                          <Link
-                            href={`/teachers/${(grp as any).teacherId || '1'}`}
-                            className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
-                          >
-                            {grp.teacherName}
-                          </Link>
+                          {(() => {
+                            const rawTId = (grp as any).teacherId;
+                            const foundT = INITIAL_TEACHERS.find(
+                              (t) =>
+                                (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
+                                t.name === grp.teacherName
+                            ) || INITIAL_TEACHERS[0];
+                            return (
+                              <Link
+                                href={`/teachers/${foundT.id}`}
+                                className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
+                              >
+                                {grp.teacherName}
+                              </Link>
+                            );
+                          })()}
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Расписание:</span>

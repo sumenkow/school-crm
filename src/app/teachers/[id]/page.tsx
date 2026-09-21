@@ -29,7 +29,16 @@ export default function TeacherDetailsPage() {
   const teacherId = params.id as string;
 
   const [teacher, setTeacher] = useState<FullTeacherData | null>(() => {
-    return INITIAL_TEACHERS.find((t) => t.id === teacherId) || null;
+    const cleaned = decodeURIComponent(teacherId).trim();
+    const lower = cleaned.toLowerCase();
+    return INITIAL_TEACHERS.find(
+      (t) =>
+        t.id === cleaned ||
+        t.id === `t${cleaned}` ||
+        t.id.replace(/^t/, '') === cleaned.replace(/^t/, '') ||
+        t.name.toLowerCase() === lower ||
+        t.name.toLowerCase().includes(lower)
+    ) || INITIAL_TEACHERS[0] || null;
   });
   const [loading, setLoading] = useState(!teacher);
 
@@ -93,6 +102,16 @@ export default function TeacherDetailsPage() {
           const data = await res.json();
           if (data.teacher) {
             setTeacher(data.teacher);
+          } else {
+            const cleaned = decodeURIComponent(teacherId).trim().toLowerCase();
+            const fallback = INITIAL_TEACHERS.find(
+              (t) =>
+                t.id === teacherId ||
+                t.id === `t${teacherId}` ||
+                t.id.replace(/^t/, '') === teacherId.replace(/^t/, '') ||
+                t.name.toLowerCase().includes(cleaned)
+            );
+            if (fallback) setTeacher(fallback);
           }
         }
       } catch (err) {
