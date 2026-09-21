@@ -18,7 +18,9 @@ import {
   CheckCircle2,
   Check,
   Calendar,
-  Users
+  Users,
+  ChevronDown,
+  Copy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -94,14 +96,20 @@ export function ParentProfileDesktop({
   onSendReminder,
 }: ParentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const [isReminderDropdownOpen, setIsReminderDropdownOpen] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedReminder, setCopiedReminder] = useState(false);
   const { success } = useToast();
   const moreRef = useRef<HTMLDivElement>(null);
+  const reminderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
         setIsMoreDropdownOpen(false);
+      }
+      if (reminderRef.current && !reminderRef.current.contains(event.target as Node)) {
+        setIsReminderDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -130,6 +138,69 @@ export function ParentProfileDesktop({
   const telegramClean = (parent.telegram || '').replace('@', '');
   const whatsappClean = (parent.whatsapp ? parent.whatsapp.replace(/\D/g, '') : phoneClean);
 
+  // Build reminder text template for all send channels
+  const buildReminderText = () => {
+    const parentName = parent.firstName;
+    const childName = upcomingPaymentAlert?.studentName || parent.children[0]?.name || 'вашего ребёнка';
+    const courseName = parent.children[0]?.course || parent.children[0]?.group || 'курса';
+    const amount = upcomingPaymentAlert?.amountFormatted || familySummary.formattedDebt || 'уточнить сумму';
+    const dueDate = upcomingPaymentAlert?.dueDate || upcomingPaymentAlert?.dueDateStr || '28.09.2026';
+    const paymentUrl = 'https://youeuropecrmtest.vercel.app';
+    return { parentName, childName, courseName, amount, dueDate, paymentUrl };
+  };
+
+  const handleSendWhatsApp = () => {
+    const { parentName, childName, courseName, amount, dueDate, paymentUrl } = buildReminderText();
+    const text = `Здравствуйте, ${parentName}! Напоминаем о плановом сроке оплаты обучения (${courseName}) для ${childName} на сумму ${amount} до ${dueDate}. Ссылка для оплаты: ${paymentUrl}`;
+    window.open(`https://wa.me/${whatsappClean}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    setIsReminderDropdownOpen(false);
+  };
+
+  const handleSendTelegram = () => {
+    const { parentName, childName, courseName, amount, dueDate, paymentUrl } = buildReminderText();
+    const text = `Здравствуйте, ${parentName}! Напоминаем о плановом сроке оплаты обучения (${courseName}) для ${childName} на сумму ${amount} до ${dueDate}. Ссылка для оплаты: ${paymentUrl}`;
+    if (telegramClean) {
+      window.open(`https://t.me/${telegramClean}`, '_blank', 'noopener,noreferrer');
+    } else {
+      window.open(`https://wa.me/${whatsappClean}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    }
+    setIsReminderDropdownOpen(false);
+  };
+
+  const handleSendEmail = () => {
+    const { parentName, childName, courseName, amount, dueDate, paymentUrl } = buildReminderText();
+    const parentEmail = parent.email || '';
+    if (!parentEmail) {
+      success('Email родителя не указан в профиле');
+      setIsReminderDropdownOpen(false);
+      return;
+    }
+    const subject = encodeURIComponent(`Счет на оплату обучения: ${courseName} (${childName})`);
+    const body = encodeURIComponent(
+      `Здравствуйте, ${parentName}!\n\n` +
+      `Направляем информацию о плановом сроке оплаты обучения по курсу "${courseName}" для ${childName}.\n` +
+      `Сумма к оплате: ${amount} до ${dueDate}.\n\n` +
+      `Ссылка для быстрой онлайн-оплаты: ${paymentUrl}\n\n` +
+      `С уважением,\nКоманда школы YouEurope`
+    );
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(parentEmail)}&su=${subject}&body=${body}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    setIsReminderDropdownOpen(false);
+  };
+
+  const handleCopyReminderText = () => {
+    const { parentName, childName, courseName, amount, dueDate, paymentUrl } = buildReminderText();
+    const text = `Здравствуйте, ${parentName}! Напоминаем о плановом сроке оплаты обучения (${courseName}) для ${childName} на сумму ${amount} до ${dueDate}. Ссылка для оплаты: ${paymentUrl}`;
+    navigator.clipboard.writeText(text);
+    setCopiedReminder(true);
+    success('Текст счёта скопирован');
+    setTimeout(() => setCopiedReminder(false), 2000);
+    setIsReminderDropdownOpen(false);
+  };
+
   const initials = `${parent.firstName?.[0] || 'Р'}${parent.lastName?.[0] || ''}`.toUpperCase();
 
   // Average family attendance calculation
@@ -150,28 +221,23 @@ export function ParentProfileDesktop({
         <div className="flex items-center justify-between gap-6">
           {/* Left: Parent Identity */}
           <div className="flex items-center gap-4 min-w-0">
-            {/* Avatar */}
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-sm border border-blue-400/20 shrink-0">
               {initials}
             </div>
 
             <div className="min-w-0 space-y-1">
-              {/* Top line: Name + Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate">
                   {parent.firstName} {parent.lastName}
                 </h1>
-
                 <span className="rounded-full px-2.5 py-0.5 font-semibold text-[11px] border bg-emerald-50 text-emerald-700 border-emerald-200">
                   Активен
                 </span>
-
                 <span className="rounded-full px-2.5 py-0.5 font-semibold text-[11px] border bg-slate-100 text-slate-700 border-slate-200">
                   {parent.relationshipType || 'Представитель'}
                 </span>
               </div>
 
-              {/* Bottom line: Phone with WA/TG buttons & Email with 1-click copy + Gmail micro icon */}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                 {parent.phone && (
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -184,7 +250,6 @@ export function ParentProfileDesktop({
                     </a>
                     {phoneClean && (
                       <div className="flex items-center gap-1 shrink-0">
-                        {/* WhatsApp icon button */}
                         <a
                           href={`https://wa.me/${whatsappClean}`}
                           target="_blank"
@@ -194,8 +259,6 @@ export function ParentProfileDesktop({
                         >
                           <WhatsAppIcon className="w-3 h-3" />
                         </a>
-
-                        {/* Telegram icon button */}
                         <a
                           href={telegramClean ? `https://t.me/${telegramClean}` : `https://wa.me/${whatsappClean}`}
                           target="_blank"
@@ -231,7 +294,7 @@ export function ParentProfileDesktop({
                       className="w-5 h-5 rounded bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 flex items-center justify-center transition-colors border border-slate-200 cursor-pointer"
                       title="Написать в Gmail"
                     >
-                      <Mail className="w-3 h-3 text-rose-500 hover:text-rose-600" />
+                      <Mail className="w-3 h-3 text-rose-500" />
                     </button>
                   </div>
                 )}
@@ -239,9 +302,8 @@ export function ParentProfileDesktop({
             </div>
           </div>
 
-          {/* Right: Action Hierarchy Bar (Strictly 2 Primary Buttons + 3-dots Menu) */}
+          {/* Right: Action Hierarchy Bar */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* 1. + Внести оплату */}
             {role !== 'teacher' && (
               <button
                 type="button"
@@ -253,7 +315,6 @@ export function ParentProfileDesktop({
               </button>
             )}
 
-            {/* 2. ✓ Создать задачу */}
             <button
               type="button"
               onClick={onOpenCreateTaskModal}
@@ -263,7 +324,6 @@ export function ParentProfileDesktop({
               Создать задачу
             </button>
 
-            {/* 3. ··· Options Dropdown Menu */}
             <div className="relative" ref={moreRef}>
               <button
                 type="button"
@@ -278,10 +338,7 @@ export function ParentProfileDesktop({
                 <div className="absolute right-0 mt-2 z-50 w-52 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsMoreDropdownOpen(false);
-                      onOpenLinkChildModal();
-                    }}
+                    onClick={() => { setIsMoreDropdownOpen(false); onOpenLinkChildModal(); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
                   >
                     <UserPlus className="h-3.5 w-3.5 text-blue-600" />
@@ -290,10 +347,7 @@ export function ParentProfileDesktop({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsMoreDropdownOpen(false);
-                      onOpenEditParentModal();
-                    }}
+                    onClick={() => { setIsMoreDropdownOpen(false); onOpenEditParentModal(); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
                   >
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
@@ -305,10 +359,7 @@ export function ParentProfileDesktop({
                       <div className="my-1 border-t border-slate-100" />
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsMoreDropdownOpen(false);
-                          onDeleteParent();
-                        }}
+                        onClick={() => { setIsMoreDropdownOpen(false); onDeleteParent(); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
@@ -323,7 +374,7 @@ export function ParentProfileDesktop({
         </div>
       </div>
 
-      {/* SMART PAYMENT REMINDER BANNER (Cleaned: WhatsApp & Telegram buttons, fixed date string) */}
+      {/* SMART PAYMENT REMINDER BANNER — unified send dropdown */}
       {upcomingPaymentAlert && (
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
@@ -340,30 +391,71 @@ export function ParentProfileDesktop({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Unified reminder dropdown */}
+          <div className="relative shrink-0" ref={reminderRef}>
             <button
               type="button"
-              onClick={() => onSendReminder('whatsapp')}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#20bd5a] transition-colors cursor-pointer"
-              title="Отправить в WhatsApp"
+              onClick={() => setIsReminderDropdownOpen(!isReminderDropdownOpen)}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-blue-700 shadow-2xs hover:bg-blue-50 transition-colors cursor-pointer"
             >
-              <WhatsAppIcon className="w-3.5 h-3.5" />
-              WhatsApp · Напомнить
+              <Mail className="w-3.5 h-3.5" />
+              Отправить напоминание
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-150', isReminderDropdownOpen && 'rotate-180')} />
             </button>
-            <button
-              type="button"
-              onClick={() => onSendReminder('telegram')}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#229ED9] px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#1d8cb0] transition-colors cursor-pointer"
-              title="Отправить в Telegram"
-            >
-              <TelegramIcon className="w-3.5 h-3.5" />
-              Telegram · Напомнить
-            </button>
+
+            {isReminderDropdownOpen && (
+              <div className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
+                <button
+                  type="button"
+                  onClick={handleSendWhatsApp}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#25D366]/10 transition-colors font-medium cursor-pointer"
+                >
+                  <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                  <span>В WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendTelegram}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#229ED9]/10 transition-colors font-medium cursor-pointer"
+                >
+                  <TelegramIcon className="w-3.5 h-3.5 text-[#229ED9]" />
+                  <span>В Telegram</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5 text-rose-500" />
+                  <span className="flex-1 text-left">На Email (Gmail)</span>
+                  {!parent.email && (
+                    <span className="text-[10px] text-slate-400 italic">нет email</span>
+                  )}
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={handleCopyReminderText}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
+                >
+                  {copiedReminder ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  )}
+                  <span>{copiedReminder ? 'Скопировано!' : 'Скопировать текст и ссылку'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* LEVEL 2: 4-Column KPI Widget (1-to-1 as Student Profile) */}
+      {/* LEVEL 2: 4-Column KPI Widget */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-4 gap-4 divide-x divide-slate-100">
         {/* Column 1: ДЕТИ */}
         <div className="space-y-1">
@@ -466,7 +558,7 @@ export function ParentProfileDesktop({
           <span className="text-[10px] text-slate-400 block">Посещено уроков по семье</span>
         </div>
 
-        {/* Column 4: БАЛАНС СЕМЬИ */}
+        {/* Column 4: БАЛАНС СЕМЬИ — badge shows ✓ Оплачено without nested parens */}
         <div
           onClick={() => role !== 'teacher' && onSelectTab('finance')}
           className={cn(
@@ -495,11 +587,11 @@ export function ParentProfileDesktop({
                 </span>
               ) : (
                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
-                  ✓ Оплачено ({familySummary.formattedDeposit || '0 ₽'})
+                  ✓ Оплачено
                 </span>
               )}
               <div className="text-[11px] text-slate-500 font-medium truncate">
-                Депозит: {familySummary.formattedDeposit || '0 €'}
+                Депозит: {familySummary.formattedDeposit || '0 € (0 ₽)'}
               </div>
             </>
           )}

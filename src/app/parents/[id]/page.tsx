@@ -11,6 +11,7 @@ import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTarg
 import { syncParentNameCascade } from '@/lib/data/nameCascadeSync';
 import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import { getParentFinancialSummary } from '@/lib/data/balanceHelper';
+import { getEurRubRate } from '@/lib/data/currencyHelper';
 import { useRole } from '@/context/RoleContext';
 import {
   ArrowLeft,
@@ -1867,24 +1868,11 @@ export default function ParentDetailsPage() {
       {/* TAB 3: ФИНАНСЫ И АБОНЕМЕНТЫ */}
       {activeTab === 'finance' && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-emerald-600" />
-                Финансы и история оплат семьи ({filteredPayments.length})
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentModalStudentId(undefined);
-                setIsPaymentModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-all active:scale-98 shrink-0 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Добавить платёж
-            </button>
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-emerald-600" />
+              Финансы и история оплат семьи ({filteredPayments.length})
+            </h3>
           </div>
 
           {/* Financial KPI stats */}
@@ -1892,7 +1880,10 @@ export default function ParentDetailsPage() {
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3.5">
               <span className="text-[11px] font-semibold text-emerald-800">Всего оплачено за всё время</span>
               <p className="text-xl font-bold text-emerald-700 mt-0.5">
-                {familyTotalPaid.toLocaleString('ru-RU')} ₽
+                {Math.round(familyTotalPaid / getEurRubRate())} €
+              </p>
+              <p className="text-[11px] text-emerald-600/70 mt-0.5">
+                (~{familyTotalPaid.toLocaleString('ru-RU')} ₽)
               </p>
             </div>
             <div
