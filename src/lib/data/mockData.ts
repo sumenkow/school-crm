@@ -135,7 +135,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g1',
+        id: '1',
         name: 'English B1 Teens',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
@@ -284,7 +284,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g2',
+        id: '3',
         name: 'Robotics Junior',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
@@ -371,7 +371,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g2',
+        id: '3',
         name: 'Robotics Junior',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
@@ -380,7 +380,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         joinedAt: '01.09.2026',
       },
       {
-        id: 'g_math',
+        id: '4',
         name: 'Kids Math Safari',
         courseName: 'Математика',
         teacherName: 'Ольга Соколова',
@@ -442,7 +442,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g3',
+        id: '2',
         name: 'Kids English A1',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
@@ -519,7 +519,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g1',
+        id: '1',
         name: 'English B1 Teens',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
@@ -581,7 +581,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     ],
     groups: [
       {
-        id: 'g1',
+        id: '1',
         name: 'English B1 Teens',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',

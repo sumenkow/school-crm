@@ -1753,8 +1753,12 @@ export default function ParentDetailsPage() {
           const d = new Date(iso);
           const weekday = !isNaN(d.getDay()) ? weekdays[d.getDay()] : '';
           const dateShort = l.dateFormatted || l.date;
-          const timeStr = l.startTime ? ` в ${l.startTime}` : '';
-          return weekday ? `${weekday}, ${dateShort}${timeStr}` : `${dateShort}${timeStr}`;
+          const timeRange = l.startTime && l.endTime
+            ? ` · ${l.startTime}–${l.endTime}`
+            : l.startTime
+            ? ` · ${l.startTime}`
+            : '';
+          return weekday ? `${weekday}, ${dateShort}${timeRange}` : `${dateShort}${timeRange}`;
         };
 
         return (
@@ -1825,9 +1829,30 @@ export default function ParentDetailsPage() {
                       {/* ── For each group: meta row + 3-column data block ── */}
                       {childGroups.map((grp, gIdx) => {
                         const groupId = grp.id || '';
+                        const grpIdStr = String(groupId || '').trim().toLowerCase();
+                        const grpNameStr = String(grp.name || grp.courseName || '').trim().toLowerCase();
 
-                        // Group lessons
-                        const groupLessons = allLessons.filter((l) => (groupId ? l.groupId === groupId : true));
+                        // Robust group lessons matching across IDs, canonical names, and enrolled student entries
+                        const groupLessons = allLessons.filter((l) => {
+                          const lGId = String(l.groupId || '').trim().toLowerCase();
+                          const lGName = String(l.groupName || l.courseName || '').trim().toLowerCase();
+
+                          if (grpIdStr && lGId === grpIdStr) return true;
+                          if (grpIdStr === 'g1' && lGId === '1') return true;
+                          if (grpIdStr === '1' && lGId === 'g1') return true;
+                          if (grpIdStr === 'g2' && (lGId === '2' || lGId === '3')) return true;
+                          if (grpIdStr === '2' && (lGId === 'g2' || lGId === 'g3')) return true;
+                          if (grpIdStr === 'g3' && lGId === '2') return true;
+                          if (grpIdStr === '3' && lGId === 'g2') return true;
+                          if (grpIdStr === 'g_math' && lGId === '4') return true;
+                          if (grpIdStr === '4' && lGId === 'g_math') return true;
+
+                          if (grpNameStr && lGName && (lGName.includes(grpNameStr) || grpNameStr.includes(lGName))) return true;
+
+                          if (child.id && l.students?.some((s) => String(s.id) === String(child.id))) return true;
+
+                          return false;
+                        });
 
                         // Next upcoming lesson for this group (strictly future & not cancelled/completed)
                         const upcoming = groupLessons
@@ -1839,12 +1864,14 @@ export default function ParentDetailsPage() {
                           .sort((a, b) => parseLessonMs(a) - parseLessonMs(b))[0] || null;
 
                         // Completed lessons of this group for attendance & feedback
-                        const completedGroupLessons = groupLessons.filter((l) => l.status === 'completed');
+                        const completedGroupLessons = groupLessons.filter(
+                          (l) => l.status === 'completed' || (parseLessonMs(l) > 0 && parseLessonMs(l) < today && l.status !== 'cancelled')
+                        );
                         const totalCompletedLessons = completedGroupLessons.length;
                         
                         // Lessons where student was present / attended
                         const attendedLessonsCount = completedGroupLessons.filter((l) =>
-                          l.students?.some((s) => s.id === child.id && (s.attendanceStatus === 'present' || (s.attendanceStatus as string) === 'was' || s.attendanceStatus === 'excused'))
+                          l.students?.some((s) => String(s.id) === String(child.id) && (s.attendanceStatus === 'present' || (s.attendanceStatus as string) === 'was' || s.attendanceStatus === 'excused'))
                         ).length;
 
                         // Attendance percentage calculation
@@ -1858,15 +1885,12 @@ export default function ParentDetailsPage() {
 
                         // Last completed lesson with teacher feedback (student notes)
                         const recordsWithFeedback = completedGroupLessons
-                          .filter((l) => l.students?.some((s) => s.id === child.id && s.notes && s.notes.trim() !== ''))
+                          .filter((l) => l.students?.some((s) => String(s.id) === String(child.id) && s.notes && s.notes.trim() !== ''))
                           .sort((a, b) => parseLessonMs(b) - parseLessonMs(a));
 
                         const latestFeedbackLesson = recordsWithFeedback[0] || null;
-                        const latestFeedbackStudent = latestFeedbackLesson?.students?.find((s) => s.id === child.id);
+                        const latestFeedbackStudent = latestFeedbackLesson?.students?.find((s) => String(s.id) === String(child.id));
                         const teacherFeedback = latestFeedbackStudent?.notes || null;
-
-                        const lastCompletedLesson = completedGroupLessons.sort((a, b) => parseLessonMs(b) - parseLessonMs(a))[0] || null;
-                        const lastTopic = lastCompletedLesson?.topic || null;
 
                         return (
                           <div key={grp.id || gIdx}>
@@ -1913,7 +1937,7 @@ export default function ParentDetailsPage() {
                                     </p>
                                     <p className="text-[11px] text-slate-500 flex items-center gap-1">
                                       {upcoming.onlineMeetingUrl || (upcoming as any).location_type === 'online' || upcoming.room?.toLowerCase().includes('online') || upcoming.room?.toLowerCase().includes('zoom') || upcoming.room?.toLowerCase().includes('онлайн')
-                                        ? <><Video className="h-3 w-3 text-blue-500" /> Zoom (Онлайн)</>
+                                        ? <><Video className="h-3 w-3 text-blue-500" /> Zoom / Онлайн</>
                                         : <><BookOpen className="h-3 w-3 text-slate-400" /> {upcoming.room ? `Кабинет ${upcoming.room}` : 'Кабинет 101'}</>
                                       }
                                     </p>
@@ -1928,9 +1952,15 @@ export default function ParentDetailsPage() {
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
                                   <GraduationCap className="h-3 w-3" /> Абонемент и уроки
                                 </p>
-                                <p className="text-xs text-slate-700">
-                                  Пройдено: <strong className="text-slate-900">{attendedLessonsCount} из {totalCompletedLessons}</strong> уроков
-                                </p>
+                                {totalCompletedLessons === 0 ? (
+                                  <p className="text-xs text-slate-700">
+                                    Курс только начался (0 уроков)
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-slate-700">
+                                    Пройдено: <strong className="text-slate-900">{attendedLessonsCount} из {totalCompletedLessons}</strong> уроков
+                                  </p>
+                                )}
                                 <p className="text-[11px] text-slate-500">
                                   Посещаемость: <strong className="text-slate-700">{attendancePercentage}%</strong>
                                 </p>
