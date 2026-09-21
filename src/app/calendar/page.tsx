@@ -470,6 +470,11 @@ export default function CalendarPage() {
                               <div className="flex items-center justify-between font-bold text-slate-800 text-[11px]">
                                 <span>{lesson.startTime} – {lesson.endTime}</span>
                                 <div className="flex items-center gap-1">
+                                  {lesson.status === 'completed' && (
+                                    <span className="rounded bg-emerald-100 text-emerald-800 border border-emerald-300 px-1 py-0.2 text-[9px] font-bold">
+                                      ✓ {t('status.completed', 'Проведено')}
+                                    </span>
+                                  )}
                                   {lesson.status === 'rescheduled' && (
                                     <span className="rounded bg-amber-200/70 text-amber-900 px-1 py-0.2 text-[9px] font-bold">
                                       {t('status.rescheduled', 'Перенос')}

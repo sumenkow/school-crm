@@ -49,6 +49,18 @@ import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
 
+const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+  </svg>
+);
+
+const TelegramIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
+    <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.536-.196 1.006.128.833.942z" />
+  </svg>
+);
+
 interface LessonStudentRowProps {
   student: FullLessonData['students'][number];
   lesson: FullLessonData;
@@ -88,11 +100,12 @@ function LessonStudentAttendanceRow({
     const parentName = primaryParent
       ? `${primaryParent.firstName} ${primaryParent.lastName}`.trim()
       : 'Родитель';
-    const parentPhone = primaryParent?.phone || (fullStudent as any)?.phone || '+7 (999) 000-00-00';
-    const cleanPhone = parentPhone.replace(/\D/g, '');
+    const rawPhone = primaryParent?.phone || (fullStudent as any)?.phone || (fullStudent as any)?.parentPhone || '';
+    const cleanPhone = rawPhone.replace(/\D/g, '');
     const parentTelegram = (primaryParent?.telegram || (fullStudent as any)?.telegram || '').replace('@', '');
     const parentEmail = primaryParent?.email || (fullStudent as any)?.email || '';
-    return { parentName, parentPhone, cleanPhone, parentTelegram, parentEmail };
+    const hasPhone = Boolean(cleanPhone && cleanPhone.length >= 7);
+    return { parentName, parentPhone: rawPhone, cleanPhone, parentTelegram, parentEmail, hasPhone };
   }, [student.id]);
 
   return (
@@ -219,68 +232,93 @@ function LessonStudentAttendanceRow({
             <button
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer"
             >
-              <Mail className="h-3.5 w-3.5 text-blue-600" />
-              <span>✉ Связаться с родителем</span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <Mail className="w-3.5 h-3.5 text-blue-600" />
+              <span>Связаться с родителем</span>
+              <ChevronDown className="w-3.5 h-3.5 text-blue-400" />
             </button>
 
             {isDropdownOpen && (
               <div className="absolute right-0 top-full mt-1 z-30 w-64 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100 text-xs">
-                <a
-                  href={`https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
-                    `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors font-medium"
-                >
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-bold">W</div>
-                  <span>Написать в WhatsApp</span>
-                </a>
+                {/* 1. WhatsApp */}
+                {parentInfo.hasPhone ? (
+                  <a
+                    href={`https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
+                      `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors font-medium"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 text-[#25D366]" />
+                    <span>Написать в WhatsApp</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 font-medium cursor-not-allowed opacity-60">
+                    <WhatsAppIcon className="w-4 h-4 text-slate-400" />
+                    <span>WhatsApp (номер не указан)</span>
+                  </div>
+                )}
 
+                {/* 2. Telegram */}
                 <a
                   href={parentInfo.parentTelegram ? `https://t.me/${parentInfo.parentTelegram}?text=${encodeURIComponent(
                     `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
-                  )}` : `https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
+                  )}` : parentInfo.hasPhone ? `https://wa.me/${parentInfo.cleanPhone}?text=${encodeURIComponent(
                     `Здравствуйте, ${parentInfo.parentName}! ${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?`
-                  )}`}
+                  )}` : '#'}
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => setIsDropdownOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-sky-50 hover:text-sky-800 transition-colors font-medium"
                 >
-                  <div className="w-5 h-5 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">T</div>
+                  <TelegramIcon className="w-4 h-4 text-[#229ED9]" />
                   <span>Написать в Telegram</span>
                 </a>
 
-                <a
-                  href={`mailto:${parentInfo.parentEmail}?subject=${encodeURIComponent(
-                    `Пропуск занятия: ${lesson.courseName} — ${student.name}`
-                  )}&body=${encodeURIComponent(
-                    `Здравствуйте, ${parentInfo.parentName}!\n\n${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?\n\nС уважением,\nШкола`
-                  )}`}
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 transition-colors font-medium"
-                >
-                  <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">@</div>
-                  <span>Отправить на Email</span>
-                </a>
+                {/* 3. Email */}
+                {parentInfo.parentEmail ? (
+                  <a
+                    href={`mailto:${parentInfo.parentEmail}?subject=${encodeURIComponent(
+                      `Пропуск занятия: ${lesson.courseName} — ${student.name}`
+                    )}&body=${encodeURIComponent(
+                      `Здравствуйте, ${parentInfo.parentName}!\n\n${student.name} сегодня отсутствовал(а) на занятии ${lesson.courseName} (${lesson.dateFormatted || lesson.date}). Уточните, пожалуйста, причину пропуска?\n\nС уважением,\nШкола`
+                    )}`}
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-indigo-50 hover:text-indigo-800 transition-colors font-medium"
+                  >
+                    <Mail className="w-4 h-4 text-indigo-600" />
+                    <span>Отправить на Email</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 font-medium cursor-not-allowed opacity-60">
+                    <Mail className="w-4 h-4 text-slate-400" />
+                    <span>Email (не указан)</span>
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(parentInfo.parentPhone);
-                    toast.success(`Телефон родителя скопирован: ${parentInfo.parentPhone}`);
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors font-medium cursor-pointer border-t border-slate-100 mt-1"
-                >
-                  <Phone className="h-4 w-4 text-slate-500" />
-                  <span>Скопировать телефон ({parentInfo.parentPhone})</span>
-                </button>
+                {/* 4. Copy Phone */}
+                {parentInfo.hasPhone ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(parentInfo.parentPhone);
+                      toast.success('Номер телефона скопирован в буфер обмена');
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors font-medium cursor-pointer border-t border-slate-100 mt-1"
+                  >
+                    <Phone className="w-4 h-4 text-slate-500" />
+                    <span className="truncate">Скопировать ({parentInfo.parentPhone})</span>
+                  </button>
+                ) : (
+                  <div className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 font-medium cursor-not-allowed opacity-60 border-t border-slate-100 mt-1">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <span>Телефон не указан</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -296,6 +334,7 @@ export default function LessonDetailsPage() {
   const lessonId = params.id as string;
   const { role, userName } = useRole();
   const { t, language } = useLanguage();
+  const toast = useToast();
 
   const [lesson, setLesson] = useState<FullLessonData>(() => {
     const stored = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
@@ -329,7 +368,7 @@ export default function LessonDetailsPage() {
     }
   };
 
-  // Status Change Handler with Timeline reflection
+  // Status Change Handler with immediate DB persistence and unified event
   const handleStatusChange = (newStatus: FullLessonData['status']) => {
     if (newStatus === 'rescheduled') {
       setIsRescheduleModalOpen(true);
@@ -358,11 +397,15 @@ export default function LessonDetailsPage() {
     };
 
     setStatus(newStatus);
-    setLesson((prev) => ({
-      ...prev,
+    const updatedLesson: FullLessonData = {
+      ...lesson,
       status: newStatus,
-      timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
-    }));
+      timelineEvents: [newEvent, ...(lesson.timelineEvents || [])],
+    };
+    setLesson(updatedLesson);
+    saveLessonToStorage(updatedLesson);
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    toast.success(`Статус урока изменен: ${statusLabels[newStatus] || newStatus}`);
   };
 
   // Handle Reschedule Event
@@ -456,8 +499,17 @@ export default function LessonDetailsPage() {
     newStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'not_marked'
   ) => {
     setLesson((prev) => {
-      const updated = {
+      const shouldPromoteToCompleted =
+        prev.status === 'scheduled' &&
+        (newStatus === 'present' || newStatus === 'absent' || newStatus === 'excused');
+      const updatedStatus = shouldPromoteToCompleted ? 'completed' : prev.status;
+      if (shouldPromoteToCompleted) {
+        setStatus('completed');
+      }
+
+      const updated: FullLessonData = {
         ...prev,
+        status: updatedStatus,
         students: prev.students.map((s) =>
           s.id === studentId ? { ...s, attendanceStatus: newStatus } : s
         ),
@@ -470,7 +522,7 @@ export default function LessonDetailsPage() {
 
   const handleUpdateStudentNotes = (studentId: string, notes: string) => {
     setLesson((prev) => {
-      const updated = {
+      const updated: FullLessonData = {
         ...prev,
         students: prev.students.map((s) => (s.id === studentId ? { ...s, notes } : s)),
       };
@@ -497,9 +549,11 @@ export default function LessonDetailsPage() {
       comment: `${t('lesson.markAllPresent', 'Все ученики отмечены присутствующими')} (${lesson.students.length})`,
     };
 
+    setStatus('completed');
     setLesson((prev) => {
       const updated: FullLessonData = {
         ...prev,
+        status: 'completed',
         students: prev.students.map((s) => ({ ...s, attendanceStatus: 'present' as const })),
         timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
       };
@@ -507,6 +561,7 @@ export default function LessonDetailsPage() {
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
       return updated;
     });
+    toast.success('Все ученики отмечены присутствующими, урок переведен в статус «Проведено»');
   };
 
   const handleResetAttendance = () => {
@@ -548,18 +603,28 @@ export default function LessonDetailsPage() {
     setNewTimelineComment('');
   };
 
-  // Attendance metrics
-  const totalStudents = lesson.students.length;
-  const presentCount = lesson.students.filter((s) => s.attendanceStatus === 'present').length;
-  const excusedCount = lesson.students.filter((s) => s.attendanceStatus === 'excused').length;
-  const absentCount = lesson.students.filter((s) => s.attendanceStatus === 'absent').length;
-  const rescheduledCount = lesson.students.filter((s) => s.attendanceStatus === 'rescheduled').length;
-  const notMarkedCount = lesson.students.filter(
-    (s) => !s.attendanceStatus || s.attendanceStatus === 'not_marked'
-  ).length;
-
-  const attendanceRate =
-    totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+  // Attendance metrics via useMemo
+  const { totalStudents, presentCount, excusedCount, absentCount, rescheduledCount, notMarkedCount, attendanceRate } =
+    React.useMemo(() => {
+      const total = lesson.students.length;
+      const present = lesson.students.filter((s) => s.attendanceStatus === 'present').length;
+      const excused = lesson.students.filter((s) => s.attendanceStatus === 'excused').length;
+      const absent = lesson.students.filter((s) => s.attendanceStatus === 'absent').length;
+      const rescheduled = lesson.students.filter((s) => s.attendanceStatus === 'rescheduled').length;
+      const notMarked = lesson.students.filter(
+        (s) => !s.attendanceStatus || s.attendanceStatus === 'not_marked'
+      ).length;
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+      return {
+        totalStudents: total,
+        presentCount: present,
+        excusedCount: excused,
+        absentCount: absent,
+        rescheduledCount: rescheduled,
+        notMarkedCount: notMarked,
+        attendanceRate: rate,
+      };
+    }, [lesson.students]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
