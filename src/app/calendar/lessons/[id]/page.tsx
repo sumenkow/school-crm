@@ -652,15 +652,18 @@ export default function LessonDetailsPage() {
                         );
                       })()}
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder={t('lesson.teacherNotePlaceholder', 'Комментарии преподавателя...')}
-                        value={student.notes || ''}
-                        onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
-                        className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-700 placeholder:text-slate-400 w-64 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
+                    <div className="mt-1.5 flex flex-col gap-1">
+                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                         Обратная связь для родителей:
+                       </p>
+                       <input
+                         type="text"
+                         placeholder="Укажите успехи или на что обратить внимание дома..."
+                         value={student.notes || ''}
+                         onChange={(e) => handleUpdateStudentNotes(student.id, e.target.value)}
+                         className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-700 placeholder:text-slate-400 w-72 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                       />
+                     </div>
                   </div>
                 </div>
 

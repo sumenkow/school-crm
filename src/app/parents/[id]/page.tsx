@@ -1743,23 +1743,7 @@ export default function ParentDetailsPage() {
         };
 
         return (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                Дети семьи ({parent.children.length})
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddChildModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98 shrink-0 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                Добавить ребенка
-              </button>
-            </div>
-
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             {parent.children.length === 0 ? (
               <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 space-y-2">
                 <Users className="h-8 w-8 text-slate-300 mx-auto" />
@@ -1862,7 +1846,13 @@ export default function ParentDetailsPage() {
                             <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 bg-slate-50/80 border-b border-slate-100 text-xs text-slate-600">
                               {(grp.courseName || grp.name) && (
                                 <span className="font-semibold text-slate-800">
-                                  Курс: <span className="text-blue-700 font-bold">{grp.courseName || grp.name}</span>
+                                  Курс:{' '}
+                                  <Link
+                                    href={groupId ? `/groups/${groupId}` : '#'}
+                                    className="text-blue-700 font-bold cursor-pointer hover:underline"
+                                  >
+                                    {grp.courseName || grp.name}
+                                  </Link>
                                 </span>
                               )}
                               {grp.teacherName && (
@@ -1922,7 +1912,7 @@ export default function ParentDetailsPage() {
                                   <div
                                     className={cn(
                                       'h-full rounded-full transition-all',
-                                      progressPct >= 90 ? 'bg-rose-500' : progressPct >= 70 ? 'bg-amber-400' : 'bg-emerald-500'
+                                      progressPct >= 80 ? 'bg-emerald-500' : progressPct >= 60 ? 'bg-amber-400' : 'bg-rose-500'
                                     )}
                                     style={{ width: `${progressPct}%` }}
                                   />

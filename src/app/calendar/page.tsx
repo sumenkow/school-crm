@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -84,7 +84,11 @@ export default function CalendarPage() {
                 prev.map((l) => (l.id === payload.new.id ? { ...l, ...payload.new } : l))
               );
             } else if (payload.eventType === 'INSERT') {
-              setLessons((prev) => [payload.new as any, ...prev]);
+              setLessons((prev) => {
+                // Guard: don't add if already in local state (prevents double-add with modal callback)
+                if (prev.some((l) => l.id === (payload.new as any).id)) return prev;
+                return [payload.new as any, ...prev];
+              });
             } else if (payload.eventType === 'DELETE') {
               setLessons((prev) => prev.filter((l) => l.id === payload.old.id));
             }
@@ -233,10 +237,20 @@ export default function CalendarPage() {
   };
 
   const handleLessonScheduled = (newLesson: FullLessonData) => {
-    setLessons((prev) => [...prev, newLesson]);
+    setLessons((prev) => {
+      // Guard: don't add if already in local state (could arrive from Supabase realtime first)
+      if (prev.some((l) => l.id === newLesson.id)) return prev;
+      return [...prev, newLesson];
+    });
   };
 
-  const filteredLessons = lessons.filter((l) => {
+  // Render-level dedup: guard against any remaining duplicates by ID
+  const sanitizedLessons = useMemo(
+    () => Array.from(new Map(lessons.map((l) => [l.id, l])).values()),
+    [lessons]
+  );
+
+  const filteredLessons = sanitizedLessons.filter((l) => {
     if (selectedTeacher === 'all') return true;
     return l.teacherId === selectedTeacher;
   });
