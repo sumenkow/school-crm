@@ -7,6 +7,8 @@ import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData, FullLessonData } from '@/lib/data/mockData';
 import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
+import { INITIAL_GROUPS } from '@/lib/data/mockData';
 import { getCombinedParentTimeline, saveInteractionToStorage, getInteractionTargetInfo, sortTimelineChronologicalDesc } from '@/lib/data/timelineStorage';
 import { syncParentNameCascade } from '@/lib/data/nameCascadeSync';
 import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -493,6 +495,39 @@ export default function ParentDetailsPage() {
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState('');
   const [newChildNameInEdit, setNewChildNameInEdit] = useState('');
   const [newChildGroupInEdit, setNewChildGroupInEdit] = useState('English B1 Teens');
+
+  // Enroll child in a new course/group modal
+  const [enrollModalChildId, setEnrollModalChildId] = useState<string | null>(null);
+  const [selectedGroupIdForChild, setSelectedGroupIdForChild] = useState('');
+
+  const handleEnrollChildToGroup = (childId: string, groupId: string) => {
+    if (!groupId) return;
+    const allGroups = getStoredGroups();
+    const targetGroup = allGroups.find((g) => g.id === groupId) || INITIAL_GROUPS.find((g) => g.id === groupId);
+    if (!targetGroup) return;
+
+    const { updatedStudent } = enrollStudentToGroup({
+      groupId,
+      studentId: childId,
+      authorName: userName || 'Администратор школы',
+    });
+
+    if (updatedStudent) {
+      // Update this child's groups in the parent state
+      setParent((prev) => ({
+        ...prev,
+        children: prev.children.map((c) =>
+          c.id === childId
+            ? { ...c, groups: updatedStudent.groups, group: targetGroup.name, course: targetGroup.courseName || c.course }
+            : c
+        ),
+      }));
+    }
+    success(`Ученик успешно зачислен в группу «${targetGroup.name}»!`);
+    setEnrollModalChildId(null);
+    setSelectedGroupIdForChild('');
+  };
+
 
   const availableStudentsForFamily = INITIAL_STUDENTS.filter(
     (st) => !editChildren.some((c) => c.id === st.id)
@@ -1690,180 +1725,412 @@ export default function ParentDetailsPage() {
       )}
 
       {/* TAB 2: ДЕТИ И ОБУЧЕНИЕ */}
-      {activeTab === 'children' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
+      {activeTab === 'children' && (() => {
+        // Pre-compute lessons once for the whole tab
+        const allLessons = getStoredLessons();
+        const today = Date.now();
+
+        const parseLessonMs = (l: FullLessonData): number => {
+          if (!l.date) return 0;
+          let iso = l.date;
+          if (l.date.includes('.')) {
+            const p = l.date.split('.');
+            if (p.length === 3) iso = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+          }
+          const time = l.startTime && l.startTime.length >= 4 ? l.startTime : '00:00';
+          const ms = new Date(`${iso}T${time.length === 5 ? time + ':00' : time}`).getTime();
+          return isNaN(ms) ? 0 : ms;
+        };
+
+        return (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-600" />
                 Дети семьи ({parent.children.length})
               </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsAddChildModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98 shrink-0 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Добавить ребенка
-            </button>
-          </div>
-
-          {parent.children.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 space-y-2">
-              <Users className="h-8 w-8 text-slate-300 mx-auto" />
-              <p className="font-semibold text-slate-700">К этому родителю пока не привязано ни одного ребенка</p>
-              <p className="text-slate-400 max-w-md mx-auto">
-                Вы можете добавить нового ребенка или прикрепить существующего ученика из базы школы.
-              </p>
               <button
                 type="button"
                 onClick={() => setIsAddChildModalOpen(true)}
-                className="mt-3 inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98 shrink-0 cursor-pointer"
               >
-                <Plus className="h-3.5 w-3.5" />
-                Добавить ребенка сейчас
+                <Plus className="h-4 w-4" />
+                Добавить ребенка
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {parent.children.map((child) => {
-                const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '₽' };
-                return (
-                  <div
-                    key={child.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition-all"
-                  >
-                    <div>
-                      {/* Top bar with avatar & status */}
-                      <div className="flex items-center justify-between">
+
+            {parent.children.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-500 space-y-2">
+                <Users className="h-8 w-8 text-slate-300 mx-auto" />
+                <p className="font-semibold text-slate-700">К этому родителю пока не привязано ни одного ребенка</p>
+                <p className="text-slate-400 max-w-md mx-auto">
+                  Вы можете добавить нового ребенка или прикрепить существующего ученика из базы школы.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsAddChildModalOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Добавить ребенка сейчас
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {parent.children.map((child) => {
+                  const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '₽' };
+                  const childGroups = child.groups && child.groups.length > 0
+                    ? child.groups
+                    : [{ id: '', name: child.group || 'Группа', teacherName: child.teacher || '', schedule: '', courseName: child.course || '' }];
+
+                  // Subscription data
+                  const sub = (child as any).finance?.activeSubscription;
+                  const lessonsUsed: number = sub?.lessonsUsed ?? 15;
+                  const lessonsTotal: number = sub?.lessonsTotal ?? 16;
+                  const progressPct = lessonsTotal > 0 ? Math.round((lessonsUsed / lessonsTotal) * 100) : 0;
+
+                  return (
+                    <div
+                      key={child.id}
+                      className="w-full rounded-2xl border border-slate-200 bg-white overflow-hidden hover:border-blue-200 hover:shadow-sm transition-all"
+                    >
+                      {/* ── ROW 1: Identity bar ── */}
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 font-bold text-blue-700 text-sm shadow-2xs">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-sm">
                             {child.name.split(' ')[0]?.[0] || 'У'}
                             {child.name.split(' ')[1]?.[0] || ''}
                           </div>
                           <div>
-                            <Link
-                              href={`/students/${child.id}`}
-                              className="font-bold text-slate-900 text-sm hover:text-blue-600 hover:underline block"
-                            >
-                              {child.name}
-                            </Link>
-                            <span className="text-[11px] text-slate-500">{child.age}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-900 text-sm">{child.name}</span>
+                              <span className="text-slate-400 text-xs">·</span>
+                              <span className="text-xs text-slate-500">{child.age}</span>
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-[10px] font-bold border',
+                                  child.status === 'active'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                )}
+                              >
+                                {child.status === 'active' ? 'Активен' : 'Пробный'}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <span
-                          className={cn(
-                            'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                            child.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          )}
+                        <Link
+                          href={`/students/${child.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline shrink-0"
                         >
-                          {child.status === 'active' ? 'Активен' : 'Пробный'}
-                        </span>
+                          Перейти в карточку
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
                       </div>
 
-                      {/* Groups & Courses */}
-                      {child.groups && child.groups.length > 1 ? (
-                        <div className="mt-4 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-800">
-                              Группы обучения ({child.groups.length}):
-                            </span>
-                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
-                              {child.groups.length} группы
-                            </span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {child.groups.map((grp, gIdx) => (
-                              <div
-                                key={grp.id || gIdx}
-                                className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                                    {grp.name}
-                                  </span>
-                                  {grp.courseName && (
-                                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/50">
-                                      {grp.courseName}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
-                                  {grp.teacherName && (
-                                    <span>Преподаватель: <strong className="text-slate-700">{grp.teacherName}</strong></span>
-                                  )}
-                                  {grp.schedule && (
-                                    <span>Расписание: <span className="text-slate-600">{grp.schedule}</span></span>
-                                  )}
-                                </div>
+                      {/* ── For each group: meta row + 3-column data block ── */}
+                      {childGroups.map((grp, gIdx) => {
+                        const groupId = grp.id || '';
+
+                        // Next upcoming lesson for this group
+                        const upcoming = allLessons
+                          .filter((l) => {
+                            if (l.status === 'cancelled' || l.status === 'completed') return false;
+                            if (groupId && l.groupId !== groupId) return false;
+                            const ms = parseLessonMs(l);
+                            return ms > today;
+                          })
+                          .sort((a, b) => parseLessonMs(a) - parseLessonMs(b))[0] || null;
+
+                        // Last completed lesson for teacher feedback
+                        const lastCompleted = allLessons
+                          .filter((l) => {
+                            if (l.status !== 'completed') return false;
+                            if (groupId && l.groupId !== groupId) return false;
+                            return l.students?.some((s) => s.id === child.id);
+                          })
+                          .sort((a, b) => parseLessonMs(b) - parseLessonMs(a))[0] || null;
+
+                        const lastStudentEntry = lastCompleted?.students?.find((s) => s.id === child.id);
+                        const teacherFeedback = lastStudentEntry?.notes || null;
+                        const lastTopic = lastCompleted?.topic || null;
+
+                        return (
+                          <div key={grp.id || gIdx}>
+                            {/* Meta row: Course • Teacher • Schedule */}
+                            <div className="flex flex-wrap items-center gap-1.5 px-5 py-2.5 bg-slate-50/80 border-b border-slate-100 text-xs text-slate-600">
+                              {(grp.courseName || grp.name) && (
+                                <span className="font-semibold text-slate-800">
+                                  Курс: <span className="text-blue-700 font-bold">{grp.courseName || grp.name}</span>
+                                </span>
+                              )}
+                              {grp.teacherName && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span>Преподаватель: <strong className="text-slate-700">{grp.teacherName}</strong></span>
+                                </>
+                              )}
+                              {grp.schedule && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <span className="text-slate-600">{grp.schedule}</span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* 3-column data block */}
+                            <div className="grid grid-cols-3 divide-x divide-slate-100 px-0">
+                              {/* Col 1: Next lesson */}
+                              <div className="px-5 py-4 space-y-1.5">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" /> Ближайший урок
+                                </p>
+                                {upcoming ? (
+                                  <>
+                                    <p className="text-xs font-bold text-slate-900">{upcoming.dateFormatted} в {upcoming.startTime}</p>
+                                    {upcoming.topic && (
+                                      <p className="text-[11px] text-slate-600 line-clamp-2">
+                                        Тема: {upcoming.topic}
+                                      </p>
+                                    )}
+                                    {upcoming.room && (
+                                      <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                                        {upcoming.onlineMeetingUrl
+                                          ? <><Video className="h-3 w-3 text-blue-500" /> Онлайн</>
+                                          : <><BookOpen className="h-3 w-3 text-slate-400" /> {upcoming.room}</>
+                                        }
+                                      </p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="text-[11px] text-slate-400 italic">Уроков не запланировано</p>
+                                )}
                               </div>
-                            ))}
+
+                              {/* Col 2: Subscription & lessons */}
+                              <div className="px-5 py-4 space-y-1.5">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                                  <GraduationCap className="h-3 w-3" /> Абонемент и уроки
+                                </p>
+                                <p className="text-xs text-slate-700">
+                                  Пройдено: <strong className="text-slate-900">{lessonsUsed} из {lessonsTotal}</strong> уроков
+                                </p>
+                                <p className="text-[11px] text-slate-500">Осталось: {Math.max(0, lessonsTotal - lessonsUsed)} занятий</p>
+                                {/* Progress bar */}
+                                <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className={cn(
+                                      'h-full rounded-full transition-all',
+                                      progressPct >= 90 ? 'bg-rose-500' : progressPct >= 70 ? 'bg-amber-400' : 'bg-emerald-500'
+                                    )}
+                                    style={{ width: `${progressPct}%` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] text-slate-400 text-right">{progressPct}%</p>
+                                {/* Debt/Deposit */}
+                                {cFinance.debt > 0 && (
+                                  <p className="text-[11px] font-bold text-rose-700 flex items-center gap-1 mt-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Долг: -{cFinance.debt.toLocaleString('ru-RU')} {cFinance.currency}
+                                  </p>
+                                )}
+                                {cFinance.debt === 0 && cFinance.deposit > 0 && (
+                                  <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 mt-1">
+                                    <Wallet className="h-3 w-3" />
+                                    Депозит: +{cFinance.deposit.toLocaleString('ru-RU')} {cFinance.currency}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Col 3: Teacher feedback */}
+                              <div className="px-5 py-4 space-y-1.5">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+                                  <MessageSquare className="h-3 w-3" /> Обратная связь
+                                </p>
+                                {teacherFeedback ? (
+                                  <>
+                                    <p className="text-[11px] text-slate-700 italic leading-relaxed line-clamp-3">
+                                      «{teacherFeedback}»
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {lastCompleted?.dateFormatted} · {lastCompleted?.teacherName}
+                                    </p>
+                                  </>
+                                ) : lastTopic ? (
+                                  <>
+                                    <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-2">
+                                      Последняя тема: <span className="font-medium text-slate-800">{lastTopic}</span>
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {lastCompleted?.dateFormatted} · {lastCompleted?.teacherName}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="text-[11px] text-slate-400 italic">Нет данных о посещённых уроках</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Footer: Journal link + Enroll button */}
+                            <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100 bg-slate-50/50">
+                              <Link
+                                href={groupId ? `/groups/${groupId}` : `/calendar`}
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                              >
+                                Журнал группы <ChevronRight className="h-3.5 w-3.5" />
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEnrollModalChildId(child.id);
+                                  setSelectedGroupIdForChild('');
+                                }}
+                                className="inline-flex items-center gap-1 border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors bg-white"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Добавить курс
+                              </button>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-600 pt-1">
-                            Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="mt-4 space-y-2">
-                          <span className="inline-block rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 border border-blue-200/60">
-                            {child.course || child.groups?.[0]?.courseName || 'Основной курс'}
-                          </span>
-                          <div className="space-y-1 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <p>
-                              Группа: <strong>{child.group || child.groups?.[0]?.name}</strong>
-                            </p>
-                            <p>Преподаватель: {child.teacher || child.groups?.[0]?.teacherName}</p>
-                            {child.groups?.[0]?.schedule && (
-                              <p>Расписание: {child.groups[0].schedule}</p>
-                            )}
-                            <p>
-                              Посещаемость: <strong className="text-emerald-600">{child.attendance}</strong>
-                            </p>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── ENROLL IN GROUP MODAL ── */}
+            {enrollModalChildId && (() => {
+              const modalChild = parent.children.find((c) => c.id === enrollModalChildId);
+              const modalChildGroups = modalChild?.groups || [];
+              const allGroups = getStoredGroups();
+              return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+                  <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                          <BookOpen className="h-5 w-5 text-blue-600" />
+                          Зачисление в группу
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Ученик: <span className="font-semibold text-slate-700">{modalChild?.name}</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setEnrollModalChildId(null); setSelectedGroupIdForChild(''); }}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="mt-3.5 space-y-3">
+                      {modalChildGroups.length > 0 && (
+                        <div className="rounded-xl bg-blue-50/70 border border-blue-200/60 p-3 text-xs text-blue-800">
+                          <p className="font-semibold mb-1">Текущие группы:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {modalChildGroups.map((g) => (
+                              <span key={g.id} className="rounded-md bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800 border border-blue-200">
+                                {g.name}
+                              </span>
+                            ))}
                           </div>
                         </div>
                       )}
 
-                      {/* Child Balance Box */}
-                      {/* Child Balance Display — no payment button here, payments via header */}
-                      <div className="mt-3.5 rounded-xl border p-3 flex items-center gap-1.5 text-xs bg-white shadow-2xs">
-                        {cFinance.debt > 0 ? (
-                          <span className="font-bold text-rose-700 flex items-center gap-1">
-                            <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
-                            Долг: -{cFinance.debt.toLocaleString('ru-RU')} {cFinance.currency}
-                          </span>
-                        ) : cFinance.deposit > 0 ? (
-                          <span className="font-bold text-emerald-700 flex items-center gap-1">
-                            <Wallet className="h-3.5 w-3.5 text-emerald-600" />
-                            Депозит: +{cFinance.deposit.toLocaleString('ru-RU')} {cFinance.currency}
-                          </span>
-                        ) : (
-                          <span className="font-semibold text-slate-600 flex items-center gap-1">
-                            <Check className="h-3.5 w-3.5 text-emerald-600" />
-                            Счета оплачены
-                          </span>
-                        )}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                          Выберите группу для зачисления:
+                        </label>
+                        <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                          {allGroups.map((grp) => {
+                            const isAlreadyEnrolled = modalChildGroups.some(
+                              (g) => g.id === grp.id || g.name === grp.name
+                            );
+                            const isSelected = selectedGroupIdForChild === grp.id;
+                            return (
+                              <div
+                                key={grp.id}
+                                onClick={() => { if (!isAlreadyEnrolled) setSelectedGroupIdForChild(grp.id); }}
+                                className={cn(
+                                  'rounded-xl border p-3 text-xs transition-all cursor-pointer flex items-start gap-3',
+                                  isAlreadyEnrolled
+                                    ? 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed'
+                                    : isSelected
+                                    ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 shadow-xs'
+                                    : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50/50'
+                                )}
+                              >
+                                <input
+                                  type="radio"
+                                  name="group_enroll_parent"
+                                  checked={isSelected}
+                                  disabled={isAlreadyEnrolled}
+                                  onChange={() => setSelectedGroupIdForChild(grp.id)}
+                                  className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="font-bold text-slate-900 truncate">{grp.name}</p>
+                                    {isAlreadyEnrolled ? (
+                                      <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                                        Уже зачислен
+                                      </span>
+                                    ) : (
+                                      <span className="shrink-0 text-[11px] font-medium text-slate-500">
+                                        {(grp.students || []).length} / {grp.capacity} мест
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Преподаватель: <span className="text-slate-700 font-medium">{grp.teacherName}</span>
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-600">
+                                    <span className="inline-flex items-center gap-1 font-medium text-blue-700">
+                                      <Calendar className="h-3 w-3" />
+                                      {grp.schedule}
+                                    </span>
+                                    <span>•</span>
+                                    <span className="text-slate-500">{grp.room}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
-                      <Link
-                        href={child.groups?.[0]?.id ? `/groups/${child.groups[0].id}` : `/calendar`}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                    <div className="mt-5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => { setEnrollModalChildId(null); setSelectedGroupIdForChild(''); }}
+                        className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                       >
-                        Журнал группы <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedGroupIdForChild}
+                        onClick={() => handleEnrollChildToGroup(enrollModalChildId!, selectedGroupIdForChild)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Зачислить в группу
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })()}
+
 
       {/* TAB 3: ФИНАНСЫ И АБОНЕМЕНТЫ */}
       {activeTab === 'finance' && (
