@@ -163,40 +163,25 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
                 <button
                   type="button"
                   onClick={() => setIsCoursesModalOpen(true)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                  className="text-xs text-blue-600 hover:underline cursor-pointer"
                 >
-                  <Settings2 className="h-3 w-3" />
-                  Настроить
+                  ⚙ Настроить направления и тарифы
                 </button>
               )}
             </div>
             <select
               value={courseId}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '__manage_courses__') {
-                  if (canManageCourses) {
-                    setIsCoursesModalOpen(true);
-                  } else {
-                    alert('Добавление и настройка направлений доступна только владельцу школы.');
-                  }
-                  return;
-                }
-                setCourseId(val);
-              }}
+              onChange={(e) => setCourseId(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {coursesList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.subject ? `(${c.subject})` : c.description ? `(${c.description})` : ''}
-                </option>
-              ))}
-              {canManageCourses && (
-                <>
-                  <option disabled value="">──────────</option>
-                  <option value="__manage_courses__">⚙ Настроить направления и тарифы...</option>
-                </>
-              )}
+              {coursesList
+                .filter(Boolean)
+                .filter((c) => Boolean(c && c.name && c.name.trim()))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
           </div>
 
