@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Phone,
@@ -84,6 +84,15 @@ export interface ParentProfileDesktopProps {
   onDeleteParent: () => void;
   onSelectTab: (tabKey: string) => void;
   onSendReminder: (channel: 'whatsapp' | 'telegram') => void;
+}
+
+function formatCoursesBadge(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `+${count} курсов`;
+  if (mod10 === 1) return `+${count} курс`;
+  if (mod10 >= 2 && mod10 <= 4) return `+${count} курса`;
+  return `+${count} курсов`;
 }
 
 export function ParentProfileDesktop({
@@ -221,6 +230,43 @@ export function ParentProfileDesktop({
     : 100;
 
   const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+
+  const childrenCoursesData = useMemo(() => {
+    return parent.children.map((c) => {
+      const childGroups = (c.groups && c.groups.length > 0)
+        ? c.groups
+        : [{ id: '1', name: c.group || 'English B1 Teens', teacherName: c.teacher || 'Мария Иванова' }];
+
+      const uniqueGroups: Array<{ id: string; name: string; teacherName: string }> = [];
+      const seenGroupKeys = new Set<string>();
+
+      for (const grp of childGroups) {
+        const rawName = grp.name || grp.courseName || 'English B1 Teens';
+        const cleanName = rawName
+          .replace(/^Английский:\s*/i, '')
+          .split(' (')[0]
+          .trim();
+        const groupObj = storedGroups.find((g) => g.id === grp.id || g.name === grp.name || g.name === cleanName) || { id: grp.id || '1', name: cleanName };
+        const teacherName = grp.teacherName || c.teacher || 'Мария Иванова';
+        const key = `${groupObj.id}-${cleanName}`;
+        if (!seenGroupKeys.has(key)) {
+          seenGroupKeys.add(key);
+          uniqueGroups.push({ id: groupObj.id, name: cleanName, teacherName });
+        }
+      }
+
+      return {
+        childId: c.id,
+        childName: c.name,
+        firstName: c.name.split(' ')[0],
+        groups: uniqueGroups,
+      };
+    });
+  }, [parent.children, storedGroups]);
+
+  const totalCoursesCount = useMemo(() => {
+    return childrenCoursesData.reduce((acc, cc) => acc + cc.groups.length, 0);
+  }, [childrenCoursesData]);
 
   return (
     <div className="hidden md:block w-full space-y-4">
@@ -539,57 +585,133 @@ export function ParentProfileDesktop({
           )}
         </div>
 
-        {/* Column 2: КУРСЫ */}
-        <div className="pl-4 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            {parent.children.some((c) => (c.groups?.length || 0) > 1) || parent.children.length > 1 ? 'КУРСЫ И ГРУППЫ' : 'КУРС И ГРУППА'}
-          </span>
-          {parent.children.length > 0 ? (
-            <div className="space-y-2">
-              {parent.children.map((c) => {
-                const childGroups = (c.groups && c.groups.length > 0)
-                  ? c.groups
-                  : [{ id: '1', name: c.group || 'English B1 Teens', teacherName: c.teacher || 'Мария Иванова' }];
+        {/* Column 2: КУРСЫ И ГРУППЫ */}
+        <div
+          onClick={() => onSelectTab('children')}
+          className="pl-4 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group relative"
+          title={`Перейти к вкладке «Обучение и группы» (всего курсов: ${totalCoursesCount})`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
+              {totalCoursesCount > 1 || parent.children.length > 1 ? 'КУРСЫ И ГРУППЫ' : 'КУРС И ГРУППА'}
+            </span>
+          </div>
 
+          {parent.children.length === 0 ? (
+            <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
+          ) : parent.children.length === 1 ? (
+            /* ОДИН РЕБЕНОК */
+            (() => {
+              const singleChild = childrenCoursesData[0];
+              if (!singleChild || singleChild.groups.length === 0) {
+                return <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>;
+              }
+              if (singleChild.groups.length === 1) {
+                const grp = singleChild.groups[0];
                 return (
-                  <div key={c.id} className="space-y-1.5">
-                    {childGroups.map((grp: any, gIdx: number) => {
-                      const rawName = grp.name || grp.courseName || 'English B1 Teens';
-                      const groupName = rawName.split(' (')[0];
-                      const groupObj = storedGroups.find((g) => g.id === grp.id || g.name === grp.name || g.name === groupName) || { id: grp.id || '1', name: groupName };
-                      const teacherName = grp.teacherName || c.teacher || 'Мария Иванова';
-                      const targetTeacher = INITIAL_TEACHERS.find((t) => t.name === teacherName || t.id === grp.teacherId) || INITIAL_TEACHERS[0];
-
-                      return (
-                        <div key={grp.id || gIdx} className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <Link
-                              href={`/groups/${groupObj.id}`}
-                              className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-                            >
-                              {groupName}
-                            </Link>
-                            {parent.children.length > 1 && (
-                              <span className="text-[10px] text-slate-400 shrink-0 font-normal">
-                                ({c.name.split(' ')[0]})
-                              </span>
-                            )}
-                          </div>
-                          <Link
-                            href={`/teachers/${targetTeacher.id}`}
-                            className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
-                          >
-                            Преподаватель: {teacherName}
-                          </Link>
-                        </div>
-                      );
-                    })}
+                  <div className="space-y-0.5 pt-0.5 min-w-0">
+                    <Link
+                      href={`/groups/${grp.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
+                      title={grp.name}
+                    >
+                      {grp.name}
+                    </Link>
+                    <span className="text-[11px] text-slate-500 block truncate">
+                      Преподаватель: {grp.teacherName}
+                    </span>
                   </div>
                 );
-              })}
-            </div>
+              }
+              // 2 или более курсов у одного ребенка
+              const visibleGroups = singleChild.groups.slice(0, 2);
+              const hiddenCount = singleChild.groups.length - visibleGroups.length;
+              return (
+                <div className="space-y-1 pt-0.5 text-xs min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    {visibleGroups.map((grp, gIdx) => (
+                      <React.Fragment key={grp.id}>
+                        {gIdx > 0 && <span className="text-slate-300 font-normal">•</span>}
+                        <Link
+                          href={`/groups/${grp.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-semibold text-slate-900 hover:text-blue-600 hover:underline truncate max-w-[170px]"
+                          title={grp.name}
+                        >
+                          {grp.name}
+                        </Link>
+                      </React.Fragment>
+                    ))}
+                    {hiddenCount > 0 && (
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        {formatCoursesBadge(hiddenCount)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-400 block truncate">
+                    {singleChild.groups.length} активных курса
+                  </span>
+                </div>
+              );
+            })()
           ) : (
-            <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
+            /* НЕСКОЛЬКО ДЕТЕЙ — Группировка по детям с компактным отображением */
+            (() => {
+              // Показываем до 2 детей, до 2 курсов на ребенка
+              const visibleChildren = childrenCoursesData.slice(0, 2);
+              const remainingCoursesAcrossRest = childrenCoursesData.slice(2).reduce((sum, c) => sum + c.groups.length, 0);
+
+              return (
+                <div className="space-y-1 pt-0.5 text-xs min-w-0">
+                  {visibleChildren.map((cc) => {
+                    const visibleGroups = cc.groups.slice(0, 2);
+                    const hiddenCount = cc.groups.length - visibleGroups.length;
+
+                    return (
+                      <div key={cc.childId} className="flex items-center gap-1.5 flex-wrap min-w-0 leading-tight">
+                        <span className="font-bold text-slate-700 shrink-0 text-xs">
+                          {cc.firstName}:
+                        </span>
+                        <div className="inline-flex items-center gap-1 flex-wrap min-w-0">
+                          {visibleGroups.length === 0 ? (
+                            <span className="text-slate-400 text-[11px]">—</span>
+                          ) : (
+                            visibleGroups.map((grp, gIdx) => (
+                              <React.Fragment key={grp.id}>
+                                {gIdx > 0 && <span className="text-slate-300 font-normal">•</span>}
+                                <Link
+                                  href={`/groups/${grp.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-semibold text-slate-900 hover:text-blue-600 hover:underline truncate max-w-[130px]"
+                                  title={grp.name}
+                                >
+                                  {grp.name}
+                                </Link>
+                              </React.Fragment>
+                            ))
+                          )}
+                          {hiddenCount > 0 && (
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                              +{hiddenCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {remainingCoursesAcrossRest > 0 && (
+                    <div className="pt-0.5 flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                        {formatCoursesBadge(remainingCoursesAcrossRest)}
+                      </span>
+                      <span className="text-[10px] text-slate-400">еще</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
 

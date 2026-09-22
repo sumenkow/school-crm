@@ -307,7 +307,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '3',
-        name: 'Robotics Junior (Ср/Сб 15:00)',
+        name: 'Robotics Junior',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
         schedule: 'Ср 15:00, Сб 11:00',
@@ -316,7 +316,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
       },
       {
         id: '5',
-        name: 'Английский: Практическая грамматика (Ср 18:00)',
+        name: 'Практическая грамматика',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
         schedule: 'Среда • 18:00–19:30',
@@ -403,7 +403,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '3',
-        name: 'Robotics Junior (Ср/Сб 15:00)',
+        name: 'Robotics Junior',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
         schedule: 'Ср 15:00, Сб 11:00',
@@ -412,7 +412,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
       },
       {
         id: '4',
-        name: 'Kids Math Safari (Чт 16:00)',
+        name: 'Kids Math Safari',
         courseName: 'Математика',
         teacherName: 'Ольга Соколова',
         schedule: 'Четверг • 16:00–17:00',
