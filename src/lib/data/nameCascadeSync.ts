@@ -35,6 +35,9 @@ export interface ParentNameUpdate {
   telegram?: string;
   whatsapp?: string;
   preferredChannel?: string;
+  notifyWhatsapp?: boolean;
+  notifyTelegram?: boolean;
+  notifyEmail?: boolean;
   notes?: string;
 }
 
@@ -277,6 +280,9 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
             telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
             whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
             preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
+            notifyWhatsapp: parentData.notifyWhatsapp !== undefined ? parentData.notifyWhatsapp : p.notifyWhatsapp,
+            notifyTelegram: parentData.notifyTelegram !== undefined ? parentData.notifyTelegram : p.notifyTelegram,
+            notifyEmail: parentData.notifyEmail !== undefined ? parentData.notifyEmail : p.notifyEmail,
             notes: parentData.notes !== undefined ? parentData.notes : (p as any).notes,
           };
         }
@@ -309,6 +315,9 @@ export function syncParentNameCascade(parentId: string, parentData: ParentNameUp
                 telegram: parentData.telegram !== undefined ? parentData.telegram : p.telegram,
                 whatsapp: parentData.whatsapp !== undefined ? parentData.whatsapp : p.whatsapp,
                 preferredChannel: (parentData.preferredChannel !== undefined ? parentData.preferredChannel : p.preferredChannel) as any,
+                notifyWhatsapp: parentData.notifyWhatsapp !== undefined ? parentData.notifyWhatsapp : p.notifyWhatsapp,
+                notifyTelegram: parentData.notifyTelegram !== undefined ? parentData.notifyTelegram : p.notifyTelegram,
+                notifyEmail: parentData.notifyEmail !== undefined ? parentData.notifyEmail : p.notifyEmail,
                 notes: parentData.notes !== undefined ? parentData.notes : (p as any).notes,
               };
             }

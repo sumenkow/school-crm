@@ -70,7 +70,11 @@ export interface ParentRecord {
   phone: string;
   telegram?: string;
   whatsapp?: string;
+  email?: string;
   preferredChannel: string;
+  notifyWhatsapp?: boolean;
+  notifyTelegram?: boolean;
+  notifyEmail?: boolean;
   relationshipType?: string;
   children: ChildDetails[];
   totalPaid: string;
@@ -261,6 +265,10 @@ function getMergedParents(): ParentRecord[] {
         children: Array.from(existingChildrenMap.values()),
         telegram: existing.telegram || rawParent.telegram,
         whatsapp: existing.whatsapp || rawParent.whatsapp,
+        email: existing.email || rawParent.email,
+        notifyWhatsapp: rawParent.notifyWhatsapp !== undefined ? rawParent.notifyWhatsapp : existing.notifyWhatsapp,
+        notifyTelegram: rawParent.notifyTelegram !== undefined ? rawParent.notifyTelegram : existing.notifyTelegram,
+        notifyEmail: rawParent.notifyEmail !== undefined ? rawParent.notifyEmail : existing.notifyEmail,
         relationshipType: existing.relationshipType || rawParent.relationshipType,
       });
     } else {
@@ -271,7 +279,11 @@ function getMergedParents(): ParentRecord[] {
         phone: rawParent.phone || '+7 (999) 000-00-00',
         telegram: rawParent.telegram,
         whatsapp: rawParent.whatsapp,
+        email: rawParent.email,
         preferredChannel: rawParent.preferredChannel || 'Telegram',
+        notifyWhatsapp: rawParent.notifyWhatsapp !== undefined ? rawParent.notifyWhatsapp : true,
+        notifyTelegram: rawParent.notifyTelegram !== undefined ? rawParent.notifyTelegram : true,
+        notifyEmail: rawParent.notifyEmail !== undefined ? rawParent.notifyEmail : true,
         relationshipType: rawParent.relationshipType || 'Родитель',
         children: rawParent.children || [],
         totalPaid: '0 €',
@@ -314,7 +326,11 @@ function getMergedParents(): ParentRecord[] {
           phone: pr.phone || '+7 (999) 000-00-00',
           telegram: pr.telegram,
           whatsapp: pr.whatsapp,
+          email: pr.email,
           preferredChannel: pr.preferredChannel || 'Telegram',
+          notifyWhatsapp: (pr as any).notifyWhatsapp !== false,
+          notifyTelegram: (pr as any).notifyTelegram !== false,
+          notifyEmail: (pr as any).notifyEmail !== false,
           relationshipType: (pr as any).relationshipType || 'Родитель',
           children: [childInfo],
         });
@@ -1370,9 +1386,13 @@ function EditParentModal({
 }) {
   const [name, setName] = useState(parent.name);
   const [phone, setPhone] = useState(parent.phone);
+  const [email, setEmail] = useState(parent.email || '');
   const [telegram, setTelegram] = useState(parent.telegram || '');
   const [whatsapp, setWhatsapp] = useState(parent.whatsapp || '');
-  const [preferredChannel, setPreferredChannel] = useState(parent.preferredChannel);
+  const [preferredChannel, setPreferredChannel] = useState(parent.preferredChannel || 'Telegram');
+  const [notifyWhatsapp, setNotifyWhatsapp] = useState(parent.notifyWhatsapp !== false);
+  const [notifyTelegram, setNotifyTelegram] = useState(parent.notifyTelegram !== false);
+  const [notifyEmail, setNotifyEmail] = useState(parent.notifyEmail !== false);
   const [relationshipType, setRelationshipType] = useState(parent.relationshipType || 'Родитель');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1381,9 +1401,13 @@ function EditParentModal({
       ...parent,
       name,
       phone,
+      email: email || undefined,
       telegram: telegram || undefined,
       whatsapp: whatsapp || undefined,
       preferredChannel,
+      notifyWhatsapp,
+      notifyTelegram,
+      notifyEmail,
       relationshipType,
     });
   };
@@ -1461,16 +1485,66 @@ function EditParentModal({
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">Предпочитаемый канал связи</label>
-            <select
-              value={preferredChannel}
-              onChange={(e) => setPreferredChannel(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
-            >
-              <option value="Telegram">Telegram</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Phone">Звонок</option>
-            </select>
+            <label className="font-semibold text-slate-700 block mb-1">Электронная почта (Email)</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Channels & Notifications */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
+            <label className="block font-bold text-slate-800 text-xs">
+              Каналы связи и уведомлений
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyWhatsapp}
+                  onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-slate-800">WhatsApp</span>
+              </label>
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyTelegram}
+                  onChange={(e) => setNotifyTelegram(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-slate-800">Telegram</span>
+              </label>
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-slate-800">Email</span>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Основной канал для счетов и отчетов
+              </label>
+              <select
+                value={preferredChannel}
+                onChange={(e) => setPreferredChannel(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="Telegram">✈️ Telegram</option>
+                <option value="WhatsApp">💬 WhatsApp</option>
+                <option value="Email">📧 Email</option>
+                <option value="Phone">📞 Телефон</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4 mt-4">
@@ -1546,9 +1620,13 @@ function CreateParentModal({
   const { error } = useToast();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [telegram, setTelegram] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [preferredChannel, setPreferredChannel] = useState('Telegram');
+  const [notifyWhatsapp, setNotifyWhatsapp] = useState(true);
+  const [notifyTelegram, setNotifyTelegram] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState(true);
   const [relationshipType, setRelationshipType] = useState('Мама');
 
   // Child linkage options
@@ -1611,7 +1689,11 @@ function CreateParentModal({
           phone: phone || '+7 (999) 000-00-00',
           telegram: telegram || undefined,
           whatsapp: whatsapp || undefined,
-          preferredChannel: preferredChannel.toLowerCase() as any,
+          email: email || undefined,
+          preferredChannel: preferredChannel as any,
+          notifyWhatsapp,
+          notifyTelegram,
+          notifyEmail,
           relationshipType,
           isPrimary: updatedParents.length === 0,
         });
@@ -1646,7 +1728,11 @@ function CreateParentModal({
             phone: phone || '+7 (999) 000-00-00',
             telegram: telegram || undefined,
             whatsapp: whatsapp || undefined,
-            preferredChannel: preferredChannel.toLowerCase() as any,
+            email: email || undefined,
+            preferredChannel: preferredChannel as any,
+            notifyWhatsapp,
+            notifyTelegram,
+            notifyEmail,
             relationshipType,
             isPrimary: true,
           },
@@ -1709,9 +1795,13 @@ function CreateParentModal({
       id: newParentId,
       name: name.trim(),
       phone: phone.trim(),
+      email: email || undefined,
       telegram: telegram || undefined,
       whatsapp: whatsapp || undefined,
       preferredChannel,
+      notifyWhatsapp,
+      notifyTelegram,
+      notifyEmail,
       relationshipType,
       children: attachedChildren,
       totalPaid: '0 €',
@@ -1803,16 +1893,66 @@ function CreateParentModal({
             </div>
 
             <div>
-              <label className="font-semibold text-slate-700 block mb-1">Предпочитаемый канал связи</label>
-              <select
-                value={preferredChannel}
-                onChange={(e) => setPreferredChannel(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none"
-              >
-                <option value="Telegram">Telegram</option>
-                <option value="WhatsApp">WhatsApp</option>
-                <option value="Phone">Звонок</option>
-              </select>
+              <label className="font-semibold text-slate-700 block mb-1">Электронная почта (Email)</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Channels & Notifications */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
+              <label className="block font-bold text-slate-800 text-xs">
+                Каналы связи и уведомлений
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={notifyWhatsapp}
+                    onChange={(e) => setNotifyWhatsapp(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-slate-800">WhatsApp</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={notifyTelegram}
+                    onChange={(e) => setNotifyTelegram(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-slate-800">Telegram</span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-slate-800">Email</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Основной канал для счетов и отчетов
+                </label>
+                <select
+                  value={preferredChannel}
+                  onChange={(e) => setPreferredChannel(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Telegram">✈️ Telegram</option>
+                  <option value="WhatsApp">💬 WhatsApp</option>
+                  <option value="Email">📧 Email</option>
+                  <option value="Phone">📞 Телефон</option>
+                </select>
+              </div>
             </div>
           </div>
 

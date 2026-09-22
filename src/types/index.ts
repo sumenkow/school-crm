@@ -45,6 +45,9 @@ export interface Parent {
   whatsapp?: string;
   email?: string;
   preferredChannel: 'telegram' | 'whatsapp' | 'phone' | 'email';
+  notifyWhatsapp?: boolean;
+  notifyTelegram?: boolean;
+  notifyEmail?: boolean;
   isDeleted?: boolean;
   deletedAt?: string;
   notes?: string;

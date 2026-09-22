@@ -60,8 +60,8 @@ export default function ParentDetailsPage() {
   const { t } = useLanguage();
   const parentId = params.id as string;
 
-  // Active tab state
-  const [activeTab, setActiveTab] = useState<'profile' | 'children' | 'finance' | 'timeline' | 'tasks'>('finance');
+  // Active tab state — strictly 4 tabs (finance, children, tasks, timeline)
+  const [activeTab, setActiveTab] = useState<'finance' | 'children' | 'tasks' | 'timeline'>('finance');
 
   // Load parent and linked children from unified storage (supports converted leads)
   const [parent, setParent] = useState(() => {
@@ -121,6 +121,9 @@ export default function ParentDetailsPage() {
       whatsapp: matchedParent?.whatsapp || '+79991234567',
       email: matchedParent?.email || 'olga.smirnova@example.com',
       preferredChannel: matchedParent?.preferredChannel || 'Telegram',
+      notifyWhatsapp: (matchedParent as any)?.notifyWhatsapp !== false,
+      notifyTelegram: (matchedParent as any)?.notifyTelegram !== false,
+      notifyEmail: (matchedParent as any)?.notifyEmail !== false,
       notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00.',
       children: linkedChildren.length > 0 ? linkedChildren : [
         {
@@ -752,7 +755,10 @@ export default function ParentDetailsPage() {
     telegram: parent.telegram,
     whatsapp: parent.whatsapp,
     email: parent.email,
-    preferredChannel: parent.preferredChannel,
+    preferredChannel: parent.preferredChannel || 'Telegram',
+    notifyWhatsapp: parent.notifyWhatsapp !== false,
+    notifyTelegram: parent.notifyTelegram !== false,
+    notifyEmail: parent.notifyEmail !== false,
     notes: parent.notes,
   });
 
@@ -778,7 +784,10 @@ export default function ParentDetailsPage() {
       telegram: parent.telegram,
       whatsapp: parent.whatsapp,
       email: parent.email,
-      preferredChannel: parent.preferredChannel,
+      preferredChannel: parent.preferredChannel || 'Telegram',
+      notifyWhatsapp: parent.notifyWhatsapp !== false,
+      notifyTelegram: parent.notifyTelegram !== false,
+      notifyEmail: parent.notifyEmail !== false,
       notes: parent.notes,
     });
     setEditChildren([...parent.children]);
@@ -798,7 +807,10 @@ export default function ParentDetailsPage() {
     const updatedTelegram = editForm.telegram.trim() || parent.telegram;
     const updatedWhatsapp = editForm.whatsapp.trim() || parent.whatsapp;
     const updatedEmail = editForm.email.trim() || parent.email;
-    const updatedChannel = editForm.preferredChannel || parent.preferredChannel;
+    const updatedChannel = editForm.preferredChannel || parent.preferredChannel || 'Telegram';
+    const updatedNotifyWhatsapp = editForm.notifyWhatsapp !== false;
+    const updatedNotifyTelegram = editForm.notifyTelegram !== false;
+    const updatedNotifyEmail = editForm.notifyEmail !== false;
     const updatedNotes = editForm.notes;
 
     // 1. Update React state immediately
@@ -811,6 +823,9 @@ export default function ParentDetailsPage() {
       whatsapp: updatedWhatsapp,
       email: updatedEmail,
       preferredChannel: updatedChannel,
+      notifyWhatsapp: updatedNotifyWhatsapp,
+      notifyTelegram: updatedNotifyTelegram,
+      notifyEmail: updatedNotifyEmail,
       notes: updatedNotes,
       children: editChildren,
     }));
@@ -833,7 +848,10 @@ export default function ParentDetailsPage() {
               telegram: updatedTelegram,
               whatsapp: updatedWhatsapp,
               email: updatedEmail,
-              preferredChannel: (updatedChannel as any) || 'telegram',
+              preferredChannel: (updatedChannel as any) || 'Telegram',
+              notifyWhatsapp: updatedNotifyWhatsapp,
+              notifyTelegram: updatedNotifyTelegram,
+              notifyEmail: updatedNotifyEmail,
               notes: updatedNotes,
               relationshipType: 'Родитель',
               isPrimary: true,
@@ -851,6 +869,9 @@ export default function ParentDetailsPage() {
                   whatsapp: updatedWhatsapp,
                   email: updatedEmail,
                   preferredChannel: (updatedChannel as any) || p.preferredChannel,
+                  notifyWhatsapp: updatedNotifyWhatsapp,
+                  notifyTelegram: updatedNotifyTelegram,
+                  notifyEmail: updatedNotifyEmail,
                   notes: updatedNotes !== undefined ? updatedNotes : (p as any).notes,
                 }
               : p
@@ -882,7 +903,10 @@ export default function ParentDetailsPage() {
               telegram: updatedTelegram,
               whatsapp: updatedWhatsapp,
               email: updatedEmail,
-              preferredChannel: (updatedChannel as any) || 'telegram',
+              preferredChannel: (updatedChannel as any) || 'Telegram',
+              notifyWhatsapp: updatedNotifyWhatsapp,
+              notifyTelegram: updatedNotifyTelegram,
+              notifyEmail: updatedNotifyEmail,
               notes: updatedNotes,
               relationshipType: 'Родитель',
               isPrimary: true,
@@ -900,6 +924,9 @@ export default function ParentDetailsPage() {
                   whatsapp: updatedWhatsapp,
                   email: updatedEmail,
                   preferredChannel: (updatedChannel as any) || p.preferredChannel,
+                  notifyWhatsapp: updatedNotifyWhatsapp,
+                  notifyTelegram: updatedNotifyTelegram,
+                  notifyEmail: updatedNotifyEmail,
                   notes: updatedNotes !== undefined ? updatedNotes : (p as any).notes,
                 }
               : p
@@ -919,6 +946,9 @@ export default function ParentDetailsPage() {
       telegram: updatedTelegram,
       whatsapp: updatedWhatsapp,
       preferredChannel: updatedChannel,
+      notifyWhatsapp: updatedNotifyWhatsapp,
+      notifyTelegram: updatedNotifyTelegram,
+      notifyEmail: updatedNotifyEmail,
       notes: updatedNotes,
     });
 
@@ -946,80 +976,6 @@ export default function ParentDetailsPage() {
     window.dispatchEvent(new CustomEvent('crm-students-changed'));
     success('Данные родителя и состав семьи успешно сохранены!');
     setIsEditModalOpen(false);
-  };
-
-  const handleUpdateNotificationChannel = async (newChannel: 'email' | 'telegram' | 'both') => {
-    const channelLabel = newChannel === 'email' ? 'Email' : newChannel === 'telegram' ? 'Telegram' : 'both';
-    
-    setParent((prev) => ({
-      ...prev,
-      preferredChannel: channelLabel,
-    }));
-
-    // 1. Update in-memory students
-    const allStudents = getStoredStudents();
-    allStudents.forEach((student) => {
-      if (student.parents && student.parents.some((p) => p.id === parent.id)) {
-        student.parents = student.parents.map((p) =>
-          p.id === parent.id ? { ...p, preferredChannel: channelLabel as any } : p
-        );
-        saveStudentToStorage(student);
-      }
-    });
-
-    // 2. Cascade parent update
-    syncParentNameCascade(parent.id, {
-      firstName: parent.firstName,
-      lastName: parent.lastName,
-      phone: parent.phone,
-      email: parent.email,
-      telegram: parent.telegram,
-      whatsapp: parent.whatsapp,
-      preferredChannel: channelLabel,
-    });
-
-    // 3. Supabase Cloud DB direct update
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      await supabase.from('parents').upsert({
-        id: parent.id,
-        first_name: parent.firstName,
-        last_name: parent.lastName,
-        phone: parent.phone,
-        email: parent.email || null,
-        telegram: parent.telegram || null,
-        whatsapp: parent.whatsapp || null,
-        preferred_channel: (newChannel === 'both' ? 'email' : newChannel) as any,
-        notes: parent.notes || null,
-      });
-    } catch (e) {
-      console.warn('Supabase parent channel update warning:', e);
-    }
-
-    // 4. Log interaction in timeline and save to storage & DB
-    const channelNameRu = newChannel === 'email' ? 'Email (почта)' : newChannel === 'telegram' ? 'Telegram' : 'Email и Telegram';
-    const channelInteraction: TimelineInteraction = {
-      id: `int_channel_${Date.now()}`,
-      parentId: parent.id,
-      parentName: `${parent.firstName} ${parent.lastName}`,
-      occurredAt: 'Только что',
-      createdAt: new Date().toISOString(),
-      channel: (newChannel === 'email' ? 'email' : newChannel === 'telegram' ? 'telegram' : 'other') as any,
-      type: 'status_change',
-      author: userName || 'Администратор школы',
-      content: `Предпочтительный канал связи изменен на: «${channelNameRu}». Все уведомления и отчеты теперь отправляются по этому каналу.`,
-      result: 'Канал связи обновлен',
-      targetType: 'parent',
-      targetName: `${parent.firstName} ${parent.lastName}`,
-      targetRole: 'Родитель',
-    };
-    saveInteractionToStorage(channelInteraction);
-    setInteractions((prev) => sortTimelineChronologicalDesc([channelInteraction, ...prev]));
-
-    success(`Канал отправки уведомлений и отчётов обновлён: ${
-      newChannel === 'email' ? '📧 Электронная почта' : newChannel === 'telegram' ? '✈️ Telegram' : '🔄 Почта и Telegram'
-    }`);
   };
 
   // Timeline interaction form state
@@ -1264,7 +1220,6 @@ export default function ParentDetailsPage() {
           { key: 'children', label: `Обучение и группы (${parent.children.length})` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${familyTasks.filter((t) => t.status === 'open').length})` },
           { key: 'timeline', label: `Timeline (${interactions.length})` },
-          { key: 'profile', label: `Настройки связи` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -1280,453 +1235,6 @@ export default function ParentDetailsPage() {
           </button>
         ))}
       </div>
-
-      {/* TAB 1: ПРОФИЛЬ И СЕМЬЯ */}
-      {activeTab === 'profile' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Column */}
-          <div className="md:col-span-2 space-y-6">
-            {/* Notification Preference Switcher Card */}
-            <div className="rounded-2xl border border-blue-200 bg-linear-to-br from-blue-50/50 via-white to-sky-50/30 p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-blue-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4 text-blue-600" />
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Канал отправки данных по ученикам и отчётов
-                  </h3>
-                </div>
-                <span className="text-[11px] font-semibold text-blue-800 bg-blue-100/80 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  {parent.preferredChannel === 'Telegram' || parent.preferredChannel === 'telegram'
-                    ? '✈️ Telegram'
-                    : parent.preferredChannel === 'both'
-                    ? '🔄 Почта и Telegram'
-                    : '📧 Email'}
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Выберите, куда автоматически отправлять родителю расписание занятий, отчёты о посещаемости, ссылки на онлайн-уроки и домашние задания. Все изменения сохраняются напрямую в базу данных.
-              </p>
-
-              {/* MD3 Segmented Toggle */}
-              <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200/60 rounded-xl border border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateNotificationChannel('email')}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    parent.preferredChannel === 'Email' || parent.preferredChannel === 'email'
-                      ? "bg-white text-blue-700 shadow-xs border border-blue-200"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
-                  )}
-                >
-                  <Mail className="h-3.5 w-3.5 text-blue-600" />
-                  <span>📧 Почта (Email)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateNotificationChannel('telegram')}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    parent.preferredChannel === 'Telegram' || parent.preferredChannel === 'telegram'
-                      ? "bg-white text-sky-700 shadow-xs border border-sky-300"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
-                  )}
-                >
-                  <Send className="h-3.5 w-3.5 text-sky-500" />
-                  <span>✈️ Telegram</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUpdateNotificationChannel('both')}
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                    parent.preferredChannel === 'both'
-                      ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
-                  )}
-                >
-                  <span>🔄</span>
-                  <span>Оба канала</span>
-                </button>
-              </div>
-
-              {/* Contact preview & Edit trigger */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-xs">
-                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                  <div className="p-2 rounded-lg bg-blue-50 text-blue-600 shrink-0">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[10px] uppercase font-bold text-slate-400">Email для рассылки</span>
-                    <span className="font-semibold text-slate-800 truncate block">
-                      {parent.email || 'Не указан'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-                  <div className="p-2 rounded-lg bg-sky-50 text-sky-600 shrink-0">
-                    <Send className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[10px] uppercase font-bold text-slate-400">Telegram для уведомлений</span>
-                    <span className="font-semibold text-slate-800 truncate block">
-                      {parent.telegram || 'Не указан'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Notes and Special Details */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                  Заметки и особенности взаимодействия с родителем
-                </h3>
-                {!isEditingNotes ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditedNotes(parent.notes || '');
-                      setIsEditingNotes(true);
-                    }}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                  >
-                    <Edit size={13} />
-                    Редактировать
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditingNotes(false)}
-                      className="px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveNotes}
-                      className="inline-flex items-center gap-1 px-3 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
-                    >
-                      <Check size={13} />
-                      Сохранить
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {!isEditingNotes ? (
-                <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-100 whitespace-pre-line">
-                  {parent.notes || 'Заметок о родителе пока нет. Нажмите «Редактировать», чтобы указать удобное время для связи, особенности общения или пожелания по обучению детей.'}
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <textarea
-                    rows={4}
-                    value={editedNotes}
-                    onChange={(e) => setEditedNotes(e.target.value)}
-                    placeholder="Удобное время для звонков, предпочтения по мессенджерам, особенности семьи..."
-                    className="w-full rounded-xl border border-blue-300 bg-white p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
-                  />
-                  <p className="text-[11px] text-slate-400">
-                    💡 Изменения сохраняются в профиль семьи и будут доступны администраторам и преподавателям.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Quick Children Teaser & Links */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Дети в семье ({parent.children.length})
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddChildModalOpen(true)}
-                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Добавить ребенка
-                  </button>
-                  <span className="text-slate-300">•</span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('children')}
-                    className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
-                  >
-                    Все дети подробно →
-                  </button>
-                </div>
-              </div>
-
-              {parent.children.length === 0 ? (
-                <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-500">
-                  <p className="font-semibold">К этому родителю пока не привязано детей</p>
-                  <button
-                    type="button"
-                    onClick={() => setIsAddChildModalOpen(true)}
-                    className="mt-1.5 inline-flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Привязать ребенка
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {parent.children.map((child) => (
-                    <div
-                      key={child.id}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-blue-300 transition-all shadow-2xs flex flex-col justify-between"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
-                            {child.name.charAt(0)}
-                          </div>
-                          <div>
-                            <Link
-                              href={`/students/${child.id}`}
-                              className="font-bold text-slate-900 text-xs hover:text-blue-600 hover:underline flex items-center gap-1"
-                            >
-                              {child.name}
-                              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                            </Link>
-                            <span className="text-[10px] text-slate-500">{child.age}</span>
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.5 text-[9px] font-bold border',
-                            child.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          )}
-                        >
-                          {child.status === 'active' ? 'Активен' : 'Пробный'}
-                        </span>
-                      </div>
-
-                      <div className="mt-2.5 text-[11px] text-slate-600 space-y-0.5 border-t border-slate-100 pt-2">
-                        <p className="truncate">
-                          {(child.groups?.length || 0) > 1 ? 'Группы: ' : 'Группа: '}
-                          <strong className="text-slate-800">{child.group || child.groups?.[0]?.name}</strong>
-                        </p>
-                        <p className="truncate">
-                          {(child.groups?.length || 0) > 1 ? 'Преподаватели: ' : 'Преподаватель: '}
-                          <span className="text-slate-700">
-                            {Array.from(new Set((child.groups || []).map((g: any) => g.teacherName).filter(Boolean))).join(', ') || child.teacher || 'Мария Иванова'}
-                          </span>
-                        </p>
-                      </div>
-
-                      <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                        <Link
-                          href={`/students/${child.id}`}
-                          className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          Карточка ученика →
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentModalStudentId(child.id);
-                            setIsPaymentModalOpen(true);
-                          }}
-                          className="text-[10px] font-bold text-emerald-700 hover:underline cursor-pointer"
-                        >
-                          + Платёж
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Contact details list */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Phone className="h-4 w-4 text-blue-600" />
-                Контакты и каналы связи
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/70">
-                  <span className="text-slate-400 block text-[11px]">Телефон:</span>
-                  <a href={`tel:${parent.phone}`} className="font-bold text-slate-900 hover:text-blue-600 mt-0.5 block">
-                    {parent.phone}
-                  </a>
-                </div>
-                <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/70">
-                  <span className="text-slate-400 block text-[11px]">Telegram:</span>
-                  <span className="font-bold text-blue-600 mt-0.5 block">{parent.telegram || 'Не указан'}</span>
-                </div>
-                <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/70">
-                  <span className="text-slate-400 block text-[11px]">WhatsApp:</span>
-                  <span className="font-bold text-emerald-600 mt-0.5 block">{parent.whatsapp || 'Не указан'}</span>
-                </div>
-                <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/70">
-                  <span className="text-slate-400 block text-[11px]">Email:</span>
-                  <span className="font-bold text-slate-800 mt-0.5 block">{parent.email || 'Не указан'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Sidebar Column */}
-          <div className="space-y-6">
-            {/* Financial Summary Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
-                  Финансы семьи
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('finance')}
-                  className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
-                >
-                  Детали →
-                </button>
-              </div>
-
-              <div className="space-y-2.5">
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                  <span className="text-slate-500 text-[11px]">Баланс семьи (нетто):</span>
-                  <p className={cn(
-                    "text-lg font-extrabold mt-0.5",
-                    familyFinancialSummary.deposit > 0 && "text-emerald-700",
-                    familyFinancialSummary.debt > 0 && "text-rose-700",
-                    familyFinancialSummary.deposit === 0 && familyFinancialSummary.debt === 0 && "text-slate-900"
-                  )}>
-                    {familyFinancialSummary.formattedNet}
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{familyFinancialSummary.breakdownSummary}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/40">
-                    <span className="text-[10px] text-emerald-800 font-semibold">Депозит:</span>
-                    <p className="text-xs font-bold text-emerald-700 mt-0.5">{familyFinancialSummary.formattedDeposit}</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl border border-slate-100 bg-slate-50">
-                    <span className="text-[10px] text-slate-500 font-semibold">Всего оплат:</span>
-                    <p className="text-xs font-bold text-slate-900 mt-0.5">{familyTotalPaid.toLocaleString('ru-RU')} ₽</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentModalStudentId(undefined);
-                    setIsPaymentModalOpen(true);
-                  }}
-                  className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors text-center cursor-pointer"
-                >
-                  + Внести семейный платёж
-                </button>
-              </div>
-            </div>
-
-            {/* Tasks preview card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <CheckSquare className="h-3.5 w-3.5 text-purple-600" />
-                  Задачи ({familyTasks.filter((t) => t.status === 'open').length})
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('tasks')}
-                  className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
-                >
-                  Все задачи →
-                </button>
-              </div>
-
-              {familyTasks.length === 0 ? (
-                <p className="text-xs text-slate-400 py-2 text-center">Нет запланированных задач</p>
-              ) : (
-                <div className="space-y-2">
-                  {familyTasks.slice(0, 3).map((task) => (
-                    <div
-                      key={task.id}
-                      className={cn(
-                        "p-2.5 rounded-xl border text-xs flex items-start justify-between gap-2",
-                        task.status === 'done' ? "bg-slate-50 border-slate-100 text-slate-400" : "bg-white border-slate-200 shadow-2xs"
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <p className={cn("font-bold truncate", task.status === 'done' && "line-through text-slate-400")}>
-                          {task.title}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          Срок: {task.dueDateFormatted || task.dueDate}
-                        </p>
-                      </div>
-                      <span className={cn(
-                        "rounded px-1.5 py-0.5 text-[9px] font-bold shrink-0",
-                        task.priority === 'high' ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"
-                      )}>
-                        {task.priority === 'high' ? 'Срочно' : 'Обычный'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setIsCreateTaskModalOpen(true)}
-                className="w-full py-1.5 px-3 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-purple-700 font-semibold text-xs transition-colors text-center cursor-pointer"
-              >
-                + Поставить задачу
-              </button>
-            </div>
-
-            {/* Timeline teaser */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
-                  Последние контакты
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('timeline')}
-                  className="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer"
-                >
-                  История ({interactions.length}) →
-                </button>
-              </div>
-
-              {interactions.length === 0 ? (
-                <p className="text-xs text-slate-400 py-2 text-center">История контактов пуста</p>
-              ) : (
-                <div className="space-y-2">
-                  {sortTimelineChronologicalDesc(interactions).slice(0, 2).map((int) => (
-                    <div key={int.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50 text-xs space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-slate-400">
-                        <span className="font-semibold text-slate-700">{int.author}</span>
-                        <span>{int.occurredAt}</span>
-                      </div>
-                      <p className="text-slate-700 line-clamp-2">{int.content}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* TAB 2: ДЕТИ И ОБУЧЕНИЕ */}
       {activeTab === 'children' && (() => {
@@ -2627,18 +2135,14 @@ export default function ParentDetailsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Канал отправки уведомлений и отчётов</label>
-                  <select
-                    value={editForm.preferredChannel}
-                    onChange={(e) => setEditForm({ ...editForm, preferredChannel: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
-                  >
-                    <option value="Email">📧 Электронная почта (Email)</option>
-                    <option value="Telegram">✈️ Telegram</option>
-                    <option value="both">🔄 Почта и Telegram (Оба канала)</option>
-                    <option value="WhatsApp">💬 WhatsApp</option>
-                    <option value="Телефон">📞 Телефон</option>
-                  </select>
+                  <label className="block font-semibold text-slate-700 mb-1">Электронная почта (Email)</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                    placeholder="name@example.com"
+                  />
                 </div>
               </div>
 
@@ -2665,15 +2169,55 @@ export default function ParentDetailsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Электронная почта (Email)</label>
-                <input
-                  type="email"
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="name@example.com"
-                />
+              {/* Notification & Communication Channels Section */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 space-y-2.5">
+                <label className="block font-bold text-slate-800 text-xs">
+                  Каналы связи и уведомлений
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editForm.notifyWhatsapp !== false}
+                      onChange={(e) => setEditForm({ ...editForm, notifyWhatsapp: e.target.checked })}
+                      className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">WhatsApp</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editForm.notifyTelegram !== false}
+                      onChange={(e) => setEditForm({ ...editForm, notifyTelegram: e.target.checked })}
+                      className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">Telegram</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editForm.notifyEmail !== false}
+                      onChange={(e) => setEditForm({ ...editForm, notifyEmail: e.target.checked })}
+                      className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-slate-800">Email</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Основной канал для счетов и отчетов
+                  </label>
+                  <select
+                    value={editForm.preferredChannel || 'Telegram'}
+                    onChange={(e) => setEditForm({ ...editForm, preferredChannel: e.target.value })}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden"
+                  >
+                    <option value="Telegram">✈️ Telegram</option>
+                    <option value="WhatsApp">💬 WhatsApp</option>
+                    <option value="Email">📧 Email</option>
+                  </select>
+                </div>
               </div>
 
               <div>
