@@ -55,6 +55,35 @@ export default function SettingsPage() {
       }
     });
 
+    // Check query params for ?tab=courses
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tab') === 'courses') {
+        setActiveModal('courses');
+      }
+    }
+
+    // Load courses from Supabase/API
+    fetch('/api/courses')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
+          setCourses(
+            data.courses.map((c: any) => ({
+              id: c.id,
+              name: c.name,
+              ageGroup: c.ageGroup || '7-15 лет',
+              monthlyPrice: `${c.rubMonth || 7600} ₽`,
+              lessonDuration: c.lessonDuration || '60 мин',
+              maxStudents: c.maxStudents || 8,
+              status: c.isActive !== false ? 'active' : 'paused',
+              color: 'bg-indigo-600',
+            }))
+          );
+        }
+      })
+      .catch((err) => console.warn('Could not load /api/courses in settings:', err));
+
     const handleSync = () => {
       setSchoolProfile(getSchoolSettings());
       setCloudSynced(true);

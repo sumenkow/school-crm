@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, GraduationCap, Calendar, Users, MapPin, Check, Settings2 } from 'lucide-react';
 import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData, FullTeacherData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
+import { useRole } from '@/context/RoleContext';
 import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 import { generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
+import { CoursesSettingsModal, CourseSettingItem } from '@/components/settings/CoursesSettingsModal';
 
 interface EditGroupModalProps {
   group: FullGroupData | null;
@@ -15,7 +17,12 @@ interface EditGroupModalProps {
 }
 
 export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupModalProps) {
+  const { role, isOwner } = useRole();
+  const canManageCourses = isOwner || role === 'owner' || role === 'developer';
+
+  const [coursesList, setCoursesList] = useState<any[]>(INITIAL_COURSES);
   const [courseId, setCourseId] = useState(group?.courseId || 'c1');
+  const [isCoursesModalOpen, setIsCoursesModalOpen] = useState(false);
   const [name, setName] = useState(group?.name || '');
   const [teachersList, setTeachersList] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [teacherId, setTeacherId] = useState(group?.teacherId || 't1');
@@ -24,6 +31,26 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const [scheduleState, setScheduleState] = useState<ScheduleBuilderState | null>(null);
   const [room, setRoom] = useState(group?.room || 'Онлайн (Zoom)');
   const [status, setStatus] = useState<FullGroupData['status']>(group?.status || 'active');
+
+  const fetchCourses = useCallback(async () => {
+    try {
+      const res = await fetch('/api/courses');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
+          setCoursesList(data.courses);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load courses in EditGroupModal:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCourses();
+    }
+  }, [isOpen, fetchCourses]);
 
   useEffect(() => {
     if (group) {
@@ -105,7 +132,8 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
       <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-2.5">
@@ -127,19 +155,48 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Направление / Курс
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-700">
+                Направление / Курс
+              </label>
+              {canManageCourses && (
+                <button
+                  type="button"
+                  onClick={() => setIsCoursesModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                >
+                  <Settings2 className="h-3 w-3" />
+                  Настроить
+                </button>
+              )}
+            </div>
             <select
               value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '__manage_courses__') {
+                  if (canManageCourses) {
+                    setIsCoursesModalOpen(true);
+                  } else {
+                    alert('Добавление и настройка направлений доступна только владельцу школы.');
+                  }
+                  return;
+                }
+                setCourseId(val);
+              }}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {INITIAL_COURSES.map((c) => (
+              {coursesList.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name} {c.description ? `(${c.description})` : ''}
+                  {c.name} {c.subject ? `(${c.subject})` : c.description ? `(${c.description})` : ''}
                 </option>
               ))}
+              {canManageCourses && (
+                <>
+                  <option disabled value="">──────────</option>
+                  <option value="__manage_courses__">⚙ Настроить направления и тарифы...</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -245,5 +302,27 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
         </form>
       </div>
     </div>
+
+    {/* MODAL FOR MANAGING COURSES (Owner Only) */}
+    {isCoursesModalOpen && (
+      <CoursesSettingsModal
+        isOpen={isCoursesModalOpen}
+        onClose={() => setIsCoursesModalOpen(false)}
+        courses={coursesList.map((c) => ({
+          id: c.id,
+          name: c.name,
+          ageGroup: c.ageGroup || '7-15 лет',
+          monthlyPrice: c.monthlyPrice || `${c.rubMonth || 7600} ₽`,
+          lessonDuration: c.lessonDuration || '60 мин',
+          maxStudents: c.maxStudents || 8,
+          status: c.isActive !== false ? 'active' : 'paused',
+          color: 'bg-indigo-600',
+        }))}
+        onSave={() => {
+          fetchCourses();
+        }}
+      />
+    )}
+  </>
   );
 }

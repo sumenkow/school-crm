@@ -195,31 +195,46 @@ export function GroupScheduleBuilder({
         </div>
       </div>
 
-      {/* ШАГ 3: АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ В КАЛЕНДАРЬ */}
+      {/* ШАГ 3: ДАТА СТАРТА КУРСА И ГЕНЕРАЦИЯ В КАЛЕНДАРЬ */}
       <div className="rounded-xl border border-indigo-200 bg-white p-3.5 space-y-3 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+          <div>
+            <label className="text-[11px] font-bold text-slate-800 block mb-1">
+              Шаг 3: Дата старта курса *
+            </label>
             <input
-              type="checkbox"
-              checked={generateLessons}
-              onChange={(e) => setGenerateLessons(e.target.checked)}
-              className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 font-semibold focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
-            <span className="text-xs font-bold text-slate-900 flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
-              Шаг 3: Сгенерировать занятия в календаре
-            </span>
-          </label>
-          {generateLessons && (
-            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
-              ≈ {estimatedLessonCount} {estimatedLessonCount === 1 ? 'урок' : 'уроков'}
-            </span>
-          )}
+          </div>
+
+          <div className="flex items-center justify-between pb-1 sm:justify-end gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={generateLessons}
+                onChange={(e) => setGenerateLessons(e.target.checked)}
+                className="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              />
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                Сгенерировать в календарь
+              </span>
+            </label>
+            {generateLessons && (
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                ≈ {estimatedLessonCount} {estimatedLessonCount === 1 ? 'урок' : 'уроков'}
+              </span>
+            )}
+          </div>
         </div>
 
         {generateLessons && (
           <div className="space-y-2.5 pt-2 border-t border-slate-100 animate-in fade-in duration-150 text-xs">
-            <span className="text-[11px] font-semibold text-slate-600 block">Период планирования курса:</span>
+            <span className="text-[11px] font-semibold text-slate-600 block">Период планирования генерации:</span>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
@@ -275,29 +290,17 @@ export function GroupScheduleBuilder({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-              <div>
-                <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">Дата старта генерации</span>
+            {horizon === 'custom_date' && (
+              <div className="pt-1 max-w-xs">
+                <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">Дата окончания генерации</span>
                 <input
                   type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none"
                 />
               </div>
-
-              {horizon === 'custom_date' && (
-                <div>
-                  <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">Дата окончания</span>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-800 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
       </div>
