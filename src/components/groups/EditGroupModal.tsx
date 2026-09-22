@@ -308,16 +308,19 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       <CoursesSettingsModal
         isOpen={isCoursesModalOpen}
         onClose={() => setIsCoursesModalOpen(false)}
-        courses={coursesList.map((c) => ({
-          id: c.id,
-          name: c.name,
-          ageGroup: c.ageGroup || '7-15 лет',
-          monthlyPrice: c.monthlyPrice || `${c.rubMonth || 7600} ₽`,
-          lessonDuration: c.lessonDuration || '60 мин',
-          maxStudents: c.maxStudents || 8,
-          status: c.isActive !== false ? 'active' : 'paused',
-          color: 'bg-indigo-600',
-        }))}
+        courses={coursesList
+          .filter(Boolean)
+          .filter((c) => Boolean(c && c.id && c.name && c.name.trim()))
+          .map((c) => ({
+            id: c.id,
+            name: c.name,
+            ageGroup: c.ageGroup || '7-15 лет',
+            monthlyPrice: c.monthlyPrice || `${c.rubMonth || 7600} ₽`,
+            lessonDuration: c.lessonDuration || '60 мин',
+            maxStudents: c.maxStudents || 8,
+            status: c.isActive !== false ? 'active' : 'paused',
+            color: 'bg-indigo-600',
+          }))}
         onSave={() => {
           fetchCourses();
         }}

@@ -447,7 +447,7 @@ export default function SettingsPage() {
       <CoursesSettingsModal
         isOpen={activeModal === 'courses'}
         onClose={() => setActiveModal(null)}
-        courses={courses}
+        courses={courses.filter(Boolean).filter((c) => Boolean(c && c.name && c.name.trim()))}
         onSave={setCourses}
       />
 

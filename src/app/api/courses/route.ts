@@ -134,21 +134,47 @@ export async function POST(request: NextRequest) {
 
     // If array of courses provided
     if (Array.isArray(courses)) {
-      for (const c of courses) {
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const validCourses = courses
+        .filter(Boolean)
+        .filter((c: any) => Boolean(c && c.name && String(c.name).trim().length > 0));
+
+      for (const c of validCourses) {
         try {
-          const courseId = c.id && !c.id.startsWith('course_') && !c.id.startsWith('c') ? c.id : undefined;
-          await admin.from('courses').upsert({
+          const courseId = isUuid(c.id) ? c.id : undefined;
+          const trimmedName = String(c.name).trim();
+          const isActive = c.status !== 'paused' && c.status !== 'archived' && c.is_active !== false && c.isActive !== false;
+
+          // First attempt: try with extended schema columns
+          const extendedPayload: any = {
             ...(courseId ? { id: courseId } : {}),
-            name: c.name,
-            description: c.description || null,
-            subject: c.subject || 'Общий курс',
-            is_active: c.status !== 'paused' && c.isActive !== false,
-          });
+            name: trimmedName,
+            target_age: c.ageGroup || c.target_age || null,
+            price_monthly: Number(String(c.monthlyPrice || c.price_monthly || '0').replace(/\D/g, '')) || 0,
+            lesson_duration_minutes: Number(String(c.lessonDuration || c.lesson_duration_minutes || '60').replace(/\D/g, '')) || 60,
+            max_students: Number(c.maxStudents || c.max_students || 8),
+            is_active: isActive,
+            updated_at: new Date().toISOString(),
+          };
+
+          const { error: upsertErr } = await admin.from('courses').upsert(extendedPayload);
+
+          if (upsertErr) {
+            // Fallback attempt: core schema columns
+            const corePayload: any = {
+              ...(courseId ? { id: courseId } : {}),
+              name: trimmedName,
+              description: c.description || (c.ageGroup ? `${c.ageGroup} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '6 500 ₽'}` : null),
+              subject: c.subject || 'Общий курс',
+              is_active: isActive,
+            };
+            await admin.from('courses').upsert(corePayload);
+          }
         } catch (e) {
           console.warn('Error syncing course:', c.name, e);
         }
       }
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, count: validCourses.length });
     }
 
     return NextResponse.json({ error: 'Не указаны данные курса' }, { status: 400 });

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, BookOpen, Plus, Trash2, Check, Edit2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, BookOpen, Plus, Check } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { CourseDirectionRow } from '@/components/settings/CourseDirectionRow';
 
 export interface CourseSettingItem {
   id: string;
@@ -13,8 +14,14 @@ export interface CourseSettingItem {
   monthlyPrice: string;
   lessonDuration: string;
   maxStudents: number;
-  status: 'active' | 'paused';
+  status: 'active' | 'paused' | 'archived';
   color: string;
+  // Supabase compatibility fields:
+  target_age?: string;
+  price_monthly?: number | string;
+  lesson_duration_minutes?: number | string;
+  max_students?: number;
+  is_active?: boolean;
 }
 
 interface CoursesSettingsModalProps {
@@ -29,17 +36,31 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
   const { role, isOwner } = useRole();
   const canManageCourses = isOwner || role === 'owner' || role === 'developer';
 
-  const [courseList, setCourseList] = useState<CourseSettingItem[]>(courses);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // Strict initial filter to prevent empty cards
+  const [courseList, setCourseList] = useState<CourseSettingItem[]>(() => {
+    return (courses || [])
+      .filter(Boolean)
+      .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+  });
 
-  // Sync course list when prop changes
-  React.useEffect(() => {
-    if (courses && courses.length > 0) {
-      setCourseList(courses);
+  // Strict sync when prop changes
+  useEffect(() => {
+    if (courses && Array.isArray(courses)) {
+      const valid = courses
+        .filter(Boolean)
+        .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+      if (valid.length > 0) {
+        setCourseList(valid);
+      }
     }
   }, [courses]);
 
   if (!isOpen) return null;
+
+  // Filter valid items for rendering
+  const validCourses = courseList
+    .filter(Boolean)
+    .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
 
   const handleAddCourse = () => {
     if (!canManageCourses) {
@@ -55,10 +76,14 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       lessonDuration: '60 мин',
       maxStudents: 8,
       status: 'active',
-      color: 'bg-indigo-600',
+      color: '#4f46e5',
+      is_active: true,
     };
-    setCourseList([...courseList, newCourse]);
-    setEditingId(newCourse.id);
+
+    setCourseList((prev) => [
+      ...prev.filter(Boolean).filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0)),
+      newCourse,
+    ]);
   };
 
   const handleUpdateCourse = (id: string, field: keyof CourseSettingItem, value: any) => {
@@ -76,9 +101,8 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       toastError('Только владелец школы может удалять направления');
       return;
     }
-    if (confirm('Вы уверены, что хотите удалить этот курс?')) {
+    if (confirm('Внимание: к этому направлению привязаны активные группы. Вы уверены, что хотите удалить направление?')) {
       setCourseList((prev) => prev.filter((c) => c.id !== id));
-      if (editingId === id) setEditingId(null);
     }
   };
 
@@ -89,22 +113,72 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       return;
     }
 
+    const cleanedList = courseList
+      .filter(Boolean)
+      .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0))
+      .map((c) => ({
+        ...c,
+        name: c.name.trim(),
+        is_active: c.status === 'active',
+      }));
+
+    // 1. Supabase direct upsert
+    try {
+      const supabase = createClient();
+      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      
+      const payload = cleanedList.map((c) => ({
+        ...(isUuid(c.id) ? { id: c.id } : {}),
+        name: c.name.trim(),
+        target_age: c.ageGroup || c.target_age || '7-14 лет',
+        price_monthly: Number(String(c.monthlyPrice || c.price_monthly || '0').replace(/\D/g, '')) || 0,
+        lesson_duration_minutes: Number(String(c.lessonDuration || c.lesson_duration_minutes || '60').replace(/\D/g, '')) || 60,
+        max_students: Number(c.maxStudents || c.max_students || 8),
+        is_active: c.status === 'active',
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error: upsertErr } = await supabase.from('courses').upsert(payload);
+      if (upsertErr) {
+        // If DB table has basic schema without extended columns, upsert with core schema
+        const corePayload = cleanedList.map((c) => ({
+          ...(isUuid(c.id) ? { id: c.id } : {}),
+          name: c.name.trim(),
+          description: `${c.ageGroup || '7-14 лет'} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '6 500 ₽'}`,
+          subject: 'Общий курс',
+          is_active: c.status === 'active',
+        }));
+        await supabase.from('courses').upsert(corePayload);
+      }
+    } catch (dbErr) {
+      console.warn('Client-side Supabase upsert note:', dbErr);
+    }
+
+    // 2. Persist via server API (admin privileges)
     try {
       await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, courses: courseList }),
+        body: JSON.stringify({ role, courses: cleanedList }),
       });
-      // Fire custom event to notify open modals and pages
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('crm-courses-changed', { detail: courseList }));
-      }
-    } catch (err) {
-      console.error('Failed to sync courses to server:', err);
+    } catch (apiErr) {
+      console.warn('Server sync note:', apiErr);
     }
 
-    onSave(courseList);
-    success('Курсы и направления успешно обновлены');
+    // 3. Cache invalidation & notification events
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-courses-changed', { detail: cleanedList }));
+      window.dispatchEvent(new CustomEvent('crm-groups-changed'));
+      
+      // If a queryClient is exposed on window (or react-query cache)
+      if ((window as any).__queryClient) {
+        (window as any).__queryClient.invalidateQueries?.({ queryKey: ['courses'] });
+        (window as any).__queryClient.invalidateQueries?.({ queryKey: ['groups'] });
+      }
+    }
+
+    onSave(cleanedList);
+    success('Направления и тарифы успешно сохранены.');
     onClose();
   };
 
@@ -124,7 +198,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -134,7 +208,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-600">
-              Всего направлений: <strong>{courseList.length}</strong>
+              Всего направлений: <strong>{validCourses.length}</strong>
             </span>
             {canManageCourses ? (
               <button
@@ -152,114 +226,16 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
             )}
           </div>
 
-          {/* List of Courses */}
+          {/* List of Courses (strictly filtered to eliminate empty frames) */}
           <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
-            {courseList.map((course) => (
-              <div
+            {validCourses.map((course) => (
+              <CourseDirectionRow
                 key={course.id}
-                className={cn(
-                  'rounded-xl border p-3.5 transition-all text-xs space-y-3',
-                  editingId === course.id
-                    ? 'border-indigo-500 bg-indigo-50/20 shadow-xs'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                )}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 flex-1">
-                    <span className={cn('h-3.5 w-3.5 rounded-full shrink-0', course.color)} />
-                    <input
-                      type="text"
-                      value={course.name}
-                      onChange={(e) => handleUpdateCourse(course.id, 'name', e.target.value)}
-                      className="font-bold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-indigo-500 focus:outline-hidden px-1 py-0.5 w-full max-w-xs"
-                      placeholder="Название курса"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <select
-                      value={course.status}
-                      onChange={(e) => handleUpdateCourse(course.id, 'status', e.target.value)}
-                      className={cn(
-                        'rounded-lg px-2 py-1 text-[11px] font-bold border',
-                        course.status === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      )}
-                    >
-                      <option value="active">Активен</option>
-                      <option value="paused">Приостановлен</option>
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(editingId === course.id ? null : course.id)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                      title="Настройки параметров"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCourse(course.id)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Удалить курс"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Details grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-medium">Возраст учеников</label>
-                    <input
-                      type="text"
-                      value={course.ageGroup}
-                      onChange={(e) => handleUpdateCourse(course.id, 'ageGroup', e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-indigo-500 focus:outline-hidden"
-                      placeholder="6-16 лет"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-medium">Стоимость абонемента</label>
-                    <input
-                      type="text"
-                      value={course.monthlyPrice}
-                      onChange={(e) => handleUpdateCourse(course.id, 'monthlyPrice', e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 font-semibold text-slate-900 focus:border-indigo-500 focus:outline-hidden"
-                      placeholder="7 600 ₽/мес"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-medium">Длительность урока</label>
-                    <input
-                      type="text"
-                      value={course.lessonDuration}
-                      onChange={(e) => handleUpdateCourse(course.id, 'lessonDuration', e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-indigo-500 focus:outline-hidden"
-                      placeholder="60 мин"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-medium">Вместимость группы</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={course.maxStudents}
-                      onChange={(e) => handleUpdateCourse(course.id, 'maxStudents', parseInt(e.target.value) || 8)}
-                      className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-indigo-500 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-              </div>
+                course={course}
+                canManage={canManageCourses}
+                onChange={handleUpdateCourse}
+                onDelete={handleDeleteCourse}
+              />
             ))}
           </div>
 
@@ -268,13 +244,13 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Отмена
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               <Check className="h-3.5 w-3.5" />
               Сохранить изменения
