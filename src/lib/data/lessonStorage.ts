@@ -202,15 +202,28 @@ export function recordLessonAttendanceBatch(params: {
     // Filter out existing history entry for this lesson date if any
     const filteredHistory = existingHistory.filter((h) => h.date !== dateFormatted || h.groupName !== currentLesson.groupName);
 
-    const historyStatus: 'present' | 'absent' | 'rescheduled' | 'cancelled' =
-      rec.status === 'present' ? 'present' : rec.status === 'rescheduled' ? 'rescheduled' : 'absent';
+    const historyStatus: 'present' | 'absent' | 'rescheduled' | 'cancelled' | 'sick' | 'excused' =
+      rec.status === 'present'
+        ? 'present'
+        : rec.status === 'rescheduled'
+        ? 'rescheduled'
+        : rec.status === 'excused'
+        ? 'excused'
+        : 'absent';
+
+    const isPresent = historyStatus === 'present';
+    const cleanNote = rec.note?.trim() || undefined;
 
     const newHistoryItem = {
       date: dateFormatted,
       groupName: currentLesson.groupName,
       status: historyStatus,
       topic: params.topic || currentLesson.topic,
-      notes: rec.note,
+      notes: cleanNote,
+      reason: !isPresent ? cleanNote : undefined,
+      feedback: isPresent ? cleanNote : undefined,
+      teacherName: params.teacherName || currentLesson.teacherName,
+      time: currentLesson.endTime || currentLesson.startTime,
     };
 
     const newHistory = [newHistoryItem, ...filteredHistory];

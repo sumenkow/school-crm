@@ -55,8 +55,12 @@ export interface FullStudentData extends Student {
       date: string;
       groupName: string;
       topic: string;
-      status: 'present' | 'absent' | 'rescheduled' | 'cancelled';
+      status: 'present' | 'absent' | 'rescheduled' | 'cancelled' | 'sick' | 'excused';
       notes?: string;
+      reason?: string;
+      feedback?: string;
+      teacherName?: string;
+      time?: string;
     }>;
   };
   finance: {

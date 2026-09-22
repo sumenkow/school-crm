@@ -158,7 +158,7 @@ export function StudentProfileDesktop({
           list.push({
             date: item.date,
             status: s as 'absent' | 'excused' | 'sick',
-            notes: item.notes,
+            notes: item.reason || item.notes,
           });
         }
       }

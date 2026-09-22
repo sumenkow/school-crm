@@ -2209,6 +2209,43 @@ export default function StudentDetailsPage() {
                     );
                   });
 
+                  // Resolve group teacher name and lesson timing for feedback author & date
+                  const groupMatch = student.groups.find((g) => g.name.toLowerCase() === (item.groupName || '').toLowerCase());
+                  const teacherNameRaw = item.teacherName || groupMatch?.teacherName || student.groups[0]?.teacherName || 'Мария Иванова';
+                  const teacherAuthor = teacherNameRaw.includes('(') ? teacherNameRaw : `${teacherNameRaw} (Преподаватель)`;
+                  const lessonTime = item.time || (groupMatch?.schedule?.includes('•') ? groupMatch.schedule.split('•')[1]?.trim()?.split('–')[1]?.trim() : '20:15');
+                  const lessonDateTimeFormatted = `${item.date}, ${lessonTime}`;
+
+                  // Collect feedbacks to render
+                  const feedbacksToRender: Array<{ id: string; author: string; date: string; content: string }> = [];
+
+                  matchingComments.forEach((tc) => {
+                    feedbacksToRender.push({
+                      id: tc.id,
+                      author: tc.author.includes('(') ? tc.author : `${tc.author} (Преподаватель)`,
+                      date: tc.date,
+                      content: tc.content,
+                    });
+                  });
+
+                  // If direct feedback exists (or notes for present status), add if not duplicate
+                  const directFeedbackText = (item.feedback || (item.status === 'present' ? item.notes : ''))?.trim();
+                  if (directFeedbackText) {
+                    const isDup = feedbacksToRender.some(
+                      (fb) => fb.content.toLowerCase().trim() === directFeedbackText.toLowerCase()
+                    );
+                    if (!isDup) {
+                      feedbacksToRender.push({
+                        id: `fb_${idx}_direct`,
+                        author: teacherAuthor,
+                        date: lessonDateTimeFormatted,
+                        content: directFeedbackText,
+                      });
+                    }
+                  }
+
+                  const isAbsence = item.status === 'absent' || item.status === 'sick' || item.status === 'excused';
+
                   return (
                     <div key={idx} className="p-4 space-y-2.5 hover:bg-slate-50/50 transition-colors">
                       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -2219,7 +2256,21 @@ export default function StudentDetailsPage() {
                             <span className="font-semibold text-blue-600">{item.groupName}</span>
                           </div>
                           <p className="text-slate-600">{item.topic || 'Занятие по расписанию'}</p>
-                          {item.notes && <p className="text-[11px] text-amber-600">Причина: {item.notes}</p>}
+
+                          {/* Причина отсутствия — выводится ТОЛЬКО при пропусках */}
+                          {isAbsence && (
+                            <div className="pt-1">
+                              {item.status === 'sick' || item.status === 'excused' ? (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                                  🏥 Причина: {item.reason || item.notes || 'Болезнь (справка)'}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+                                  ⚠ Причина: {item.reason || item.notes || 'Без предупреждения'}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <span
@@ -2244,19 +2295,20 @@ export default function StudentDetailsPage() {
                         </span>
                       </div>
 
-                      {/* NESTED TEACHER COMMENTS (if any) */}
-                      {matchingComments.length > 0 && (
-                        <div className="mt-2 rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-xs space-y-2">
-                          <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block">
-                            💬 Отзыв преподавателя к этому уроку:
-                          </span>
-                          {matchingComments.map((comment) => (
-                            <div key={comment.id} className="space-y-1 border-t border-purple-100/60 pt-1.5 first:border-0 first:pt-0">
-                              <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-bold text-slate-900">{comment.author}</span>
-                                <span className="text-slate-400">{comment.date}</span>
+                      {/* ЭТАЛОННЫЙ БЛОК: ОТЗЫВ ПРЕПОДАВАТЕЛЯ */}
+                      {feedbacksToRender.length > 0 && (
+                        <div className="mt-3 p-4 rounded-2xl border border-purple-100 bg-purple-50/20 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-purple-700 uppercase">
+                            <MessageSquare className="h-3.5 w-3.5 text-purple-600" />
+                            <span>ОТЗЫВ ПРЕПОДАВАТЕЛЯ К ЭТОМУ УРОКУ:</span>
+                          </div>
+                          {feedbacksToRender.map((fb) => (
+                            <div key={fb.id} className="space-y-1 border-t border-purple-100/60 pt-2 first:border-0 first:pt-0">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-sm font-semibold text-slate-800">{fb.author}</span>
+                                <span className="text-xs text-slate-400 font-normal">{fb.date}</span>
                               </div>
-                              <p className="text-slate-700 italic">«{comment.content}»</p>
+                              <p className="text-sm text-slate-700 italic leading-relaxed">«{fb.content}»</p>
                             </div>
                           ))}
                         </div>
