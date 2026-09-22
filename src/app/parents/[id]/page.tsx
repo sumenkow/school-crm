@@ -1516,10 +1516,14 @@ export default function ParentDetailsPage() {
 
                       <div className="mt-2.5 text-[11px] text-slate-600 space-y-0.5 border-t border-slate-100 pt-2">
                         <p className="truncate">
-                          Группа: <strong className="text-slate-800">{child.group || child.groups?.[0]?.name}</strong>
+                          {(child.groups?.length || 0) > 1 ? 'Группы: ' : 'Группа: '}
+                          <strong className="text-slate-800">{child.group || child.groups?.[0]?.name}</strong>
                         </p>
                         <p className="truncate">
-                          Преподаватель: <span className="text-slate-700">{child.teacher || child.groups?.[0]?.teacherName}</span>
+                          {(child.groups?.length || 0) > 1 ? 'Преподаватели: ' : 'Преподаватель: '}
+                          <span className="text-slate-700">
+                            {Array.from(new Set((child.groups || []).map((g: any) => g.teacherName).filter(Boolean))).join(', ') || child.teacher || 'Мария Иванова'}
+                          </span>
                         </p>
                       </div>
 

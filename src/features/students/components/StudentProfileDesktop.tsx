@@ -417,65 +417,96 @@ export function StudentProfileDesktop({
       {/* LEVEL 2: Metrics Bar */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-4 gap-4 divide-x divide-slate-100">
         {/* Block 1: КУРС И ГРУППА */}
+        {/* Block 1: КУРС И ГРУППА / КУРСЫ */}
         <div className="space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            КУРС И ГРУППА
+            {student.groups.length > 1 ? `КУРСЫ И ГРУППЫ (${student.groups.length})` : 'КУРС И ГРУППА'}
           </span>
           {student.groups.length > 0 ? (() => {
-            const firstGrp = student.groups[0];
             const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
-            const targetGroup = storedGroups.find(g => g.id === firstGrp.id || g.name === firstGrp.name || g.courseName === firstGrp.courseName) || INITIAL_GROUPS.find(g => g.name === firstGrp.name) || INITIAL_GROUPS[0];
-            const groupHref = `/groups/${targetGroup.id}`;
-
-            const teacherName = firstGrp.teacherName || (student as any).teacherName || 'Мария Иванова';
-            const rawTId = (student as any).teacherId || (firstGrp as any).teacherId;
-            const targetTeacher = INITIAL_TEACHERS.find(
-              (t) =>
-                (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
-                t.name === teacherName ||
-                t.name.includes(teacherName)
-            ) || INITIAL_TEACHERS[0];
-            const teacherHref = `/teachers/${targetTeacher.id}`;
-
             const lessonHref = upcomingLesson?.id ? `/calendar/lessons/${upcomingLesson.id}` : '/calendar';
 
-            return (
-              <div className="space-y-0.5">
-                {/* 1st Line: Group Name */}
-                <Link
-                  href={groupHref}
-                  className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-                >
-                  {firstGrp.name}
-                  {student.groups.length > 1 && (
-                    <span className="ml-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded">
-                      +{student.groups.length - 1}
+            if (student.groups.length === 1) {
+              const firstGrp = student.groups[0];
+              const targetGroup = storedGroups.find(g => g.id === firstGrp.id || g.name === firstGrp.name || g.courseName === firstGrp.courseName) || INITIAL_GROUPS.find(g => g.name === firstGrp.name) || INITIAL_GROUPS[0];
+              const groupHref = `/groups/${targetGroup.id}`;
+
+              const teacherName = firstGrp.teacherName || (student as any).teacherName || 'Мария Иванова';
+              const rawTId = (student as any).teacherId || (firstGrp as any).teacherId;
+              const targetTeacher = INITIAL_TEACHERS.find(
+                (t) =>
+                  (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
+                  t.name === teacherName ||
+                  t.name.includes(teacherName)
+              ) || INITIAL_TEACHERS[0];
+              const teacherHref = `/teachers/${targetTeacher.id}`;
+
+              return (
+                <div className="space-y-0.5">
+                  <Link
+                    href={groupHref}
+                    className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
+                  >
+                    {firstGrp.name}
+                  </Link>
+                  {upcomingLesson && upcomingLesson.date ? (
+                    <Link
+                      href={lessonHref}
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
+                      title="Перейти к карточке ближайшего урока"
+                    >
+                      Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
+                    </Link>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 block truncate">
+                      Следующее занятие: —
                     </span>
                   )}
-                </Link>
-
-                {/* 2nd Line: Next Lesson info without arrow */}
-                {upcomingLesson && upcomingLesson.date ? (
                   <Link
-                    href={lessonHref}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
-                    title="Перейти к карточке ближайшего урока"
+                    href={teacherHref}
+                    className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
                   >
-                    Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
+                    Преподаватель: {teacherName}
                   </Link>
-                ) : (
-                  <span className="text-[11px] text-slate-400 block truncate">
-                    Следующее занятие: —
-                  </span>
-                )}
+                </div>
+              );
+            }
 
-                {/* 3rd Line: Teacher Name */}
-                <Link
-                  href={teacherHref}
-                  className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
-                >
-                  Преподаватель: {teacherName}
-                </Link>
+            // Multiple groups (2 or more courses)
+            return (
+              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-1">
+                {student.groups.map((grp, gIdx) => {
+                  const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
+                  const teacherName = grp.teacherName || 'Мария Иванова';
+                  const targetTeacher = INITIAL_TEACHERS.find(
+                    (t) => t.name === teacherName || t.name.includes(teacherName)
+                  ) || INITIAL_TEACHERS[0];
+
+                  return (
+                    <div key={grp.id || gIdx} className="space-y-0.5 border-b border-slate-100/80 pb-1 last:border-0 last:pb-0">
+                      <Link
+                        href={`/groups/${targetGroup.id}`}
+                        className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline truncate block"
+                        title={grp.name}
+                      >
+                        {grp.name}
+                      </Link>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <Link
+                          href={`/teachers/${targetTeacher.id}`}
+                          className="hover:text-blue-600 hover:underline truncate"
+                        >
+                          {teacherName}
+                        </Link>
+                        {grp.schedule && (
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">
+                            {grp.schedule.split('•')[0]?.trim() || grp.schedule}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })() : (

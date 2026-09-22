@@ -1,6 +1,6 @@
 'use client';
 
-import { FullStudentData, INITIAL_STUDENTS, TimelineInteraction } from './mockData';
+import { FullStudentData, INITIAL_STUDENTS, INITIAL_GROUPS, TimelineInteraction } from './mockData';
 import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timelineStorage';
 import { savePaymentToStorage } from './paymentStorage';
 import { syncStudentNameCascade, syncParentNameCascade } from './nameCascadeSync';
@@ -37,10 +37,64 @@ export function getStoredStudents(): FullStudentData[] {
       result.unshift(extra);
     }
 
-    return result;
+    // Hydrate all student groups to ensure bidirectional sync with groups
+    return result.map((st) => hydrateStudentGroups(st));
   } catch (err) {
     console.error('Failed to parse stored students:', err);
-    return INITIAL_STUDENTS;
+    return INITIAL_STUDENTS.map((st) => hydrateStudentGroups(st));
+  }
+}
+
+/**
+ * Ensures student.groups includes all groups where student is listed as enrolled.
+ */
+export function hydrateStudentGroups(student: FullStudentData): FullStudentData {
+  if (typeof window === 'undefined') return student;
+  try {
+    let allGroups: any[] = [];
+    const rawGroups = localStorage.getItem('crm_groups_master_v2');
+    if (rawGroups) {
+      try {
+        allGroups = JSON.parse(rawGroups);
+      } catch (e) {}
+    }
+    if (!Array.isArray(allGroups) || allGroups.length === 0) {
+      allGroups = INITIAL_GROUPS;
+    }
+
+    const currentGroups = student.groups ? [...student.groups] : [];
+    const currentGroupIds = new Set(currentGroups.map((g) => String(g.id || g.name)));
+
+    const studentFullName = `${student.firstName} ${student.lastName}`.toLowerCase().trim();
+
+    for (const grp of allGroups) {
+      if (!grp || !grp.id) continue;
+      const isEnrolled = (grp.students || []).some(
+        (s: any) =>
+          String(s.id) === String(student.id) ||
+          (s.name && s.name.toLowerCase().trim() === studentFullName)
+      );
+
+      if (isEnrolled && !currentGroupIds.has(String(grp.id))) {
+        currentGroups.push({
+          id: grp.id,
+          name: grp.name,
+          courseName: grp.courseName || grp.name,
+          teacherName: grp.teacherName || 'Мария Иванова',
+          schedule: grp.schedule || 'Пн, Чт • 18:45–20:15',
+          status: (grp.status as any) || 'active',
+          joinedAt: '01.09.2026',
+        });
+        currentGroupIds.add(String(grp.id));
+      }
+    }
+
+    return {
+      ...student,
+      groups: currentGroups,
+    };
+  } catch (err) {
+    return student;
   }
 }
 

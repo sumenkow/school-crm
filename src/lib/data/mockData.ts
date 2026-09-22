@@ -140,10 +140,28 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '1',
-        name: 'English B1 Teens',
+        name: 'English B1 Teens (Пн/Чт 18:45)',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
         schedule: 'Пн, Чт • 18:45–20:15',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+      {
+        id: '5',
+        name: 'Английский: Практическая грамматика (Ср 18:00)',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Среда • 18:00–19:30',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+      {
+        id: '6',
+        name: 'Английский: Разговорный клуб (Сб 12:00)',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Суббота • 12:00–13:30',
         status: 'active',
         joinedAt: '01.09.2026',
       },
@@ -289,10 +307,19 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '3',
-        name: 'Robotics Junior',
+        name: 'Robotics Junior (Ср/Сб 15:00)',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
         schedule: 'Ср 15:00, Сб 11:00',
+        status: 'active',
+        joinedAt: '01.09.2026',
+      },
+      {
+        id: '5',
+        name: 'Английский: Практическая грамматика (Ср 18:00)',
+        courseName: 'Английский язык',
+        teacherName: 'Мария Иванова',
+        schedule: 'Среда • 18:00–19:30',
         status: 'active',
         joinedAt: '01.09.2026',
       },
@@ -376,7 +403,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '3',
-        name: 'Robotics Junior',
+        name: 'Robotics Junior (Ср/Сб 15:00)',
         courseName: 'Робототехника',
         teacherName: 'Денис Смирнов',
         schedule: 'Ср 15:00, Сб 11:00',
@@ -385,10 +412,10 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
       },
       {
         id: '4',
-        name: 'Kids Math Safari',
+        name: 'Kids Math Safari (Чт 16:00)',
         courseName: 'Математика',
         teacherName: 'Ольга Соколова',
-        schedule: 'Ср 16:30, Сб 12:00',
+        schedule: 'Четверг • 16:00–17:00',
         status: 'active',
         joinedAt: '01.09.2026',
       },
@@ -922,6 +949,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
     notes: 'Идет активный набор. Свободно 4 места.',
     students: [
       { id: '2', name: 'Мария Кузнецова', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 234-56-78', joinedAt: '01.09.2026' },
+      { id: 's18', name: 'Артём Кузнецов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 234-56-78', joinedAt: '01.09.2026' },
       { id: 's15', name: 'Арсений Павлов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 888-22-11', joinedAt: '01.09.2026' },
       { id: 's16', name: 'Глеб Воронов', status: 'active', attendanceRate: '100%', parentPhone: '+7 (999) 999-33-22', joinedAt: '01.09.2026' },
       { id: 's17', name: 'Кирилл Медведев', status: 'trial', attendanceRate: '100%', parentPhone: '+7 (999) 000-44-33', joinedAt: '02.09.2026' },

@@ -486,30 +486,48 @@ export function ParentProfileDesktop({
         {/* Column 2: КУРСЫ */}
         <div className="pl-4 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            КУРСЫ
+            {parent.children.some((c) => (c.groups?.length || 0) > 1) || parent.children.length > 1 ? 'КУРСЫ И ГРУППЫ' : 'КУРС И ГРУППА'}
           </span>
           {parent.children.length > 0 ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {parent.children.map((c) => {
-                const groupName = (c.groups?.[0]?.name || c.group || 'English B1 Teens').split(' (')[0];
-                const groupObj = storedGroups.find((g) => g.name === groupName || g.id === c.groups?.[0]?.id) || INITIAL_GROUPS[0];
-                const teacherName = c.groups?.[0]?.teacherName || c.teacher || 'Мария Иванова';
-                const targetTeacher = INITIAL_TEACHERS.find((t) => t.name === teacherName) || INITIAL_TEACHERS[0];
+                const childGroups = (c.groups && c.groups.length > 0)
+                  ? c.groups
+                  : [{ id: '1', name: c.group || 'English B1 Teens', teacherName: c.teacher || 'Мария Иванова' }];
 
                 return (
-                  <div key={c.id} className="min-w-0 space-y-0.5">
-                    <Link
-                      href={`/groups/${groupObj.id}`}
-                      className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-                    >
-                      {groupName}
-                    </Link>
-                    <Link
-                      href={`/teachers/${targetTeacher.id}`}
-                      className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
-                    >
-                      Преподаватель: {teacherName}
-                    </Link>
+                  <div key={c.id} className="space-y-1.5">
+                    {childGroups.map((grp: any, gIdx: number) => {
+                      const rawName = grp.name || grp.courseName || 'English B1 Teens';
+                      const groupName = rawName.split(' (')[0];
+                      const groupObj = storedGroups.find((g) => g.id === grp.id || g.name === grp.name || g.name === groupName) || { id: grp.id || '1', name: groupName };
+                      const teacherName = grp.teacherName || c.teacher || 'Мария Иванова';
+                      const targetTeacher = INITIAL_TEACHERS.find((t) => t.name === teacherName || t.id === grp.teacherId) || INITIAL_TEACHERS[0];
+
+                      return (
+                        <div key={grp.id || gIdx} className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/groups/${groupObj.id}`}
+                              className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
+                            >
+                              {groupName}
+                            </Link>
+                            {parent.children.length > 1 && (
+                              <span className="text-[10px] text-slate-400 shrink-0 font-normal">
+                                ({c.name.split(' ')[0]})
+                              </span>
+                            )}
+                          </div>
+                          <Link
+                            href={`/teachers/${targetTeacher.id}`}
+                            className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
+                          >
+                            Преподаватель: {teacherName}
+                          </Link>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
