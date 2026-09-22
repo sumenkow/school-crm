@@ -46,7 +46,8 @@ export function getStoredStudents(): FullStudentData[] {
 }
 
 /**
- * Ensures student.groups includes all groups where student is listed as enrolled.
+ * Ensures student.groups includes all groups where student is listed as enrolled,
+ * and strictly prevents duplicate enrollments (by group ID and normalized group name).
  */
 export function hydrateStudentGroups(student: FullStudentData): FullStudentData {
   if (typeof window === 'undefined') return student;
@@ -62,8 +63,30 @@ export function hydrateStudentGroups(student: FullStudentData): FullStudentData 
       allGroups = INITIAL_GROUPS;
     }
 
-    const currentGroups = student.groups ? [...student.groups] : [];
-    const currentGroupIds = new Set(currentGroups.map((g) => String(g.id || g.name)));
+    const normalizeGroupName = (n?: string) => (n || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+
+    // Clean and deduplicate existing groups
+    const uniqueGroups: any[] = [];
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+
+    for (const g of student.groups || []) {
+      if (!g) continue;
+      const cleanName = (g.name || g.courseName || '').replace(/\s*\([^)]*\)/g, '').trim();
+      const normName = normalizeGroupName(cleanName);
+      const gid = String(g.id || '').trim();
+
+      if (gid && seenIds.has(gid)) continue;
+      if (normName && seenNames.has(normName)) continue;
+
+      if (gid) seenIds.add(gid);
+      if (normName) seenNames.add(normName);
+
+      uniqueGroups.push({
+        ...g,
+        name: cleanName,
+      });
+    }
 
     const studentFullName = `${student.firstName} ${student.lastName}`.toLowerCase().trim();
 
@@ -75,23 +98,30 @@ export function hydrateStudentGroups(student: FullStudentData): FullStudentData 
           (s.name && s.name.toLowerCase().trim() === studentFullName)
       );
 
-      if (isEnrolled && !currentGroupIds.has(String(grp.id))) {
-        currentGroups.push({
-          id: grp.id,
-          name: grp.name,
-          courseName: grp.courseName || grp.name,
-          teacherName: grp.teacherName || 'Мария Иванова',
-          schedule: grp.schedule || 'Пн, Чт • 18:45–20:15',
-          status: (grp.status as any) || 'active',
-          joinedAt: '01.09.2026',
-        });
-        currentGroupIds.add(String(grp.id));
+      const cleanGrpName = (grp.name || grp.courseName || '').replace(/\s*\([^)]*\)/g, '').trim();
+      const normGrpName = normalizeGroupName(cleanGrpName);
+      const grpId = String(grp.id).trim();
+
+      if (isEnrolled) {
+        if (!seenIds.has(grpId) && !seenNames.has(normGrpName)) {
+          uniqueGroups.push({
+            id: grp.id,
+            name: cleanGrpName,
+            courseName: grp.courseName || cleanGrpName,
+            teacherName: grp.teacherName || 'Мария Иванова',
+            schedule: grp.schedule || 'Пн, Чт • 18:45–20:15',
+            status: (grp.status as any) || 'active',
+            joinedAt: '01.09.2026',
+          });
+          seenIds.add(grpId);
+          if (normGrpName) seenNames.add(normGrpName);
+        }
       }
     }
 
     return {
       ...student,
-      groups: currentGroups,
+      groups: uniqueGroups,
     };
   } catch (err) {
     return student;

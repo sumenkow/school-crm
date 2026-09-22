@@ -441,13 +441,15 @@ export function StudentProfileDesktop({
               ) || INITIAL_TEACHERS[0];
               const teacherHref = `/teachers/${targetTeacher.id}`;
 
+              const cleanFirstGrpName = (firstGrp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || firstGrp.name;
+
               return (
                 <div className="space-y-0.5">
                   <Link
                     href={groupHref}
                     className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
                   >
-                    {firstGrp.name}
+                    {cleanFirstGrpName}
                   </Link>
                   {upcomingLesson && upcomingLesson.date ? (
                     <Link
@@ -476,7 +478,8 @@ export function StudentProfileDesktop({
             return (
               <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-1">
                 {student.groups.map((grp, gIdx) => {
-                  const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
+                  const cleanGrpName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
+                  const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === cleanGrpName || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
                   const teacherName = grp.teacherName || 'Мария Иванова';
                   const targetTeacher = INITIAL_TEACHERS.find(
                     (t) => t.name === teacherName || t.name.includes(teacherName)
@@ -487,9 +490,9 @@ export function StudentProfileDesktop({
                       <Link
                         href={`/groups/${targetGroup.id}`}
                         className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline truncate block"
-                        title={grp.name}
+                        title={cleanGrpName}
                       >
-                        {grp.name}
+                        {cleanGrpName}
                       </Link>
                       <div className="flex items-center justify-between text-[11px] text-slate-500">
                         <Link

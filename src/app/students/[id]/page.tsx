@@ -5,13 +5,13 @@ import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
-import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, INITIAL_LESSONS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
-import { excludeStudentFromGroup, enrollStudentToGroup } from '@/lib/data/groupStorage';
+import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import {
@@ -584,13 +584,23 @@ export default function StudentDetailsPage() {
   // Enroll in group modal state
   const [isEnrollGroupModalOpen, setIsEnrollGroupModalOpen] = useState(false);
   const [selectedGroupIdToEnroll, setSelectedGroupIdToEnroll] = useState('');
+  const [groupToExclude, setGroupToExclude] = useState<{ id: string; name: string } | null>(null);
 
   const handleEnrollGroup = (groupId: string) => {
     if (!groupId) return;
-    const targetGroup = INITIAL_GROUPS.find((g) => g.id === groupId);
+    const storedGroupsList = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+    const targetGroup = storedGroupsList.find((g) => g.id === groupId) || INITIAL_GROUPS.find((g) => g.id === groupId);
     if (!targetGroup) return;
 
-    if (student.groups.some((g) => g.id === targetGroup.id || g.name === targetGroup.name)) {
+    const normTarget = (targetGroup.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+    if (
+      student.groups.some(
+        (g) =>
+          g.id === targetGroup.id ||
+          g.name === targetGroup.name ||
+          (g.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase() === normTarget
+      )
+    ) {
       toast.error('Ученик уже зачислен в эту группу');
       return;
     }
@@ -604,7 +614,7 @@ export default function StudentDetailsPage() {
     if (updatedStudent) {
       setStudent(updatedStudent);
     }
-    toast.success(`Ученик успешно зачислен в группу «${targetGroup.name}»!`);
+    toast.success(`Ученик успешно зачислен в группу «${targetGroup.name.replace(/\s*\([^)]*\)/g, '').trim()}»!`);
     setIsEnrollGroupModalOpen(false);
     setSelectedGroupIdToEnroll('');
   };
@@ -1979,7 +1989,7 @@ export default function StudentDetailsPage() {
                 <button
                   type="button"
                   onClick={() => setIsEnrollGroupModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Зачислить в группу
@@ -1987,68 +1997,159 @@ export default function StudentDetailsPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {student.groups.map((grp) => (
-                  <div key={grp.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 flex flex-col justify-between">
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">{grp.courseName}</span>
-                          <h4 className="text-base font-bold text-slate-900 mt-0.5">
-                            <Link href={`/groups/${grp.id}`} className="hover:text-blue-600 hover:underline transition-colors">
-                              {grp.name}
-                            </Link>
-                          </h4>
-                        </div>
-                        <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                          Активна
-                        </span>
-                      </div>
+                {student.groups.map((grp) => {
+                  const cleanGroupName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
+                  const cleanGroupLower = cleanGroupName.toLowerCase();
+                  const grpIdStr = String(grp.id || '').trim().toLowerCase();
+                  const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+                  const targetGroup =
+                    storedGroups.find(
+                      (g) =>
+                        g.id === grp.id ||
+                        g.name === cleanGroupName ||
+                        g.name === grp.name ||
+                        (g.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase() === cleanGroupLower
+                    ) || { id: grp.id || '1', name: cleanGroupName };
 
-                      <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Преподаватель:</span>
-                          {(() => {
-                            const rawTId = (grp as any).teacherId;
-                            const foundT = INITIAL_TEACHERS.find(
-                              (t) =>
-                                (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
-                                t.name === grp.teacherName
-                            ) || INITIAL_TEACHERS[0];
-                            return (
+                  const allLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+                  const groupLessons = allLessons.filter((l) => {
+                    const lGId = String(l.groupId || '').trim().toLowerCase();
+                    const lGName = (l.groupName || l.courseName || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+                    if (grpIdStr && lGId === grpIdStr) return true;
+                    if (cleanGroupLower && (lGName === cleanGroupLower || lGName.includes(cleanGroupLower) || cleanGroupLower.includes(lGName))) return true;
+                    return false;
+                  });
+
+                  const nowMs = Date.now();
+                  const upcomingLesson = groupLessons
+                    .filter((l) => {
+                      if (l.status === 'cancelled' || l.status === 'completed') return false;
+                      let isoDate = l.date;
+                      if (l.date && l.date.includes('.')) {
+                        const parts = l.date.split('.');
+                        if (parts.length === 3) isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                      }
+                      const time = l.startTime || '00:00';
+                      const ms = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+                      return !isNaN(ms) ? ms >= nowMs - 2 * 60 * 60 * 1000 : true;
+                    })
+                    .sort((a, b) => {
+                      const parse = (l: any) => {
+                        let iso = l.date;
+                        if (l.date && l.date.includes('.')) {
+                          const parts = l.date.split('.');
+                          if (parts.length === 3) iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        }
+                        return new Date(`${iso}T${l.startTime || '00:00'}`).getTime() || 0;
+                      };
+                      return parse(a) - parse(b);
+                    })[0] || null;
+
+                  const nextLessonText = upcomingLesson
+                    ? `${upcomingLesson.dateFormatted || upcomingLesson.date}${upcomingLesson.startTime ? ` · ${upcomingLesson.startTime}` : ''}`
+                    : (grp.schedule ? `${grp.schedule.split('•')[0].trim()} · ${grp.schedule.split('•')[1]?.trim() || ''}` : 'По расписанию группы');
+
+                  const rawTId = (grp as any).teacherId;
+                  const teacherName = grp.teacherName || 'Мария Иванова';
+                  const targetTeacher =
+                    INITIAL_TEACHERS.find(
+                      (t) =>
+                        (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
+                        t.name === teacherName ||
+                        t.name.includes(teacherName)
+                    ) || INITIAL_TEACHERS[0];
+
+                  const totalLessons = student.attendanceStats?.totalLessons || 16;
+                  const presentCount = student.attendanceStats?.presentCount || 0;
+                  const progressPercent = totalLessons > 0 ? Math.round((presentCount / totalLessons) * 100) : 100;
+                  const progressText = `Пройдено ${presentCount} из ${totalLessons} уроков`;
+
+                  return (
+                    <div
+                      key={grp.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between hover:border-blue-200 hover:shadow-sm transition-all"
+                    >
+                      <div className="space-y-3.5">
+                        {/* Header: Category & Clean Group Name + Status */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
+                              {grp.courseName || 'Английский язык'}
+                            </span>
+                            <h4 className="text-base font-bold text-slate-900 mt-0.5 truncate">
                               <Link
-                                href={`/teachers/${foundT.id}`}
-                                className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors"
+                                href={`/groups/${targetGroup.id}`}
+                                className="hover:text-blue-600 hover:underline transition-colors"
                               >
-                                {grp.teacherName}
+                                {cleanGroupName}
                               </Link>
-                            );
-                          })()}
+                            </h4>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                            Активна
+                          </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Расписание:</span>
-                          <span className="font-medium text-slate-800">{grp.schedule}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Дата зачисления:</span>
-                          <span>{grp.joinedAt}</span>
+
+                        {/* Key Parameters Block */}
+                        <div className="space-y-2 text-xs border-t border-slate-100 pt-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Преподаватель:</span>
+                            <Link
+                              href={`/teachers/${targetTeacher.id}`}
+                              className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors truncate max-w-[200px]"
+                            >
+                              {teacherName}
+                            </Link>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Расписание:</span>
+                            <span className="font-medium text-slate-800">{grp.schedule || 'Пн, Чт • 18:45–20:15'}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400">Ближайший урок:</span>
+                            <span className="font-semibold text-blue-600 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-blue-500 shrink-0" />
+                              {nextLessonText}
+                            </span>
+                          </div>
+
+                          {/* Subscription Progress */}
+                          <div className="pt-1 space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">Прогресс абонемента:</span>
+                              <span className="font-semibold text-slate-700">{progressText}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="pt-3 flex items-center justify-between border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveGroup(grp.id, grp.name)}
-                        className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors"
-                      >
-                        Исключить из группы
-                      </button>
-                      <Link href={`/groups/${grp.id}?tab=journal`} className="text-xs font-semibold text-blue-600 hover:underline">
-                        Журнал группы →
-                      </Link>
+                      {/* Footer Actions */}
+                      <div className="pt-3.5 mt-3 flex items-center justify-between border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setGroupToExclude({ id: grp.id, name: cleanGroupName })}
+                          className="text-xs font-medium text-slate-400 hover:text-rose-600 hover:underline transition-colors cursor-pointer"
+                        >
+                          Исключить из группы
+                        </button>
+                        <Link
+                          href={`/groups/${targetGroup.id}?tab=journal`}
+                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                        >
+                          Журнал группы →
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* If student is enrolled in only 1 group, fill 2nd column with invitation to enroll in 2nd course */}
                 {student.groups.length === 1 && (
@@ -2065,7 +2166,7 @@ export default function StudentDetailsPage() {
                     <button
                       type="button"
                       onClick={() => setIsEnrollGroupModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors shadow-xs"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors shadow-xs cursor-pointer"
                     >
                       + Зачислить на 2-й курс
                     </button>
@@ -3224,9 +3325,15 @@ export default function StudentDetailsPage() {
                   Выберите группу для зачисления:
                 </label>
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-                  {INITIAL_GROUPS.map((grp) => {
+                  {(typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS).map((grp) => {
+                    const cleanName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
+                    const normGrp = cleanName.toLowerCase();
                     const isAlreadyEnrolled = student.groups.some(
-                      (g) => g.id === grp.id || g.name === grp.name
+                      (g) =>
+                        g.id === grp.id ||
+                        g.name === cleanName ||
+                        g.name === grp.name ||
+                        (g.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase() === normGrp
                     );
                     const isSelected = selectedGroupIdToEnroll === grp.id;
 
@@ -3257,7 +3364,7 @@ export default function StudentDetailsPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="font-bold text-slate-900 truncate">{grp.name}</p>
+                            <p className="font-bold text-slate-900 truncate">{cleanName}</p>
                             {isAlreadyEnrolled ? (
                               <span className="shrink-0 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
                                 Уже зачислен
@@ -3294,7 +3401,7 @@ export default function StudentDetailsPage() {
                   setIsEnrollGroupModalOpen(false);
                   setSelectedGroupIdToEnroll('');
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Отмена
               </button>
@@ -3302,10 +3409,48 @@ export default function StudentDetailsPage() {
                 type="button"
                 disabled={!selectedGroupIdToEnroll}
                 onClick={() => handleEnrollGroup(selectedGroupIdToEnroll)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <Check className="h-3.5 w-3.5" />
                 Зачислить в группу
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXCLUDE FROM GROUP CONFIRMATION MODAL */}
+      {groupToExclude && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-slate-100">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-900">Исключение из группы</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Вы действительно хотите отчислить ученика из группы <strong className="text-slate-900 font-semibold">{groupToExclude.name}</strong>? Все предыдущие отметки в журнале сохранятся.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setGroupToExclude(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleRemoveGroup(groupToExclude.id, groupToExclude.name);
+                  setGroupToExclude(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-xs cursor-pointer"
+              >
+                Исключить
               </button>
             </div>
           </div>

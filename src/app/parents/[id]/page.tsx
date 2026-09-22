@@ -1905,9 +1905,9 @@ export default function ParentDetailsPage() {
                                 href={groupId ? `/groups/${groupId}` : '#'}
                                 className="text-blue-600 hover:underline font-semibold transition-colors"
                               >
-                                {grp.name || grp.courseName || 'Группа'}
+                                {(grp.name || grp.courseName || 'Группа').replace(/\s*\([^)]*\)/g, '').trim()}
                               </Link>
-                              {grp.courseName && grp.courseName !== grp.name && (
+                              {grp.courseName && (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() !== grp.courseName && (
                                 <span className="text-slate-400"> ({grp.courseName})</span>
                               )}
                               {grp.teacherName && (

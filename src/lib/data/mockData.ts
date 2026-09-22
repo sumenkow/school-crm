@@ -140,7 +140,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     groups: [
       {
         id: '1',
-        name: 'English B1 Teens (Пн/Чт 18:45)',
+        name: 'English B1 Teens',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
         schedule: 'Пн, Чт • 18:45–20:15',
@@ -149,7 +149,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
       },
       {
         id: '5',
-        name: 'Английский: Практическая грамматика (Ср 18:00)',
+        name: 'Практическая грамматика',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
         schedule: 'Среда • 18:00–19:30',
@@ -158,7 +158,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
       },
       {
         id: '6',
-        name: 'Английский: Разговорный клуб (Сб 12:00)',
+        name: 'Разговорный клуб',
         courseName: 'Английский язык',
         teacherName: 'Мария Иванова',
         schedule: 'Суббота • 12:00–13:30',
@@ -827,8 +827,8 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
     lessonsPerWeek: 8,
     studentsCount: 28,
     activeGroups: [
-      { id: '1', name: 'English B1 Teens (Пн/Чт 18:45)', courseName: 'Английский язык', schedule: 'Пн, Чт • 18:45–20:15', studentsCount: 7 },
-      { id: '2', name: 'Kids English A1 (Вт/Пт 15:00)', courseName: 'Английский язык', schedule: 'Вт, Пт • 15:00–16:30', studentsCount: 6 },
+      { id: '1', name: 'English B1 Teens', courseName: 'Английский язык', schedule: 'Пн, Чт • 18:45–20:15', studentsCount: 7 },
+      { id: '2', name: 'Kids English A1', courseName: 'Английский язык', schedule: 'Вт, Пт • 15:00–16:30', studentsCount: 6 },
     ],
   },
   {
@@ -844,7 +844,7 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
     lessonsPerWeek: 4,
     studentsCount: 14,
     activeGroups: [
-      { id: '3', name: 'Robotics Junior (Ср/Сб 15:00)', courseName: 'Робототехника', schedule: 'Ср 15:00, Сб 11:00', studentsCount: 4 },
+      { id: '3', name: 'Robotics Junior', courseName: 'Робототехника', schedule: 'Ср 15:00, Сб 11:00', studentsCount: 4 },
     ],
   },
   {
@@ -860,7 +860,7 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
     lessonsPerWeek: 6,
     studentsCount: 18,
     activeGroups: [
-      { id: '4', name: 'Kids Math Safari (Чт 16:00)', courseName: 'Математика', schedule: 'Четверг • 16:00–17:00', studentsCount: 5 },
+      { id: '4', name: 'Kids Math Safari', courseName: 'Математика', schedule: 'Четверг • 16:00–17:00', studentsCount: 5 },
     ],
   },
   {
@@ -882,7 +882,7 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
 export const INITIAL_GROUPS: FullGroupData[] = [
   {
     id: '1',
-    name: 'English B1 Teens (Пн/Чт 18:45)',
+    name: 'English B1 Teens',
     courseId: 'c1',
     courseName: 'Английский язык',
     teacherId: 't1',
@@ -910,7 +910,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
   {
     id: '2',
-    name: 'Kids English A1 (Вт/Пт 15:00)',
+    name: 'Kids English A1',
     courseId: 'c1',
     courseName: 'Английский язык',
     teacherId: 't1',
@@ -936,7 +936,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
   {
     id: '3',
-    name: 'Robotics Junior (Ср/Сб 15:00)',
+    name: 'Robotics Junior',
     courseId: 'c2',
     courseName: 'Робототехника',
     teacherId: 't2',
@@ -961,7 +961,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
   {
     id: '4',
-    name: 'Kids Math Safari (Чт 16:00)',
+    name: 'Kids Math Safari',
     courseId: 'c3',
     courseName: 'Математика',
     teacherId: 't3',
@@ -986,7 +986,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
   {
     id: '5',
-    name: 'Английский: Практическая грамматика (Ср 18:00)',
+    name: 'Практическая грамматика',
     courseId: 'c1',
     courseName: 'Английский язык',
     teacherId: 't1',
@@ -1007,7 +1007,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
   },
   {
     id: '6',
-    name: 'Английский: Разговорный клуб (Сб 12:00)',
+    name: 'Разговорный клуб',
     courseId: 'c1',
     courseName: 'Английский язык',
     teacherId: 't1',
@@ -1088,7 +1088,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l1',
     groupId: '1',
-    groupName: 'English B1 Teens (Пн/Чт 18:45)',
+    groupName: 'English B1 Teens',
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
@@ -1141,7 +1141,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l2',
     groupId: '2',
-    groupName: 'Kids English A1 (Вт/Пт 15:00)',
+    groupName: 'Kids English A1',
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
@@ -1166,7 +1166,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l3',
     groupId: '3',
-    groupName: 'Robotics Junior (Ср/Сб 15:00)',
+    groupName: 'Robotics Junior',
     courseName: 'Робототехника',
     teacherId: 't2',
     teacherName: 'Денис Смирнов',
@@ -1190,7 +1190,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l4',
     groupId: '4',
-    groupName: 'Kids Math Safari (Чт 16:00)',
+    groupName: 'Kids Math Safari',
     courseName: 'Математика',
     teacherId: 't3',
     teacherName: 'Ольга Соколова',
@@ -1213,7 +1213,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l5',
     groupId: '1',
-    groupName: 'English B1 Teens (Пн/Чт 18:45)',
+    groupName: 'English B1 Teens',
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
@@ -1241,7 +1241,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l6',
     groupId: '2',
-    groupName: 'Kids English A1 (Вт/Пт 15:00)',
+    groupName: 'Kids English A1',
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
@@ -1265,7 +1265,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l7',
     groupId: '3',
-    groupName: 'Robotics Junior (Ср/Сб 15:00)',
+    groupName: 'Robotics Junior',
     courseName: 'Робототехника',
     teacherId: 't2',
     teacherName: 'Денис Смирнов',
@@ -1287,7 +1287,7 @@ export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l_sep23_1',
     groupId: '1',
-    groupName: 'English B1 Teens (Пн/Чт 18:45)',
+    groupName: 'English B1 Teens',
     courseName: 'Английский язык',
     teacherId: 't1',
     teacherName: 'Мария Иванова',
