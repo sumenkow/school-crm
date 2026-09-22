@@ -360,68 +360,6 @@ export function ParentProfileDesktop({
               Задача
             </button>
 
-            {/* Unified reminder dropdown */}
-            <div className="relative shrink-0" ref={reminderRef}>
-              <button
-                type="button"
-                onClick={() => setIsReminderDropdownOpen(!isReminderDropdownOpen)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <Send className="h-3.5 w-3.5 text-blue-600" />
-                Напомнить об оплате
-                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-150', isReminderDropdownOpen && 'rotate-180')} />
-              </button>
-
-              {isReminderDropdownOpen && (
-                <div className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
-                  <button
-                    type="button"
-                    onClick={handleSendWhatsApp}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#25D366]/10 transition-colors font-medium cursor-pointer"
-                  >
-                    <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
-                    <span>В WhatsApp</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSendTelegram}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#229ED9]/10 transition-colors font-medium cursor-pointer"
-                  >
-                    <TelegramIcon className="w-3.5 h-3.5 text-[#229ED9]" />
-                    <span>В Telegram</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSendEmail}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="flex-1 text-left">На Email (Gmail)</span>
-                    {!parent.email && (
-                      <span className="text-[10px] text-slate-400 italic">нет email</span>
-                    )}
-                  </button>
-
-                  <div className="my-1 border-t border-slate-100" />
-
-                  <button
-                    type="button"
-                    onClick={handleCopyReminderText}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
-                  >
-                    {copiedReminder ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-500" />
-                    )}
-                    <span>{copiedReminder ? 'Скопировано!' : 'Скопировать текст и ссылку'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
             <div className="relative" ref={moreRef}>
               <button
                 type="button"
@@ -472,7 +410,7 @@ export function ParentProfileDesktop({
         </div>
       </div>
 
-      {/* SMART PAYMENT REMINDER BANNER — unified send dropdown */}
+      {/* SMART PAYMENT REMINDER BANNER — with reminder button & send dropdown */}
       {upcomingPaymentAlert && (
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
@@ -489,20 +427,66 @@ export function ParentProfileDesktop({
             </div>
           </div>
 
-          {/* Banner reminder action button */}
-          <div className="relative shrink-0">
+          {/* Banner reminder action button with dropdown */}
+          <div className="relative shrink-0" ref={reminderRef}>
             <button
               type="button"
-              onClick={handleCopyReminderText}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              onClick={() => setIsReminderDropdownOpen(!isReminderDropdownOpen)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
             >
-              {copiedReminder ? (
-                <Check className="w-3.5 h-3.5 text-white" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-white" />
-              )}
-              <span>{copiedReminder ? 'Скопировано!' : 'Скопировать напоминание'}</span>
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span>Напомнить об оплате</span>
+              <ChevronDown className={cn('w-3.5 h-3.5 text-white transition-transform duration-150', isReminderDropdownOpen && 'rotate-180')} />
             </button>
+
+            {isReminderDropdownOpen && (
+              <div className="absolute right-0 mt-2 z-50 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-100">
+                <button
+                  type="button"
+                  onClick={() => { setIsReminderDropdownOpen(false); handleSendWhatsApp(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#25D366]/10 transition-colors font-medium cursor-pointer"
+                >
+                  <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                  <span>В WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setIsReminderDropdownOpen(false); handleSendTelegram(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#229ED9]/10 transition-colors font-medium cursor-pointer"
+                >
+                  <TelegramIcon className="w-3.5 h-3.5 text-[#229ED9]" />
+                  <span>В Telegram</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setIsReminderDropdownOpen(false); handleSendEmail(); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5 text-rose-500" />
+                  <span className="flex-1 text-left">На Email (Gmail)</span>
+                  {!parent.email && (
+                    <span className="text-[10px] text-slate-400 italic">нет email</span>
+                  )}
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={handleCopyReminderText}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium cursor-pointer"
+                >
+                  {copiedReminder ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  )}
+                  <span>{copiedReminder ? 'Скопировано!' : 'Скопировать текст и ссылку'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
