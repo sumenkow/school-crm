@@ -42,7 +42,7 @@ import { cn } from '@/lib/utils';
 import { RescheduleLessonModal } from '@/components/calendar/RescheduleLessonModal';
 import { EditLessonModal } from '@/components/calendar/EditLessonModal';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
-import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, getStoredLessons, processAutomaticLessonBilling } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
@@ -405,6 +405,21 @@ export default function LessonDetailsPage() {
     setLesson(updatedLesson);
     saveLessonToStorage(updatedLesson);
     window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+
+    if (newStatus === 'completed') {
+      const presentStudents = lesson.students.filter((s) => s.attendanceStatus === 'present' || !s.attendanceStatus || s.attendanceStatus === 'not_marked').map((s) => s.id);
+      if (presentStudents.length > 0) {
+        const { billedCount } = processAutomaticLessonBilling({
+          lessonId: lesson.id,
+          studentIdsToBill: presentStudents,
+        });
+        if (billedCount > 0) {
+          toast.success(`Урок проведен. Автосписание: списано занятие с абонементов ${billedCount} уч.`);
+          return;
+        }
+      }
+    }
+
     toast.success(`Статус урока изменен: ${statusLabels[newStatus] || newStatus}`);
   };
 
@@ -419,13 +434,66 @@ export default function LessonDetailsPage() {
       comment: `${t('lesson.rescheduledNotice', 'Занятие перенесено')} ${info.previousDate} (${info.previousTime}) → ${info.newDate} (${info.newTime}) [${info.room}]. ${t('lesson.rescheduleReason', 'Причина')}: ${info.reason}`,
     };
 
-    setStatus('rescheduled');
-    setLesson((prev) => ({
-      ...prev,
+    const targetDateISO = info.rawNewDate || lesson.date;
+    const targetStartTime = info.newStartTime || info.newTime?.split('–')[0]?.trim() || lesson.startTime;
+    const targetEndTime = info.newEndTime || info.newTime?.split('–')[1]?.trim() || lesson.endTime;
+    const targetDateObj = new Date(targetDateISO);
+    const dayOfWeek = targetDateObj.getDay() === 0 ? 6 : targetDateObj.getDay() - 1;
+    const dateFormatted = targetDateObj.toLocaleDateString(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const updatedLesson: FullLessonData = {
+      ...lesson,
+      date: targetDateISO,
+      dateFormatted,
+      dayOfWeek,
+      startTime: targetStartTime,
+      endTime: targetEndTime,
+      room: info.room || lesson.room,
       status: 'rescheduled',
       rescheduleInfo: info,
-      timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
-    }));
+      timelineEvents: [newEvent, ...(lesson.timelineEvents || [])],
+    };
+
+    setStatus('rescheduled');
+    setLesson(updatedLesson);
+    saveLessonToStorage(updatedLesson);
+
+    // Save timeline interactions for all students in this group
+    const allStudents = getStoredStudents();
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+
+    for (const st of lesson.students || []) {
+      const fullStudent = allStudents.find((s) => s.id === st.id);
+      const parentId = fullStudent?.parents?.[0]?.id;
+      const parentName = fullStudent?.parents?.[0]
+        ? `${fullStudent.parents[0].firstName} ${fullStudent.parents[0].lastName}`
+        : undefined;
+
+      const interaction: TimelineInteraction = {
+        id: `int_resch_${Date.now()}_${st.id}`,
+        studentId: st.id,
+        studentName: st.name,
+        parentId,
+        parentName,
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        author: authorName,
+        channel: 'other',
+        type: 'organizational',
+        content: `🔄 Занятие перенесено: «${lesson.groupName}» с ${info.previousDate} (${info.previousTime}) на ${info.newDate} (${info.newTime}) [${info.room}]. Причина: ${info.reason}.`,
+      };
+
+      saveInteractionToStorage(interaction);
+    }
+
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
+
+    toast.success(`Занятие успешно перенесено на ${info.newDate} (${info.newTime})`);
   };
 
   // Save Topic and Homework with Timeline record & DB persistence
@@ -516,6 +584,14 @@ export default function LessonDetailsPage() {
       };
       saveLessonToStorage(updated);
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+
+      if (newStatus === 'present') {
+        processAutomaticLessonBilling({
+          lessonId: prev.id,
+          studentIdsToBill: [studentId],
+        });
+      }
+
       return updated;
     });
   };
@@ -550,6 +626,7 @@ export default function LessonDetailsPage() {
     };
 
     setStatus('completed');
+    const allStudentIds = lesson.students.map((s) => s.id);
     setLesson((prev) => {
       const updated: FullLessonData = {
         ...prev,
@@ -561,7 +638,17 @@ export default function LessonDetailsPage() {
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
       return updated;
     });
-    toast.success('Все ученики отмечены присутствующими, урок переведен в статус «Проведено»');
+
+    const { billedCount } = processAutomaticLessonBilling({
+      lessonId: lesson.id,
+      studentIdsToBill: allStudentIds,
+    });
+
+    if (billedCount > 0) {
+      toast.success(`Все ученики отмечены. Автосписание: списано занятие с абонементов ${billedCount} уч.`);
+    } else {
+      toast.success('Все ученики отмечены присутствующими, урок переведен в статус «Проведено»');
+    }
   };
 
   const handleResetAttendance = () => {
@@ -644,7 +731,7 @@ export default function LessonDetailsPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
                 {lesson.courseName}
               </span>
@@ -665,6 +752,15 @@ export default function LessonDetailsPage() {
               {(lesson.isTrial || (lesson.trialStudentsCount && lesson.trialStudentsCount > 0) || lesson.students.some((s) => s.isTrial)) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">
                   🎯 {t('calendar.trialLessonCount', 'Пробное занятие')} — {lesson.trialStudentsCount || lesson.students.filter((s) => s.isTrial).length || 1} {t('calendar.studentsShort', 'чел.')}
+                </span>
+              )}
+              {lesson.isBilled ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-900 px-2.5 py-0.5 text-[10px] font-bold border border-emerald-200">
+                  💳 {t('lesson.autoBilledBadge', 'Автосписание выполнено')}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-600 px-2 py-0.5 text-[10px] font-medium border border-slate-200">
+                  💳 {t('lesson.autoBillActive', 'Автосписание активно')}
                 </span>
               )}
             </div>
@@ -698,9 +794,10 @@ export default function LessonDetailsPage() {
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer"
               >
-                <span>⚙</span> {t('lesson.editTimeDate', 'Перенос / Время')}
+                <Edit className="h-3.5 w-3.5 text-blue-600" />
+                <span>{t('lesson.editLessonBtn', 'Редактировать')}</span>
               </button>
             </div>
             

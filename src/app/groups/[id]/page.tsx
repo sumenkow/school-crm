@@ -37,9 +37,10 @@ import {
   enrollStudentToGroup,
 } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
-import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredLessons, generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 
 export default function GroupDetailsPage() {
   const params = useParams();
@@ -118,6 +119,7 @@ export default function GroupDetailsPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isScheduleLessonOpen, setIsScheduleLessonOpen] = useState(false);
+  const [scheduleBuilderState, setScheduleBuilderState] = useState<ScheduleBuilderState | null>(null);
   const [editForm, setEditForm] = useState({
     name: group.name,
     courseName: group.courseName,
@@ -176,7 +178,33 @@ export default function GroupDetailsPage() {
     setGroup(updated);
     saveGroupToStorage(updated);
 
-    success('Данные группы и тарифы курса успешно обновлены!');
+    // Auto-generate scheduled lessons in calendar if enabled in builder
+    let generatedNotice = '';
+    if (scheduleBuilderState && scheduleBuilderState.generateLessons && scheduleBuilderState.daysOfWeek.length > 0) {
+      const { createdCount } = generateLessonsForGroupSchedule({
+        groupId: updated.id,
+        groupName: updated.name,
+        courseName: updated.courseName,
+        teacherId: updated.teacherId,
+        teacherName: updated.teacherName,
+        room: updated.room,
+        daysOfWeek: scheduleBuilderState.daysOfWeek,
+        startTime: scheduleBuilderState.startTime,
+        endTime: scheduleBuilderState.endTime,
+        startDate: scheduleBuilderState.startDate,
+        horizon: scheduleBuilderState.horizon,
+        customEndDate: scheduleBuilderState.customEndDate,
+        students: updated.students,
+        topicPrefix: updated.courseName,
+      });
+
+      if (createdCount > 0) {
+        setAllLessons(getStoredLessons());
+        generatedNotice = ` В расписание сгенерировано ${createdCount} уроков.`;
+      }
+    }
+
+    success(`Данные группы и расписание сохранены!${generatedNotice}`);
     setIsEditModalOpen(false);
   };
 
@@ -759,20 +787,27 @@ export default function GroupDetailsPage() {
 
                           {/* 5. Статус */}
                           <td className="px-3 py-3.5 text-center whitespace-nowrap">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                                l.status === 'completed' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                l.status === 'scheduled' && 'bg-blue-50 text-blue-700 border-blue-200',
-                                l.status === 'rescheduled' && 'bg-amber-50 text-amber-800 border-amber-300',
-                                l.status === 'cancelled' && 'bg-rose-50 text-rose-700 border-rose-200'
+                            <div className="flex flex-col items-center gap-1">
+                              <span
+                                className={cn(
+                                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                                  l.status === 'completed' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                  l.status === 'scheduled' && 'bg-blue-50 text-blue-700 border-blue-200',
+                                  l.status === 'rescheduled' && 'bg-amber-50 text-amber-800 border-amber-300',
+                                  l.status === 'cancelled' && 'bg-rose-50 text-rose-700 border-rose-200'
+                                )}
+                              >
+                                {l.status === 'completed' && '✓ Проведено'}
+                                {l.status === 'scheduled' && '📅 Запланировано'}
+                                {l.status === 'rescheduled' && '🔄 Перенесено'}
+                                {l.status === 'cancelled' && '✕ Отменено'}
+                              </span>
+                              {l.isBilled && (
+                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">
+                                  💳 Списано
+                                </span>
                               )}
-                            >
-                              {l.status === 'completed' && 'Проведено'}
-                              {l.status === 'scheduled' && 'Запланировано'}
-                              {l.status === 'rescheduled' && 'Перенесено'}
-                              {l.status === 'cancelled' && 'Отменено'}
-                            </span>
+                            </div>
                           </td>
 
                           {/* 6. Действие */}
@@ -803,7 +838,7 @@ export default function GroupDetailsPage() {
       {/* EDIT GROUP MODAL */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -861,18 +896,16 @@ export default function GroupDetailsPage() {
                 </div>
               </div>
 
+              {/* INTERACTIVE 3-STEP SCHEDULE BUILDER */}
+              <GroupScheduleBuilder
+                initialSchedule={editForm.schedule}
+                onScheduleChange={(formatted, state) => {
+                  setEditForm((prev) => ({ ...prev, schedule: formatted }));
+                  setScheduleBuilderState(state);
+                }}
+              />
+
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">{t('groups.schedule', 'Расписание занятий')}</label>
-                  <input
-                    type="text"
-                    value={editForm.schedule}
-                    onChange={(e) => setEditForm({ ...editForm, schedule: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    placeholder="Пн, Чт • 18:45–20:15"
-                    required
-                  />
-                </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">{t('hero.room', 'Формат / Кабинет (онлайн)')}</label>
                   <input
@@ -884,9 +917,6 @@ export default function GroupDetailsPage() {
                     required
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">{t('groups.capacity', 'Вместимость (макс. мест)')}</label>
                   <input
@@ -899,6 +929,7 @@ export default function GroupDetailsPage() {
                     required
                   />
                 </div>
+              </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">{t('crm.leadStage', 'Статус группы')}</label>
                   <select

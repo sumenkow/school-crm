@@ -251,7 +251,7 @@ export function recordLessonAttendanceBatch(params: {
     }
   });
 
-  // Direct Supabase Cloud DB attendances write
+    // Direct Supabase Cloud DB attendances write
   if (typeof window !== 'undefined') {
     import('@/lib/supabase/client').then(async ({ createClient }) => {
       try {
@@ -272,5 +272,236 @@ export function recordLessonAttendanceBatch(params: {
     }).catch(() => {});
   }
 
+  // Automatic lesson deduction for present students
+  const presentStudentIds = params.studentRecords
+    .filter((r) => r.status === 'present')
+    .map((r) => r.studentId);
+
+  if (presentStudentIds.length > 0) {
+    processAutomaticLessonBilling({
+      lessonId: params.lessonId,
+      studentIdsToBill: presentStudentIds,
+    });
+  }
+
   return { updatedLesson };
+}
+
+/**
+ * Automatically deducts 1 lesson from the student's active subscription (or deducts from deposit)
+ * when a lesson is marked completed or attendance is recorded.
+ * Avoids duplicate billing by tracking student subscriptions and lesson state.
+ */
+export function processAutomaticLessonBilling(params: {
+  lessonId: string;
+  studentIdsToBill: string[];
+}): { billedCount: number; billedStudents: string[] } {
+  const currentLesson = getStoredLessonById(params.lessonId);
+  if (!currentLesson) return { billedCount: 0, billedStudents: [] };
+
+  const allStudents = getStoredStudents();
+  let billedCount = 0;
+  const billedStudents: string[] = [];
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  for (const studentId of params.studentIdsToBill) {
+    const student = allStudents.find((s) => s.id === studentId);
+    if (!student) continue;
+
+    let billed = false;
+
+    // 1. If student has active subscription with remaining lessons
+    if (student.finance?.activeSubscription && (student.finance.activeSubscription.lessonsRemaining || 0) > 0) {
+      const sub = student.finance.activeSubscription;
+      const prevRemaining = sub.lessonsRemaining || 0;
+      const newRemaining = Math.max(0, prevRemaining - 1);
+      const total = sub.lessonsTotal || 8;
+      const attendedCount = total - newRemaining;
+      const newStatus = newRemaining === 0 ? 'completed' : sub.status || 'active';
+
+      const updatedStudent: FullStudentData = {
+        ...student,
+        finance: {
+          ...student.finance,
+          activeSubscription: {
+            ...sub,
+            lessonsRemaining: newRemaining,
+            lessonsAttended: `${attendedCount} из ${total}`,
+            status: newStatus,
+          },
+        },
+      };
+
+      saveStudentToStorage(updatedStudent);
+      billed = true;
+
+      // Add timeline interaction
+      const interaction: TimelineInteraction = {
+        id: `bill_${Date.now()}_${student.id}`,
+        studentId: student.id,
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        author: 'Биллинг-система',
+        channel: 'other',
+        type: 'organizational',
+        content: `💳 Автосписание: списано 1 занятие по абонементу за урок «${currentLesson.groupName}» (${currentLesson.dateFormatted || currentLesson.date}). Остаток по абонементу: ${newRemaining} ур.`,
+      };
+      saveInteractionToStorage(interaction);
+    } else if (student.finance?.deposit && student.finance.deposit.balance > 0) {
+      // 2. If student has deposit balance
+      const price = student.finance.deposit.pricePerLesson || 1050;
+      const newBalance = Math.max(0, student.finance.deposit.balance - price);
+      const updatedStudent: FullStudentData = {
+        ...student,
+        finance: {
+          ...student.finance,
+          deposit: {
+            ...student.finance.deposit,
+            balance: newBalance,
+            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
+          },
+        },
+      };
+
+      saveStudentToStorage(updatedStudent);
+      billed = true;
+
+      const interaction: TimelineInteraction = {
+        id: `bill_${Date.now()}_${student.id}`,
+        studentId: student.id,
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        author: 'Биллинг-система',
+        channel: 'other',
+        type: 'organizational',
+        content: `💳 Автосписание: списано ${price.toLocaleString('ru-RU')} ₽ с депозита за урок «${currentLesson.groupName}» (${currentLesson.dateFormatted || currentLesson.date}). Новый баланс: ${newBalance.toLocaleString('ru-RU')} ₽.`,
+      };
+      saveInteractionToStorage(interaction);
+    }
+
+    if (billed) {
+      billedCount++;
+      billedStudents.push(`${student.firstName} ${student.lastName}`);
+    }
+  }
+
+  if (billedCount > 0) {
+    const updatedLesson: FullLessonData = {
+      ...currentLesson,
+      isBilled: true,
+      billedAt: new Date().toISOString(),
+    };
+    saveLessonToStorage(updatedLesson);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-students-changed'));
+      window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
+    }
+  }
+
+  return { billedCount, billedStudents };
+}
+
+export interface GenerateGroupLessonsParams {
+  groupId: string;
+  groupName: string;
+  courseName: string;
+  teacherId?: string;
+  teacherName?: string;
+  room?: string;
+  daysOfWeek: number[]; // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+  startTime: string; // e.g. '18:45'
+  endTime: string; // e.g. '20:15'
+  startDate?: string; // YYYY-MM-DD
+  horizon: '1_month' | '2_months' | '3_months' | 'custom_date';
+  customEndDate?: string; // YYYY-MM-DD
+  students?: Array<{ id: string; name: string; isTrial?: boolean }>;
+  onlineMeetingUrl?: string;
+  topicPrefix?: string;
+}
+
+/**
+ * Generates a batch of scheduled lessons across a calendar horizon (1 month, 2 months, 3 months, etc.)
+ * based on selected days of the week and lesson time.
+ */
+export function generateLessonsForGroupSchedule(params: GenerateGroupLessonsParams): {
+  createdCount: number;
+  lessons: FullLessonData[];
+} {
+  const existingLessons = getStoredLessons();
+  const createdLessons: FullLessonData[] = [];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const start = params.startDate ? new Date(params.startDate) : new Date(todayStr);
+
+  let end = new Date(start);
+  if (params.horizon === '1_month') {
+    end.setDate(end.getDate() + 30);
+  } else if (params.horizon === '2_months') {
+    end.setDate(end.getDate() + 60);
+  } else if (params.horizon === '3_months') {
+    end.setDate(end.getDate() + 90);
+  } else if (params.horizon === 'custom_date' && params.customEndDate) {
+    end = new Date(params.customEndDate);
+  } else {
+    end.setDate(end.getDate() + 30);
+  }
+
+  const current = new Date(start);
+  let lessonCounter = 1;
+
+  while (current <= end) {
+    const jsDay = current.getDay();
+    const crmDay = jsDay === 0 ? 6 : jsDay - 1;
+
+    if (params.daysOfWeek.includes(crmDay)) {
+      const dateISO = current.toISOString().slice(0, 10);
+      const dateFormatted = current.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+
+      const alreadyExists = existingLessons.some(
+        (l) => l.groupId === params.groupId && l.date === dateISO && l.startTime === params.startTime
+      );
+
+      if (!alreadyExists) {
+        const lessonId = `l_gen_${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${lessonCounter}`;
+        const newLesson: FullLessonData = {
+          id: lessonId,
+          groupId: params.groupId,
+          groupName: params.groupName,
+          courseName: params.courseName,
+          teacherId: params.teacherId || 't1',
+          teacherName: params.teacherName || 'Мария Иванова',
+          date: dateISO,
+          dateFormatted,
+          dayOfWeek: crmDay,
+          startTime: params.startTime,
+          endTime: params.endTime,
+          room: params.room || 'Онлайн (Zoom)',
+          topic: params.topicPrefix ? `${params.topicPrefix} (Урок ${lessonCounter})` : `Плановое занятие ${lessonCounter}`,
+          onlineMeetingUrl: params.onlineMeetingUrl,
+          status: 'scheduled',
+          students: (params.students || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            attendanceStatus: 'not_marked',
+            isTrial: s.isTrial || false,
+          })),
+        };
+
+        saveLessonToStorage(newLesson);
+        createdLessons.push(newLesson);
+        lessonCounter++;
+      }
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  if (createdLessons.length > 0 && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed'));
+  }
+
+  return { createdCount: createdLessons.length, lessons: createdLessons };
 }

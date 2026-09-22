@@ -459,48 +459,58 @@ export default function CalendarPage() {
                               className={cn(
                                 'rounded-xl border p-2.5 text-xs transition-all hover:shadow-md cursor-pointer text-left',
                                 lesson.status === 'completed'
-                                  ? 'border-emerald-200 bg-emerald-50/60'
+                                  ? 'border-slate-200 border-l-4 border-l-emerald-500 bg-emerald-50/30 hover:border-emerald-300'
                                   : lesson.status === 'rescheduled'
-                                  ? 'border-amber-300 bg-amber-50/70 hover:border-amber-400'
+                                  ? 'border-slate-200 border-l-4 border-l-amber-500 bg-amber-50/40 hover:border-amber-300'
                                   : lesson.status === 'cancelled'
-                                  ? 'border-rose-200 bg-rose-50/50 opacity-70'
-                                  : 'border-blue-200 bg-blue-50/40 hover:border-blue-300'
+                                  ? 'border-slate-200 border-l-4 border-l-rose-500 bg-rose-50/30 opacity-70'
+                                  : 'border-slate-200 border-l-4 border-l-blue-500 bg-white hover:border-blue-300'
                               )}
                             >
-                              <div className="flex items-center justify-between font-bold text-slate-800 text-[11px]">
-                                <span>{lesson.startTime} – {lesson.endTime}</span>
-                                <div className="flex items-center gap-1">
-                                  {lesson.status === 'completed' && (
-                                    <span className="rounded bg-emerald-100 text-emerald-800 border border-emerald-300 px-1 py-0.2 text-[9px] font-bold">
-                                      ✓ {t('status.completed', 'Проведено')}
-                                    </span>
-                                  )}
-                                  {lesson.status === 'rescheduled' && (
-                                    <span className="rounded bg-amber-200/70 text-amber-900 px-1 py-0.2 text-[9px] font-bold">
-                                      {t('status.rescheduled', 'Перенос')}
-                                    </span>
-                                  )}
-                                  {lesson.onlineMeetingUrl && (
-                                    <a
-                                      href={lesson.onlineMeetingUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                      title="Открыть Zoom / конференцию"
-                                      className="flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
-                                    >
-                                      <Video className="h-2.5 w-2.5 text-indigo-600" />
-                                      <span>Zoom</span>
-                                    </a>
-                                  )}
-                                </div>
+                              {/* Row 1: Time on the left & Compact Zoom icon on the right (strictly clean) */}
+                              <div className="flex items-center justify-between gap-1">
+                                <span className={cn(
+                                  "text-xs font-semibold whitespace-nowrap",
+                                  lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-700'
+                                )}>
+                                  {lesson.startTime} – {lesson.endTime}
+                                </span>
+                                {lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн') ? (
+                                  <a
+                                    href={lesson.onlineMeetingUrl || '#'}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Открыть Zoom / конференцию"
+                                    className="inline-flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors shrink-0"
+                                  >
+                                    <Video className="h-2.5 w-2.5 text-indigo-600" />
+                                    <span>Zoom</span>
+                                  </a>
+                                ) : null}
                               </div>
-                              <p className="mt-1 font-bold text-slate-900 leading-snug">{lesson.groupName.split('(')[0]}</p>
-                              <p className="mt-0.5 text-[11px] text-slate-500">{lesson.teacherName}</p>
+
+                              {/* Row 2: Group Name */}
+                              <p className={cn(
+                                "mt-1 font-bold leading-snug",
+                                lesson.status === 'cancelled'
+                                  ? 'text-slate-500 line-through decoration-rose-400'
+                                  : 'text-slate-900'
+                              )}>
+                                {lesson.groupName.split('(')[0]}
+                              </p>
+
+                              {/* Row 3: Teacher */}
+                              <p className={cn(
+                                "mt-0.5 text-[11px]",
+                                lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-500'
+                              )}>
+                                {lesson.teacherName}
+                              </p>
 
                               {(() => {
                                 const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
-                                if (trialCount > 0) {
+                                if (trialCount > 0 && lesson.status !== 'cancelled') {
                                   return (
                                     <div className="mt-1.5 flex items-center gap-1">
                                       <span className="rounded-md bg-purple-100 text-purple-900 font-bold px-1.5 py-0.5 text-[10px] border border-purple-200 flex items-center gap-1">
@@ -512,11 +522,41 @@ export default function CalendarPage() {
                                 return null;
                               })()}
 
+                              {/* Footer: Room on left | Status + Students count on right */}
                               <div className="mt-2 flex items-center justify-between border-t border-slate-200/50 pt-1.5 text-[10px] text-slate-500">
-                                <span>{lesson.room}</span>
-                                <span className="font-semibold text-slate-700">
-                                  {lesson.students.length} {t('calendar.studentsShort', 'уч.')}
-                                </span>
+                                <span className="truncate max-w-[95px]" title={lesson.room}>{lesson.room}</span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {lesson.status === 'completed' && (
+                                    <span className="text-[10px] font-bold text-emerald-700">
+                                      ✓ {t('status.completed', 'Проведено')}
+                                    </span>
+                                  )}
+
+                                  {lesson.status === 'rescheduled' && (
+                                    <span
+                                      className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.5 text-[9px] font-bold"
+                                      title={lesson.rescheduleInfo ? `Перенесено с ${lesson.rescheduleInfo.previousDate} (${lesson.rescheduleInfo.previousTime}) на ${lesson.rescheduleInfo.newDate} (${lesson.rescheduleInfo.newTime}). Причина: ${lesson.rescheduleInfo.reason}` : 'Занятие перенесено'}
+                                    >
+                                      ⇄ {t('status.rescheduled', 'Перенесено')}
+                                    </span>
+                                  )}
+
+                                  {lesson.status === 'cancelled' && (
+                                    <span className="text-[10px] font-bold text-rose-600">
+                                      ✕ {t('status.cancelled', 'Отменено')}
+                                    </span>
+                                  )}
+
+                                  {lesson.isBilled && lesson.status === 'completed' && (
+                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
+                                      💳
+                                    </span>
+                                  )}
+
+                                  <span className={cn("font-semibold", lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-700')}>
+                                    {lesson.students.length} {t('calendar.studentsShort', 'уч.')}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -631,26 +671,33 @@ export default function CalendarPage() {
                           <p className="text-xs text-blue-600 font-medium mt-0.5">{t('hero.topic', 'Тема')}: {lesson.topic}</p>
                         </div>
                       </div>
-                      <div className="text-right text-xs">
+                      <div className="text-right text-xs shrink-0 flex flex-col items-end gap-1">
                         <span className={cn(
-                          'rounded-full px-2.5 py-1 text-[10px] font-semibold',
+                          'rounded-full px-2.5 py-1 text-[10px] font-bold border',
                           lesson.status === 'completed'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : lesson.status === 'rescheduled'
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
                             : lesson.status === 'cancelled'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-rose-100 text-rose-800 border-rose-200'
+                            : 'bg-blue-100 text-blue-800 border-blue-200'
                         )}>
                           {lesson.status === 'completed'
-                            ? t('status.completed', 'Завершён')
+                            ? '✓ ' + t('status.completed', 'Проведено')
                             : lesson.status === 'rescheduled'
-                            ? t('status.rescheduled', 'Перенесён')
+                            ? '🔄 ' + t('status.rescheduled', 'Перенесено')
                             : lesson.status === 'cancelled'
-                            ? t('status.cancelled', 'Отменён')
-                            : t('status.scheduled', 'Запланирован')}
+                            ? '✕ ' + t('status.cancelled', 'Отменено')
+                            : '📅 ' + t('status.scheduled', 'Запланировано')}
                         </span>
-                        <p className="text-slate-400 text-[11px] mt-1">{lesson.students.length} {t('calendar.studentsCount', 'учеников')}</p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                          {lesson.isBilled && (
+                            <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 text-[9px]">
+                              💳 Списано
+                            </span>
+                          )}
+                          <span>{lesson.students.length} {t('calendar.studentsCount', 'учеников')}</span>
+                        </div>
                       </div>
                     </div>
                   ))

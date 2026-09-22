@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
 import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData, FullTeacherData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
+import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
+import { generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -31,7 +33,8 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   const [teachersList, setTeachersList] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [teacherId, setTeacherId] = useState('t1');
   const [capacity, setCapacity] = useState(8);
-  const [schedule, setSchedule] = useState('Пн, Чт • 17:00–18:30');
+  const [schedule, setSchedule] = useState('Пн, Чт • 18:45–20:15');
+  const [scheduleState, setScheduleState] = useState<ScheduleBuilderState | null>(null);
   const [room, setRoom] = useState('Онлайн (Zoom: https://zoom.us/j/7492049281)');
   const [startDate, setStartDate] = useState('2026-09-15');
   const [currency, setCurrency] = useState<'RUB' | 'EUR'>('RUB');
@@ -101,8 +104,9 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     const numLesson = Number(pricePerLesson) || 1050;
     const numMonth = Number(pricePerMonth) || 7600;
 
+    const createdGroupId = `grp_${Date.now()}`;
     const newGroup = {
-      id: `grp_${Date.now()}`,
+      id: createdGroupId,
       name,
       courseId,
       courseName: course?.name || 'Курс',
@@ -124,13 +128,32 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       },
     };
 
+    if (scheduleState && scheduleState.generateLessons && scheduleState.daysOfWeek.length > 0) {
+      generateLessonsForGroupSchedule({
+        groupId: createdGroupId,
+        groupName: newGroup.name,
+        courseName: newGroup.courseName,
+        teacherId: newGroup.teacherId,
+        teacherName: newGroup.teacherName,
+        room: newGroup.room,
+        daysOfWeek: scheduleState.daysOfWeek,
+        startTime: scheduleState.startTime,
+        endTime: scheduleState.endTime,
+        startDate: scheduleState.startDate,
+        horizon: scheduleState.horizon,
+        customEndDate: scheduleState.customEndDate,
+        students: [],
+        topicPrefix: newGroup.courseName,
+      });
+    }
+
     onCreated(newGroup);
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -201,27 +224,24 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-slate-700">Расписание занятий</label>
-              <input
-                type="text"
-                value={schedule}
-                onChange={(e) => setSchedule(e.target.value)}
-                placeholder="Пн, Чт • 17:00–18:30"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-700">Формат / Кабинет (онлайн)</label>
-              <input
-                type="text"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                placeholder="Онлайн (Zoom / веб-класс)"
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
+          {/* INTERACTIVE 3-STEP SCHEDULE BUILDER */}
+          <GroupScheduleBuilder
+            initialSchedule={schedule}
+            onScheduleChange={(formatted, state) => {
+              setSchedule(formatted);
+              setScheduleState(state);
+            }}
+          />
+
+          <div>
+            <label className="text-xs font-medium text-slate-700">Формат / Кабинет (онлайн)</label>
+            <input
+              type="text"
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              placeholder="Онлайн (Zoom / веб-класс)"
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
 
           {/* Course Pricing Settings */}

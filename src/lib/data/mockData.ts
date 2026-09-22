@@ -1009,6 +1009,9 @@ export interface LessonRescheduleInfo {
   previousTime: string;
   newDate: string;
   newTime: string;
+  rawNewDate?: string;
+  newStartTime?: string;
+  newEndTime?: string;
   room: string;
   reason: string;
   changedBy: string;
@@ -1038,6 +1041,8 @@ export interface FullLessonData {
   timelineEvents?: LessonTimelineEvent[];
   isTrial?: boolean;
   trialStudentsCount?: number;
+  isBilled?: boolean;
+  billedAt?: string;
   students: Array<{
     id: string;
     name: string;
