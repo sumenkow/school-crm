@@ -930,18 +930,18 @@ export default function GroupDetailsPage() {
                   />
                 </div>
               </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">{t('crm.leadStage', 'Статус группы')}</label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
-                  >
-                    <option value="active">{t('groups.statusActive', 'Идут занятия (Активна)')}</option>
-                    <option value="recruiting">{t('groups.statusEnrolling', 'Идет набор')}</option>
-                    <option value="completed">{t('status.finished', 'Завершена')}</option>
-                  </select>
-                </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">{t('crm.leadStage', 'Статус группы')}</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
+                >
+                  <option value="active">{t('groups.statusActive', 'Идут занятия (Активна)')}</option>
+                  <option value="recruiting">{t('groups.statusEnrolling', 'Идет набор')}</option>
+                  <option value="completed">{t('status.finished', 'Завершена')}</option>
+                </select>
               </div>
 
               <div>
