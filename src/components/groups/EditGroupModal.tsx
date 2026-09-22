@@ -220,9 +220,8 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
                 onChange={(e) => setStatus(e.target.value as any)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="active">Идут занятия (активна)</option>
+                <option value="active">Активна</option>
                 <option value="recruiting">Идет набор</option>
-                <option value="paused">Приостановлена</option>
                 <option value="archived">Архив</option>
               </select>
             </div>
