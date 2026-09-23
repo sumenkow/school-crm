@@ -20,7 +20,8 @@ import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
-import { ScheduleCourseModal } from '@/components/calendar/ScheduleCourseModal';
+import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
+import { saveGroupToStorage } from '@/lib/data/groupStorage';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { DesktopLessonModal } from '@/components/calendar/DesktopLessonModal';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
@@ -54,7 +55,7 @@ export default function CalendarPage() {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => getTodayDayIndex());
   const [selectedMonthDate, setSelectedMonthDate] = useState<string>(() => getTodayDateStr());
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>(() => getTodayDateStr());
   
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
@@ -266,7 +267,7 @@ export default function CalendarPage() {
         <CalendarMobile
           lessons={lessons}
           onOpenSchedule={(dateStr) => handleOpenScheduleForDate(dateStr || getTodayDateStr())}
-          onOpenCourseSchedule={() => setIsCourseModalOpen(true)}
+          onOpenCourseSchedule={() => setIsCreateGroupModalOpen(true)}
           onLessonUpdated={(updatedLesson) => {
             setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
           }}
@@ -285,11 +286,11 @@ export default function CalendarPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsCourseModalOpen(true)}
+              onClick={() => setIsCreateGroupModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
             >
-              <CalendarIcon className="h-4 w-4" />
-              Запланировать курс
+              <Plus className="h-4 w-4" />
+              + Создать группу
             </button>
             <button
               onClick={() => setIsScheduleModalOpen(true)}
@@ -777,11 +778,14 @@ export default function CalendarPage() {
         initialDate={selectedDateForSchedule}
       />
 
-      {/* Schedule Course Modal */}
-      <ScheduleCourseModal
-        isOpen={isCourseModalOpen}
-        onClose={() => setIsCourseModalOpen(false)}
-        onCourseScheduled={(newLessons) => setLessons((prev) => [...prev, ...newLessons])}
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+        onCreated={(newGroup) => {
+          saveGroupToStorage(newGroup);
+          setLessons(getStoredLessons());
+        }}
       />
 
       {/* Quick Lesson View & Attendance Modal (Mobile Fallback) */}

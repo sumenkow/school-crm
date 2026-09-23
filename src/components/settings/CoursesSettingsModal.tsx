@@ -87,10 +87,6 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
   };
 
   const handleUpdateCourse = (id: string, field: keyof CourseSettingItem, value: any) => {
-    if (!canManageCourses) {
-      toastError('Только владелец школы может редактировать параметры направления');
-      return;
-    }
     setCourseList((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     );

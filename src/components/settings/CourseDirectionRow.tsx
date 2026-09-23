@@ -32,10 +32,9 @@ export function CourseDirectionRow({
           />
           <input
             type="text"
-            disabled={!canManage}
             value={course.name}
             onChange={(e) => onChange(course.id, 'name', e.target.value)}
-            className="font-bold text-base text-slate-800 bg-transparent hover:bg-slate-100 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1 transition-all w-full max-w-sm outline-none"
+            className="font-bold text-base text-slate-800 bg-transparent hover:bg-slate-100 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1 transition-all w-full max-w-sm outline-none cursor-text"
             placeholder="Название курса..."
           />
         </div>
@@ -76,7 +75,6 @@ export function CourseDirectionRow({
           <label className="block text-[10px] text-slate-400 font-medium">Возраст учеников</label>
           <input
             type="text"
-            disabled={!canManage}
             value={course.ageGroup || (course as any).target_age || ''}
             onChange={(e) => onChange(course.id, 'ageGroup', e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-blue-500 focus:outline-hidden"
@@ -88,7 +86,6 @@ export function CourseDirectionRow({
           <label className="block text-[10px] text-slate-400 font-medium">Стоимость абонемента</label>
           <input
             type="text"
-            disabled={!canManage}
             value={course.monthlyPrice || ((course as any).price_monthly ? `${(course as any).price_monthly} ₽` : '')}
             onChange={(e) => onChange(course.id, 'monthlyPrice', e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
@@ -100,7 +97,6 @@ export function CourseDirectionRow({
           <label className="block text-[10px] text-slate-400 font-medium">Длительность урока</label>
           <input
             type="text"
-            disabled={!canManage}
             value={course.lessonDuration || ((course as any).lesson_duration_minutes ? `${(course as any).lesson_duration_minutes} мин` : '')}
             onChange={(e) => onChange(course.id, 'lessonDuration', e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-blue-500 focus:outline-hidden"
@@ -114,7 +110,6 @@ export function CourseDirectionRow({
             type="number"
             min={1}
             max={30}
-            disabled={!canManage}
             value={course.maxStudents || (course as any).max_students || 8}
             onChange={(e) => onChange(course.id, 'maxStudents', parseInt(e.target.value) || 8)}
             className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs mt-0.5 focus:border-blue-500 focus:outline-hidden"

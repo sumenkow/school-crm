@@ -2227,7 +2227,7 @@ export default function StudentDetailsPage() {
                     className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
                   >
                     {student.groups.map((g) => (
-                      <option key={g.id} value={g.name}>{g.name} ({g.courseName})</option>
+                      <option key={g.id} value={g.name}>{g.name}</option>
                     ))}
                     <option value="Индивидуальное занятие">Индивидуальное занятие</option>
                     <option value="Общий комментарий">Общий комментарий</option>

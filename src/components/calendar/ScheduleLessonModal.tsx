@@ -229,8 +229,8 @@ export function ScheduleLessonModal({
   };
 
   const modalSubtitle = selectedGroup.teacherName
-    ? `Преподаватель: ${selectedGroup.teacherName}`
-    : 'Синхронизация с Zoom и расписанием';
+    ? `Разовое занятие • Преподаватель: ${selectedGroup.teacherName}`
+    : 'Разовое занятие группы';
 
   const modalFooter = (
     <div className="flex items-center justify-end gap-3 w-full">
@@ -284,7 +284,7 @@ export function ScheduleLessonModal({
           >
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
-                {g.name} ({g.courseName || t('calendar.filterCourse', 'Курс')}) • {g.teacherName || 'Преподаватель'}
+                {g.name} • {g.teacherName || 'Преподаватель'}
               </option>
             ))}
           </select>

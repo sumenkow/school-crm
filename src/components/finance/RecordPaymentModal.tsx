@@ -440,7 +440,7 @@ export function RecordPaymentModal({
                 >
                   {studentGroups.map((g) => (
                     <option key={g.id} value={g.id}>
-                      {g.courseName || g.name} ({g.name}) — {g.teacherName || 'Преподаватель'}
+                      {g.name} • {g.teacherName || 'Преподаватель'}
                     </option>
                   ))}
                 </select>
