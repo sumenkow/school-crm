@@ -23,25 +23,13 @@ export function CourseDirectionRow({
   return (
     <div className="rounded-xl border border-slate-200 bg-white hover:border-slate-300 p-3.5 transition-all text-xs space-y-3 shadow-2xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        {/* Course Name Input with color dot */}
-        <div className="flex items-center gap-3 flex-1">
-          <label className="relative flex items-center justify-center cursor-pointer group/color" title="Нажмите, чтобы изменить цвет направления">
-            <input
-              type="color"
-              value={course.color && course.color.startsWith('#') && course.color.length === 7 ? course.color : '#3b82f6'}
-              onChange={(e) => onChange(course.id, 'color', e.target.value)}
-              className="sr-only"
-            />
-            <div 
-              className="w-4 h-4 rounded-full flex-shrink-0 border border-black/10 shadow-2xs group-hover/color:scale-125 group-hover/color:ring-2 group-hover/color:ring-blue-400/50 transition-all cursor-pointer" 
-              style={{ backgroundColor: course.color || '#3b82f6' }} 
-            />
-          </label>
+        {/* Course Name Input */}
+        <div className="flex items-center flex-1">
           <input
             type="text"
             value={course.name}
             onChange={(e) => onChange(course.id, 'name', e.target.value)}
-            className="font-bold text-base text-slate-800 bg-transparent hover:bg-slate-100 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1 transition-all w-full max-w-sm outline-none cursor-text"
+            className="font-bold text-base text-slate-800 bg-transparent hover:bg-slate-100 focus:bg-white border border-transparent hover:border-slate-200 focus:border-blue-500 rounded-lg px-2 py-1 -ml-2 transition-all w-full max-w-sm outline-none cursor-text"
             placeholder="Название курса..."
           />
         </div>
