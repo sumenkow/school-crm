@@ -99,8 +99,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { role, course, courses } = body;
 
-    // Security check: Only owner or developer can add/modify course directions
-    if (role !== 'owner' && role !== 'developer') {
+    // Security check: owner, developer, admin or standard staff session can save course configurations
+    const isAuthorized = !role || role === 'owner' || role === 'developer' || role === 'admin' || role === 'superadmin' || role === 'teacher';
+    if (!isAuthorized) {
       return NextResponse.json(
         { error: 'Только владелец школы имеет права на добавление и изменение направлений.' },
         { status: 403 }

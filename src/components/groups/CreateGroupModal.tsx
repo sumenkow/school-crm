@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
+import { X, GraduationCap, Calendar, Users, MapPin, Check, Settings2 } from 'lucide-react';
 import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData, FullTeacherData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
@@ -74,8 +74,33 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     return trimmedLevel ? `${courseName} ${trimmedLevel} (${sched})` : `${courseName} (${sched})`;
   }, [coursesList]);
 
-  // Fetch courses from Supabase/API
+  // Fetch courses from localStorage/Supabase/API
   const fetchCourses = useCallback(async () => {
+    // 1. Immediately read from localStorage cache for zero-latency UI
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('crm_courses_v1') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const mapped: LoadedCourse[] = parsed.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            subject: c.subject || 'Общий курс',
+            rubLesson: Number(String(c.monthlyPrice || '7600').replace(/\D/g, '')) > 0 ? Math.round(Number(String(c.monthlyPrice || '7600').replace(/\D/g, '')) / 8) : 1050,
+            rubMonth: Number(String(c.monthlyPrice || '7600').replace(/\D/g, '')) || 7600,
+            eurLesson: 15,
+            eurMonth: 80,
+            ageGroup: c.ageGroup,
+            lessonDuration: c.lessonDuration,
+            maxStudents: c.maxStudents,
+            isActive: c.status === 'active' || c.is_active !== false,
+          }));
+          setCoursesList(mapped);
+        }
+      }
+    } catch {}
+
+    // 2. Sync with server API
     try {
       const res = await fetch('/api/courses');
       if (res.ok) {
@@ -95,9 +120,25 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     }
   }, [isOpen, fetchCourses]);
 
-  // Listen for global courses changes
+  // Listen for global courses changes with instant state reflection
   useEffect(() => {
-    const handleCoursesChanged = () => {
+    const handleCoursesChanged = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
+        const mapped: LoadedCourse[] = e.detail.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          subject: c.subject || 'Общий курс',
+          rubLesson: 1050,
+          rubMonth: Number(String(c.monthlyPrice || '7600').replace(/\D/g, '')) || 7600,
+          eurLesson: 15,
+          eurMonth: 80,
+          ageGroup: c.ageGroup,
+          lessonDuration: c.lessonDuration,
+          maxStudents: c.maxStudents,
+          isActive: c.status === 'active' || c.is_active !== false,
+        }));
+        setCoursesList(mapped);
+      }
       fetchCourses();
     };
     window.addEventListener('crm-courses-changed', handleCoursesChanged);
@@ -234,11 +275,31 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   };
 
   const handleCoursesSettingsSave = (updated: CourseSettingItem[]) => {
-    fetchCourses();
     if (updated.length > 0) {
-      const last = updated[updated.length - 1];
-      setCourseId(last.id);
+      const mapped: LoadedCourse[] = updated.map((c) => ({
+        id: c.id,
+        name: c.name,
+        subject: 'Общий курс',
+        rubLesson: 1050,
+        rubMonth: Number(String(c.monthlyPrice || '7600').replace(/\D/g, '')) || 7600,
+        eurLesson: 15,
+        eurMonth: 80,
+        ageGroup: c.ageGroup,
+        lessonDuration: c.lessonDuration,
+        maxStudents: c.maxStudents,
+        isActive: c.status === 'active',
+      }));
+      setCoursesList(mapped);
+
+      const current = mapped.find((m) => m.id === courseId) || mapped[0];
+      if (current) {
+        setCourseId(current.id);
+        if (!isNameManuallyEdited) {
+          setName(computeGroupName(current.id, level, schedule));
+        }
+      }
     }
+    fetchCourses();
   };
 
   return (
@@ -265,30 +326,40 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700">Учебный курс / Направление *</label>
-                {canManageCourses && (
-                  <button
-                    type="button"
-                    onClick={() => setIsCoursesModalOpen(true)}
-                    className="text-xs text-blue-600 hover:underline cursor-pointer"
-                  >
-                    ⚙ Настроить направления и тарифы
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setIsCoursesModalOpen(true)}
+                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                >
+                  <Settings2 className="h-3 w-3" />
+                  <span>Настроить направления и тарифы</span>
+                </button>
               </div>
-              <select
-                value={courseId}
-                onChange={(e) => handleCourseChange(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-              >
-                {coursesList
-                  .filter(Boolean)
-                  .filter((c) => Boolean(c && c.name && c.name.trim()))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={courseId}
+                  onChange={(e) => handleCourseChange(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                >
+                  {coursesList
+                    .filter(Boolean)
+                    .filter((c) => Boolean(c && c.name && c.name.trim()))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsCoursesModalOpen(true)}
+                  title="Изменить название направления или тарифы"
+                  className="px-2.5 py-2 rounded-lg border border-slate-200 hover:border-blue-400 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0 cursor-pointer"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Изменить</span>
+                </button>
+              </div>
             </div>
 
             {/* ROW 2: Преподаватель and Уровень / Подуровень */}

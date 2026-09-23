@@ -34,6 +34,18 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const [status, setStatus] = useState<FullGroupData['status']>(group?.status || 'active');
 
   const fetchCourses = useCallback(async () => {
+    // 1. Immediately read from localStorage cache for instant UI response
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('crm_courses_v1') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCoursesList(parsed);
+        }
+      }
+    } catch {}
+
+    // 2. Fetch from server
     try {
       const res = await fetch('/api/courses');
       if (res.ok) {
@@ -52,6 +64,20 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       fetchCourses();
     }
   }, [isOpen, fetchCourses]);
+
+  // Listen for global courses changes
+  useEffect(() => {
+    const handleCoursesChanged = (e: any) => {
+      if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
+        setCoursesList(e.detail);
+      }
+      fetchCourses();
+    };
+    window.addEventListener('crm-courses-changed', handleCoursesChanged);
+    return () => {
+      window.removeEventListener('crm-courses-changed', handleCoursesChanged);
+    };
+  }, [fetchCourses]);
 
   useEffect(() => {
     if (group) {
@@ -162,30 +188,40 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
               <label className="block text-xs font-semibold text-slate-700">
                 Направление / Курс
               </label>
-              {canManageCourses && (
-                <button
-                  type="button"
-                  onClick={() => setIsCoursesModalOpen(true)}
-                  className="text-xs text-blue-600 hover:underline cursor-pointer"
-                >
-                  ⚙ Настроить направления и тарифы
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsCoursesModalOpen(true)}
+                className="text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer flex items-center gap-1 font-medium"
+              >
+                <Settings2 className="h-3 w-3" />
+                <span>Настроить направления и тарифы</span>
+              </button>
             </div>
-            <select
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {coursesList
-                .filter(Boolean)
-                .filter((c) => Boolean(c && c.name && c.name.trim()))
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {coursesList
+                  .filter(Boolean)
+                  .filter((c) => Boolean(c && c.name && c.name.trim()))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setIsCoursesModalOpen(true)}
+                title="Изменить название направления или тарифы"
+                className="px-2.5 py-2.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0 cursor-pointer"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+                <span>Изменить</span>
+              </button>
+            </div>
           </div>
 
           <div>
@@ -322,7 +358,10 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
             status: c.isActive !== false ? 'active' : 'paused',
             color: 'bg-indigo-600',
           }))}
-        onSave={() => {
+        onSave={(updated) => {
+          if (updated && updated.length > 0) {
+            setCoursesList(updated);
+          }
           fetchCourses();
         }}
       />

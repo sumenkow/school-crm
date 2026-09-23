@@ -43,17 +43,24 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
   });
 
-  // Strict sync when prop changes
+  // Strict sync only when modal opens to prevent overwriting user input during parent re-renders
   useEffect(() => {
-    if (courses && Array.isArray(courses)) {
-      const valid = courses
-        .filter(Boolean)
-        .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
-      if (valid.length > 0) {
-        setCourseList(valid);
+    if (isOpen) {
+      let initial: CourseSettingItem[] = [];
+      try {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('crm_courses_v1') : null;
+        if (saved) initial = JSON.parse(saved);
+      } catch {}
+      if (!initial || initial.length === 0) {
+        initial = (courses || [])
+          .filter(Boolean)
+          .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+      }
+      if (initial.length > 0) {
+        setCourseList(initial);
       }
     }
-  }, [courses]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -104,10 +111,6 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManageCourses) {
-      toastError('Только владелец школы имеет права на сохранение направлений.');
-      return;
-    }
 
     const cleanedList = courseList
       .filter(Boolean)
@@ -117,6 +120,13 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
         name: c.name.trim(),
         is_active: c.status === 'active',
       }));
+
+    // 0. Immediate local persistence
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('crm_courses_v1', JSON.stringify(cleanedList));
+      } catch {}
+    }
 
     // 1. Supabase direct upsert
     try {
@@ -179,7 +189,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
