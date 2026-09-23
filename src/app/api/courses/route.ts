@@ -10,7 +10,6 @@ export interface CourseWithTariffs {
   subject: string;
   description?: string;
   isActive: boolean;
-  level: string;
   rubLesson: number;
   rubMonth: number;
   eurLesson: number;
@@ -20,11 +19,11 @@ export interface CourseWithTariffs {
   maxStudents?: number;
 }
 
-const KNOWN_TARIFFS: Record<string, { rubLesson: number; rubMonth: number; eurLesson: number; eurMonth: number; level: string; subject: string; ageGroup: string; lessonDuration: string; maxStudents: number }> = {
-  c1: { rubLesson: 1050, rubMonth: 7600, eurLesson: 15, eurMonth: 80, level: 'B1', subject: 'Иностранные языки', ageGroup: '6-16 лет', lessonDuration: '60 мин', maxStudents: 8 },
-  c2: { rubLesson: 1200, rubMonth: 8800, eurLesson: 18, eurMonth: 95, level: 'Junior IT', subject: 'Информатика и IT', ageGroup: '7-14 лет', lessonDuration: '90 мин', maxStudents: 6 },
-  c3: { rubLesson: 1100, rubMonth: 8000, eurLesson: 16, eurMonth: 85, level: 'Олимпиадный', subject: 'Точные науки', ageGroup: '8-15 лет', lessonDuration: '60 мин', maxStudents: 8 },
-  c4: { rubLesson: 950, rubMonth: 6500, eurLesson: 14, eurMonth: 70, level: 'Базовый', subject: 'Развитие интеллекта', ageGroup: '5-12 лет', lessonDuration: '45 мин', maxStudents: 6 },
+const KNOWN_TARIFFS: Record<string, { rubLesson: number; rubMonth: number; eurLesson: number; eurMonth: number; subject: string; ageGroup: string; lessonDuration: string; maxStudents: number }> = {
+  c1: { rubLesson: 1050, rubMonth: 7600, eurLesson: 15, eurMonth: 80, subject: 'Иностранные языки', ageGroup: '6-16 лет', lessonDuration: '60 мин', maxStudents: 8 },
+  c2: { rubLesson: 1200, rubMonth: 8800, eurLesson: 18, eurMonth: 95, subject: 'Информатика и IT', ageGroup: '7-14 лет', lessonDuration: '90 мин', maxStudents: 6 },
+  c3: { rubLesson: 1100, rubMonth: 8000, eurLesson: 16, eurMonth: 85, subject: 'Точные науки', ageGroup: '8-15 лет', lessonDuration: '60 мин', maxStudents: 8 },
+  c4: { rubLesson: 950, rubMonth: 6500, eurLesson: 14, eurMonth: 70, subject: 'Развитие интеллекта', ageGroup: '5-12 лет', lessonDuration: '45 мин', maxStudents: 6 },
 };
 
 function enrichCourse(course: { id: string; name: string; subject?: string; description?: string; is_active?: boolean }): CourseWithTariffs {
@@ -51,7 +50,6 @@ function enrichCourse(course: { id: string; name: string; subject?: string; desc
     subject: course.subject || preset?.subject || 'Общий курс',
     description: course.description || undefined,
     isActive: course.is_active !== false,
-    level: preset?.level || 'Базовый',
     rubLesson: preset?.rubLesson || 1000,
     rubMonth: preset?.rubMonth || 7500,
     eurLesson: preset?.eurLesson || 15,

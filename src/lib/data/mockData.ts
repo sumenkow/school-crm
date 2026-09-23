@@ -753,6 +753,7 @@ export interface FullGroupData {
   schedule: string;
   room: string;
   capacity: number;
+  level?: string;
   status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
   is_deleted?: boolean;
   deleted_at?: string;

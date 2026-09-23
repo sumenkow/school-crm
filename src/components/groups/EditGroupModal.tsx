@@ -27,6 +27,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const [teachersList, setTeachersList] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [teacherId, setTeacherId] = useState(group?.teacherId || 't1');
   const [capacity, setCapacity] = useState(group?.capacity || 8);
+  const [level, setLevel] = useState(group?.level || '');
   const [schedule, setSchedule] = useState(group?.schedule || 'Пн, Чт • 17:00–18:30');
   const [scheduleState, setScheduleState] = useState<ScheduleBuilderState | null>(null);
   const [room, setRoom] = useState(group?.room || 'Онлайн (Zoom)');
@@ -57,6 +58,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       setCourseId(group.courseId || 'c1');
       setName(group.name || '');
       setTeacherId(group.teacherId || 't1');
+      setLevel(group.level || '');
       setCapacity(group.capacity || 8);
       setSchedule(group.schedule || 'Пн, Чт • 17:00–18:30');
       setRoom(group.room || 'Онлайн (Zoom)');
@@ -102,6 +104,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       courseName: course?.name || group.courseName,
       teacherId,
       teacherName: teacher?.name || group.teacherName,
+      level: level.trim() || undefined,
       schedule,
       room,
       capacity: Number(capacity),
@@ -218,6 +221,21 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Уровень / Программа
+              </label>
+              <input
+                type="text"
+                placeholder="Например: A1, B1 Teens, Junior, ОГЭ..."
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Вместимость (чел)
               </label>
               <input
@@ -226,6 +244,18 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
                 max="50"
                 value={capacity}
                 onChange={(e) => setCapacity(Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Формат / Аудитория
+              </label>
+              <input
+                type="text"
+                value={room}
+                onChange={(e) => setRoom(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -240,33 +270,19 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
             }}
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Формат / Аудитория
-              </label>
-              <input
-                type="text"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Статус
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="active">Активна</option>
-                <option value="recruiting">Идет набор</option>
-                <option value="archived">Архив</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Статус
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="active">Активна</option>
+              <option value="recruiting">Идет набор</option>
+              <option value="archived">Архив</option>
+            </select>
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">

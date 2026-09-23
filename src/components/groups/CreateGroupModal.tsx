@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, GraduationCap, Calendar, Users, MapPin, Check, Settings2 } from 'lucide-react';
+import { X, GraduationCap, Calendar, Users, MapPin, Check } from 'lucide-react';
 import { INITIAL_COURSES, INITIAL_TEACHERS, FullGroupData, FullTeacherData } from '@/lib/data/mockData';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
@@ -21,7 +21,6 @@ interface LoadedCourse {
   subject: string;
   description?: string;
   isActive?: boolean;
-  level: string;
   rubLesson: number;
   rubMonth: number;
   eurLesson: number;
@@ -32,10 +31,10 @@ interface LoadedCourse {
 }
 
 const DEFAULT_COURSES: LoadedCourse[] = [
-  { id: 'c1', name: 'Английский язык', subject: 'Иностранные языки', description: 'Кембриджская программа (A1 - C1)', level: 'B1', rubLesson: 1050, rubMonth: 7600, eurLesson: 15, eurMonth: 80, isActive: true },
-  { id: 'c2', name: 'Робототехника и IT', subject: 'Информатика и IT', description: 'Arduino, Python, конструирование', level: 'Junior IT', rubLesson: 1200, rubMonth: 8800, eurLesson: 18, eurMonth: 95, isActive: true },
-  { id: 'c3', name: 'Олимпиадная математика', subject: 'Точные науки', description: 'Логика, нестандартные задачи', level: 'Олимпиадный', rubLesson: 1100, rubMonth: 8000, eurLesson: 16, eurMonth: 85, isActive: true },
-  { id: 'c4', name: 'Скорочтение и память', subject: 'Развитие интеллекта', description: 'Развитие памяти и внимания', level: 'Базовый', rubLesson: 950, rubMonth: 6500, eurLesson: 14, eurMonth: 70, isActive: true },
+  { id: 'c1', name: 'Английский язык', subject: 'Иностранные языки', description: 'Кембриджская программа (A1 - C1)', rubLesson: 1050, rubMonth: 7600, eurLesson: 15, eurMonth: 80, isActive: true },
+  { id: 'c2', name: 'Робототехника и IT', subject: 'Информатика и IT', description: 'Arduino, Python, конструирование', rubLesson: 1200, rubMonth: 8800, eurLesson: 18, eurMonth: 95, isActive: true },
+  { id: 'c3', name: 'Олимпиадная математика', subject: 'Точные науки', description: 'Логика, нестандартные задачи', rubLesson: 1100, rubMonth: 8000, eurLesson: 16, eurMonth: 85, isActive: true },
+  { id: 'c4', name: 'Скорочтение и память', subject: 'Развитие интеллекта', description: 'Развитие памяти и внимания', rubLesson: 950, rubMonth: 6500, eurLesson: 14, eurMonth: 70, isActive: true },
 ];
 
 const TEACHER_ZOOM_LINKS: Record<string, string> = {
@@ -54,6 +53,9 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   const [isCoursesModalOpen, setIsCoursesModalOpen] = useState(false);
 
   const [name, setName] = useState('');
+  const [level, setLevel] = useState('');
+  const [isNameManuallyEdited, setIsNameManuallyEdited] = useState(false);
+
   const [teachersList, setTeachersList] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [teacherId, setTeacherId] = useState('t1');
   const [capacity, setCapacity] = useState(8);
@@ -63,6 +65,14 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   const [currency, setCurrency] = useState<'RUB' | 'EUR'>('RUB');
   const [pricePerLesson, setPricePerLesson] = useState('1050');
   const [pricePerMonth, setPricePerMonth] = useState('7600');
+
+  // Compute template name
+  const computeGroupName = useCallback((cId: string, lvl: string, sched: string) => {
+    const c = coursesList.find((item) => item.id === cId) || coursesList[0] || DEFAULT_COURSES[0];
+    const courseName = c?.name || 'Курс';
+    const trimmedLevel = lvl.trim();
+    return trimmedLevel ? `${courseName} ${trimmedLevel} (${sched})` : `${courseName} (${sched})`;
+  }, [coursesList]);
 
   // Fetch courses from Supabase/API
   const fetchCourses = useCallback(async () => {
@@ -96,14 +106,13 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     };
   }, [fetchCourses]);
 
-  // Auto-generate group name & sync tariffs and Zoom link
+  // Auto-generate group name (if not manually edited) & sync tariffs
   useEffect(() => {
     const currentCourse = coursesList.find((c) => c.id === courseId) || coursesList[0] || DEFAULT_COURSES[0];
-    const level = currentCourse?.level || 'Базовый';
-    
-    // Formula: [Название курса] + [Уровень] + ([Расписание])
-    const generated = `${currentCourse?.name || 'Курс'} ${level} (${schedule})`;
-    setName(generated);
+
+    if (!isNameManuallyEdited) {
+      setName(computeGroupName(courseId, level, schedule));
+    }
 
     // Sync prices from tariff
     if (currency === 'EUR') {
@@ -113,7 +122,21 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       setPricePerLesson(String(currentCourse?.rubLesson ?? 1050));
       setPricePerMonth(String(currentCourse?.rubMonth ?? 7600));
     }
-  }, [courseId, coursesList, schedule, currency]);
+  }, [courseId, coursesList, level, schedule, currency, isNameManuallyEdited, computeGroupName]);
+
+  // Handle course change
+  const handleCourseChange = (newCourseId: string) => {
+    setCourseId(newCourseId);
+    setName(computeGroupName(newCourseId, level, schedule));
+    setIsNameManuallyEdited(false);
+  };
+
+  // Handle level change
+  const handleLevelChange = (newLevel: string) => {
+    setLevel(newLevel);
+    setName(computeGroupName(courseId, newLevel, schedule));
+    setIsNameManuallyEdited(false);
+  };
 
   // Auto-substitute teacher Zoom link
   useEffect(() => {
@@ -165,7 +188,8 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     const createdGroupId = `grp_${Date.now()}`;
     const newGroup = {
       id: createdGroupId,
-      name,
+      name: name.trim(),
+      level: level.trim() || undefined,
       courseId,
       courseName: course?.name || 'Курс',
       teacherId,
@@ -228,7 +252,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-900">Создание новой группы</h2>
-                <p className="text-xs text-slate-500">Курс, преподаватель и шаблон расписания</p>
+                <p className="text-xs text-slate-500">Курс, преподаватель, уровень и расписание</p>
               </div>
             </div>
             <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 cursor-pointer">
@@ -237,6 +261,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* ROW 1: Учебный курс / Направление */}
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700">Учебный курс / Направление *</label>
@@ -252,7 +277,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               </div>
               <select
                 value={courseId}
-                onChange={(e) => setCourseId(e.target.value)}
+                onChange={(e) => handleCourseChange(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
               >
                 {coursesList
@@ -266,34 +291,34 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               </select>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700">Название группы (автогенерация)</label>
-                <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
-                  🔒 Формула: [Курс] + [Уровень] + ([Расписание])
-                </span>
-              </div>
-              <input
-                type="text"
-                readOnly
-                value={name}
-                className="w-full rounded-lg border border-slate-200 bg-slate-100/80 px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none cursor-not-allowed"
-              />
-            </div>
-
+            {/* ROW 2: Преподаватель and Уровень / Подуровень */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-slate-700 block mb-1">Преподаватель *</label>
                 <select
                   value={teacherId}
                   onChange={(e) => setTeacherId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                 >
                   {teachersList.map((t) => (
                     <option key={t.id} value={t.id}>{t.name} ({t.role.split(' ')[0]})</option>
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 block mb-1">Уровень / Подуровень</label>
+                <input
+                  type="text"
+                  value={level}
+                  onChange={(e) => handleLevelChange(e.target.value)}
+                  placeholder="Например: A1, B1 Teens, Junior, ОГЭ..."
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white font-medium text-slate-800"
+                />
+              </div>
+            </div>
+
+            {/* ROW 3: Лимит мест and Формат / Кабинет */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-slate-700 block mb-1">Лимит мест в группе</label>
                 <input
@@ -302,9 +327,40 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                   max="30"
                   value={capacity}
                   onChange={(e) => setCapacity(Number(e.target.value))}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 block mb-1">Формат / Кабинет (онлайн)</label>
+                <input
+                  type="text"
+                  value={room}
+                  onChange={(e) => setRoom(e.target.value)}
+                  placeholder="Онлайн (Zoom / веб-класс)"
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* ROW 4: Название группы (разблокировано для прямого ручного ввода) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700">Название группы</label>
+                <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                  ✨ Автогенерация названия (можно изменить вручную)
+                </span>
+              </div>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setIsNameManuallyEdited(true);
+                }}
+                placeholder="Название группы..."
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
 
             {/* INTERACTIVE 3-STEP SCHEDULE BUILDER (Holds the single Start Date) */}
@@ -313,19 +369,11 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               onScheduleChange={(formatted, state) => {
                 setSchedule(formatted);
                 setScheduleState(state);
+                if (!isNameManuallyEdited) {
+                  setName(computeGroupName(courseId, level, formatted));
+                }
               }}
             />
-
-            <div>
-              <label className="text-xs font-medium text-slate-700 block mb-1">Формат / Кабинет (онлайн)</label>
-              <input
-                type="text"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                placeholder="Онлайн (Zoom / веб-класс)"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
 
             {/* Course Pricing Settings - Synced from selected course */}
             <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-2.5">
