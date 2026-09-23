@@ -36,11 +36,11 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
   const { role, isOwner } = useRole();
   const canManageCourses = isOwner || role === 'owner' || role === 'developer';
 
-  // Strict initial filter to prevent empty cards
+  // Strict initial filter to prevent undefined cards
   const [courseList, setCourseList] = useState<CourseSettingItem[]>(() => {
     return (courses || [])
       .filter(Boolean)
-      .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+      .filter((c) => Boolean(c && c.id));
   });
 
   // Strict sync only when modal opens to prevent overwriting user input during parent re-renders
@@ -54,7 +54,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       if (!initial || initial.length === 0) {
         initial = (courses || [])
           .filter(Boolean)
-          .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+          .filter((c) => Boolean(c && c.id));
       }
       if (initial.length > 0) {
         setCourseList(initial);
@@ -64,10 +64,10 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
 
   if (!isOpen) return null;
 
-  // Filter valid items for rendering
+  // Filter valid items for rendering: keep item mounted even when user temporarily deletes the name to retype it!
   const validCourses = courseList
     .filter(Boolean)
-    .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0));
+    .filter((c) => Boolean(c && c.id));
 
   const handleAddCourse = () => {
     if (!canManageCourses) {
@@ -114,10 +114,10 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
 
     const cleanedList = courseList
       .filter(Boolean)
-      .filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0))
+      .filter((c) => Boolean(c && c.id))
       .map((c) => ({
         ...c,
-        name: c.name.trim(),
+        name: (c.name || '').trim() || 'Новое направление',
         is_active: c.status === 'active',
       }));
 

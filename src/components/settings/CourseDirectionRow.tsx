@@ -25,11 +25,18 @@ export function CourseDirectionRow({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         {/* Course Name Input with color dot */}
         <div className="flex items-center gap-3 flex-1">
-          <div 
-            className="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer" 
-            style={{ backgroundColor: course.color || '#3b82f6' }} 
-            title="Выбрать цвет направления"
-          />
+          <label className="relative flex items-center justify-center cursor-pointer group/color" title="Нажмите, чтобы изменить цвет направления">
+            <input
+              type="color"
+              value={course.color && course.color.startsWith('#') && course.color.length === 7 ? course.color : '#3b82f6'}
+              onChange={(e) => onChange(course.id, 'color', e.target.value)}
+              className="sr-only"
+            />
+            <div 
+              className="w-4 h-4 rounded-full flex-shrink-0 border border-black/10 shadow-2xs group-hover/color:scale-125 group-hover/color:ring-2 group-hover/color:ring-blue-400/50 transition-all cursor-pointer" 
+              style={{ backgroundColor: course.color || '#3b82f6' }} 
+            />
+          </label>
           <input
             type="text"
             value={course.name}

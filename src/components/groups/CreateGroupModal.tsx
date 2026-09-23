@@ -335,31 +335,20 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                   <span>Настроить направления и тарифы</span>
                 </button>
               </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={courseId}
-                  onChange={(e) => handleCourseChange(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  {coursesList
-                    .filter(Boolean)
-                    .filter((c) => Boolean(c && c.name && c.name.trim()))
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setIsCoursesModalOpen(true)}
-                  title="Изменить название направления или тарифы"
-                  className="px-2.5 py-2 rounded-lg border border-slate-200 hover:border-blue-400 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors flex items-center gap-1.5 text-xs font-semibold shrink-0 cursor-pointer"
-                >
-                  <Settings2 className="h-3.5 w-3.5" />
-                  <span>Изменить</span>
-                </button>
-              </div>
+              <select
+                value={courseId}
+                onChange={(e) => handleCourseChange(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                {coursesList
+                  .filter(Boolean)
+                  .filter((c) => Boolean(c && c.name && c.name.trim()))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
             </div>
 
             {/* ROW 2: Преподаватель and Уровень / Подуровень */}
