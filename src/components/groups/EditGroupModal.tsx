@@ -80,6 +80,15 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   }, [fetchCourses]);
 
   useEffect(() => {
+    if (coursesList.length > 0 && courseId) {
+      const match = coursesList.find((c) => c.id === courseId);
+      if (!match) {
+        setCourseId(coursesList[0].id);
+      }
+    }
+  }, [coursesList, courseId]);
+
+  useEffect(() => {
     if (group) {
       setCourseId(group.courseId || 'c1');
       setName(group.name || '');

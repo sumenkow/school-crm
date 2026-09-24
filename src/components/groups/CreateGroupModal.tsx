@@ -147,12 +147,22 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     };
   }, [fetchCourses]);
 
+  // Auto-sync valid courseId
+  useEffect(() => {
+    if (coursesList.length > 0) {
+      const match = coursesList.find((c) => c.id === courseId);
+      if (!match) {
+        setCourseId(coursesList[0].id);
+      }
+    }
+  }, [coursesList, courseId]);
+
   // Auto-generate group name (if not manually edited) & sync tariffs
   useEffect(() => {
     const currentCourse = coursesList.find((c) => c.id === courseId) || coursesList[0] || DEFAULT_COURSES[0];
 
-    if (!isNameManuallyEdited) {
-      setName(computeGroupName(courseId, level, schedule));
+    if (!isNameManuallyEdited && currentCourse) {
+      setName(computeGroupName(currentCourse.id, level, schedule));
     }
 
     // Sync prices from tariff

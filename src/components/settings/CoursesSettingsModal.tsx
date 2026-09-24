@@ -70,7 +70,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
   const [isSaving, setIsSaving] = useState(false);
   const prevOpenRef = useRef(false);
 
-  // Permission check
+  // Permission check: allow owner, developer, admin and local dev sessions
   const canManageCourses = isOwner || isOwnerAccount || isDevAccount || role === 'owner' || role === 'developer' || role === 'admin' || !role;
 
   // Initialize course list
@@ -87,7 +87,10 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            initial = parsed;
+            const hasLegacyMockIds = parsed.some((p) => p.id === 'c1' || p.id === 'c2' || p.id === 'c3');
+            if (!hasLegacyMockIds) {
+              initial = parsed;
+            }
           }
         }
       } catch {}
@@ -100,6 +103,22 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       if (clean.length > 0) {
         setCourseList(clean);
       }
+
+      // Fresh background fetch to ensure real Supabase UUIDs
+      fetch('/api/courses')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
+            const fresh = data.courses.map(normalizeCourse);
+            setCourseList(fresh);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem('crm_courses_v1', JSON.stringify(fresh));
+              } catch {}
+            }
+          }
+        })
+        .catch(() => {});
     }
     prevOpenRef.current = isOpen;
   }, [isOpen, courses]);
@@ -254,7 +273,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
           </div>
 
           {/* List of Courses */}
-          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+          <div className="space-y-3.5 max-h-[50vh] overflow-y-auto pr-1">
             {displayCourses.map((course) => (
               <CourseDirectionRow
                 key={course.id}
