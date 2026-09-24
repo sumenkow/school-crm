@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
 import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 import { generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
-import { CoursesSettingsModal, CourseSettingItem } from '@/components/settings/CoursesSettingsModal';
+import { CoursesSettingsModal, CourseSettingItem, deduplicateCourseItems } from '@/components/settings/CoursesSettingsModal';
 
 interface EditGroupModalProps {
   group: FullGroupData | null;
@@ -20,7 +20,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const { role, isOwner } = useRole();
   const canManageCourses = isOwner || role === 'owner' || role === 'developer';
 
-  const [coursesList, setCoursesList] = useState<any[]>(INITIAL_COURSES);
+  const [coursesList, setCoursesList] = useState<any[]>(() => deduplicateCourseItems(INITIAL_COURSES));
   const [courseId, setCourseId] = useState(group?.courseId || 'c1');
   const [isCoursesModalOpen, setIsCoursesModalOpen] = useState(false);
   const [name, setName] = useState(group?.name || '');
@@ -40,7 +40,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setCoursesList(parsed);
+          setCoursesList(deduplicateCourseItems(parsed));
         }
       }
     } catch {}
@@ -51,7 +51,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
       if (res.ok) {
         const data = await res.json();
         if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
-          setCoursesList(data.courses);
+          setCoursesList(deduplicateCourseItems(data.courses));
         }
       }
     } catch (err) {
@@ -69,7 +69,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   useEffect(() => {
     const handleCoursesChanged = (e: any) => {
       if (e?.detail && Array.isArray(e.detail) && e.detail.length > 0) {
-        setCoursesList(e.detail);
+        setCoursesList(deduplicateCourseItems(e.detail));
       }
       fetchCourses();
     };

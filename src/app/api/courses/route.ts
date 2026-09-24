@@ -26,8 +26,8 @@ const KNOWN_TARIFFS: Record<string, { rubLesson: number; rubMonth: number; eurLe
   c4: { rubLesson: 950, rubMonth: 6500, eurLesson: 14, eurMonth: 70, subject: 'Развитие интеллекта', ageGroup: '5-12 лет', lessonDuration: '45 мин', maxStudents: 6 },
 };
 
-function enrichCourse(course: { id: string; name: string; subject?: string; description?: string; is_active?: boolean }): CourseWithTariffs {
-  const normName = course.name.toLowerCase();
+function enrichCourse(course: { id: string; name: string; subject?: string; description?: string; is_active?: boolean; target_age?: string; price_monthly?: number | string; lesson_duration_minutes?: number | string; max_students?: number }): CourseWithTariffs {
+  const normName = (course.name || '').toLowerCase();
   
   let matchKey: string | null = null;
   if (course.id in KNOWN_TARIFFS) {
@@ -36,7 +36,7 @@ function enrichCourse(course: { id: string; name: string; subject?: string; desc
     matchKey = 'c1';
   } else if (normName.includes('робот') || normName.includes('it') || normName.includes('информ')) {
     matchKey = 'c2';
-  } else if (normName.includes('матем') || normName.includes('math')) {
+  } else if (normName.includes('матем') || normName.includes('math') || normName.includes('алгебр')) {
     matchKey = 'c3';
   } else if (normName.includes('скорочтен') || normName.includes('памят') || normName.includes('чтени')) {
     matchKey = 'c4';
@@ -51,13 +51,31 @@ function enrichCourse(course: { id: string; name: string; subject?: string; desc
     description: course.description || undefined,
     isActive: course.is_active !== false,
     rubLesson: preset?.rubLesson || 1000,
-    rubMonth: preset?.rubMonth || 7500,
+    rubMonth: Number(course.price_monthly) || preset?.rubMonth || 7500,
     eurLesson: preset?.eurLesson || 15,
     eurMonth: preset?.eurMonth || 80,
-    ageGroup: preset?.ageGroup || '7-15 лет',
-    lessonDuration: preset?.lessonDuration || '60 мин',
-    maxStudents: preset?.maxStudents || 8,
+    ageGroup: course.target_age || preset?.ageGroup || '7-15 лет',
+    lessonDuration: course.lesson_duration_minutes ? `${course.lesson_duration_minutes} мин` : (preset?.lessonDuration || '60 мин'),
+    maxStudents: course.max_students || preset?.maxStudents || 8,
   };
+}
+
+function deduplicateCoursesList<T extends { id: string; name: string }>(items: T[]): T[] {
+  const seenNames = new Set<string>();
+  const seenIds = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of items) {
+    if (!item || !item.name) continue;
+    const normName = item.name.trim().toLowerCase();
+    if (!normName || seenNames.has(normName) || seenIds.has(item.id)) {
+      continue;
+    }
+    seenNames.add(normName);
+    seenIds.add(item.id);
+    result.push(item);
+  }
+  return result;
 }
 
 export async function GET() {
@@ -66,22 +84,22 @@ export async function GET() {
     const { data: dbCourses, error } = await admin
       .from('courses')
       .select('*')
-      .order('name');
+      .order('created_at', { ascending: true });
 
     if (error || !dbCourses || dbCourses.length === 0) {
       if (error) {
         console.warn('Supabase courses query failed, using fallback:', error.message);
       }
-      // Return enriched mock courses
       const fallbackList = [
         ...INITIAL_COURSES,
         { id: 'c4', name: 'Скорочтение и память', description: 'Развитие памяти и внимания', subject: 'Развитие интеллекта', isActive: true },
       ].map(enrichCourse);
 
-      return NextResponse.json({ courses: fallbackList });
+      return NextResponse.json({ courses: deduplicateCoursesList(fallbackList) });
     }
 
-    const enriched = dbCourses.map(enrichCourse);
+    const dedupedDb = deduplicateCoursesList(dbCourses);
+    const enriched = dedupedDb.map(enrichCourse);
     return NextResponse.json({ courses: enriched });
   } catch (err: unknown) {
     console.error('GET /api/courses error:', err);
@@ -90,7 +108,7 @@ export async function GET() {
       { id: 'c4', name: 'Скорочтение и память', description: 'Развитие памяти и внимания', subject: 'Развитие интеллекта', isActive: true },
     ].map(enrichCourse);
 
-    return NextResponse.json({ courses: fallbackList });
+    return NextResponse.json({ courses: deduplicateCoursesList(fallbackList) });
   }
 }
 
@@ -109,44 +127,70 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+    const isUuid = (id?: string) => Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
+    // Fetch current DB courses to match against
+    const { data: currentDbCourses } = await admin
+      .from('courses')
+      .select('*');
+
+    const dbList = currentDbCourses || [];
+    const dbById = new Map<string, any>(dbList.map((c) => [c.id, c]));
+    const dbByName = new Map<string, any>(dbList.map((c) => [(c.name || '').trim().toLowerCase(), c]));
 
     // If single course provided
     if (course) {
-      const courseId = course.id && !course.id.startsWith('course_') ? course.id : undefined;
+      const trimmedName = String(course.name || '').trim();
+      const matched = (course.id && isUuid(course.id) && dbById.get(course.id)) || dbByName.get(trimmedName.toLowerCase());
+      const targetId = matched?.id || (isUuid(course.id) ? course.id : undefined);
+
+      const payload: any = {
+        ...(targetId ? { id: targetId } : {}),
+        name: trimmedName,
+        description: course.description || null,
+        subject: course.subject || 'Общий курс',
+        is_active: course.status !== 'paused' && course.isActive !== false,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await admin
         .from('courses')
-        .upsert({
-          ...(courseId ? { id: courseId } : {}),
-          name: course.name,
-          description: course.description || null,
-          subject: course.subject || 'Общий курс',
-          is_active: course.status !== 'paused' && course.isActive !== false,
-        })
+        .upsert(payload)
         .select()
         .single();
 
       if (error) {
-        console.warn('Error upserting course in Supabase:', error);
+        console.warn('Error upserting single course:', error);
       }
       return NextResponse.json({ success: true, course: data ? enrichCourse(data) : enrichCourse(course) });
     }
 
     // If array of courses provided
     if (Array.isArray(courses)) {
-      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
       const validCourses = courses
         .filter(Boolean)
         .filter((c: any) => Boolean(c && c.name && String(c.name).trim().length > 0));
 
-      for (const c of validCourses) {
+      const dedupedIncoming = deduplicateCoursesList(validCourses);
+      const processedDbIds = new Set<string>();
+
+      for (const c of dedupedIncoming) {
         try {
-          const courseId = isUuid(c.id) ? c.id : undefined;
           const trimmedName = String(c.name).trim();
+          const normName = trimmedName.toLowerCase();
+          
+          // Match by UUID or by Name
+          const matched = (c.id && isUuid(c.id) && dbById.get(c.id)) || dbByName.get(normName);
+          const targetId = matched?.id || (isUuid(c.id) ? c.id : undefined);
+
+          if (targetId) {
+            processedDbIds.add(targetId);
+          }
+
           const isActive = c.status !== 'paused' && c.status !== 'archived' && c.is_active !== false && c.isActive !== false;
 
-          // First attempt: try with extended schema columns
           const extendedPayload: any = {
-            ...(courseId ? { id: courseId } : {}),
+            ...(targetId ? { id: targetId } : {}),
             name: trimmedName,
             target_age: c.ageGroup || c.target_age || null,
             price_monthly: Number(String(c.monthlyPrice || c.price_monthly || '0').replace(/\D/g, '')) || 0,
@@ -156,24 +200,60 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           };
 
-          const { error: upsertErr } = await admin.from('courses').upsert(extendedPayload);
+          const { data: upsertData, error: upsertErr } = await admin
+            .from('courses')
+            .upsert(extendedPayload)
+            .select('id')
+            .single();
+
+          if (upsertData?.id) {
+            processedDbIds.add(upsertData.id);
+          }
 
           if (upsertErr) {
-            // Fallback attempt: core schema columns
+            // Core fallback
             const corePayload: any = {
-              ...(courseId ? { id: courseId } : {}),
+              ...(targetId ? { id: targetId } : {}),
               name: trimmedName,
               description: c.description || (c.ageGroup ? `${c.ageGroup} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '6 500 ₽'}` : null),
               subject: c.subject || 'Общий курс',
               is_active: isActive,
             };
-            await admin.from('courses').upsert(corePayload);
+            const { data: coreData } = await admin.from('courses').upsert(corePayload).select('id').single();
+            if (coreData?.id) {
+              processedDbIds.add(coreData.id);
+            }
           }
         } catch (e) {
           console.warn('Error syncing course:', c.name, e);
         }
       }
-      return NextResponse.json({ success: true, count: validCourses.length });
+
+      // Handle removed courses: delete non-referenced DB courses that were removed by the user
+      for (const dbCourse of dbList) {
+        if (!processedDbIds.has(dbCourse.id)) {
+          try {
+            await admin.from('courses').delete().eq('id', dbCourse.id);
+          } catch (delErr) {
+            console.warn('Could not delete removed course from DB:', dbCourse.id, delErr);
+          }
+        }
+      }
+
+      // Fetch fresh updated list from Supabase
+      const { data: updatedCourses } = await admin
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      const finalDeduped = deduplicateCoursesList(updatedCourses || []);
+      const enriched = finalDeduped.map(enrichCourse);
+
+      return NextResponse.json({
+        success: true,
+        count: enriched.length,
+        courses: enriched,
+      });
     }
 
     return NextResponse.json({ error: 'Не указаны данные курса' }, { status: 400 });

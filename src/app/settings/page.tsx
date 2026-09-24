@@ -28,7 +28,8 @@ import {
 } from '@/lib/data/schoolSettingsStorage';
 import {
   CoursesSettingsModal,
-  CourseSettingItem
+  CourseSettingItem,
+  deduplicateCourseItems
 } from '@/components/settings/CoursesSettingsModal';
 import {
   RolesSecurityModal,
@@ -68,18 +69,17 @@ export default function SettingsPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
-          setCourses(
-            data.courses.map((c: any) => ({
-              id: c.id,
-              name: c.name,
-              ageGroup: c.ageGroup || '7-15 лет',
-              monthlyPrice: `${c.rubMonth || 7600} ₽`,
-              lessonDuration: c.lessonDuration || '60 мин',
-              maxStudents: c.maxStudents || 8,
-              status: c.isActive !== false ? 'active' : 'paused',
-              color: 'bg-indigo-600',
-            }))
-          );
+          const mapped = data.courses.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            ageGroup: c.ageGroup || '7-15 лет',
+            monthlyPrice: `${c.rubMonth || 7600} ₽`,
+            lessonDuration: c.lessonDuration || '60 мин',
+            maxStudents: c.maxStudents || 8,
+            status: c.isActive !== false ? 'active' : 'paused',
+            color: 'bg-indigo-600',
+          }));
+          setCourses(deduplicateCourseItems(mapped));
         }
       })
       .catch((err) => console.warn('Could not load /api/courses in settings:', err));

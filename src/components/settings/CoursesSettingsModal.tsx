@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { X, BookOpen, Plus, Check } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { createClient } from '@/lib/supabase/client';
 import { CourseDirectionRow } from '@/components/settings/CourseDirectionRow';
 
 export interface CourseSettingItem {
@@ -31,16 +30,37 @@ interface CoursesSettingsModalProps {
   onSave: (courses: CourseSettingItem[]) => void;
 }
 
+export function deduplicateCourseItems<T extends { id?: string; name?: string }>(items: T[]): T[] {
+  const seenNames = new Set<string>();
+  const seenIds = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of items) {
+    if (!item) continue;
+    const normName = (item.name || '').trim().toLowerCase();
+    const idKey = item.id?.trim();
+
+    if (idKey && seenIds.has(idKey)) continue;
+    if (normName && seenNames.has(normName)) continue;
+
+    if (idKey) seenIds.add(idKey);
+    if (normName) seenNames.add(normName);
+    result.push(item);
+  }
+  return result;
+}
+
 export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: CoursesSettingsModalProps) {
   const { success, error: toastError } = useToast();
   const { role, isOwner } = useRole();
+  const [isSaving, setIsSaving] = useState(false);
   const canManageCourses = isOwner || role === 'owner' || role === 'developer';
 
-  // Strict initial filter to prevent undefined cards
+  // Strict initial filter and deduplication to prevent multiplying cards
   const [courseList, setCourseList] = useState<CourseSettingItem[]>(() => {
-    return (courses || [])
-      .filter(Boolean)
-      .filter((c) => Boolean(c && c.id));
+    return deduplicateCourseItems(
+      (courses || []).filter(Boolean).filter((c) => Boolean(c && c.id))
+    );
   });
 
   // Strict sync only when modal opens to prevent overwriting user input during parent re-renders
@@ -49,25 +69,33 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       let initial: CourseSettingItem[] = [];
       try {
         const saved = typeof window !== 'undefined' ? localStorage.getItem('crm_courses_v1') : null;
-        if (saved) initial = JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initial = parsed;
+          }
+        }
       } catch {}
+
       if (!initial || initial.length === 0) {
         initial = (courses || [])
           .filter(Boolean)
           .filter((c) => Boolean(c && c.id));
       }
-      if (initial.length > 0) {
-        setCourseList(initial);
+
+      const cleanInitial = deduplicateCourseItems(initial);
+      if (cleanInitial.length > 0) {
+        setCourseList(cleanInitial);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, courses]);
 
   if (!isOpen) return null;
 
   // Filter valid items for rendering: keep item mounted even when user temporarily deletes the name to retype it!
-  const validCourses = courseList
-    .filter(Boolean)
-    .filter((c) => Boolean(c && c.id));
+  const validCourses = deduplicateCourseItems(
+    courseList.filter(Boolean).filter((c) => Boolean(c && c.id))
+  );
 
   const handleAddCourse = () => {
     if (!canManageCourses) {
@@ -75,8 +103,9 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       return;
     }
 
+    const uniqueId = `course_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const newCourse: CourseSettingItem = {
-      id: `course_${Date.now()}`,
+      id: uniqueId,
       name: 'Новое направление',
       ageGroup: '7-14 лет',
       monthlyPrice: '6 500 ₽',
@@ -88,7 +117,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
     };
 
     setCourseList((prev) => [
-      ...prev.filter(Boolean).filter((c) => Boolean(c && c.id && c.name && c.name.trim().length > 0)),
+      ...prev.filter(Boolean).filter((c) => Boolean(c && c.id)),
       newCourse,
     ]);
   };
@@ -104,86 +133,74 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       toastError('Только владелец школы может удалять направления');
       return;
     }
-    if (confirm('Внимание: к этому направлению привязаны активные группы. Вы уверены, что хотите удалить направление?')) {
+    if (confirm('Внимание: к этому направлению могут быть привязаны активные группы. Вы уверены, что хотите удалить направление?')) {
       setCourseList((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    setIsSaving(true);
 
-    const cleanedList = courseList
-      .filter(Boolean)
-      .filter((c) => Boolean(c && c.id))
-      .map((c) => ({
-        ...c,
-        name: (c.name || '').trim() || 'Новое направление',
-        is_active: c.status === 'active',
-      }));
-
-    // 0. Immediate local persistence
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('crm_courses_v1', JSON.stringify(cleanedList));
-      } catch {}
-    }
-
-    // 1. Supabase direct upsert
-    try {
-      const supabase = createClient();
-      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-      
-      const payload = cleanedList.map((c) => ({
-        ...(isUuid(c.id) ? { id: c.id } : {}),
-        name: c.name.trim(),
-        target_age: c.ageGroup || c.target_age || '7-14 лет',
-        price_monthly: Number(String(c.monthlyPrice || c.price_monthly || '0').replace(/\D/g, '')) || 0,
-        lesson_duration_minutes: Number(String(c.lessonDuration || c.lesson_duration_minutes || '60').replace(/\D/g, '')) || 60,
-        max_students: Number(c.maxStudents || c.max_students || 8),
-        is_active: c.status === 'active',
-        updated_at: new Date().toISOString(),
-      }));
-
-      const { error: upsertErr } = await supabase.from('courses').upsert(payload);
-      if (upsertErr) {
-        // If DB table has basic schema without extended columns, upsert with core schema
-        const corePayload = cleanedList.map((c) => ({
-          ...(isUuid(c.id) ? { id: c.id } : {}),
-          name: c.name.trim(),
-          description: `${c.ageGroup || '7-14 лет'} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '6 500 ₽'}`,
-          subject: 'Общий курс',
+    const cleanedList = deduplicateCourseItems(
+      courseList
+        .filter(Boolean)
+        .filter((c) => Boolean(c && c.id))
+        .map((c) => ({
+          ...c,
+          name: (c.name || '').trim() || 'Новое направление',
           is_active: c.status === 'active',
-        }));
-        await supabase.from('courses').upsert(corePayload);
-      }
-    } catch (dbErr) {
-      console.warn('Client-side Supabase upsert note:', dbErr);
-    }
+        }))
+    );
 
-    // 2. Persist via server API (admin privileges)
+    let finalSyncedCourses = cleanedList;
+
+    // Single reliable source of persistence via server API (handles DB updates, deduplication and UUID assignment)
     try {
-      await fetch('/api/courses', {
+      const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role, courses: cleanedList }),
       });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
+          finalSyncedCourses = data.courses.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            ageGroup: c.ageGroup || '7-15 лет',
+            monthlyPrice: `${c.rubMonth || 7600} ₽`,
+            lessonDuration: c.lessonDuration || '60 мин',
+            maxStudents: c.maxStudents || 8,
+            status: c.isActive !== false ? 'active' : 'paused',
+            color: '#4f46e5',
+            is_active: c.isActive !== false,
+          }));
+        }
+      }
     } catch (apiErr) {
       console.warn('Server sync note:', apiErr);
+    } finally {
+      setIsSaving(false);
     }
 
-    // 3. Cache invalidation & notification events
+    // Local persistence with canonical deduplicated data
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('crm-courses-changed', { detail: cleanedList }));
+      try {
+        localStorage.setItem('crm_courses_v1', JSON.stringify(finalSyncedCourses));
+      } catch {}
+      window.dispatchEvent(new CustomEvent('crm-courses-changed', { detail: finalSyncedCourses }));
       window.dispatchEvent(new CustomEvent('crm-groups-changed'));
       
-      // If a queryClient is exposed on window (or react-query cache)
       if ((window as any).__queryClient) {
         (window as any).__queryClient.invalidateQueries?.({ queryKey: ['courses'] });
         (window as any).__queryClient.invalidateQueries?.({ queryKey: ['groups'] });
       }
     }
 
-    onSave(cleanedList);
+    onSave(finalSyncedCourses);
     success('Направления и тарифы успешно сохранены.');
     onClose();
   };
@@ -232,7 +249,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
             )}
           </div>
 
-          {/* List of Courses (strictly filtered to eliminate empty frames) */}
+          {/* List of Courses */}
           <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
             {validCourses.map((course) => (
               <CourseDirectionRow
@@ -256,10 +273,11 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" />
-              Сохранить изменения
+              {isSaving ? 'Сохранение...' : 'Сохранить изменения'}
             </button>
           </div>
         </form>

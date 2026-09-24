@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
 import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 import { generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
-import { CoursesSettingsModal, CourseSettingItem } from '@/components/settings/CoursesSettingsModal';
+import { CoursesSettingsModal, CourseSettingItem, deduplicateCourseItems } from '@/components/settings/CoursesSettingsModal';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -95,7 +95,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
             maxStudents: c.maxStudents,
             isActive: c.status === 'active' || c.is_active !== false,
           }));
-          setCoursesList(mapped);
+          setCoursesList(deduplicateCourseItems(mapped));
         }
       }
     } catch {}
@@ -106,7 +106,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       if (res.ok) {
         const data = await res.json();
         if (data.courses && Array.isArray(data.courses) && data.courses.length > 0) {
-          setCoursesList(data.courses);
+          setCoursesList(deduplicateCourseItems(data.courses));
         }
       }
     } catch (err) {
@@ -137,7 +137,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
           maxStudents: c.maxStudents,
           isActive: c.status === 'active' || c.is_active !== false,
         }));
-        setCoursesList(mapped);
+        setCoursesList(deduplicateCourseItems(mapped));
       }
       fetchCourses();
     };
