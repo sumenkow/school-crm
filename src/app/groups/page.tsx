@@ -160,7 +160,7 @@ export default function GroupsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('groups.title', 'Группы школы')}</h1>
@@ -275,11 +275,11 @@ export default function GroupsPage() {
                   !isDel && 'cursor-pointer'
                 )}
               >
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
+                <div className="flex-1 flex flex-col justify-between min-w-0">
+                  <div className="min-w-0">
                     {/* Header: Course Category, Group Name, Status Badge & Menu */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="text-xs font-semibold uppercase tracking-wider text-blue-600 block truncate">
                           {group.courseName}
                         </span>
