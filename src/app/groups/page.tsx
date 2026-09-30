@@ -236,9 +236,17 @@ export default function GroupsPage() {
       </div>
 
       {/* Strict Grid of groups with uniform height */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch min-w-0">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: '20px',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
         {filteredGroups.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl bg-white">
+          <div style={{ gridColumn: '1 / -1' }} className="py-12 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl bg-white">
             {statusFilter === 'deleted' ? 'В списке удаленных групп ничего нет' : 'Группы не найдены'}
           </div>
         ) : (
@@ -270,8 +278,9 @@ export default function GroupsPage() {
                     router.push(`/groups/${group.id}`);
                   }
                 }}
+                style={{ minWidth: 0, overflow: 'hidden', boxSizing: 'border-box' }}
                 className={cn(
-                  'relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between h-full group/card w-full min-w-0 overflow-hidden',
+                  'relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group/card w-full',
                   !isDel && 'cursor-pointer'
                 )}
               >
