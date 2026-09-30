@@ -437,6 +437,7 @@ export default function ParentsPage() {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
+  const [popoverPos, setPopoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // View Mode: Table vs Grid
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -977,35 +978,20 @@ export default function ParentsPage() {
                                     {hasExtra && (
                                       <div
                                         className="relative shrink-0 inline-flex items-center"
-                                        onMouseEnter={() => setActiveCoursePopoverId(popoverKey)}
-                                        onMouseLeave={() => setActiveCoursePopoverId(null)}
+                                        onMouseEnter={(e) => {
+                                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                          setPopoverPos({ x: rect.left, y: rect.top });
+                                          setActiveCoursePopoverId(popoverKey);
+                                        }}
+                                        onMouseLeave={() => {
+                                          setActiveCoursePopoverId(null);
+                                          setPopoverPos(null);
+                                        }}
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded cursor-pointer hover:bg-slate-200 transition-colors">
                                           +{groups.length - 1}
                                         </span>
-
-                                        {/* Popover */}
-                                        {activeCoursePopoverId === popoverKey && (
-                                          <div className="absolute left-0 bottom-full mb-2 z-50 w-64 p-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150 font-normal">
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
-                                              Дополнительные группы ({groups.length - 1})
-                                            </div>
-                                            <div className="space-y-2">
-                                              {groups.slice(1).map((gName, gIdx) => (
-                                                <div key={gIdx} className="space-y-0.5">
-                                                  <div className="font-bold text-white text-xs">{gName}</div>
-                                                  <div className="text-slate-300 text-[11px]">
-                                                    🗓 {c.nextLesson || 'Ср, Сб 15:00'}
-                                                  </div>
-                                                  <div className="text-slate-400 text-[10px]">
-                                                    Преподаватель: {c.teacherName || 'Денис Смирнов'}
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -1367,6 +1353,54 @@ export default function ParentsPage() {
           onCreate={handleCreateParent}
         />
       )}
+
+      {/* Fixed-position course popover — renders outside overflow:hidden table */}
+      {activeCoursePopoverId && popoverPos && (() => {
+        const POPOVER_HEIGHT = 140;
+        const POPOVER_WIDTH = 256;
+        const GAP = 8;
+        const aboveY = popoverPos.y - POPOVER_HEIGHT - GAP;
+        const belowY = popoverPos.y + 24 + GAP;
+        const useBelow = aboveY < 8;
+        const top = useBelow ? belowY : aboveY;
+        const left = Math.min(popoverPos.x, window.innerWidth - POPOVER_WIDTH - 8);
+
+        const [parentId, childId] = activeCoursePopoverId.split('_');
+        const parentRec = parents.find((p) => p.id === parentId);
+        const childRec = parentRec?.children.find((c) => c.id === childId);
+        const groups = cleanGroupName(childRec?.group || '');
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              top,
+              left,
+              width: POPOVER_WIDTH,
+              zIndex: 9999,
+              pointerEvents: 'none',
+            }}
+            className="p-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs font-normal"
+          >
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
+              Дополнительные группы ({groups.length - 1})
+            </div>
+            <div className="space-y-2">
+              {groups.slice(1).map((gName, gIdx) => (
+                <div key={gIdx} className="space-y-0.5">
+                  <div className="font-bold text-white text-xs">{gName}</div>
+                  <div className="text-slate-300 text-[11px]">
+                    🗓 {childRec?.nextLesson || 'Ср, Сб 15:00'}
+                  </div>
+                  <div className="text-slate-400 text-[10px]">
+                    Преподаватель: {childRec?.teacherName || 'Денис Смирнов'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
