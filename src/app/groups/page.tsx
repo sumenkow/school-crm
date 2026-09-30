@@ -236,7 +236,7 @@ export default function GroupsPage() {
       </div>
 
       {/* Strict Grid of groups with uniform height */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-stretch min-w-0">
         {filteredGroups.length === 0 ? (
           <div className="col-span-full py-12 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-2xl bg-white">
             {statusFilter === 'deleted' ? 'В списке удаленных групп ничего нет' : 'Группы не найдены'}
@@ -271,7 +271,7 @@ export default function GroupsPage() {
                   }
                 }}
                 className={cn(
-                  'relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between h-full group/card',
+                  'relative rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between h-full group/card w-full min-w-0 overflow-hidden',
                   !isDel && 'cursor-pointer'
                 )}
               >
@@ -354,19 +354,19 @@ export default function GroupsPage() {
 
                     {/* Info Rows */}
                     <div className="mt-3.5 space-y-2 text-xs text-slate-600">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <Calendar className="h-4 w-4 text-slate-500 shrink-0" />
-                        <span className="font-medium text-slate-800 truncate">{group.schedule}</span>
+                        <span className="font-medium text-slate-800 truncate min-w-0">{group.schedule}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <Users className="h-4 w-4 text-slate-500 shrink-0" />
-                        <span className="truncate">
+                        <span className="truncate min-w-0">
                           {t('groups.teacher', 'Преподаватель')}: <strong className="text-slate-800">{group.teacherName}</strong>
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <Video className="h-4 w-4 text-blue-500 shrink-0" />
-                        <span className="text-blue-700 font-medium truncate">{group.room || 'Онлайн (Zoom / платформа)'}</span>
+                        <span className="text-blue-700 font-medium truncate min-w-0">{group.room || 'Онлайн (Zoom / платформа)'}</span>
                       </div>
                     </div>
                   </div>
