@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Send,
   Bot,
@@ -10,11 +10,13 @@ import {
   Link as LinkIcon,
   ExternalLink,
   MessageSquare,
-  Clock
+  Clock,
+  Settings
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { saveInteractionToStorage, TimelineInteraction } from '@/lib/data/timelineStorage';
+import { TelegramSettingsModal } from '@/components/settings/TelegramSettingsModal';
 import { cn } from '@/lib/utils';
 
 interface TelegramChatBoxProps {
@@ -59,6 +61,19 @@ export function TelegramChatBox({
   const { userName } = useRole();
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [hasBotToken, setHasBotToken] = useState<boolean>(true);
+
+  const checkToken = () => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('crm_tg_bot_token');
+      setHasBotToken(Boolean(token && token.trim().length > 10));
+    }
+  };
+
+  useEffect(() => {
+    checkToken();
+  }, []);
 
   const hasTelegram = Boolean(telegramHandle || telegramChatId);
   const cleanHandle = (telegramHandle || '').replace(/^@/, '');
@@ -67,9 +82,17 @@ export function TelegramChatBox({
     if (e) e.preventDefault();
     if (!messageText.trim()) return;
 
+    const savedBotToken = typeof window !== 'undefined' ? (localStorage.getItem('crm_tg_bot_token') || '').trim() : '';
+
     if (!hasTelegram) {
       error('Telegram не подключен. Сначала отправьте клиенту ссылку на подключение бота.');
       onOpenConnectModal?.();
+      return;
+    }
+
+    if (!savedBotToken) {
+      error('Telegram Bot Token не настроен. Открываю настройки Telegram...');
+      setIsSettingsModalOpen(true);
       return;
     }
 
@@ -90,12 +113,16 @@ export function TelegramChatBox({
           chatId: telegramChatId || telegramHandle,
           message: messageText.trim(),
           authorName: userName || 'Администратор школы',
+          customBotToken: savedBotToken || undefined,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
+        if (data.error && data.error.includes('Bot Token не настроен')) {
+          setIsSettingsModalOpen(true);
+        }
         throw new Error(data.error || 'Ошибка отправки через Telegram API');
       }
 
@@ -177,6 +204,26 @@ export function TelegramChatBox({
         </div>
       </div>
 
+      {/* If Bot Token Not Configured Warning */}
+      {!hasBotToken && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="text-amber-600 shrink-0" />
+            <span>
+              Telegram-бот школы ещё не настроен. Укажите Bot Token для отправки сообщений клиентам.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsSettingsModalOpen(true)}
+            className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 hover:underline shrink-0 cursor-pointer"
+          >
+            <Settings size={13} />
+            Настроить токен →
+          </button>
+        </div>
+      )}
+
       {/* If Not Connected Banner */}
       {!hasTelegram && (
         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-center space-y-2">
@@ -250,6 +297,15 @@ export function TelegramChatBox({
           </div>
         </form>
       )}
+
+      {/* Modal for setting up Telegram Bot credentials directly */}
+      <TelegramSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => {
+          setIsSettingsModalOpen(false);
+          checkToken();
+        }}
+      />
     </div>
   );
 }

@@ -50,12 +50,18 @@ export function TelegramConnectModal({
 
     // Try fetching live bot info from server
     setIsLoadingBot(true);
-    fetch('/api/telegram/setup')
+    const savedToken = typeof window !== 'undefined' ? (localStorage.getItem('crm_tg_bot_token') || '') : '';
+    const query = savedToken ? `?token=${encodeURIComponent(savedToken)}` : '';
+
+    fetch(`/api/telegram/setup${query}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.configured && data.bot?.username) {
           setBotUsername(data.bot.username);
           setBotName(data.bot.first_name || 'Школьный Бот');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('crm_tg_bot_username', data.bot.username);
+          }
         } else {
           // Fallback to localStorage or default
           const storedBot = localStorage.getItem('crm_tg_bot_username') || 'SchoolCrmBot';
