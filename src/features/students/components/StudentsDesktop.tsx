@@ -324,12 +324,15 @@ export function StudentsDesktop({
                             </div>
                           )}
                         </div>
-                        <span className="text-[11px] text-slate-400 block truncate">
-                          → {student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}
-                        </span>
+                        <div className="pt-0.5">
+                          <span className="text-[11px] text-slate-500 font-medium inline-flex items-center gap-1 bg-slate-50/80 px-1.5 py-0.5 rounded-md border border-slate-200/50 max-w-full truncate">
+                            <span className="text-blue-500 font-bold">→</span>
+                            <span className="truncate">{student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}</span>
+                          </span>
+                        </div>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400 select-none">— Без группы</span>
+                      <span className="text-xs text-slate-400 select-none pl-1">— Без группы</span>
                     )}
                   </td>
 

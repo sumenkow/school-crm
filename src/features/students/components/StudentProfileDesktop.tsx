@@ -11,6 +11,7 @@ import {
   Trash2,
   MoreHorizontal,
   Sparkles,
+  Clock,
 } from 'lucide-react';
 import { cn, isEntityNew } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -424,9 +425,9 @@ export function StudentProfileDesktop({
       </div>
 
       {/* LEVEL 2: Metrics Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-12 gap-4 divide-x divide-slate-100">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-12 gap-3 divide-x divide-slate-100">
         {/* Block 1: КУРС И ГРУППА / КУРСЫ */}
-        <div className="col-span-4 min-w-0 space-y-1">
+        <div className="col-span-4 min-w-0 pr-3 space-y-1.5">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             {student.groups.length > 1 ? `КУРСЫ И ГРУППЫ (${student.groups.length})` : 'КУРС И ГРУППА'}
           </span>
@@ -452,7 +453,7 @@ export function StudentProfileDesktop({
               const cleanFirstGrpName = (firstGrp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || firstGrp.name;
 
               return (
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   <Link
                     href={groupHref}
                     className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
@@ -462,19 +463,20 @@ export function StudentProfileDesktop({
                   {upcomingLesson && upcomingLesson.date ? (
                     <Link
                       href={lessonHref}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline block truncate"
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 max-w-full truncate bg-blue-50/60 px-2 py-0.5 rounded-md border border-blue-100/80"
                       title="Перейти к карточке ближайшего урока"
                     >
-                      Следующее занятие: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}
+                      <Clock className="w-3 h-3 shrink-0 text-blue-500" />
+                      <span className="truncate">Урок: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}</span>
                     </Link>
                   ) : (
-                    <span className="text-[11px] text-slate-400 block truncate">
+                    <span className="text-[11px] text-slate-400 block truncate pl-0.5">
                       Следующее занятие: —
                     </span>
                   )}
                   <Link
                     href={teacherHref}
-                    className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate"
+                    className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate pl-0.5"
                   >
                     Преподаватель: {teacherName}
                   </Link>
@@ -494,7 +496,7 @@ export function StudentProfileDesktop({
                   ) || INITIAL_TEACHERS[0];
 
                   return (
-                    <div key={grp.id || gIdx} className="space-y-0.5 border-b border-slate-100/80 pb-1.5 last:border-0 last:pb-0">
+                    <div key={grp.id || gIdx} className="space-y-1 border-b border-slate-100/80 pb-1.5 last:border-0 last:pb-0">
                       <Link
                         href={`/groups/${targetGroup.id}`}
                         className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline truncate block"
@@ -510,7 +512,7 @@ export function StudentProfileDesktop({
                           {teacherName}
                         </Link>
                         {grp.schedule && (
-                          <span className="text-[10px] text-slate-600 font-mono shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
+                          <span className="text-[10px] text-slate-600 font-mono shrink-0 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
                             {grp.schedule.split('•')[0]?.trim() || grp.schedule}
                           </span>
                         )}
@@ -521,12 +523,12 @@ export function StudentProfileDesktop({
               </div>
             );
           })() : (
-            <span className="text-xs text-slate-400 font-medium block mt-1">— Без группы</span>
+            <span className="text-xs text-slate-400 font-medium block mt-1 pl-0.5">— Без группы</span>
           )}
         </div>
 
-        {/* Block 2: ПРЕДСТАВИТЕЛЬ (Bugfix: display parent if present in student.parents regardless of adult_student) */}
-        <div className="col-span-3 min-w-0 pl-4 space-y-1">
+        {/* Block 2: ПРЕДСТАВИТЕЛЬ */}
+        <div className="col-span-3 min-w-0 pl-4 pr-2 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             ПРЕДСТАВИТЕЛЬ
           </span>
@@ -574,7 +576,7 @@ export function StudentProfileDesktop({
         {/* Block 3: ПОСЕЩАЕМОСТЬ */}
         <div
           onClick={() => onSelectTab('attendance')}
-          className="col-span-2 min-w-0 pl-4 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
+          className="col-span-2.5 min-w-0 pl-4 pr-2 space-y-1.5 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
           title="Перейти к посещаемости"
         >
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
@@ -593,7 +595,7 @@ export function StudentProfileDesktop({
             >
               {attendanceRateNum}%
             </span>
-            <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
               <div
                 className={cn(
                   'h-full rounded-full transition-all',
@@ -608,15 +610,23 @@ export function StudentProfileDesktop({
             </div>
           </div>
           
-          {/* Last absence indicator */}
+          {/* Last absence indicator: compact badge with right margin protection */}
           {lastAbsence ? (
             lastAbsence.status === 'absent' ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 block truncate" title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : 'Пропуск без причины'}>
-                ⚠ Пропуск: {formatAbsenceDate(lastAbsence.date)} (Без причины)
+              <span 
+                className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[10px] font-bold text-rose-700 max-w-full truncate shadow-2xs" 
+                title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Без причины)`}
+              >
+                <span className="shrink-0">⚠</span>
+                <span className="truncate">Пропуск {formatAbsenceDate(lastAbsence.date)}</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 block truncate" title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : 'Болезнь / Уважительная'}>
-                🏥 Пропуск: {formatAbsenceDate(lastAbsence.date)} (Болезнь)
+              <span 
+                className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 max-w-full truncate shadow-2xs" 
+                title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Болезнь)`}
+              >
+                <span className="shrink-0">🏥</span>
+                <span className="truncate">Болезнь {formatAbsenceDate(lastAbsence.date)}</span>
               </span>
             )
           ) : (
@@ -628,7 +638,7 @@ export function StudentProfileDesktop({
         <div
           onClick={() => role !== 'teacher' && onSelectTab('finance')}
           className={cn(
-            "col-span-3 min-w-0 pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
+            "col-span-2.5 min-w-0 pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
             role !== 'teacher' ? "cursor-pointer hover:bg-slate-50/60" : "cursor-default"
           )}
           title={role !== 'teacher' ? "Перейти к финансам" : "Доступ к финансам ограничен"}
