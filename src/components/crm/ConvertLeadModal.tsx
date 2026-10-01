@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, Copy, Send, CreditCard, Calendar, User, BookOpen, Layers } from 'lucide-react';
+import { X, CheckCircle2, User, BookOpen, Layers } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { FullLeadData } from '@/lib/data/mockData';
 import { convertLeadToStudentTransaction } from '@/lib/data/conversionHelper';
@@ -19,10 +19,6 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
   const [courseName, setCourseName] = useState(lead?.directionOrCourse || 'Английский язык');
   const [groupName, setGroupName] = useState('Вт/Чт 18:00 (A2-B1)');
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
-  const [tariffAmount, setTariffAmount] = useState<number>(120);
-  const [currency, setCurrency] = useState<'EUR' | 'RUB'>('EUR');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | 'bank_transfer'>('card');
-  const [autoCreateInvoice, setAutoCreateInvoice] = useState(true);
   const [loading, setLoading] = useState(false);
 
   if (!isOpen || !lead) return null;
@@ -40,17 +36,9 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
         courseName,
         groupName,
         startDate,
-        tariffAmount,
-        currency,
-        paymentMethod,
-        autoCreateInvoice,
       });
 
-      toast.success('Ученик зачислен в группу. Счет сформирован');
-      if (res.payUrl) {
-        navigator.clipboard.writeText(res.payUrl);
-        toast.success('Ссылка на оплату скопирована в буфер');
-      }
+      toast.success('Ученик успешно зачислен в группу');
       onSuccess(res.studentId);
       onClose();
     } catch (err) {
@@ -161,63 +149,16 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
             </div>
           </div>
 
-          {/* Start Date & Tariff */}
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Дата старта</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Стоимость</label>
-              <input
-                type="number"
-                value={tariffAmount}
-                onChange={(e) => setTariffAmount(Number(e.target.value))}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 font-bold"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600 block mb-1">Валюта</label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as any)}
-                className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-slate-50 font-bold"
-              >
-                <option value="EUR">EUR (€)</option>
-                <option value="RUB">RUB (₽)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Payment Gateway / Method */}
+          {/* Start Date */}
           <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1">Способ оплаты</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as any)}
-              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50"
-            >
-              <option value="card">💳 Ссылка для онлайн-оплаты (Stripe / Карта)</option>
-              <option value="cash">💵 Наличные / терминал в школе</option>
-              <option value="bank_transfer">🏛️ Банковский перевод (Счет / SEPA)</option>
-            </select>
-          </div>
-
-          {/* Auto create invoice checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer pt-2">
+            <label className="text-xs font-semibold text-slate-600 block mb-1">Дата старта занятий</label>
             <input
-              type="checkbox"
-              checked={autoCreateInvoice}
-              onChange={(e) => setAutoCreateInvoice(e.target.checked)}
-              className="w-4 h-4 rounded text-blue-600"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 font-medium"
             />
-            <span className="text-xs font-medium text-slate-700">Выставить счет на первый месяц автоматически</span>
-          </label>
+          </div>
 
           {/* Buttons */}
           <div className="pt-4 flex items-center justify-end gap-2 border-t border-slate-100">
@@ -231,9 +172,9 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md transition-all flex items-center gap-2"
+              className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
-              <CheckCircle2 size={16} /> Подтвердить зачисление и сформировать счет
+              <CheckCircle2 size={16} /> Подтвердить зачисление в ученики
             </button>
           </div>
 

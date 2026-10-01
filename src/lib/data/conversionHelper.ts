@@ -1,8 +1,6 @@
 import { FullLeadData } from './mockData';
 import { saveStudentToStorage } from './studentStorage';
-import { savePaymentToStorage } from './paymentStorage';
 import { qualifyAndConvertLead } from './leadStorage';
-import { saveTaskToStorage } from './taskStorage';
 import { createClient } from '@/lib/supabase/client';
 
 export interface LeadConversionPayload {
@@ -14,17 +12,12 @@ export interface LeadConversionPayload {
   groupName: string;
   teacherName?: string;
   startDate: string;
-  tariffAmount: number;
-  currency: 'EUR' | 'RUB';
-  paymentMethod: 'card' | 'cash' | 'bank_transfer';
-  autoCreateInvoice: boolean;
 }
 
 export async function convertLeadToStudentTransaction(payload: LeadConversionPayload) {
-  const { lead, studentType, parentName, parentPhone, courseName, groupName, teacherName, startDate, tariffAmount, currency, paymentMethod, autoCreateInvoice } = payload;
+  const { lead, studentType, parentName, parentPhone, courseName, groupName, teacherName, startDate } = payload;
   const studentId = `st_${Date.now()}`;
   const parentId = parentName ? `par_${Date.now()}` : undefined;
-  const paymentId = `pay_${Date.now()}`;
 
   const firstName = lead.studentFirstName || (lead.name ? lead.name.split(' ')[0] : '') || lead.name || 'Ученик';
   const lastName = lead.studentLastName || (lead.name ? lead.name.split(' ').slice(1).join(' ') : '') || '';
@@ -77,10 +70,10 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
       activeSubscription: null,
       deposit: {
         balance: 0,
-        balanceFormatted: currency === 'EUR' ? '0 €' : '0 ₽',
-        currency: currency || 'EUR',
-        pricePerLesson: tariffAmount ? Math.max(1, Math.round(tariffAmount / 8)) : 12,
-        pricePerLessonFormatted: currency === 'EUR' ? '12 €' : '1 050 ₽',
+        balanceFormatted: '0 €',
+        currency: 'EUR',
+        pricePerLesson: 12,
+        pricePerLessonFormatted: '12 €',
       },
       payments: [],
     },
@@ -95,33 +88,10 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
 
   saveStudentToStorage(newStudent);
 
-  // 2. Create Pending Invoice / Payment if checked
-  if (autoCreateInvoice) {
-    savePaymentToStorage({
-      id: paymentId,
-      studentId: studentId,
-      studentName: lead.name,
-      parentId: parentId,
-      parentName: parentName,
-      courseName: courseName || 'Обучение',
-      groupName: groupName || 'Группа',
-      amount: tariffAmount,
-      amountFormatted: currency === 'EUR' ? `${tariffAmount} €` : `${tariffAmount.toLocaleString('ru-RU')} ₽`,
-      paymentDate: new Date().toLocaleDateString('ru-RU'),
-      periodLabel: 'Первый абонемент',
-      status: 'expected',
-      paymentMethod: paymentMethod === 'bank_transfer' ? 'invoice' : paymentMethod,
-      currency: currency,
-      paymentType: 'subscription',
-      recordedBy: 'Администратор',
-      comment: `Счет для зачисления лида ${lead.name}`,
-    });
-  }
-
-  // 3. Qualify & Convert Lead
+  // 2. Qualify & Convert Lead
   qualifyAndConvertLead(lead.id, studentId, parentId);
 
-  // 4. Supabase DB RPC / direct table upsert fallback
+  // 3. Supabase DB RPC / direct table upsert fallback
   try {
     const supabase = createClient();
     await supabase.from('leads').update({
@@ -132,5 +102,5 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
     console.warn('Supabase lead convert update error:', err);
   }
 
-  return { studentId, paymentId, payUrl: `https://pay.smartacademy.com/${paymentId}` };
+  return { studentId };
 }
