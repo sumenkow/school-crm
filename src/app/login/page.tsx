@@ -22,22 +22,39 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      // 1. Попытка входа с обработкой сетевых задержек
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ 
+        email: email.trim().toLowerCase(), 
+        password 
+      });
 
-    if (error) {
-      setError(
-        error.message === 'Invalid login credentials'
-          ? t('login.errorInvalidCredentials')
-          : error.message === 'Email not confirmed'
-          ? t('login.errorEmailNotConfirmed')
-          : t('login.errorGeneral')
-      );
+      if (authError) {
+        console.error('Supabase Auth error:', authError);
+        const msg = authError.message || '';
+
+        if (msg.includes('Invalid login credentials')) {
+          setError(t('login.errorInvalidCredentials', 'Неверный email или пароль'));
+        } else if (msg.includes('Email not confirmed')) {
+          setError(t('login.errorEmailNotConfirmed', 'Email не подтвержден'));
+        } else if (msg.includes('rate limit') || msg.includes('over_email_send_rate_limit') || (authError as any).status === 429) {
+          setError('Слишком много попыток входа. Пожалуйста, подождите 1-2 минуты.');
+        } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch failed')) {
+          setError('Ошибка сети. Проверьте интернет-соединение или VPN.');
+        } else {
+          setError(authError.message || t('login.errorGeneral', 'Ошибка входа. Попробуйте ещё раз.'));
+        }
+        setLoading(false);
+        return;
+      }
+
+      // 2. Успешный вход → перенаправление
+      window.location.href = '/dashboard';
+    } catch (err: unknown) {
+      console.error('Unexpected login exception:', err);
+      setError('Не удалось связаться с сервером авторизации. Проверьте подключение к сети.');
       setLoading(false);
-      return;
     }
-
-    // Redirect handled by middleware after session cookie is set
-    window.location.href = '/dashboard';
   };
 
 
