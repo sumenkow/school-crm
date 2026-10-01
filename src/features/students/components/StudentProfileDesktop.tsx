@@ -426,7 +426,7 @@ export function StudentProfileDesktop({
 
       {/* LEVEL 2: Metrics Bar */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-12 gap-3 divide-x divide-slate-100">
-        {/* Block 1: КУРС И ГРУППА / КУРСЫ */}
+        {/* Block 1: КУРС И ГРУППА / КУРСЫ (4/12) */}
         <div className="col-span-4 min-w-0 pr-3 space-y-1.5">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             {student.groups.length > 1 ? `КУРСЫ И ГРУППЫ (${student.groups.length})` : 'КУРС И ГРУППА'}
@@ -527,8 +527,8 @@ export function StudentProfileDesktop({
           )}
         </div>
 
-        {/* Block 2: ПРЕДСТАВИТЕЛЬ */}
-        <div className="col-span-3 min-w-0 pl-4 pr-2 space-y-1">
+        {/* Block 2: ПРЕДСТАВИТЕЛЬ (3/12) */}
+        <div className="col-span-3 min-w-0 pl-3 pr-2 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             ПРЕДСТАВИТЕЛЬ
           </span>
@@ -573,13 +573,13 @@ export function StudentProfileDesktop({
           )}
         </div>
 
-        {/* Block 3: ПОСЕЩАЕМОСТЬ */}
+        {/* Block 3: ПОСЕЩАЕМОСТЬ (2/12) */}
         <div
           onClick={() => onSelectTab('attendance')}
-          className="col-span-2.5 min-w-0 pl-4 pr-2 space-y-1.5 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
+          className="col-span-2 min-w-0 pl-3 pr-2 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
           title="Перейти к посещаемости"
         >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate group-hover:text-blue-600">
             ПОСЕЩАЕМОСТЬ
           </span>
           <div className="flex items-center gap-2">
@@ -595,7 +595,7 @@ export function StudentProfileDesktop({
             >
               {attendanceRateNum}%
             </span>
-            <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
+            <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
               <div
                 className={cn(
                   'h-full rounded-full transition-all',
@@ -610,40 +610,40 @@ export function StudentProfileDesktop({
             </div>
           </div>
           
-          {/* Last absence indicator: compact badge with right margin protection */}
+          {/* Last absence indicator: compact */}
           {lastAbsence ? (
             lastAbsence.status === 'absent' ? (
               <span 
-                className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[10px] font-bold text-rose-700 max-w-full truncate shadow-2xs" 
+                className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 text-[9.5px] font-bold text-rose-700 max-w-full truncate" 
                 title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Без причины)`}
               >
-                <span className="shrink-0">⚠</span>
-                <span className="truncate">Пропуск {formatAbsenceDate(lastAbsence.date)}</span>
+                <span className="shrink-0 text-[8px]">⚠</span>
+                <span className="truncate">{formatAbsenceDate(lastAbsence.date)} пропуск</span>
               </span>
             ) : (
               <span 
-                className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 max-w-full truncate shadow-2xs" 
+                className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-800 max-w-full truncate" 
                 title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Болезнь)`}
               >
-                <span className="shrink-0">🏥</span>
-                <span className="truncate">Болезнь {formatAbsenceDate(lastAbsence.date)}</span>
+                <span className="shrink-0 text-[8px]">🏥</span>
+                <span className="truncate">{formatAbsenceDate(lastAbsence.date)} болезнь</span>
               </span>
             )
           ) : (
-            <span className="text-[10px] text-slate-400 block truncate">Все уроки посещены</span>
+            <span className="text-[10px] text-slate-400 block truncate">100% норма</span>
           )}
         </div>
 
-        {/* Block 4: СТАТУС ОПЛАТЫ */}
+        {/* Block 4: СТАТУС ОПЛАТЫ (3/12) */}
         <div
           onClick={() => role !== 'teacher' && onSelectTab('finance')}
           className={cn(
-            "col-span-2.5 min-w-0 pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
+            "col-span-3 min-w-0 pl-3 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
             role !== 'teacher' ? "cursor-pointer hover:bg-slate-50/60" : "cursor-default"
           )}
           title={role !== 'teacher' ? "Перейти к финансам" : "Доступ к финансам ограничен"}
         >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate group-hover:text-blue-600">
             СТАТУС ОПЛАТЫ
           </span>
           {role === 'teacher' ? (
