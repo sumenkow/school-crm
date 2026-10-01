@@ -427,7 +427,7 @@ export default function CrmPage() {
               {t('crm.title', 'CRM Лиды и Воронка')}
             </h1>
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-              Объем воронки: {funnelTotalEur.toLocaleString('ru-RU')} € (≈ {funnelTotalRub.toLocaleString('ru-RU')} ₽)
+              Объем воронки: {funnelTotalEur.toLocaleString('ru-RU')} €
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -822,9 +822,9 @@ export default function CrmPage() {
                         {lead.offerAmount ? (
                           <span className="font-bold text-slate-800">{String(lead.offerAmount).replace('++', '+')}</span>
                         ) : finSummary.deposit > 0 ? (
-                          <span className="font-semibold text-emerald-700">+{finSummary.formattedDeposit}</span>
+                          <span className="font-semibold text-emerald-700">+{finSummary.deposit} €</span>
                         ) : (
-                          <span className="text-slate-400">80 € (8 000 ₽)</span>
+                          <span className="text-slate-400">80 €</span>
                         )}
                       </td>
                       <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
@@ -1004,29 +1004,28 @@ function LeadCard({
     return () => window.removeEventListener('click', handleOutside);
   }, [menuOpen]);
 
-  // Clean formatted deal amount without double ++
+  // Clean formatted deal amount strictly in EUR
   const dealAmountFormatted = useMemo(() => {
-    if (!lead) return '80 € (8 000 ₽)';
+    if (!lead) return '80 €';
     const raw = lead.offerAmount;
     if (raw) {
       const clean = String(raw).replace(/\+\+/g, '+').trim();
       const num = parseFloat(clean.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
       if (num > 0) {
         if (clean.includes('€') || num <= 500) {
-          const rub = convertEurToRub(num);
-          return `${num} € (${rub.toLocaleString('ru-RU')} ₽)`;
+          return `${num} €`;
         }
         const eur = convertRubToEur(num);
-        return `${eur} € (${num.toLocaleString('ru-RU')} ₽)`;
+        return `${eur} €`;
       }
     }
     try {
       const fin = getLeadFinancialSummary(lead);
       if (fin && fin.deposit > 0) {
-        return `${fin.deposit} € (${fin.depositRub.toLocaleString('ru-RU')} ₽)`;
+        return `${fin.deposit} €`;
       }
     } catch {}
-    return '80 € (8 000 ₽)';
+    return '80 €';
   }, [lead]);
 
   // Deadline calculation
