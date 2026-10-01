@@ -1,0 +1,83 @@
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  resolveBotToken,
+  getTelegramBotMe,
+  getTelegramWebhookInfo,
+  setTelegramWebhook,
+} from '@/lib/telegram/telegramClient';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const customToken = searchParams.get('token') || undefined;
+    const token = resolveBotToken(customToken);
+
+    if (!token) {
+      return NextResponse.json({
+        configured: false,
+        error: 'Telegram Bot Token не настроен',
+      });
+    }
+
+    const [botRes, webhookRes] = await Promise.all([
+      getTelegramBotMe(token),
+      getTelegramWebhookInfo(token),
+    ]);
+
+    return NextResponse.json({
+      configured: true,
+      bot: botRes.bot || null,
+      botError: botRes.error || null,
+      webhook: webhookRes.info || null,
+      webhookError: webhookRes.error || null,
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { configured: false, error: error?.message || 'Failed to check bot status' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { customBotToken, webhookUrl } = body;
+
+    const token = resolveBotToken(customBotToken);
+    if (!token) {
+      return NextResponse.json(
+        { success: false, error: 'Telegram Bot Token не указан' },
+        { status: 400 }
+      );
+    }
+
+    if (!webhookUrl) {
+      return NextResponse.json(
+        { success: false, error: 'Webhook URL не указан' },
+        { status: 400 }
+      );
+    }
+
+    const res = await setTelegramWebhook(token, webhookUrl);
+
+    if (!res.success) {
+      return NextResponse.json(
+        { success: false, error: res.error || 'Не удалось зарегистрировать Webhook' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      description: res.description || 'Webhook успешно зарегистрирован в Telegram',
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error?.message || 'Internal Server Error' },
+      { status: 500 }
+    );
+  }
+}

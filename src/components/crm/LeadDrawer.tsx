@@ -26,6 +26,8 @@ import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/l
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { ConvertLeadModal } from './ConvertLeadModal';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
@@ -70,6 +72,7 @@ export function LeadDrawer({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDue, setNewTaskDue] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
 
   // Editable fields
@@ -628,7 +631,26 @@ export function LeadDrawer({
 
           {/* Section: Timeline & Interactions */}
           <div className="space-y-2.5">
-            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+            {/* Telegram In-CRM Direct Chat */}
+            <TelegramChatBox
+              recipientType="lead"
+              recipientId={lead.id}
+              recipientName={lead.name}
+              telegramHandle={lead.telegram}
+              telegramChatId={lead.telegramChatId}
+              onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+              onMessageSent={(newInt) => {
+                const updatedLead: FullLeadData = {
+                  ...lead,
+                  interactions: [newInt, ...(lead.interactions || [])],
+                };
+                saveLeadToStorage(updatedLead);
+                syncLeadToSupabase(updatedLead);
+                onUpdateLead?.(updatedLead);
+              }}
+            />
+
+            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 pt-1">
               <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
               История взаимодействия
             </h4>
@@ -714,6 +736,25 @@ export function LeadDrawer({
         onSuccess={(studentId) => {
           if (onConverted) onConverted(studentId);
           onClose();
+        }}
+      />
+
+      {/* Telegram Connect Modal */}
+      <TelegramConnectModal
+        isOpen={isTelegramConnectOpen}
+        onClose={() => setIsTelegramConnectOpen(false)}
+        targetType="lead"
+        targetId={lead.id}
+        targetName={lead.name}
+        currentTelegram={lead.telegram}
+        onSaveManualTelegram={(handle) => {
+          const updatedLead: FullLeadData = {
+            ...lead,
+            telegram: handle,
+          };
+          saveLeadToStorage(updatedLead);
+          syncLeadToSupabase(updatedLead);
+          onUpdateLead?.(updatedLead);
         }}
       />
     </>

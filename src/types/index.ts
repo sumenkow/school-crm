@@ -26,6 +26,8 @@ export interface Student {
   grade?: string;
   phone?: string;
   telegram?: string;
+  telegramChatId?: string;
+  telegramUsername?: string;
   email?: string;
   studentType?: 'school_student' | 'adult_student';
   status: StudentStatus;
@@ -42,6 +44,8 @@ export interface Parent {
   lastName: string;
   phone: string;
   telegram?: string;
+  telegramChatId?: string;
+  telegramUsername?: string;
   whatsapp?: string;
   email?: string;
   preferredChannel: 'telegram' | 'whatsapp' | 'phone' | 'email';
@@ -146,6 +150,9 @@ export interface Lead {
   id: string;
   name: string;
   contact: string;
+  telegram?: string;
+  telegramChatId?: string;
+  telegramUsername?: string;
   parentName?: string;
   studentName?: string;
   grade?: string;

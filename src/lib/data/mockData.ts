@@ -1338,6 +1338,8 @@ export interface FullLeadData {
   name: string;
   contact: string;
   telegram?: string;
+  telegramChatId?: string;
+  telegramUsername?: string;
   studentName?: string;
   studentAge?: string;
   studentGrade?: string;

@@ -50,6 +50,8 @@ import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForParent } from '@/lib/data/upcomingPaymentsHelper';
 import { useLanguage } from '@/context/LanguageContext';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 
 import { ParentProfileDesktop } from '@/features/parents/components/ParentProfileDesktop';
 
@@ -342,6 +344,7 @@ export default function ParentDetailsPage() {
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [paymentChildFilter, setPaymentChildFilter] = useState<'all' | string>('all');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'open' | 'done'>('all');
 
@@ -1063,6 +1066,7 @@ export default function ParentDetailsPage() {
           onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
           onOpenEditParentModal={handleOpenEdit}
           onOpenLinkChildModal={() => setIsAddChildModalOpen(true)}
+          onOpenTelegramConnect={() => setIsTelegramConnectOpen(true)}
           onDeleteParent={() => {
             if (confirm(`Удалить контакт представителя ${parent.firstName} ${parent.lastName}? Связанные ученики не будут удалены.`)) {
               success('Родитель перемещён в архив');
@@ -1862,16 +1866,30 @@ export default function ParentDetailsPage() {
 
       {/* TAB 4: TIMELINE (ЕДИНЫЙ ТАЙМЛАЙН СЕМЬИ) */}
       {activeTab === 'timeline' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
-          <div className="border-b border-slate-100 pb-3">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-600" />
-              История взаимодействий с семьей (Единый Timeline)
-            </h3>
-          </div>
+        <div className="space-y-6">
+          {/* Telegram In-CRM Chat Widget */}
+          <TelegramChatBox
+            recipientType="parent"
+            recipientId={parent.id}
+            recipientName={`${parent.firstName} ${parent.lastName}`}
+            telegramHandle={parent.telegram}
+            telegramChatId={(parent as any).telegramChatId}
+            onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+            onMessageSent={() => {
+              setRefreshTrigger((prev) => prev + 1);
+            }}
+          />
 
-          {/* Quick note form with channel and target selection */}
-          <form onSubmit={handleAddNote} className="space-y-3 bg-slate-50/80 p-4 rounded-xl border border-slate-200">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-blue-600" />
+                История взаимодействий с семьей (Единый Timeline)
+              </h3>
+            </div>
+
+            {/* Quick note form with channel and target selection */}
+            <form onSubmit={handleAddNote} className="space-y-3 bg-slate-50/80 p-4 rounded-xl border border-slate-200">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-slate-600">Кому:</span>
@@ -1963,6 +1981,7 @@ export default function ParentDetailsPage() {
               })
             )}
           </div>
+        </div>
         </div>
       )}
 
@@ -2452,6 +2471,29 @@ export default function ParentDetailsPage() {
         onRecorded={() => {
           setRefreshTrigger((prev) => prev + 1);
           success('Платёж успешно зафиксирован в карточке семьи!');
+        }}
+      />
+
+      {/* TELEGRAM CONNECT MODAL */}
+      <TelegramConnectModal
+        isOpen={isTelegramConnectOpen}
+        onClose={() => setIsTelegramConnectOpen(false)}
+        targetType="parent"
+        targetId={parent.id}
+        targetName={`${parent.firstName} ${parent.lastName}`}
+        currentTelegram={parent.telegram}
+        onSaveManualTelegram={(handle) => {
+          const allStudents = getStoredStudents();
+          allStudents.forEach((st) => {
+            if (st.parents?.some((p) => p.id === parent.id)) {
+              st.parents = st.parents.map((p) => (p.id === parent.id ? { ...p, telegram: handle } : p));
+            }
+          });
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('crm_students_v2', JSON.stringify(allStudents));
+          }
+          setParent((prev) => ({ ...prev, telegram: handle }));
+          setRefreshTrigger((prev) => prev + 1);
         }}
       />
     </div>

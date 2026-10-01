@@ -46,6 +46,8 @@ import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForLead } from '@/lib/data/upcomingPaymentsHelper';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 
 export default function LeadDetailsPage() {
   const params = useParams();
@@ -72,6 +74,7 @@ export default function LeadDetailsPage() {
   });
 
   const [leadTasks, setLeadTasks] = useState<FullTaskData[]>([]);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
 
   // Sync tasks and timeline when updated anywhere in the CRM
   const loadTasksAndTimeline = useCallback(async () => {
@@ -1448,6 +1451,22 @@ export default function LeadDetailsPage() {
           Каждое взаимодействие (звонок, сообщение, пробный урок) фиксируется отдельной записью с результатом и датой follow-up.
         </p>
 
+        {/* Telegram Direct In-CRM Chat Widget */}
+        <TelegramChatBox
+          recipientType="lead"
+          recipientId={lead.id}
+          recipientName={lead.name}
+          telegramHandle={lead.telegram}
+          telegramChatId={lead.telegramChatId}
+          onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+          onMessageSent={(newInt) => {
+            setLead((prev) => ({
+              ...prev,
+              interactions: [newInt, ...(prev.interactions || [])],
+            }));
+          }}
+        />
+
         {/* Add note form */}
         <form onSubmit={handleAddInteraction} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
@@ -2174,6 +2193,24 @@ export default function LeadDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Telegram Connect Modal */}
+      <TelegramConnectModal
+        isOpen={isTelegramConnectOpen}
+        onClose={() => setIsTelegramConnectOpen(false)}
+        targetType="lead"
+        targetId={lead.id}
+        targetName={lead.name}
+        currentTelegram={lead.telegram}
+        onSaveManualTelegram={(handle) => {
+          const updatedLead: FullLeadData = {
+            ...lead,
+            telegram: handle,
+          };
+          setLead(updatedLead);
+          syncLeadNameCascade(lead.id, { telegram: handle });
+        }}
+      />
     </div>
   );
 }

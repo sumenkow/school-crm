@@ -14,6 +14,8 @@ import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import {
   ArrowLeft,
   Calendar,
@@ -561,6 +563,7 @@ export default function StudentDetailsPage() {
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
 
   // Flexible per-lesson rate & Email Statement states
   const [customPricePerLesson, setCustomPricePerLesson] = useState<number>(() => {
@@ -1420,6 +1423,7 @@ export default function StudentDetailsPage() {
         onOpenPaymentModal={() => setIsPaymentModalOpen(true)}
         onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
         onOpenEditStudentModal={handleOpenEditStudentModal}
+        onOpenTelegramConnect={() => setIsTelegramConnectOpen(true)}
         onConvertAdultModal={() => {
           setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
           setStudentDirectTelegram(student.telegram || '');
@@ -2699,6 +2703,22 @@ export default function StudentDetailsPage() {
       {/* TAB 5: TIMELINE ВЗАИМОДЕЙСТВИЙ (SECTION 13 UX) */}
       {activeTab === 'timeline' && (
         <div className="space-y-6">
+          {/* Telegram In-CRM Chat Widget */}
+          <TelegramChatBox
+            recipientType="student"
+            recipientId={student.id}
+            recipientName={`${student.firstName} ${student.lastName}`}
+            telegramHandle={student.telegram}
+            telegramChatId={student.telegramChatId}
+            onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+            onMessageSent={(newInt) => {
+              setStudent((prev) => ({
+                ...prev,
+                interactions: [newInt, ...prev.interactions],
+              }));
+            }}
+          />
+
           {/* Add Interaction Form */}
           <form onSubmit={handleAddInteraction} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Добавить действие / контакт с учеником или семьей</h4>
@@ -3999,6 +4019,24 @@ export default function StudentDetailsPage() {
           </div>
         </div>
       )}
+
+      {/* Telegram Connect Deeplink Modal */}
+      <TelegramConnectModal
+        isOpen={isTelegramConnectOpen}
+        onClose={() => setIsTelegramConnectOpen(false)}
+        targetType="student"
+        targetId={student.id}
+        targetName={`${student.firstName} ${student.lastName}`}
+        currentTelegram={student.telegram}
+        onSaveManualTelegram={(handle) => {
+          const updated = {
+            ...student,
+            telegram: handle,
+          };
+          setStudent(updated);
+          saveStudentToStorage(updated);
+        }}
+      />
     </div>
   );
 }

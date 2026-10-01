@@ -101,6 +101,7 @@ export interface StudentProfileDesktopProps {
   onConvertAdultModal: () => void;
   onDeleteStudent: () => void;
   onSelectTab: (tabKey: string) => void;
+  onOpenTelegramConnect?: () => void;
 }
 
 export function StudentProfileDesktop({
@@ -116,6 +117,7 @@ export function StudentProfileDesktop({
   onConvertAdultModal,
   onDeleteStudent,
   onSelectTab,
+  onOpenTelegramConnect,
 }: StudentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -322,15 +324,26 @@ export function StudentProfileDesktop({
                         </a>
 
                         {/* Telegram icon button */}
-                        <a
-                          href={telegramClean ? `https://t.me/${telegramClean}` : `https://wa.me/${phoneClean}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
-                          title="Написать в Telegram"
-                        >
-                          <TelegramIcon className="w-3 h-3" />
-                        </a>
+                        {telegramClean ? (
+                          <a
+                            href={`https://t.me/${telegramClean}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                            title={`Написать в Telegram (@${telegramClean})`}
+                          >
+                            <TelegramIcon className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={onOpenTelegramConnect}
+                            className="w-5 h-5 rounded bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
+                            title="Подключить Telegram-бота"
+                          >
+                            <TelegramIcon className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -386,6 +399,18 @@ export function StudentProfileDesktop({
                   >
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
                     <span>Редактировать профиль</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreDropdownOpen(false);
+                      onOpenTelegramConnect?.();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#229ED9]/10 hover:text-[#229ED9] transition-colors font-medium cursor-pointer"
+                  >
+                    <TelegramIcon className="h-3.5 w-3.5 text-[#229ED9]" />
+                    <span>Подключить Telegram-бота</span>
                   </button>
 
                   {student.studentType !== 'adult_student' && (

@@ -86,6 +86,7 @@ export interface ParentProfileDesktopProps {
   onDeleteParent: () => void;
   onSelectTab: (tabKey: string) => void;
   onSendReminder: (channel: 'whatsapp' | 'telegram') => void;
+  onOpenTelegramConnect?: () => void;
 }
 
 export function ParentProfileDesktop({
@@ -100,6 +101,7 @@ export function ParentProfileDesktop({
   onDeleteParent,
   onSelectTab,
   onSendReminder,
+  onOpenTelegramConnect,
 }: ParentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const [isReminderDropdownOpen, setIsReminderDropdownOpen] = useState(false);
@@ -435,6 +437,15 @@ export function ParentProfileDesktop({
                   >
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
                     <span>Редактировать</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setIsMoreDropdownOpen(false); onOpenTelegramConnect?.(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-[#229ED9]/10 hover:text-[#229ED9] transition-colors font-medium cursor-pointer"
+                  >
+                    <TelegramIcon className="h-3.5 w-3.5 text-[#229ED9]" />
+                    <span>Подключить Telegram</span>
                   </button>
 
                   {role !== 'teacher' && (

@@ -44,6 +44,8 @@ export interface ParentNameUpdate {
 export interface LeadNameUpdate {
   contactName?: string;
   studentName?: string;
+  phone?: string;
+  telegram?: string;
 }
 
 // Helper to safely parse localStorage
@@ -458,6 +460,8 @@ export function syncLeadNameCascade(leadId: string, names: LeadNameUpdate): void
 
   const contactName = names.contactName !== undefined ? names.contactName.trim() : undefined;
   const studentName = names.studentName !== undefined ? names.studentName.trim() : undefined;
+  const phone = names.phone !== undefined ? names.phone.trim() : undefined;
+  const telegram = names.telegram !== undefined ? names.telegram.trim() : undefined;
 
   let leadRef: FullLeadData | undefined;
 
@@ -466,6 +470,8 @@ export function syncLeadNameCascade(leadId: string, names: LeadNameUpdate): void
   if (lIdx !== -1) {
     if (contactName !== undefined) INITIAL_LEADS[lIdx].name = contactName;
     if (studentName !== undefined) INITIAL_LEADS[lIdx].studentName = studentName || undefined;
+    if (phone !== undefined) INITIAL_LEADS[lIdx].contact = phone;
+    if (telegram !== undefined) INITIAL_LEADS[lIdx].telegram = telegram || undefined;
     leadRef = INITIAL_LEADS[lIdx];
   }
 
@@ -478,6 +484,8 @@ export function syncLeadNameCascade(leadId: string, names: LeadNameUpdate): void
           ...l,
           name: contactName !== undefined ? contactName : l.name,
           studentName: studentName !== undefined ? (studentName || undefined) : l.studentName,
+          contact: phone !== undefined ? phone : l.contact,
+          telegram: telegram !== undefined ? (telegram || undefined) : l.telegram,
         };
         leadRef = leadRef || updated;
         return updated;

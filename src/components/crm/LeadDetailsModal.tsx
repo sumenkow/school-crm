@@ -25,6 +25,8 @@ import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/l
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { ConvertLeadModal } from './ConvertLeadModal';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
@@ -82,6 +84,7 @@ export function LeadDetailsModal({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDue, setNewTaskDue] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
 
   // Editable fields
@@ -463,15 +466,26 @@ export function LeadDetailsModal({
                       )}
 
                       {/* Telegram Button (Identical styling to student/parent card) */}
-                      <a
-                        href={tgLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Написать в Telegram"
-                        className="w-7 h-7 rounded-lg bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
-                      >
-                        <TelegramIcon className="w-4 h-4" />
-                      </a>
+                      {lead.telegram ? (
+                        <a
+                          href={tgLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Написать в Telegram (${lead.telegram})`}
+                          className="w-7 h-7 rounded-lg bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                        >
+                          <TelegramIcon className="w-4 h-4" />
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsTelegramConnectOpen(true)}
+                          title="Подключить к Telegram-боту"
+                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
+                        >
+                          <TelegramIcon className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -649,7 +663,26 @@ export function LeadDetailsModal({
 
             {/* 5. Timeline / Communication Feed */}
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              {/* Telegram In-CRM Direct Chat */}
+              <TelegramChatBox
+                recipientType="lead"
+                recipientId={lead.id}
+                recipientName={lead.name}
+                telegramHandle={lead.telegram}
+                telegramChatId={lead.telegramChatId}
+                onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+                onMessageSent={(newInt) => {
+                  const updatedLead: FullLeadData = {
+                    ...lead,
+                    interactions: [newInt, ...(lead.interactions || [])],
+                  };
+                  saveLeadToStorage(updatedLead);
+                  syncLeadToSupabase(updatedLead);
+                  onUpdateLead?.(updatedLead);
+                }}
+              />
+
+              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 pt-2">
                 <MessageSquare className="h-4 w-4 text-slate-500" />
                 История взаимодействия
               </h4>
@@ -736,6 +769,25 @@ export function LeadDetailsModal({
         onSuccess={(studentId) => {
           if (onConverted) onConverted(studentId);
           onClose();
+        }}
+      />
+
+      {/* Telegram Connect Modal */}
+      <TelegramConnectModal
+        isOpen={isTelegramConnectOpen}
+        onClose={() => setIsTelegramConnectOpen(false)}
+        targetType="lead"
+        targetId={lead.id}
+        targetName={lead.name}
+        currentTelegram={lead.telegram}
+        onSaveManualTelegram={(handle) => {
+          const updatedLead: FullLeadData = {
+            ...lead,
+            telegram: handle,
+          };
+          saveLeadToStorage(updatedLead);
+          syncLeadToSupabase(updatedLead);
+          onUpdateLead?.(updatedLead);
         }}
       />
     </>
