@@ -23,6 +23,8 @@ import {
   saveInvoice,
 } from '@/lib/data/invoiceStorage';
 import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
+import { DatePicker } from '@/components/common/DatePicker';
+import { transliterateIso } from '@/lib/data/transliteration';
 import { useToast } from '@/context/ToastContext';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -102,6 +104,9 @@ export function CreateInvoiceModal({
     setIsSubmitting(true);
 
     try {
+      const latinStudentName = transliterateIso(studentName);
+      const latinParentName = parentName ? transliterateIso(parentName) : undefined;
+
       const newInvoice: EuropeanInvoiceData = {
         id: `inv_${invoiceNumber}`,
         invoiceNumber,
@@ -111,9 +116,9 @@ export function CreateInvoiceModal({
         periodLabel,
         courseName: courseName.trim() || 'EPD Vorbereitung',
         studentId,
-        studentName,
+        studentName: latinStudentName,
         parentId,
-        parentName: parentName || studentName,
+        parentName: latinParentName || latinStudentName,
         parentTelegram,
         parentEmail,
         parentPhone,
@@ -132,11 +137,11 @@ export function CreateInvoiceModal({
         currency: 'EUR',
         status: 'pending',
         bankDetails: {
-          accountHolder: school.accountHolder || school.legalEntity || 'Ekaterina Nezhenkina',
+          accountHolder: school.accountHolder || 'Ekaterina Nezhenkina',
           bankName: school.bankName || 'Tatra banka, a.s.',
-          iban: school.iban || school.bankAccount || 'SK34 1100 0000 0029 3766 3128',
+          iban: school.iban || 'SK34 1100 0000 0029 3766 3128',
           swiftBic: school.swiftBic || 'TATRSKBX',
-          vatNote: school.vatNote || 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH',
+          vatNote: school.vatNote || 'Nicht umsatzsteuerpflichtig gem. Kleinunternehmerregelung / Steuerbefreit',
         },
         language,
         createdAt: new Date().toISOString(),
@@ -234,14 +239,10 @@ export function CreateInvoiceModal({
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-600 mb-1">
-                Срок оплаты (до)
-              </label>
-              <input
-                type="text"
+              <DatePicker
+                label="Срок оплаты (до)"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-lg border border-rose-200 bg-rose-50/40 px-2.5 py-1.5 text-xs font-bold text-rose-800 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                onChange={(iso, display) => setDueDate(display || iso)}
                 required
               />
             </div>

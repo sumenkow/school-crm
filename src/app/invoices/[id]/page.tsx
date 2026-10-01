@@ -11,7 +11,6 @@ import {
   Clock,
   ArrowLeft,
   Share2,
-  CreditCard,
   QrCode,
 } from 'lucide-react';
 import {
@@ -21,6 +20,7 @@ import {
   INITIAL_INVOICES,
 } from '@/lib/data/invoiceStorage';
 import { generateSepaQrSvg } from '@/lib/data/sepaQrGenerator';
+import { transliterateIso } from '@/lib/data/transliteration';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
 
@@ -69,7 +69,8 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const bank = invoice.bankDetails || {
+  // Strictly Tatra banka details
+  const bank = {
     accountHolder: 'Ekaterina Nezhenkina',
     bankName: 'Tatra banka, a.s.',
     iban: 'SK34 1100 0000 0029 3766 3128',
@@ -77,13 +78,19 @@ export default function InvoiceDetailPage() {
     vatNote: 'Nicht umsatzsteuerpflichtig gem. Kleinunternehmerregelung / Steuerbefreit',
   };
 
+  // ISO Latin Transliteration for payer names
+  const rawStudentName = invoice.studentName || '';
+  const rawParentName = invoice.parentName || '';
+  const latinStudentName = transliterateIso(rawStudentName);
+  const latinParentName = rawParentName ? transliterateIso(rawParentName) : latinStudentName;
+
   const qrSvg = generateSepaQrSvg({
     name: bank.accountHolder,
     iban: bank.iban,
     bic: bank.swiftBic,
     amount: invoice.totalAmountEUR,
     variableSymbol: invoice.variableSymbol,
-    purpose: `${invoice.courseName} - ${invoice.studentName}`,
+    purpose: `${invoice.courseName} - ${latinStudentName}`,
   }, 170);
 
   const handleCopy = (text: string, fieldName: string) => {
@@ -117,7 +124,7 @@ export default function InvoiceDetailPage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 print:p-0 print:bg-white font-sans text-slate-900 selection:bg-blue-100">
       
-      {/* Top Floating Control Bar (Strictly hidden on print) */}
+      {/* Top Floating Control Bar (Hidden on print) */}
       <div className="max-w-3xl mx-auto mb-6 flex items-center justify-between flex-wrap gap-3 print:hidden">
         <button
           onClick={() => router.back()}
@@ -158,25 +165,17 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      {/* Main Editorial Invoice Sheet */}
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8 sm:p-14 space-y-9 print:shadow-none print:border-none print:rounded-none print:p-8 print:max-w-none print:w-full print:m-0">
+      {/* Main Clean Printable Invoice Sheet */}
+      <div 
+        id="invoice-sheet"
+        className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8 sm:p-14 space-y-9 print:shadow-none print:border-none print:rounded-none print:p-6 print:max-w-none print:w-full print:m-0"
+      >
         
-        {/* 1. Header: Left Title + Right Logo */}
+        {/* 1. Header: Left Logo + Right Title (Swapped as requested) */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-7 gap-4">
-          <div className="space-y-1">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 uppercase">
-              INVOICE
-            </h1>
-            <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-              RECHNUNG / FAKTÚRA
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3.5 text-right">
-            <div className="hidden sm:block space-y-0.5">
-              <span className="block text-sm font-black text-slate-900 tracking-tight">YOU EUROPE</span>
-              <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Sprachzentrum</span>
-            </div>
+          
+          {/* Top-Left: Logo & Brand */}
+          <div className="flex items-center gap-3.5">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-slate-200 shadow-2xs relative shrink-0 bg-white flex items-center justify-center">
               <Image
                 src="/images/logo-you-europe.jpg"
@@ -187,6 +186,20 @@ export default function InvoiceDetailPage() {
                 priority
               />
             </div>
+            <div className="space-y-0.5">
+              <span className="block text-base sm:text-lg font-black text-slate-900 tracking-tight">YOU EUROPE</span>
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Sprachzentrum</span>
+            </div>
+          </div>
+
+          {/* Top-Right: INVOICE / RECHNUNG Heading & Number */}
+          <div className="text-right space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">
+              INVOICE
+            </h1>
+            <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">
+              RECHNUNG / FAKTÚRA
+            </p>
           </div>
         </div>
 
@@ -199,11 +212,11 @@ export default function InvoiceDetailPage() {
             </span>
             <div className="space-y-1">
               <p className="text-base font-bold text-slate-900">
-                {invoice.parentName || invoice.studentName}
+                {latinParentName}
               </p>
-              {invoice.parentName && invoice.parentName !== invoice.studentName && (
+              {latinParentName !== latinStudentName && (
                 <p className="text-slate-600 font-medium">
-                  Schüler / Student: <strong>{invoice.studentName}</strong>
+                  Schüler / Student: <strong>{latinStudentName}</strong>
                 </p>
               )}
               <p className="text-slate-500">
@@ -340,7 +353,7 @@ export default function InvoiceDetailPage() {
         {/* 4. Payment Info Block & SEPA QR Code & Signature */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200 items-start">
           
-          {/* Bank Details (8 cols) */}
+          {/* Bank Details (Strictly Tatra banka credentials) */}
           <div className="md:col-span-8 space-y-3 text-xs">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
               ZAHLUNGSINFORMATIONEN / PAYMENT INFO:
@@ -348,13 +361,13 @@ export default function InvoiceDetailPage() {
 
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-slate-500 font-medium">Bank:</span>
-                <strong className="text-slate-900 font-semibold">{bank.bankName || 'Tatra banka, a.s.'}</strong>
+                <span className="text-slate-500 font-medium">Kontoinhaber / Account Name:</span>
+                <strong className="text-slate-900 font-semibold">{bank.accountHolder}</strong>
               </div>
 
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-slate-500 font-medium">Kontoinhaber / Account Name:</span>
-                <strong className="text-slate-900 font-semibold">{bank.accountHolder}</strong>
+                <span className="text-slate-500 font-medium">Bank:</span>
+                <strong className="text-slate-900 font-semibold">{bank.bankName}</strong>
               </div>
 
               <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-200">
@@ -374,21 +387,19 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
 
-              {bank.swiftBic && (
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-slate-500 font-medium">SWIFT / BIC:</span>
-                  <strong className="text-slate-900 font-mono">{bank.swiftBic}</strong>
-                </div>
-              )}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-slate-500 font-medium">SWIFT / BIC:</span>
+                <strong className="text-slate-900 font-mono">{bank.swiftBic}</strong>
+              </div>
 
-              {/* Variable Symbol / Reference */}
+              {/* Variable Symbol / Reference (Invoice Number) */}
               <div className="flex items-center justify-between flex-wrap gap-2 bg-blue-50/80 -mx-4 -mb-4 p-3.5 rounded-b-xl border-t border-blue-100">
                 <div>
                   <span className="text-[11px] font-bold text-blue-900 uppercase block">
                     VERWENDUNGSZWECK / PAYMENT REFERENCE:
                   </span>
                   <span className="text-[10px] text-blue-700">
-                    Bitte Rechnungsnummer angeben / Please use invoice number as reference
+                    Bitte geben Sie Ihre «Fakturnummer» ({invoice.invoiceNumber}) als Verwendungszweck an
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -408,7 +419,7 @@ export default function InvoiceDetailPage() {
             </div>
 
             <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
-              <strong>Hinweis / Note:</strong> {bank.vatNote || 'Nicht umsatzsteuerpflichtig gem. Kleinunternehmerregelung / Steuerbefreit (Exempt from VAT).'}<br />
+              <strong>Hinweis / Note:</strong> {bank.vatNote}<br />
               Vielen Dank für Ihre Zusammenarbeit! / Thank you for choosing You Europe!
             </p>
           </div>
@@ -441,6 +452,38 @@ export default function InvoiceDetailPage() {
         </div>
 
       </div>
+
+      {/* Strict Print CSS: Only #invoice-sheet is printed */}
+      <style jsx global>{`
+        @media print {
+          html, body {
+            background-color: #FFFFFF !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+          }
+          /* Hide everything except the invoice sheet */
+          body > *:not(#__next),
+          nav, aside, header, .print\\:hidden {
+            display: none !important;
+          }
+          #invoice-sheet {
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
 
     </div>
   );
