@@ -1155,6 +1155,10 @@ export default function CrmPage() {
           setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
           setSelectedLeadForDrawer(updated);
         }}
+        onConverted={(studentId) => {
+          setLeads(getStoredLeads(true, true));
+          setSelectedLeadForDrawer(null);
+        }}
         onStatusChange={(leadId, newStatus) => {
           handleQuickStatusChange(leadId, newStatus);
         }}

@@ -31,12 +31,15 @@ import {
   Mail,
   ArrowRight,
   MoreHorizontal,
-  CalendarClock
+  CalendarClock,
+  Users,
+  CheckCircle
 } from 'lucide-react';
-import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData } from '@/lib/data/mockData';
+import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData, INITIAL_COURSES, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
+import { calculateAge, formatAgeRussian } from '@/lib/data/studentAgeHelper';
 import { ConvertLeadModal } from './ConvertLeadModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
@@ -76,15 +79,34 @@ const STAGE_OPTIONS = [
   { key: 'lost', label: '7. Отказ / Архив', color: 'slate' },
 ] as const;
 
+const SOURCE_OPTIONS = [
+  'Сайт / Форма заявки',
+  'Instagram',
+  'Telegram',
+  'Рекомендация / Сарафан',
+  'Реклама / Яндекс / Google',
+  'Входящий звонок',
+  'Партнёрская программа',
+  'Повторное обращение',
+  'Другое'
+];
+
+const QUICK_GOALS = [
+  'Подтянуть школьную программу',
+  'Подготовка к экзамену / ОГЭ / ЕГЭ',
+  'Разговорная практика и снятие барьера',
+  'Для переезда и путешествий',
+  'Олимпиадный уровень и углубление',
+  'С нуля для начинающих'
+];
+
 const EDIT_SECTIONS = [
-  { id: 'main', label: 'Основные данные', icon: FileText },
   { id: 'contact', label: 'Контакт (родитель)', icon: User },
   { id: 'student', label: 'Ученик', icon: GraduationCap },
-  { id: 'need', label: 'Потребность', icon: Target },
-  { id: 'trial', label: 'Пробный урок', icon: Calendar },
-  { id: 'source', label: 'Источник', icon: Globe },
-  { id: 'deal', label: 'Сделка', icon: CreditCard },
-  { id: 'extra', label: 'Дополнительно', icon: Settings },
+  { id: 'need', label: 'Потребность и цели', icon: Target },
+  { id: 'group_trial', label: 'Группа и пробный', icon: Users },
+  { id: 'deal', label: 'Сделка и источник', icon: CreditCard },
+  { id: 'comment', label: 'Заметки менеджера', icon: FileText },
 ] as const;
 
 type EditSectionId = typeof EDIT_SECTIONS[number]['id'];
@@ -124,13 +146,15 @@ export function LeadDetailsModal({
   const [parentName, setParentName] = useState('');
   const [parentRole, setParentRole] = useState<'Мама' | 'Папа' | 'Сам ученик' | 'Родитель'>('Мама');
   const [studentName, setStudentName] = useState('');
+  const [studentBirthDate, setStudentBirthDate] = useState('');
   const [studentAge, setStudentAge] = useState('');
   const [studentGrade, setStudentGrade] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [email, setEmail] = useState('');
   const [telegram, setTelegram] = useState('');
+  const [preferredChannel, setPreferredChannel] = useState<'phone' | 'whatsapp' | 'telegram' | 'email'>('phone');
   const [course, setCourse] = useState('');
-  const [level, setLevel] = useState('');
+  const [level, setLevel] = useState('A1 Elementary');
   const [goal, setGoal] = useState('');
   const [source, setSource] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
@@ -152,9 +176,13 @@ export function LeadDetailsModal({
       setContactPhone(lead.contact || '');
       setEmail(lead.parentNotes?.includes('@') ? lead.parentNotes : '');
       setTelegram(lead.telegram || '');
+      setPreferredChannel(
+        lead.telegram ? 'telegram' :
+        lead.contact ? 'whatsapp' : 'phone'
+      );
       setCourse(lead.directionOrCourse || 'Английский язык');
-      setLevel(lead.level || 'A2 Elementary');
-      setGoal(lead.studentNotes || 'Подтянуть школьную программу, подготовка к экзамену');
+      setLevel(lead.level || 'A1 Elementary');
+      setGoal(lead.studentNotes || '');
       setSource(lead.source || 'Сайт / Форма заявки');
       setAssignedTo(lead.assignedTo || userName || 'Анна Смирнова');
       setOfferAmount(lead.offerAmount || '120 € / мес.');
@@ -172,9 +200,50 @@ export function LeadDetailsModal({
       }
       const g = getStoredGroups().filter(group => !group.isDeleted);
       setGroups(g);
-      if (g.length > 0) setSelectedGroup(g[0].id);
+      if (g.length > 0) {
+        const matched = g.find(item => item.courseName?.toLowerCase() === (lead.directionOrCourse || '').toLowerCase()) || g[0];
+        setSelectedGroup(matched.id);
+      }
     }
   }, [lead, userName]);
+
+  // Computed student age from birth date if provided
+  const computedAge = useMemo(() => {
+    if (studentBirthDate) {
+      const a = calculateAge(studentBirthDate);
+      if (a !== null) return formatAgeRussian(a);
+    }
+    return studentAge || '';
+  }, [studentBirthDate, studentAge]);
+
+  // Dynamic qualification score calculation
+  const qualificationStats = useMemo(() => {
+    const checks = [
+      { name: 'Контакт / Телефон', isFilled: Boolean(contactPhone?.trim() || lead?.contact?.trim()) },
+      { name: 'Имя родителя', isFilled: Boolean(parentName?.trim() || lead?.name?.trim()) },
+      { name: 'Имя ученика', isFilled: Boolean(studentName?.trim() || lead?.studentName?.trim()) },
+      { name: 'Возраст / Дата рождения', isFilled: Boolean(computedAge?.trim() || studentBirthDate?.trim()) },
+      { name: 'Курс / Направление', isFilled: Boolean(course?.trim() || lead?.directionOrCourse?.trim()) },
+      { name: 'Потребность / Цель', isFilled: Boolean(goal?.trim() || lead?.studentNotes?.trim()) },
+      { name: 'Параметры сделки (€)', isFilled: Boolean(offerAmount?.trim() || lead?.offerAmount?.trim()) },
+    ];
+    const filledCount = checks.filter(c => c.isFilled).length;
+    const totalCount = checks.length;
+    const percentage = Math.round((filledCount / totalCount) * 100);
+    return { filledCount, totalCount, percentage, checks };
+  }, [contactPhone, parentName, studentName, computedAge, studentBirthDate, course, goal, offerAmount, lead]);
+
+  // Section completeness for edit sidebar
+  const sectionStatus = useMemo(() => {
+    return {
+      contact: Boolean(parentName?.trim() && contactPhone?.trim()),
+      student: Boolean(studentName?.trim() || computedAge?.trim() || studentGrade?.trim()),
+      need: Boolean(course?.trim() && (level || goal?.trim())),
+      group_trial: Boolean(selectedGroup || trialDateTime?.trim()),
+      deal: Boolean(offerAmount?.trim() && source?.trim()),
+      comment: Boolean(generalComment?.trim()),
+    };
+  }, [parentName, contactPhone, studentName, computedAge, studentGrade, course, level, goal, selectedGroup, trialDateTime, offerAmount, source, generalComment]);
 
   if (!isOpen || !lead) return null;
 
@@ -209,6 +278,13 @@ export function LeadDetailsModal({
     return lead?.createdAt || 'Недавно';
   })();
 
+  // Filtered groups for chosen course
+  const matchingGroups = groups.filter(g =>
+    !course || g.courseName?.toLowerCase().includes(course.toLowerCase()) || course.toLowerCase().includes(g.courseName?.toLowerCase())
+  );
+  const displayedGroups = matchingGroups.length > 0 ? matchingGroups : groups;
+  const currentSelectedGroupObj = groups.find(g => g.id === selectedGroup);
+
   // Actions
   const handleSaveAll = () => {
     if (!lead) return;
@@ -222,7 +298,7 @@ export function LeadDetailsModal({
       studentName: studentName.trim() || undefined,
       studentFirstName: (studentName || '').split(' ')[0] || undefined,
       studentLastName: (studentName || '').split(' ')[1] || undefined,
-      studentAge: studentAge.trim() || undefined,
+      studentAge: computedAge.trim() || undefined,
       studentGrade: studentGrade.trim() || undefined,
       grade: studentGrade.trim() || undefined,
       contact: contactPhone.trim() || lead.contact,
@@ -242,7 +318,7 @@ export function LeadDetailsModal({
     syncLeadToSupabase(updatedLead);
     onUpdateLead?.(updatedLead);
     setIsEditing(false);
-    toast.success('Карточка лида успешно сохранена');
+    toast.success('Квалификация лида успешно сохранена');
   };
 
   const handleStageSelect = (newStatus: FullLeadData['status']) => {
@@ -398,8 +474,23 @@ export function LeadDetailsModal({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-slate-900 text-base sm:text-lg truncate">
-                    Карточка лида: {lead.name}
+                    Лид: {lead.name}
                   </h3>
+                  {/* Qualification Progress Pill */}
+                  <div
+                    title={`Квалификация: ${qualificationStats.filledCount} из ${qualificationStats.totalCount} параметров`}
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border shrink-0',
+                      qualificationStats.percentage >= 80
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : qualificationStats.percentage >= 50
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    )}
+                  >
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Квалификация {qualificationStats.filledCount}/{qualificationStats.totalCount} ({qualificationStats.percentage}%)</span>
+                  </div>
                 </div>
                 <div className="text-[11px] text-slate-400 flex items-center gap-2 truncate">
                   <span>Создан {lead.createdAt || '12.09.2024'}</span>
@@ -474,7 +565,7 @@ export function LeadDetailsModal({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition-colors border border-blue-200/80 cursor-pointer"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
-                    <span>Редактировать</span>
+                    <span>Квалифицировать</span>
                   </button>
 
                   {/* Link to Full Lead Page */}
@@ -488,8 +579,8 @@ export function LeadDetailsModal({
                 </>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-                    Режим редактирования
+                  <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-md">
+                    Режим квалификации лида
                   </span>
                 </div>
               )}
@@ -545,7 +636,7 @@ export function LeadDetailsModal({
                           navigator.clipboard.writeText(lead.contact);
                           toast.success(`Номер скопирован: ${lead.contact}`);
                         }}
-                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         title="Скопировать"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -576,7 +667,7 @@ export function LeadDetailsModal({
                           type="button"
                           onClick={() => setIsTelegramConnectOpen(true)}
                           title="Подключить Telegram"
-                          className="w-6 h-6 rounded-md bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200"
+                          className="w-6 h-6 rounded-md bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
                         >
                           <TelegramIcon className="w-3.5 h-3.5" />
                         </button>
@@ -593,12 +684,12 @@ export function LeadDetailsModal({
                         <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
                         <span>Ученик</span>
                       </div>
-                      <span className="text-slate-500 font-medium">
-                        {lead.studentAge || 'Возраст не указан'}
+                      <span className="text-purple-700 bg-purple-50 font-bold px-2 py-0.5 rounded text-[11px] border border-purple-100">
+                        {computedAge || lead.studentAge || 'Возраст не указан'}
                       </span>
                     </div>
                     <div className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
-                      {lead.studentName || lead.name}
+                      {lead.studentName || lead.studentFirstName ? `${lead.studentFirstName || ''} ${lead.studentLastName || ''}`.trim() || lead.studentName : lead.name}
                     </div>
                   </div>
 
@@ -625,7 +716,9 @@ export function LeadDetailsModal({
                         <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Сделка и источник</span>
                       </div>
-                      <span className="text-slate-400 text-[10px]">{lead.source}</span>
+                      <span className="text-slate-500 font-medium text-[10px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 truncate max-w-[120px]">
+                        {lead.source}
+                      </span>
                     </div>
 
                     <div className="flex items-baseline gap-1.5">
@@ -748,10 +841,10 @@ export function LeadDetailsModal({
 
                     <div className="mt-2">
                       <div className="text-xs font-bold text-purple-900">
-                        {lead.trialDate || 'Чт 18 сен, 16:30'}
+                        {lead.trialDate || trialDateTime || 'Дата согласовывается'}
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        Группа: <strong className="text-slate-700">{groups[0]?.name || 'EPD Teens 2'}</strong> ({lead.directionOrCourse})
+                      <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                        Группа: <strong className="text-slate-700">{currentSelectedGroupObj?.name || 'EPD Teens 2'}</strong> ({currentSelectedGroupObj?.schedule || 'Вт, Чт • 18:00'})
                       </div>
                     </div>
                   </div>
@@ -762,14 +855,14 @@ export function LeadDetailsModal({
                       onClick={() => setIsBookingTrial(true)}
                       className="flex-1 py-1.5 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
                     >
-                      <span>Изменить дату</span>
+                      <span>{lead.trialDate ? 'Изменить запись' : 'Записать'}</span>
                     </button>
                     <Link
                       href="/schedule"
                       className="py-1.5 px-2.5 rounded-lg border border-purple-200 bg-white hover:bg-purple-50 text-purple-700 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" />
-                      <span>В расписание</span>
+                      <span>Сетка</span>
                     </Link>
                   </div>
                 </div>
@@ -793,7 +886,7 @@ export function LeadDetailsModal({
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-blue-200/60 text-[11px]">
-                    <span className="text-slate-500">Пн, Ср • 16:00 - 18:00</span>
+                    <span className="text-slate-500 font-medium">Курс: {course}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -802,7 +895,7 @@ export function LeadDetailsModal({
                       }}
                       className="font-bold text-blue-700 hover:underline cursor-pointer"
                     >
-                      Подробнее ▾
+                      Квалификация ▾
                     </button>
                   </div>
                 </div>
@@ -963,7 +1056,7 @@ export function LeadDetailsModal({
                           </a>
                         </div>
                         <p className="text-xs text-slate-600">
-                          Нажмите кнопку выше для мгновенного перехода в WhatsApp Web или приложение с автоматической подстановкой шаблона сообщения.
+                          Нажмите кнопку выше для мгновенного перехода в WhatsApp Web или приложение с автоматической подстановкой диалога.
                         </p>
                       </div>
                     )}
@@ -975,7 +1068,7 @@ export function LeadDetailsModal({
                           <button
                             type="button"
                             onClick={() => setIsAddingTask(true)}
-                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
                           >
                             <Plus className="w-3 h-3" /> Назначить задачу
                           </button>
@@ -1001,7 +1094,7 @@ export function LeadDetailsModal({
                               <button
                                 type="button"
                                 onClick={() => handleAddTask()}
-                                className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs"
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs cursor-pointer"
                               >
                                 Создать
                               </button>
@@ -1054,7 +1147,7 @@ export function LeadDetailsModal({
                     </div>
 
                     <div className="p-3 rounded-lg bg-amber-50/50 border border-amber-200/70 text-xs text-slate-700 leading-relaxed min-h-[90px]">
-                      {lead.comment || 'Мама очень заинтересована в подготовке к гимназии. Ученик ранее занимался с репетитором, хорошая база.'}
+                      {generalComment || lead.comment || 'Мама очень заинтересована в подготовке к школе. Ранее занимались онлайн, хорошая база.'}
                     </div>
                   </div>
 
@@ -1077,7 +1170,7 @@ export function LeadDetailsModal({
                       />
                       <button
                         type="submit"
-                        className="p-1.5 rounded-lg bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 transition-colors"
+                        className="p-1.5 rounded-lg bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 transition-colors cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
@@ -1088,256 +1181,501 @@ export function LeadDetailsModal({
             </div>
           ) : (
             /* ========================================================================= */
-            /* BODY EDIT MODE */
+            /* BODY EDIT MODE (CRM QUALIFICATION WORKFLOW) */
             /* ========================================================================= */
             <div className="flex-1 flex overflow-hidden bg-slate-50/50">
               {/* Left Section Navigator Sidebar */}
-              <div className="w-56 border-r border-slate-200 bg-white p-3 space-y-1 shrink-0 overflow-y-auto hidden sm:block">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 mb-1">
-                  Разделы анкеты
+              <div className="w-60 border-r border-slate-200 bg-white p-3 space-y-1.5 shrink-0 overflow-y-auto hidden sm:block">
+                <div className="px-2 py-1 mb-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Разделы квалификации
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-medium">Заполнено:</span>
+                    <span className="font-bold text-blue-700">{qualificationStats.filledCount} из {qualificationStats.totalCount}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                    <div
+                      className={cn(
+                        'h-full transition-all duration-300',
+                        qualificationStats.percentage >= 80 ? 'bg-emerald-500' : 'bg-blue-500'
+                      )}
+                      style={{ width: `${qualificationStats.percentage}%` }}
+                    />
+                  </div>
                 </div>
+
                 {EDIT_SECTIONS.map((sec) => {
                   const Icon = sec.icon;
                   const isSelected = activeEditSection === sec.id;
+                  const isSectionFilled = sectionStatus[sec.id];
                   return (
                     <button
                       key={sec.id}
                       type="button"
                       onClick={() => setActiveEditSection(sec.id)}
                       className={cn(
-                        'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer',
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition-all cursor-pointer border',
                         isSelected
-                          ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          ? 'bg-blue-50 text-blue-700 font-bold border-blue-200 shadow-2xs'
+                          : 'text-slate-600 hover:bg-slate-50 border-transparent hover:border-slate-200'
                       )}
                     >
-                      <Icon className={cn('w-4 h-4', isSelected ? 'text-blue-600' : 'text-slate-400')} />
-                      <span>{sec.label}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Icon className={cn('w-4 h-4 shrink-0', isSelected ? 'text-blue-600' : 'text-slate-400')} />
+                        <span className="truncate">{sec.label}</span>
+                      </div>
+
+                      {/* Status dot / check badge */}
+                      <span className="shrink-0 ml-1.5">
+                        {isSectionFilled ? (
+                          <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        ) : isSelected ? (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-slate-300" />
+                        )}
+                      </span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Right Form Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
                 {/* 1. Контакт (родитель) */}
-                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <User className="w-4 h-4 text-blue-600" />
-                    Контактное лицо (родитель)
-                  </h4>
+                {activeEditSection === 'contact' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <User className="w-4 h-4 text-blue-600" />
+                      1. Контактное лицо (родитель / заказчик)
+                    </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        ФИО Родителя / Контакта
-                      </label>
-                      <input
-                        type="text"
-                        value={parentName}
-                        onChange={(e) => setParentName(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          ФИО Родителя / Контакта *
+                        </label>
+                        <input
+                          type="text"
+                          value={parentName}
+                          onChange={(e) => setParentName(e.target.value)}
+                          placeholder="Например: Морозова Елена Сергеевна"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Кем приходится ученику
+                        </label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {(['Мама', 'Папа', 'Сам ученик', 'Родитель'] as const).map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => setParentRole(role)}
+                              className={cn(
+                                'py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-center truncate px-1',
+                                parentRole === role
+                                  ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-2xs'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              )}
+                            >
+                              {role}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Телефон *</label>
+                        <input
+                          type="text"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
+                          placeholder="+7 (999) 000-00-00"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="parent@example.com"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Telegram Handle</label>
+                        <input
+                          type="text"
+                          value={telegram}
+                          onChange={(e) => setTelegram(e.target.value)}
+                          placeholder="@username"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preferred Communication Channel */}
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Кем приходится ученику
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1.5">
+                        Предпочитаемый канал связи
                       </label>
-                      <div className="flex items-center gap-1.5">
-                        {(['Мама', 'Папа', 'Сам ученик', 'Родитель'] as const).map((role) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'phone', label: 'Телефон', icon: Phone },
+                          { id: 'whatsapp', label: 'WhatsApp', icon: WhatsAppIcon },
+                          { id: 'telegram', label: 'Telegram', icon: TelegramIcon },
+                          { id: 'email', label: 'Email', icon: Mail },
+                        ].map(ch => {
+                          const Icon = ch.icon;
+                          const isSel = preferredChannel === ch.id;
+                          return (
+                            <button
+                              key={ch.id}
+                              type="button"
+                              onClick={() => setPreferredChannel(ch.id as any)}
+                              className={cn(
+                                'flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer',
+                                isSel
+                                  ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold shadow-2xs'
+                                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                              )}
+                            >
+                              <Icon className="w-3.5 h-3.5" />
+                              <span>{ch.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Ученик */}
+                {activeEditSection === 'student' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <GraduationCap className="w-4 h-4 text-purple-600" />
+                      2. Данные учащегося
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Имя и Фамилия ученика *
+                        </label>
+                        <input
+                          type="text"
+                          value={studentName}
+                          onChange={(e) => setStudentName(e.target.value)}
+                          placeholder="Матвей Морозов"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Класс / Грейд
+                        </label>
+                        <input
+                          type="text"
+                          value={studentGrade}
+                          onChange={(e) => setStudentGrade(e.target.value)}
+                          placeholder="Например: 4 класс или 2 курс"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-slate-600 uppercase block">
+                            Дата рождения
+                          </label>
+                          {computedAge && (
+                            <span className="text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded border border-purple-200">
+                              Возраст: {computedAge}
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="date"
+                          value={studentBirthDate}
+                          onChange={(e) => setStudentBirthDate(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Возраст вручную (если дата не указана)
+                        </label>
+                        <input
+                          type="text"
+                          value={studentAge}
+                          onChange={(e) => setStudentAge(e.target.value)}
+                          placeholder="Например: 10 лет"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Потребность и курс */}
+                {activeEditSection === 'need' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      3. Потребность, направление и цели
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Направление / Курс *
+                        </label>
+                        <select
+                          value={course}
+                          onChange={(e) => setCourse(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          {INITIAL_COURSES.map(c => (
+                            <option key={c.id} value={c.name}>{c.name}</option>
+                          ))}
+                          <option value="Немецкий язык">Немецкий язык</option>
+                          <option value="Испанский язык">Испанский язык</option>
+                          <option value="Китайский язык">Китайский язык</option>
+                          <option value="Подготовка к школе">Подготовка к школе</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Уровень знаний (CEFR)
+                        </label>
+                        <select
+                          value={level}
+                          onChange={(e) => setLevel(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="A0 Starter">A0 Starter (С нуля)</option>
+                          <option value="A1 Elementary">A1 Elementary</option>
+                          <option value="A2 Pre-Intermediate">A2 Pre-Intermediate</option>
+                          <option value="B1 Intermediate">B1 Intermediate</option>
+                          <option value="B2 Upper-Intermediate">B2 Upper-Intermediate</option>
+                          <option value="C1 Advanced">C1 Advanced</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Quick Goal Chips */}
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1.5">
+                        Быстрый выбор цели (клик для добавления)
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {QUICK_GOALS.map(g => (
                           <button
-                            key={role}
+                            key={g}
                             type="button"
-                            onClick={() => setParentRole(role)}
-                            className={cn(
-                              'px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer',
-                              parentRole === role
-                                ? 'bg-blue-600 text-white border-blue-600 font-bold'
-                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                            )}
+                            onClick={() => {
+                              if (!goal.includes(g)) {
+                                setGoal(prev => prev ? `${prev}, ${g}` : g);
+                              }
+                            }}
+                            className="text-[11px] font-medium px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 transition-colors cursor-pointer"
                           >
-                            {role}
+                            + {g}
                           </button>
                         ))}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Телефон</label>
-                      <input
-                        type="text"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="parent@example.com"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Telegram</label>
-                      <input
-                        type="text"
-                        value={telegram}
-                        onChange={(e) => setTelegram(e.target.value)}
-                        placeholder="@username"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Цель обучения и запрос</label>
+                      <textarea
+                        rows={2}
+                        value={goal}
+                        onChange={(e) => setGoal(e.target.value)}
+                        placeholder="Например: Подтянуть оценки, сдать международный тест, хочет заниматься по вечерам..."
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 leading-relaxed"
                       />
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* 2. Ученик */}
-                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <GraduationCap className="w-4 h-4 text-purple-600" />
-                    Данные ученика
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Имя ученика</label>
-                      <input
-                        type="text"
-                        value={studentName}
-                        onChange={(e) => setStudentName(e.target.value)}
-                        placeholder="Матвей"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Возраст</label>
-                      <input
-                        type="text"
-                        value={studentAge}
-                        onChange={(e) => setStudentAge(e.target.value)}
-                        placeholder="12 лет"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Класс</label>
-                      <input
-                        type="text"
-                        value={studentGrade}
-                        onChange={(e) => setStudentGrade(e.target.value)}
-                        placeholder="6 класс"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Потребность и курс */}
-                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <Target className="w-4 h-4 text-blue-600" />
-                    Потребность, курс и цели
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Направление / Курс
-                      </label>
-                      <input
-                        type="text"
-                        value={course}
-                        onChange={(e) => setCourse(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
+                {/* 4. Группа и пробный урок */}
+                {activeEditSection === 'group_trial' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <Users className="w-4 h-4 text-purple-600" />
+                      4. Выбор подходящей группы и запись на пробный урок
+                    </h4>
 
                     <div>
                       <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Уровень знаний
+                        Группа для зачисления / пробного урока
                       </label>
                       <select
-                        value={level}
-                        onChange={(e) => setLevel(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={selectedGroup}
+                        onChange={(e) => setSelectedGroup(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer font-medium"
                       >
-                        <option value="A0 Starter">A0 Starter (С нуля)</option>
-                        <option value="A1 Elementary">A1 Elementary</option>
-                        <option value="A2 Pre-Intermediate">A2 Pre-Intermediate</option>
-                        <option value="B1 Intermediate">B1 Intermediate</option>
-                        <option value="B2 Upper-Intermediate">B2 Upper-Intermediate</option>
-                        <option value="C1 Advanced">C1 Advanced</option>
+                        {displayedGroups.map(g => (
+                          <option key={g.id} value={g.id}>
+                            {g.name} ({g.courseName}) • {g.schedule} • Преподаватель: {g.teacherName} (Мест: {g.students?.length || 0}/{g.capacity || 8})
+                          </option>
+                        ))}
                       </select>
                     </div>
+
+                    {currentSelectedGroupObj && (
+                      <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-bold text-purple-950">{currentSelectedGroupObj.name}</span>
+                          <span className="text-slate-500 ml-2">Расписание: {currentSelectedGroupObj.schedule}</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[11px]">
+                          {currentSelectedGroupObj.students?.length || 0} / {currentSelectedGroupObj.capacity || 8} уч.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Дата и время пробного занятия
+                        </label>
+                        <input
+                          type="text"
+                          value={trialDateTime}
+                          onChange={(e) => setTrialDateTime(e.target.value)}
+                          placeholder="Чт 18 сен, 16:30"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Быстрый слот (на основе расписания)
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTrialDateTime('Ближайший вторник, 18:00')}
+                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
+                          >
+                            Вт 18:00
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrialDateTime('Ближайший четверг, 18:45')}
+                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
+                          >
+                            Чт 18:45
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrialDateTime('Суббота, 11:00')}
+                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
+                          >
+                            Сб 11:00
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Цель обучения</label>
-                    <input
-                      type="text"
-                      value={goal}
-                      onChange={(e) => setGoal(e.target.value)}
-                      placeholder="Например: Подтянуть оценки, сдать вступительный экзамен..."
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                {/* 5. Сделка и источник */}
+                {activeEditSection === 'deal' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      5. Параметры сделки, стоимость и источник
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Потенциальная сумма сделки (€) *
+                        </label>
+                        <input
+                          type="text"
+                          value={offerAmount}
+                          onChange={(e) => setOfferAmount(e.target.value)}
+                          placeholder="120 € / мес."
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Источник лида *
+                        </label>
+                        <select
+                          value={source}
+                          onChange={(e) => setSource(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                        >
+                          {SOURCE_OPTIONS.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                          Ответственный менеджер
+                        </label>
+                        <select
+                          value={assignedTo}
+                          onChange={(e) => setAssignedTo(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                        >
+                          {INITIAL_TEACHERS.map(t => (
+                            <option key={t.id} value={t.name}>{t.name}</option>
+                          ))}
+                          <option value="Анна Смирнова">Анна Смирнова</option>
+                          <option value="Елена Менеджер">Елена Менеджер</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* 4. Сделка и источник */}
-                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
-                    <CreditCard className="w-4 h-4 text-emerald-600" />
-                    Параметры сделки и источник
-                  </h4>
+                {/* 6. Заметки */}
+                {activeEditSection === 'comment' && (
+                  <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                      <FileText className="w-4 h-4 text-amber-600" />
+                      6. Заметки и комментарии менеджера
+                    </h4>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Потенциальная сумма (€)
-                      </label>
-                      <input
-                        type="text"
-                        value={offerAmount}
-                        onChange={(e) => setOfferAmount(e.target.value)}
-                        placeholder="120 € / мес."
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      <textarea
+                        rows={5}
+                        value={generalComment}
+                        onChange={(e) => setGeneralComment(e.target.value)}
+                        placeholder="Особые пожелания родителя, психологические особенности ученика, история предыдущего обучения..."
+                        className="w-full bg-white border border-slate-200 rounded-lg p-3 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500 leading-relaxed"
                       />
                     </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Источник</label>
-                      <input
-                        type="text"
-                        value={source}
-                        onChange={(e) => setSource(e.target.value)}
-                        placeholder="Сайт / Форма заявки"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Ответственный менеджер
-                      </label>
-                      <input
-                        type="text"
-                        value={assignedTo}
-                        onChange={(e) => setAssignedTo(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -1350,7 +1688,7 @@ export function LeadDetailsModal({
               <>
                 <div className="text-xs text-slate-500 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Лид синхронизирован с облаком</span>
+                  <span>Лид синхронизирован с облаком Supabase</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1388,7 +1726,7 @@ export function LeadDetailsModal({
                     className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
                   >
                     <Save className="w-4 h-4" />
-                    Сохранить изменения
+                    Сохранить квалификацию
                   </button>
                 </div>
               </>
@@ -1445,7 +1783,7 @@ export function LeadDetailsModal({
               <button
                 type="button"
                 onClick={() => setIsBookingTrial(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1459,11 +1797,11 @@ export function LeadDetailsModal({
                 <select
                   value={selectedGroup}
                   onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer font-medium"
                 >
-                  {groups.map(g => (
+                  {displayedGroups.map(g => (
                     <option key={g.id} value={g.id}>
-                      {g.name} ({g.courseName}) • {g.schedule}
+                      {g.name} ({g.courseName}) • {g.schedule} • {g.students?.length || 0}/{g.capacity || 8} уч.
                     </option>
                   ))}
                 </select>
@@ -1487,14 +1825,14 @@ export function LeadDetailsModal({
               <button
                 type="button"
                 onClick={() => setIsBookingTrial(false)}
-                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800"
+                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
               >
                 Отмена
               </button>
               <button
                 type="button"
                 onClick={handleBookTrial}
-                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors"
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
               >
                 Сохранить запись
               </button>
