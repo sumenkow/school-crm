@@ -3,19 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Receipt,
-  Building2,
-  Calendar,
-  DollarSign,
-  Send,
-  Printer,
-  Sparkles,
-  CheckCircle2,
-  Bot,
-  Mail,
   FileText,
   CreditCard,
   QrCode,
+  User,
+  Search,
 } from 'lucide-react';
 import {
   EuropeanInvoiceData,
@@ -23,6 +15,8 @@ import {
   saveInvoice,
 } from '@/lib/data/invoiceStorage';
 import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { FullStudentData, INITIAL_STUDENTS } from '@/lib/data/mockData';
 import { DatePicker } from '@/components/common/DatePicker';
 import { transliterateIso } from '@/lib/data/transliteration';
 import { useToast } from '@/context/ToastContext';
@@ -47,8 +41,8 @@ interface CreateInvoiceModalProps {
 export function CreateInvoiceModal({
   isOpen,
   onClose,
-  studentId = 'b6666666-6666-4666-8666-666666666666',
-  studentName = 'Вася Пупкин',
+  studentId,
+  studentName,
   parentId,
   parentName,
   parentTelegram,
@@ -61,6 +55,16 @@ export function CreateInvoiceModal({
   const router = useRouter();
   const { success, error: showError } = useToast();
   const school = getSchoolSettings();
+
+  // Students list
+  const [students, setStudents] = useState<FullStudentData[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [currentStudentName, setCurrentStudentName] = useState<string>('');
+  const [currentParentId, setCurrentParentId] = useState<string | undefined>(undefined);
+  const [currentParentName, setCurrentParentName] = useState<string | undefined>(undefined);
+  const [currentParentTelegram, setCurrentParentTelegram] = useState<string | undefined>(undefined);
+  const [currentParentEmail, setCurrentParentEmail] = useState<string | undefined>(undefined);
+  const [currentParentPhone, setCurrentParentPhone] = useState<string | undefined>(undefined);
 
   // Form State
   const [invoiceNumber, setInvoiceNumber] = useState<number>(() => getNextInvoiceNumber());
@@ -76,11 +80,66 @@ export function CreateInvoiceModal({
   const [sendViaTelegram, setSendViaTelegram] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const applyStudentData = (st: FullStudentData) => {
+    setSelectedStudentId(st.id);
+    const fullName = `${st.firstName} ${st.lastName}`.trim();
+    setCurrentStudentName(fullName);
+
+    const primaryParent = st.parents?.[0];
+    if (primaryParent) {
+      setCurrentParentId(primaryParent.id);
+      setCurrentParentName(`${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.trim() || undefined);
+      setCurrentParentTelegram(primaryParent.telegram || st.telegram);
+      setCurrentParentEmail(primaryParent.email || st.email);
+      setCurrentParentPhone(primaryParent.phone || st.phone);
+    } else {
+      setCurrentParentId(undefined);
+      setCurrentParentName(undefined);
+      setCurrentParentTelegram(st.telegram);
+      setCurrentParentEmail(st.email);
+      setCurrentParentPhone(st.phone);
+    }
+
+    // Auto-detect course name in German
+    const detectedCourse = st.groups?.[0]?.courseName || st.groups?.[0]?.name;
+    if (detectedCourse) {
+      setCourseName(detectedCourse);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
+      const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+      setStudents(allStudents);
+
+      // Determine initial active student
+      let activeSt: FullStudentData | undefined;
+      if (studentId) {
+        activeSt = allStudents.find((s) => s.id === studentId);
+      }
+      if (!activeSt && studentName) {
+        activeSt = allStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentName.toLowerCase()));
+      }
+      if (!activeSt && allStudents.length > 0) {
+        activeSt = allStudents[0];
+      }
+
+      if (activeSt) {
+        applyStudentData(activeSt);
+      } else {
+        setSelectedStudentId(studentId || 'st_1');
+        setCurrentStudentName(studentName || 'Schüler');
+        setCurrentParentId(parentId);
+        setCurrentParentName(parentName);
+        setCurrentParentTelegram(parentTelegram);
+        setCurrentParentEmail(parentEmail);
+        setCurrentParentPhone(parentPhone);
+      }
+
       const nextNum = getNextInvoiceNumber();
       setInvoiceNumber(nextNum);
-      if (defaultCourseName) {
+
+      if (defaultCourseName && !activeSt?.groups?.[0]?.courseName) {
         setCourseName(defaultCourseName);
       }
       if (defaultAmountEUR) {
@@ -93,7 +152,7 @@ export function CreateInvoiceModal({
       due.setDate(due.getDate() + 3);
       setDueDate(due.toLocaleDateString('ru-RU'));
     }
-  }, [isOpen, defaultCourseName, defaultAmountEUR]);
+  }, [isOpen, studentId, studentName, parentId, parentName, parentTelegram, parentEmail, parentPhone, defaultCourseName, defaultAmountEUR]);
 
   if (!isOpen) return null;
 
@@ -104,8 +163,8 @@ export function CreateInvoiceModal({
     setIsSubmitting(true);
 
     try {
-      const latinStudentName = transliterateIso(studentName);
-      const latinParentName = parentName ? transliterateIso(parentName) : undefined;
+      const latinStudentName = transliterateIso(currentStudentName);
+      const latinParentName = currentParentName ? transliterateIso(currentParentName) : undefined;
 
       const newInvoice: EuropeanInvoiceData = {
         id: `inv_${invoiceNumber}`,
@@ -115,13 +174,13 @@ export function CreateInvoiceModal({
         dueDate,
         periodLabel,
         courseName: courseName.trim() || 'EPD Vorbereitung',
-        studentId,
+        studentId: selectedStudentId || studentId || 'st_1',
         studentName: latinStudentName,
-        parentId,
+        parentId: currentParentId || parentId,
         parentName: latinParentName || latinStudentName,
-        parentTelegram,
-        parentEmail,
-        parentPhone,
+        parentTelegram: currentParentTelegram || parentTelegram,
+        parentEmail: currentParentEmail || parentEmail,
+        parentPhone: currentParentPhone || parentPhone,
         items: [
           {
             id: `item_${Date.now()}`,
@@ -153,7 +212,8 @@ export function CreateInvoiceModal({
 
       // 2. Send via Telegram if requested
       if (action === 'send_telegram' || sendViaTelegram) {
-        if (parentTelegram) {
+        const tgChatId = currentParentTelegram || parentTelegram;
+        if (tgChatId) {
           try {
             const token = typeof window !== 'undefined' ? localStorage.getItem('crm_tg_bot_token') : '';
             await fetch('/api/invoices/send', {
@@ -195,7 +255,7 @@ export function CreateInvoiceModal({
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <Receipt className="h-5 w-5" />
+              <FileText className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">Выставить счёт на оплату (Faktúra)</h3>
@@ -248,16 +308,48 @@ export function CreateInvoiceModal({
             </div>
           </div>
 
-          {/* Section 2: Student & Course */}
+          {/* Section 2: Student Selector & Course */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-600 mb-1">Плательщик / Ученик</label>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-900">
-                {studentName} {parentName && parentName !== studentName ? `(${parentName})` : ''}
-              </div>
+              <label className="block font-semibold text-slate-600 mb-1">
+                Выберите ученика / плательщика <span className="text-rose-500">*</span>
+              </label>
+              {students.length > 0 ? (
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const st = students.find((s) => s.id === val);
+                    if (st) applyStudentData(st);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                >
+                  {students.map((st) => {
+                    const grp = st.groups?.[0]?.name || st.groups?.[0]?.courseName || 'Без группы';
+                    const par = st.parents?.[0] ? ` • Род.: ${st.parents[0].firstName}` : '';
+                    return (
+                      <option key={st.id} value={st.id}>
+                        {st.firstName} {st.lastName} ({grp}{par})
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-900">
+                  {currentStudentName || 'Ученик'}
+                </div>
+              )}
+              {currentParentName && currentParentName !== currentStudentName && (
+                <p className="text-[11px] text-slate-500 mt-1 pl-0.5 truncate">
+                  Представитель: <strong className="text-slate-700 font-semibold">{currentParentName}</strong>
+                </p>
+              )}
             </div>
+
             <div>
-              <label className="block font-semibold text-slate-600 mb-1">Название курса (на немецком)</label>
+              <label className="block font-semibold text-slate-600 mb-1">
+                Название курса (на немецком) <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="text"
                 value={courseName}
@@ -304,9 +396,10 @@ export function CreateInvoiceModal({
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 value={amountEUR}
                 onChange={(e) => setAmountEUR(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
             </div>
@@ -315,64 +408,67 @@ export function CreateInvoiceModal({
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 value={discountEUR}
                 onChange={(e) => setDiscountEUR(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 text-emerald-600"
               />
             </div>
           </div>
 
-          {/* Bank Summary Preview */}
-          <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-3 space-y-1.5 text-xs text-slate-700">
-            <div className="flex items-center justify-between font-bold text-slate-900 border-b border-blue-100 pb-1">
-              <span>Реквизиты Tatra banka:</span>
-              <span className="text-emerald-700 font-extrabold text-sm">Итого: {finalTotal.toFixed(2)} €</span>
+          {/* Section 4: Bank Details Summary */}
+          <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100 space-y-1 text-xs">
+            <div className="flex items-center justify-between text-blue-900 font-bold">
+              <span className="flex items-center gap-1.5">
+                <CreditCard size={14} className="text-blue-600" />
+                Реквизиты Tatra banka:
+              </span>
+              <span className="font-mono text-sm text-blue-800 font-black">{finalTotal.toFixed(2)} €</span>
             </div>
-            <p className="text-[11px] text-slate-600">
-              <strong>Kontoinhaber:</strong> {school.accountHolder || 'Ekaterina Nezhenkina'} • <strong>IBAN:</strong> {school.iban || 'SK34 1100 0000 0029 3766 3128'}
+            <p className="text-[11px] text-blue-800/80 font-mono">
+              IBAN: {school.iban || 'SK34 1100 0000 0029 3766 3128'} • SWIFT: {school.swiftBic || 'TATRSKBX'}
             </p>
-            <p className="text-[11px] text-slate-600">
-              <strong>Variabilný symbol (VS):</strong> <span className="font-mono text-blue-700 font-bold">{invoiceNumber}</span> • <strong>SWIFT/BIC:</strong> {school.swiftBic || 'TATRSKBX'}
+            <p className="text-[10px] text-slate-500">
+              Получатель: <strong>{school.accountHolder || 'Ekaterina Nezhenkina'}</strong> • VS: <strong className="font-mono">{invoiceNumber}</strong>
             </p>
           </div>
 
-          {/* Telegram Send Option */}
-          {parentTelegram && (
-            <label className="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100/80 transition-colors">
+          {/* Section 5: Dispatch Options */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={sendViaTelegram}
                 onChange={(e) => setSendViaTelegram(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <div className="text-xs">
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Bot size={14} className="text-[#229ED9]" />
-                  Сразу отправить счёт в Telegram клиенту
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Бот отправит реквизиты, сумму и ссылку на оплату в чат клиенту
-                </p>
-              </div>
+              <span className="font-semibold text-slate-800">
+                Отправить счёт в Telegram-бот {currentParentTelegram ? `(${currentParentTelegram})` : ''}
+              </span>
             </label>
-          )}
+            {!currentParentTelegram && sendViaTelegram && (
+              <p className="text-[11px] text-amber-600 pl-6">
+                ⚠️ У плательщика не указан Telegram. Счёт будет сохранен для ручной отправки или печати.
+              </p>
+            )}
+          </div>
 
-          {/* Action Buttons */}
+          {/* Footer Actions */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
             >
-              <Send size={14} className={cn(isSubmitting && 'animate-spin')} />
-              {sendViaTelegram && parentTelegram ? 'Выставить и отправить в Telegram' : 'Выставить счёт и открыть'}
+              <QrCode size={14} />
+              {isSubmitting ? 'Формирование...' : 'Сформировать счёт (Faktúra)'}
             </button>
           </div>
         </form>

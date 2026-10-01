@@ -453,11 +453,12 @@ export default function InvoiceDetailPage() {
 
       </div>
 
-      {/* Strict Print CSS: Only #invoice-sheet is printed */}
+      {/* Strict Print CSS: Only #invoice-sheet is printed cleanly */}
       <style jsx global>{`
         @media print {
           html, body {
             background-color: #FFFFFF !important;
+            background: #FFFFFF !important;
             color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -468,8 +469,7 @@ export default function InvoiceDetailPage() {
             size: A4 portrait;
             margin: 10mm 12mm;
           }
-          /* Hide everything except the invoice sheet */
-          body > *:not(#__next),
+          /* Hide navigation, sidebar, headers and buttons */
           nav, aside, header, .print\\:hidden {
             display: none !important;
           }
@@ -481,6 +481,8 @@ export default function InvoiceDetailPage() {
             max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
+            display: block !important;
+            visibility: visible !important;
           }
         }
       `}</style>
