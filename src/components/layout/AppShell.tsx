@@ -38,9 +38,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const handleFocus = () => {
       hydrateAllDataFromCloud();
     };
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        hydrateAllDataFromCloud();
+      }
+    }, 20000);
+
     window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
     return () => {
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      clearInterval(interval);
     };
   }, [pathname, isAuthPage, router]);
 

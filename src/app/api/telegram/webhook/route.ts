@@ -73,15 +73,14 @@ export async function POST(request: NextRequest) {
 
           // Insert timeline connection interaction
           await supabase.from('interactions').insert({
-            id: `int_tg_bind_${Date.now()}`,
             student_id: targetType === 'student' ? targetId : null,
             lead_id: targetType === 'lead' ? targetId : null,
             parent_id: targetType === 'parent' ? targetId : null,
+            channel: 'telegram',
             type: 'status_change',
-            title: 'Telegram подключен',
-            description: `Подключен Telegram: ${senderName} (${senderUsername || `ID: ${chatId}`})`,
-            created_at: new Date().toISOString(),
-            is_mock_data: false,
+            content: `Подключен Telegram: ${senderName} (${senderUsername ? `${senderUsername} • ` : ''}Chat ID: ${chatId})`,
+            result: 'Telegram привязан к CRM',
+            occurred_at: new Date().toISOString(),
           });
         }
       } catch (dbErr) {
@@ -113,77 +112,76 @@ export async function POST(request: NextRequest) {
     let matchedParentId: string | null = null;
     let matchedEntityName: string = '';
 
-    const searchQueries: string[] = [];
-    if (senderUsername) {
-      searchQueries.push(`telegram.eq.${senderUsername}`);
-      searchQueries.push(`telegram.eq.${senderUsername.replace('@', '')}`);
-    }
+    const cleanUsername = (senderUsername || '').replace(/^@/, '').trim();
+    const searchTerms: string[] = [];
     if (chatId) {
-      searchQueries.push(`telegram.eq.${chatId}`);
+      searchTerms.push(String(chatId));
+    }
+    if (cleanUsername) {
+      searchTerms.push(cleanUsername);
+      searchTerms.push(`@${cleanUsername}`);
     }
 
     try {
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createAdminClient();
 
-        if (searchQueries.length > 0) {
-          const filterStr = searchQueries.join(',');
-
-          // Search students
-          const { data: st } = await supabase
-            .from('students')
-            .select('id, first_name, last_name')
-            .or(filterStr)
-            .limit(1)
-            .maybeSingle();
-
-          if (st) {
-            matchedStudentId = st.id;
-            matchedEntityName = `Ученик: ${st.first_name || ''} ${st.last_name || ''}`.trim();
+        // 1. Check all students in DB
+        const { data: allDbStudents } = await supabase.from('students').select('id, first_name, last_name, telegram');
+        if (allDbStudents && allDbStudents.length > 0) {
+          const stMatch = allDbStudents.find((s) => {
+            if (!s.telegram) return false;
+            const norm = String(s.telegram).trim().toLowerCase();
+            return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
+          });
+          if (stMatch) {
+            matchedStudentId = stMatch.id;
+            matchedEntityName = `Ученик: ${stMatch.first_name || ''} ${stMatch.last_name || ''}`.trim();
           }
+        }
 
-          // Search leads
-          if (!matchedStudentId) {
-            const { data: ld } = await supabase
-              .from('leads')
-              .select('id, name')
-              .or(filterStr)
-              .limit(1)
-              .maybeSingle();
-
-            if (ld) {
-              matchedLeadId = ld.id;
-              matchedEntityName = `Лид: ${ld.name || ''}`.trim();
+        // 2. Check parents in DB
+        if (!matchedStudentId) {
+          const { data: allDbParents } = await supabase.from('parents').select('id, first_name, last_name, telegram');
+          if (allDbParents && allDbParents.length > 0) {
+            const prMatch = allDbParents.find((p) => {
+              if (!p.telegram) return false;
+              const norm = String(p.telegram).trim().toLowerCase();
+              return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
+            });
+            if (prMatch) {
+              matchedParentId = prMatch.id;
+              matchedEntityName = `Родитель: ${prMatch.first_name || ''} ${prMatch.last_name || ''}`.trim();
             }
           }
+        }
 
-          // Search parents
-          if (!matchedStudentId && !matchedLeadId) {
-            const { data: pr } = await supabase
-              .from('parents')
-              .select('id, first_name, last_name')
-              .or(filterStr)
-              .limit(1)
-              .maybeSingle();
-
-            if (pr) {
-              matchedParentId = pr.id;
-              matchedEntityName = `Родитель: ${pr.first_name || ''} ${pr.last_name || ''}`.trim();
+        // 3. Check leads in DB
+        if (!matchedStudentId && !matchedParentId) {
+          const { data: allDbLeads } = await supabase.from('leads').select('id, name, contact');
+          if (allDbLeads && allDbLeads.length > 0) {
+            const ldMatch = allDbLeads.find((l) => {
+              if (!l.contact) return false;
+              const norm = String(l.contact).trim().toLowerCase();
+              return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
+            });
+            if (ldMatch) {
+              matchedLeadId = ldMatch.id;
+              matchedEntityName = `Лид: ${ldMatch.name || ''}`.trim();
             }
           }
         }
 
         // Save incoming interaction to Supabase interactions table
         await supabase.from('interactions').insert({
-          id: `int_tg_in_${Date.now()}`,
           student_id: matchedStudentId,
           lead_id: matchedLeadId,
           parent_id: matchedParentId,
+          channel: 'telegram',
           type: 'follow_up',
-          title: `Сообщение от ${senderName}${matchedEntityName ? ` (${matchedEntityName})` : ''}`,
-          description: text,
-          created_at: new Date().toISOString(),
-          is_mock_data: false,
+          content: `💬 Входящее в Telegram: «${text}»`,
+          result: `Сообщение от ${senderName}${matchedEntityName ? ` (${matchedEntityName})` : ''}`,
+          occurred_at: new Date().toISOString(),
         });
       }
     } catch (dbErr) {

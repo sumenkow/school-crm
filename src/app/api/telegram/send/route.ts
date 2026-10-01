@@ -77,15 +77,14 @@ export async function POST(request: NextRequest) {
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createAdminClient();
         await supabase.from('interactions').insert({
-          id: `int_tg_out_${Date.now()}`,
           student_id: recipientType === 'student' ? recipientId : null,
           lead_id: recipientType === 'lead' ? recipientId : null,
           parent_id: recipientType === 'parent' ? recipientId : null,
+          channel: 'telegram',
           type: 'follow_up',
-          title: `Исходящее сообщение в Telegram (${recipientName || 'Клиент'})`,
-          description: message.trim(),
-          created_at: new Date().toISOString(),
-          is_mock_data: false,
+          content: message.trim(),
+          result: `Исходящее сообщение в Telegram (${recipientName || 'Клиент'})`,
+          occurred_at: new Date().toISOString(),
         });
       }
     } catch (dbErr) {
