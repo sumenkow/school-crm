@@ -71,7 +71,10 @@ function parseDateToISO(val?: string | number | null): string {
     const hours = ruMatch[4] ? parseInt(ruMatch[4], 10) : 12;
     const minutes = ruMatch[5] ? parseInt(ruMatch[5], 10) : 0;
     const seconds = ruMatch[6] ? parseInt(ruMatch[6], 10) : 0;
-    const d = new Date(year, month, day, hours, minutes, seconds);
+    // Russian dates from browser are Moscow time (UTC+3).
+    // Use Date.UTC and subtract 3h offset so the stored UTC is correct.
+    const utcMs = Date.UTC(year, month, day, hours, minutes, seconds) - 3 * 60 * 60 * 1000;
+    const d = new Date(utcMs);
     if (!isNaN(d.getTime())) return d.toISOString();
   }
 

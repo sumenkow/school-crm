@@ -47,6 +47,18 @@ export function getEquivalentIds(id: string): Set<string> {
 }
 
 /**
+ * Normalizes a mock short ID to its canonical UUID form.
+ * Unknown IDs are returned as-is.
+ */
+function normalizeIdToUUID(id?: string): string {
+  if (!id) return '';
+  for (const [mock, uuid] of MOCK_UUID_PAIRS) {
+    if (id === mock) return uuid;
+  }
+  return id;
+}
+
+/**
  * Universal date parser that reliably converts ISO dates, Russian date formats
  * (DD.MM.YYYY, HH:mm), YYYY-MM-DD, or timestamps to a standard ISO 8601 string.
  * Never overrides an existing valid date with NOW.
@@ -166,7 +178,7 @@ export function deduplicateTimelineInteractions(interactions: TimelineInteractio
 
     const normText = normalizeInteractionText(item.content);
     const itemTime = parseInteractionTimestamp(item);
-    const targetKey = `${item.studentId || ''}_${item.parentId || ''}_${(item as any).leadId || ''}`;
+    const targetKey = `${normalizeIdToUUID(item.studentId)}_${normalizeIdToUUID(item.parentId)}_${normalizeIdToUUID((item as any).leadId)}`;
 
     // Look for an existing match in result list
     const existingIdx = result.findIndex((existing) => {
@@ -174,7 +186,7 @@ export function deduplicateTimelineInteractions(interactions: TimelineInteractio
       if (existing.id && item.id && existing.id === item.id) return true;
 
       // 2. Semantic match for identical message sent to same recipient
-      const existingTargetKey = `${existing.studentId || ''}_${existing.parentId || ''}_${(existing as any).leadId || ''}`;
+      const existingTargetKey = `${normalizeIdToUUID(existing.studentId)}_${normalizeIdToUUID(existing.parentId)}_${normalizeIdToUUID((existing as any).leadId)}`;
       if (existingTargetKey !== targetKey) return false;
 
       const existingNorm = normalizeInteractionText(existing.content);
