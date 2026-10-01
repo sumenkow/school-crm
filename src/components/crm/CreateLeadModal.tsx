@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Phone, Check, Zap, UserPlus } from 'lucide-react';
+import { X, Phone, Check, Zap, UserPlus, School, GraduationCap } from 'lucide-react';
 import { FullLeadData, INITIAL_LEADS, splitFullName } from '@/lib/data/mockData';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { cn } from '@/lib/utils';
@@ -25,16 +25,40 @@ const FALLBACK_COURSES: CourseChip[] = [
   { id: 'c4', name: 'Скорочтение и память' },
 ];
 
+const GRADE_OPTIONS = [
+  'Дошкольник',
+  '1 класс',
+  '2 класс',
+  '3 класс',
+  '4 класс',
+  '5 класс',
+  '6 класс',
+  '7 класс',
+  '8 класс',
+  '9 класс',
+  '10 класс',
+  '11 класс',
+];
+
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
   const [mounted, setMounted] = useState(false);
   const [courses, setCourses] = useState<CourseChip[]>(FALLBACK_COURSES);
+
+  // Category
+  const [clientType, setClientType] = useState<'school_student' | 'adult_student'>('school_student');
 
   // Form state
   const [parentFullName, setParentFullName] = useState('');
   const [contact, setContact] = useState('+');
   const [telegram, setTelegram] = useState('');
+
+  // Child / Student data
   const [studentFullName, setStudentFullName] = useState('');
-  const [studentAgeText, setStudentAgeText] = useState('');
+  const [studentAge, setStudentAge] = useState('');
+  const [studentGrade, setStudentGrade] = useState('');
+  const [adultOccupation, setAdultOccupation] = useState('');
+
+  // Course & Details
   const [directionOrCourse, setDirectionOrCourse] = useState(FALLBACK_COURSES[0].name);
   const [comment, setComment] = useState('');
   const [source, setSource] = useState('Прямое обращение');
@@ -87,7 +111,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const effectiveName = parentFullName.trim() || studentFullName.trim();
+    const isAdult = clientType === 'adult_student';
+    const effectiveName = isAdult ? studentFullName.trim() : (parentFullName.trim() || studentFullName.trim());
     const effectiveStudentName = studentFullName.trim() || parentFullName.trim();
 
     if (!effectiveName) {
@@ -109,27 +134,34 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
     const leadId = `lead_${Date.now()}`;
 
+    // Clean student age representation
+    const cleanAge = studentAge.trim()
+      ? (studentAge.toLowerCase().includes('лет') || studentAge.toLowerCase().includes('год') ? studentAge.trim() : `${studentAge.trim()} лет`)
+      : undefined;
+
     const createdLead: FullLeadData = {
       id: leadId,
-      clientType: 'school_student',
+      clientType,
       name: effectiveName,
       contact: contact.trim(),
       telegram: telegram ? (telegram.startsWith('@') ? telegram : `@${telegram}`) : undefined,
-      parentLastName: parentLastName || undefined,
-      parentFirstName: parentFirstName || undefined,
-      parentMiddleName: parentMiddleName || undefined,
+      parentLastName: isAdult ? undefined : (parentLastName || undefined),
+      parentFirstName: isAdult ? undefined : (parentFirstName || undefined),
+      parentMiddleName: isAdult ? undefined : (parentMiddleName || undefined),
       studentLastName: studentLastName || undefined,
       studentFirstName: studentFirstName || effectiveStudentName,
       studentMiddleName: studentMiddleName || undefined,
       studentName: effectiveStudentName,
-      studentAge: studentAgeText.trim() || undefined,
+      studentAge: isAdult ? (cleanAge || adultOccupation.trim() || undefined) : cleanAge,
+      studentGrade: isAdult ? undefined : (studentGrade.trim() || undefined),
+      grade: isAdult ? undefined : (studentGrade.trim() || undefined),
       directionOrCourse,
       source,
       assignedTo,
       status: 'new',
       nextAction: 'Первичный контакт с лидом',
       nextActionDate: 'Через 2 часа',
-      comment,
+      comment: isAdult && adultOccupation.trim() ? `Сфера: ${adultOccupation.trim()}. ${comment}`.trim() : comment,
       createdAt: new Date().toISOString(),
       interactions: [
         {
@@ -184,6 +216,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     onClose();
   };
 
+  const isAdult = clientType === 'adult_student';
+
   return createPortal(
     <div
       className="fixed inset-0 z-[120] flex items-center justify-center p-4"
@@ -192,13 +226,13 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Modal panel — no vertical scroll */}
+      {/* Modal panel — strictly compact, no vertical scrollbar */}
       <div className="relative z-10 w-full max-w-[640px] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden">
 
         {/* ── HEADER ── */}
-        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+        <div className="flex-shrink-0 flex items-center justify-between px-5 py-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
               <UserPlus className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -209,38 +243,72 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             aria-label="Закрыть"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* ── BODY (no scroll) ── */}
-        <form id="create-lead-form" onSubmit={handleSubmit} className="px-5 py-4 space-y-3.5">
+        {/* ── BODY (Compact monolithic, no scroll) ── */}
+        <form id="create-lead-form" onSubmit={handleSubmit} className="px-5 py-3.5 space-y-3">
+
+          {/* ═══ CATEGORY SWITCHER (Школьник / Студент) ═══ */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => setClientType('school_student')}
+              className={cn(
+                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all',
+                clientType === 'school_student'
+                  ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <School className="w-3.5 h-3.5 text-blue-600" />
+              <span>Школьник (с родителем)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setClientType('adult_student')}
+              className={cn(
+                'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all',
+                clientType === 'adult_student'
+                  ? 'bg-white text-blue-700 shadow-2xs border border-slate-200/60'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-blue-600" />
+              <span>Студент / Взрослый</span>
+            </button>
+          </div>
 
           {/* ═══ SECTION 1: CONTACT ═══ */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">1</span>
-              Контакт клиента
+              {isAdult ? 'Контакт студента' : 'Контакт клиента (родителя)'}
             </p>
 
-            {/* Client name — full width */}
+            {/* Name input */}
             <div>
               <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
-                Имя клиента / родителя <span className="text-rose-500">*</span>
+                {isAdult ? 'ФИО студента' : 'Имя клиента / родителя'} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                value={parentFullName}
+                value={isAdult ? studentFullName : parentFullName}
                 onChange={(e) => {
-                  setParentFullName(e.target.value);
-                  if (!studentFullName) setStudentFullName(e.target.value);
+                  if (isAdult) {
+                    setStudentFullName(e.target.value);
+                  } else {
+                    setParentFullName(e.target.value);
+                    if (!studentFullName) setStudentFullName(e.target.value);
+                  }
                 }}
-                placeholder="Например: Анна Смирнова"
-                className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                placeholder={isAdult ? 'Например: Алексей Смирнов' : 'Например: Анна Смирнова'}
+                className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
               />
             </div>
 
@@ -259,7 +327,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                     setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
                   }}
                   placeholder="+7 (999) 000-00-00"
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                  className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
                 />
               </div>
               <div>
@@ -272,49 +340,87 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                   value={telegram}
                   onChange={(e) => setTelegram(e.target.value)}
                   placeholder="@username"
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                  className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
                 />
               </div>
             </div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-slate-100" />
 
           {/* ═══ SECTION 2: STUDENT + DIRECTION ═══ */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">2</span>
-              Данные ребёнка и направление
+              {isAdult ? 'Параметры обучения' : 'Данные ребёнка и направление'}
             </p>
 
-            {/* Student name + age */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Имя ребёнка</label>
-                <input
-                  type="text"
-                  value={studentFullName}
-                  onChange={(e) => setStudentFullName(e.target.value)}
-                  placeholder="Например: Иван"
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
-                />
+            {/* School student: Name (50%) + Age (25%) + Grade (25%) */}
+            {!isAdult ? (
+              <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-6">
+                  <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Имя ребёнка</label>
+                  <input
+                    type="text"
+                    value={studentFullName}
+                    onChange={(e) => setStudentFullName(e.target.value)}
+                    placeholder="Например: Иван"
+                    className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Возраст</label>
+                  <input
+                    type="text"
+                    value={studentAge}
+                    onChange={(e) => setStudentAge(e.target.value)}
+                    placeholder="10 лет"
+                    className="w-full h-[36px] rounded-xl border border-slate-200 px-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400 text-center"
+                  />
+                </div>
+                <div className="col-span-3">
+                  <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Класс</label>
+                  <select
+                    value={studentGrade}
+                    onChange={(e) => setStudentGrade(e.target.value)}
+                    className="w-full h-[36px] rounded-xl border border-slate-200 px-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Не указан</option>
+                    {GRADE_OPTIONS.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Возраст / класс</label>
-                <input
-                  type="text"
-                  value={studentAgeText}
-                  onChange={(e) => setStudentAgeText(e.target.value)}
-                  placeholder="Например: 10 лет / 4 класс"
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
-                />
+            ) : (
+              /* Adult student: Age (50%) + Occupation (50%) */
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Возраст студента</label>
+                  <input
+                    type="text"
+                    value={studentAge}
+                    onChange={(e) => setStudentAge(e.target.value)}
+                    placeholder="Например: 22 года"
+                    className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Сфера / род занятий</label>
+                  <input
+                    type="text"
+                    value={adultOccupation}
+                    onChange={(e) => setAdultOccupation(e.target.value)}
+                    placeholder="Студент вуза, IT..."
+                    className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Direction chips */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1.5">
+              <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
                 Направление обучения <span className="text-rose-500">*</span>
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -326,9 +432,9 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                       type="button"
                       onClick={() => setDirectionOrCourse(course.name)}
                       className={cn(
-                        'text-xs py-1.5 px-3 rounded-lg border font-semibold transition-all flex items-center gap-1',
+                        'text-xs py-1 px-2.5 rounded-lg border font-semibold transition-all flex items-center gap-1',
                         isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-transparent'
                       )}
                     >
@@ -341,11 +447,10 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
             </div>
           </div>
 
-          {/* Divider */}
           <div className="border-t border-slate-100" />
 
           {/* ═══ SECTION 3: DETAILS ═══ */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">3</span>
               Детали и параметры заявки
@@ -357,21 +462,21 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Комментарий: удобное время, уровень подготовки, пожелания..."
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400 resize-none"
-              style={{ maxHeight: 60 }}
+              className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400 resize-none"
+              style={{ maxHeight: 52 }}
             />
 
             {/* Source + Assigned */}
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Источник заявки</label>
+                <label className="text-[11px] font-semibold text-slate-600 mb-0.5 block">Источник заявки</label>
                 <select
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full h-[34px] rounded-xl border border-slate-200 px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="Прямое обращение">Прямое обращение</option>
-                  <option value="Сайт школы">Сайт</option>
+                  <option value="Сайт школы">Сайт школы</option>
                   <option value="VK">VK</option>
                   <option value="Рекомендация друзей">Рекомендация</option>
                   <option value="Instagram">Instagram</option>
@@ -380,11 +485,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-semibold text-slate-600 mb-1 block">Ответственный</label>
+                <label className="text-[11px] font-semibold text-slate-600 mb-0.5 block">Ответственный</label>
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
-                  className="w-full h-[38px] rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full h-[34px] rounded-xl border border-slate-200 px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="Елена Менеджер">Елена Менеджер</option>
                   <option value="Алексей Администратор">Алексей Администратор</option>
@@ -402,18 +507,18 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
         </form>
 
         {/* ── FOOTER ── */}
-        <div className="flex-shrink-0 border-t border-slate-200 px-5 py-3 flex items-center justify-end gap-2.5 bg-white">
+        <div className="flex-shrink-0 border-t border-slate-200 px-5 py-2.5 flex items-center justify-end gap-2.5 bg-white">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Отмена
           </button>
           <button
             type="submit"
             form="create-lead-form"
-            className="rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2 text-sm font-bold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2 text-xs font-bold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5" />
             + Создать лид
