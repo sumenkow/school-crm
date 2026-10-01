@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   X,
@@ -17,7 +17,21 @@ import {
   Save,
   Check,
   User,
-  GraduationCap
+  GraduationCap,
+  Sparkles,
+  ChevronRight,
+  ChevronDown,
+  Target,
+  CreditCard,
+  Globe,
+  Settings,
+  AlertCircle,
+  FileText,
+  Paperclip,
+  Mail,
+  ArrowRight,
+  MoreHorizontal,
+  CalendarClock
 } from 'lucide-react';
 import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
@@ -54,14 +68,27 @@ export interface LeadDetailsModalProps {
 }
 
 const STAGE_OPTIONS = [
-  { key: 'new', label: '1. Новые' },
-  { key: 'contacted', label: '2. В работе' },
-  { key: 'trial_scheduled', label: '3. Пробное назначено' },
-  { key: 'trial_held', label: '4. Пробное проведено' },
-  { key: 'thinking', label: '5. Думают / Счёт' },
-  { key: 'paid', label: '6. Оплачено (Успех)' },
-  { key: 'lost', label: '7. Отказ / Архив' },
+  { key: 'new', label: '1. Новые', color: 'blue' },
+  { key: 'contacted', label: '2. В работе', color: 'indigo' },
+  { key: 'trial_scheduled', label: '3. Пробное назначено', color: 'purple' },
+  { key: 'trial_held', label: '4. Пробное проведено', color: 'amber' },
+  { key: 'thinking', label: '5. Думают / Счёт', color: 'orange' },
+  { key: 'paid', label: '6. Оплачено', color: 'emerald' },
+  { key: 'lost', label: '7. Отказ / Архив', color: 'slate' },
 ] as const;
+
+const EDIT_SECTIONS = [
+  { id: 'main', label: 'Основные данные', icon: FileText },
+  { id: 'contact', label: 'Контакт (родитель)', icon: User },
+  { id: 'student', label: 'Ученик', icon: GraduationCap },
+  { id: 'need', label: 'Потребность', icon: Target },
+  { id: 'trial', label: 'Пробный урок', icon: Calendar },
+  { id: 'source', label: 'Источник', icon: Globe },
+  { id: 'deal', label: 'Сделка', icon: CreditCard },
+  { id: 'extra', label: 'Дополнительно', icon: Settings },
+] as const;
+
+type EditSectionId = typeof EDIT_SECTIONS[number]['id'];
 
 export function LeadDetailsModal({
   isOpen,
@@ -74,7 +101,12 @@ export function LeadDetailsModal({
   const toast = useToast();
   const { userName } = useRole();
 
+  // Mode & Tabs
   const [isEditing, setIsEditing] = useState(false);
+  const [activeEditSection, setActiveEditSection] = useState<EditSectionId>('contact');
+  const [activeTab, setActiveTab] = useState<'history' | 'whatsapp' | 'telegram' | 'email' | 'notes' | 'files'>('history');
+
+  // Modal sub-states
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [isBookingTrial, setIsBookingTrial] = useState(false);
   const [groups, setGroups] = useState<FullGroupData[]>([]);
@@ -86,35 +118,62 @@ export function LeadDetailsModal({
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [quickNote, setQuickNote] = useState('');
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
 
-  // Editable fields
+  // Editable form fields
   const [parentName, setParentName] = useState('');
+  const [parentRole, setParentRole] = useState<'Мама' | 'Папа' | 'Сам ученик' | 'Родитель'>('Мама');
   const [studentName, setStudentName] = useState('');
   const [studentAge, setStudentAge] = useState('');
+  const [studentGrade, setStudentGrade] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [telegram, setTelegram] = useState('');
   const [course, setCourse] = useState('');
+  const [level, setLevel] = useState('');
+  const [goal, setGoal] = useState('');
+  const [source, setSource] = useState('');
+  const [assignedTo, setAssignedTo] = useState('');
+  const [offerAmount, setOfferAmount] = useState('');
   const [status, setStatus] = useState<FullLeadData['status']>('new');
+  const [generalComment, setGeneralComment] = useState('');
 
+  // Sync state when lead changes
   useEffect(() => {
     if (lead) {
       setParentName(lead.name || '');
-      setStudentName(lead.studentName || '');
+      setParentRole(
+        lead.parentNotes?.includes('Папа') ? 'Папа' :
+        lead.clientType === 'adult_student' ? 'Сам ученик' : 'Мама'
+      );
+      setStudentName(lead.studentName || lead.studentFirstName || '');
       setStudentAge(lead.studentAge || '');
+      setStudentGrade(lead.studentGrade || lead.grade || '');
       setContactPhone(lead.contact || '');
+      setEmail(lead.parentNotes?.includes('@') ? lead.parentNotes : '');
       setTelegram(lead.telegram || '');
-      setCourse(lead.directionOrCourse || '');
+      setCourse(lead.directionOrCourse || 'Английский язык');
+      setLevel(lead.level || 'A2 Elementary');
+      setGoal(lead.studentNotes || 'Подтянуть школьную программу, подготовка к экзамену');
+      setSource(lead.source || 'Сайт / Форма заявки');
+      setAssignedTo(lead.assignedTo || userName || 'Анна Смирнова');
+      setOfferAmount(lead.offerAmount || '120 € / мес.');
       setStatus(lead.status);
+      setGeneralComment(lead.comment || '');
+      setTrialDateTime(lead.trialDate || '');
+
       setIsEditing(false);
       setIsBookingTrial(false);
       setIsAddingTask(false);
+      setIsAddMenuOpen(false);
 
       getTasksForLead(lead.id).then(setTasks).catch(() => setTasks([]));
       const g = getStoredGroups().filter(group => !group.isDeleted);
       setGroups(g);
       if (g.length > 0) setSelectedGroup(g[0].id);
     }
-  }, [lead]);
+  }, [lead, userName]);
 
   if (!isOpen || !lead) return null;
 
@@ -124,24 +183,64 @@ export function LeadDetailsModal({
     ? `https://t.me/${String(telegram).replace('@', '')}`
     : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
 
-  const handleSaveContactDetails = () => {
+  // Helper metrics
+  const daysInCrm = useMemo(() => {
+    if (!lead.createdAt) return '3 дня';
+    try {
+      const parts = lead.createdAt.split('.');
+      if (parts.length === 3) {
+        const createdDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        const diffDays = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+        return `${diffDays} дн.`;
+      }
+    } catch {
+      // fallback
+    }
+    return '3 дня';
+  }, [lead.createdAt]);
+
+  const lastContactFormatted = useMemo(() => {
+    if (lead.interactions && lead.interactions.length > 0) {
+      return lead.interactions[0].occurredAt;
+    }
+    return lead.createdAt || 'Недавно';
+  }, [lead]);
+
+  // Actions
+  const handleSaveAll = () => {
     if (!lead) return;
+
+    // Build updated lead keeping existing domain schema
     const updatedLead: FullLeadData = {
       ...lead,
       name: parentName.trim() || lead.name,
+      parentFirstName: parentName.split(' ')[1] || lead.parentFirstName,
+      parentLastName: parentName.split(' ')[0] || lead.parentLastName,
+      parentNotes: `${parentRole}. ${email ? `Email: ${email}` : ''}`.trim(),
       studentName: studentName.trim() || undefined,
+      studentFirstName: studentName.split(' ')[0] || undefined,
+      studentLastName: studentName.split(' ')[1] || undefined,
       studentAge: studentAge.trim() || undefined,
+      studentGrade: studentGrade.trim() || undefined,
+      grade: studentGrade.trim() || undefined,
       contact: contactPhone.trim() || lead.contact,
       telegram: telegram.trim() || undefined,
       directionOrCourse: course.trim() || lead.directionOrCourse,
+      level: level.trim() || lead.level,
+      studentNotes: goal.trim() || lead.studentNotes,
+      source: source.trim() || lead.source,
+      assignedTo: assignedTo.trim() || lead.assignedTo,
+      offerAmount: offerAmount.trim() || lead.offerAmount,
+      comment: generalComment.trim() || lead.comment,
       status: status,
+      trialDate: trialDateTime.trim() || lead.trialDate,
     };
 
     saveLeadToStorage(updatedLead);
     syncLeadToSupabase(updatedLead);
     onUpdateLead?.(updatedLead);
     setIsEditing(false);
-    toast.success('Данные лида обновлены');
+    toast.success('Карточка лида успешно сохранена');
   };
 
   const handleStageSelect = (newStatus: FullLeadData['status']) => {
@@ -155,6 +254,7 @@ export function LeadDetailsModal({
       syncLeadToSupabase(updatedLead);
       onUpdateLead?.(updatedLead);
     }
+    toast.success(`Этап изменен на: ${STAGE_OPTIONS.find(s => s.key === newStatus)?.label || newStatus}`);
   };
 
   const handleBookTrial = () => {
@@ -197,8 +297,8 @@ export function LeadDetailsModal({
     toast.success(`Пробный урок зафиксирован в группе «${grpName}»`);
   };
 
-  const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddTask = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
     try {
@@ -207,8 +307,8 @@ export function LeadDetailsModal({
         leadId: lead.id,
         leadName: lead.name,
         studentName: lead.studentName,
-        dueDate: newTaskDue || 'Сегодня',
-        dueDateFormatted: newTaskDue || 'Сегодня',
+        dueDate: newTaskDue || 'Сегодня, 17:00',
+        dueDateFormatted: newTaskDue || 'Сегодня, 17:00',
         taskType: 'CRM Сделка',
         priority: 'high',
         assignedTo: userName || 'Администратор',
@@ -231,9 +331,8 @@ export function LeadDetailsModal({
     toast.success(nextStatus === 'done' ? 'Задача выполнена' : 'Задача открыта заново');
   };
 
-  const handleAddTimelineNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !lead) return;
+  const handleAddTimelineNote = (contentToAdd: string) => {
+    if (!contentToAdd.trim() || !lead) return;
 
     const now = new Date();
     const dateFormatted = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -245,7 +344,7 @@ export function LeadDetailsModal({
       channel: 'other',
       type: 'follow_up',
       author: userName || 'Администратор',
-      content: newComment.trim(),
+      content: contentToAdd.trim(),
     };
 
     const updatedLead: FullLeadData = {
@@ -256,126 +355,814 @@ export function LeadDetailsModal({
     saveLeadToStorage(updatedLead);
     syncLeadToSupabase(updatedLead);
     onUpdateLead?.(updatedLead);
-    setNewComment('');
-    toast.success('Заметка сохранена в историю общения');
+    toast.success('Заметка сохранена');
   };
 
   return (
     <>
-      {/* Modal Backdrop */}
+      {/* Centered Modal Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-150 overflow-hidden"
         onClick={onClose}
       >
-        {/* Modal Window (Centered Dialog) */}
+        {/* Modal Window */}
         <div
-          className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150"
+          className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-150 text-slate-800"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Modal Header */}
-          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
+          {/* ========================================================================= */}
+          {/* MODAL HEADER */}
+          {/* ========================================================================= */}
+          <div className="px-5 sm:px-6 py-3.5 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Stage Badge */}
               <span className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide uppercase',
-                status === 'paid' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                status === 'lost' || (status as string) === 'no_response' ? 'bg-slate-200 text-slate-700 border border-slate-300' :
-                'bg-blue-100 text-blue-800 border border-blue-200'
+                'px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wide uppercase border flex items-center gap-1.5 shrink-0',
+                status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                status === 'contacted' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                status === 'trial_scheduled' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                status === 'trial_held' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                status === 'thinking' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                status === 'lost' ? 'bg-slate-100 text-slate-600 border-slate-300' :
+                'bg-blue-50 text-blue-700 border-blue-200'
               )}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
                 {STAGE_OPTIONS.find(s => s.key === status)?.label || status}
               </span>
-              <h3 className="font-bold text-slate-900 text-base truncate">
-                Карточка лида: {lead.name}
-              </h3>
+
+              {/* Lead Name & Meta */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 text-base sm:text-lg truncate">
+                    Карточка лида: {lead.name}
+                  </h3>
+                </div>
+                <div className="text-[11px] text-slate-400 flex items-center gap-2 truncate">
+                  <span>Создан {lead.createdAt || '12.09.2024'}</span>
+                  <span>•</span>
+                  <span>{daysInCrm} в CRM</span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <Link
-                href={`/crm/leads/${lead.id}`}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
-                title="Перейти на страницу лида"
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Link>
+            {/* Header Action Controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              {!isEditing ? (
+                <>
+                  {/* + Добавить ▾ Dropdown Menu */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                      className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Добавить</span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {isAddMenuOpen && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-20 animate-in fade-in zoom-in-95 duration-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddMenuOpen(false);
+                            setIsAddingTask(true);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                          <span>Назначить задачу</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddMenuOpen(false);
+                            setIsBookingTrial(true);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-700 flex items-center gap-2 cursor-pointer"
+                        >
+                          <Calendar className="w-4 h-4 text-purple-600" />
+                          <span>Записать на пробный</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsAddMenuOpen(false);
+                            setIsConvertOpen(true);
+                          }}
+                          className="w-full px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer"
+                        >
+                          <GraduationCap className="w-4 h-4 text-emerald-600" />
+                          <span>Зачислить в ученики</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Edit Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setActiveEditSection('contact');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition-colors border border-blue-200/80 cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Редактировать</span>
+                  </button>
+
+                  {/* Link to Full Lead Page */}
+                  <Link
+                    href={`/crm/leads/${lead.id}`}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                    title="Открыть на отдельной странице"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+                    Режим редактирования
+                  </span>
+                </div>
+              )}
+
+              {/* Close Button */}
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer ml-1"
               >
-                <X className="h-5 w-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* Modal Body (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
-            {/* 1. Contact Details */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-900 text-sm">Данные контакта и ученика</h4>
-                {!isEditing ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" /> Редактировать
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSaveContactDetails}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-white bg-blue-600 px-3 py-1 rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
-                    >
-                      <Save className="h-3.5 w-3.5" /> Сохранить
-                    </button>
+          {/* ========================================================================= */}
+          {/* BODY VIEW MODE */}
+          {/* ========================================================================= */}
+          {!isEditing ? (
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-slate-50/40">
+              {/* TOP 3 SUMMARY CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Contact / Parent Card */}
+                <div className="bg-white rounded-xl p-4 border border-slate-200/90 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Контакт / Родитель</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold lowercase first-letter:uppercase border border-blue-100">
+                        {parentRole}
+                      </span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                      {lead.name}
+                    </div>
                   </div>
-                )}
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <a
+                      href={phoneClean ? `tel:${phoneClean}` : '#'}
+                      className="font-mono text-xs font-semibold text-slate-700 hover:text-blue-600 flex items-center gap-1.5"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-slate-400" />
+                      {formatPhone(lead.contact)}
+                    </a>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(lead.contact);
+                          toast.success(`Номер скопирован: ${lead.contact}`);
+                        }}
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Скопировать"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      {phoneClean && (
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Написать в WhatsApp"
+                          className="w-6 h-6 rounded-md bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20"
+                        >
+                          <WhatsAppIcon className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      {lead.telegram ? (
+                        <a
+                          href={tgLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={`Написать в Telegram (${lead.telegram})`}
+                          className="w-6 h-6 rounded-md bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20"
+                        >
+                          <TelegramIcon className="w-3.5 h-3.5" />
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsTelegramConnectOpen(true)}
+                          title="Подключить Telegram"
+                          className="w-6 h-6 rounded-md bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
+                        >
+                          <TelegramIcon className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Student Card */}
+                <div className="bg-white rounded-xl p-4 border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Ученик</span>
+                      </div>
+                      <span className="text-slate-500 font-medium">
+                        {lead.studentAge || 'Возраст не указан'}
+                      </span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm sm:text-base leading-snug">
+                      {lead.studentName || lead.name}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/60">
+                      {lead.directionOrCourse}
+                    </span>
+                    {lead.level && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                        {lead.level}
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      💻 Онлайн
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Deal & Meta Card */}
+                <div className="bg-white rounded-xl p-4 border border-slate-200/90 shadow-2xs space-y-2 text-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Сделка и источник</span>
+                      </div>
+                      <span className="text-slate-400 text-[10px]">{lead.source}</span>
+                    </div>
+
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xs text-slate-500 font-medium">Сумма:</span>
+                      <span className="font-bold text-slate-900 text-base text-emerald-700">
+                        {lead.offerAmount || '120 € / мес.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                    <div className="flex items-center justify-between">
+                      <span>Ответственный:</span>
+                      <span className="font-medium text-slate-700">{lead.assignedTo || 'Анна Смирнова'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Посл. контакт:</span>
+                      <span className="font-medium text-slate-700">{lastContactFormatted}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {isEditing ? (
-                <div className="space-y-3 p-4 rounded-xl border border-blue-200 bg-blue-50/20">
+              {/* HORIZONTAL FUNNEL STEPPER */}
+              <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-2xs">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    Этап воронки (1 клик для переключения):
+                  </span>
+                  <span className="text-xs font-bold text-blue-700">
+                    {STAGE_OPTIONS.find(s => s.key === status)?.label}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                  {STAGE_OPTIONS.map((st) => {
+                    const isActive = status === st.key;
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        onClick={() => handleStageSelect(st.key as any)}
+                        className={cn(
+                          'px-2 py-1.5 rounded-lg border text-left text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-between gap-1',
+                          isActive
+                            ? st.key === 'paid'
+                              ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                              : st.key === 'lost'
+                              ? 'bg-slate-700 border-slate-700 text-white shadow-xs'
+                              : 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                        )}
+                      >
+                        <span className="truncate">{st.label}</span>
+                        {isActive && <Check className="w-3 h-3 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3 OPERATIONAL ACTION CARDS */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Следующее действие */}
+                <div className="bg-white rounded-xl p-4 border border-amber-200 bg-amber-50/20 shadow-2xs space-y-2.5 flex flex-col justify-between">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">ФИО Родителя / Контакта</label>
-                    <input
-                      type="text"
-                      value={parentName}
-                      onChange={(e) => setParentName(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-900 uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Следующее действие</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        Сегодня, 17:00
+                      </span>
+                    </div>
+
+                    <p className="text-xs font-semibold text-slate-800 mt-2 line-clamp-2">
+                      {tasks.find(t => t.status === 'open')?.title || lead.nextAction || 'Позвонить по результатам пробного урока'}
+                    </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Имя ребенка</label>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-amber-200/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const openTask = tasks.find(t => t.status === 'open');
+                        if (openTask) {
+                          handleToggleTask(openTask.id, 'open');
+                        } else {
+                          toast.success('Действие выполнено');
+                        }
+                      }}
+                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Выполнить</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingTask(true)}
+                      className="py-1.5 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                    >
+                      Перенести
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Пробный урок */}
+                <div className="bg-white rounded-xl p-4 border border-purple-200 bg-purple-50/20 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-purple-900 uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Пробный урок</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
+                        60 мин
+                      </span>
+                    </div>
+
+                    <div className="mt-2">
+                      <div className="text-xs font-bold text-purple-900">
+                        {lead.trialDate || 'Чт 18 сен, 16:30'}
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Группа: <strong className="text-slate-700">{groups[0]?.name || 'EPD Teens 2'}</strong> ({lead.directionOrCourse})
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-purple-200/60">
+                    <button
+                      type="button"
+                      onClick={() => setIsBookingTrial(true)}
+                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>Изменить дату</span>
+                    </button>
+                    <Link
+                      href="/schedule"
+                      className="py-1.5 px-2.5 rounded-lg border border-purple-200 bg-white hover:bg-purple-50 text-purple-700 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>В расписание</span>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 3. Потребность и цель */}
+                <div className="bg-white rounded-xl p-4 border border-blue-200 bg-blue-50/20 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Потребность</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
+                        {level}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 mt-2 line-clamp-2">
+                      {goal || lead.studentNotes || 'Подтянуть школьную программу, подготовка к экзамену'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-blue-200/60 text-[11px]">
+                    <span className="text-slate-500">Пн, Ср • 16:00 - 18:00</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(true);
+                        setActiveEditSection('need');
+                      }}
+                      className="font-bold text-blue-700 hover:underline cursor-pointer"
+                    >
+                      Подробнее ▾
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM SECTION: TABS & QUICK NOTES */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
+                {/* Left 2 Cols: Tabs (История, WhatsApp, Telegram, Email, Заметки, Файлы) */}
+                <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
+                  {/* Tab Headers */}
+                  <div className="flex items-center border-b border-slate-200 px-3 bg-slate-50/60 overflow-x-auto gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('history')}
+                      className={cn(
+                        'px-3 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer',
+                        activeTab === 'history'
+                          ? 'border-blue-600 text-blue-700 bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>История</span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px]">
+                        {lead.interactions?.length || 0}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('telegram')}
+                      className={cn(
+                        'px-3 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer',
+                        activeTab === 'telegram'
+                          ? 'border-[#229ED9] text-[#229ED9] bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      <TelegramIcon className="w-3.5 h-3.5" />
+                      <span>Telegram</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('whatsapp')}
+                      className={cn(
+                        'px-3 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer',
+                        activeTab === 'whatsapp'
+                          ? 'border-[#25D366] text-[#25D366] bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      <WhatsAppIcon className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('notes')}
+                      className={cn(
+                        'px-3 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer',
+                        activeTab === 'notes'
+                          ? 'border-amber-500 text-amber-700 bg-white'
+                          : 'border-transparent text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Задачи ({tasks.length})</span>
+                    </button>
+                  </div>
+
+                  {/* Tab Body */}
+                  <div className="p-4 flex-1">
+                    {activeTab === 'history' && (
+                      <div className="space-y-3">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleAddTimelineNote(newComment);
+                            setNewComment('');
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Добавить заметку о звонке или договоренности..."
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                          <button
+                            type="submit"
+                            className="px-3.5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 font-bold text-xs transition-colors cursor-pointer shrink-0"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                          </button>
+                        </form>
+
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {(!lead.interactions || lead.interactions.length === 0) ? (
+                            <div className="text-center py-6 text-slate-400 text-xs">
+                              История взаимодействий пока пуста
+                            </div>
+                          ) : (
+                            lead.interactions.map((int, i) => (
+                              <div key={int.id || i} className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-1">
+                                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                  <span className="font-semibold text-slate-700">{int.author}</span>
+                                  <span>{int.occurredAt}</span>
+                                </div>
+                                <p className="text-slate-700 text-xs leading-relaxed">{int.content}</p>
+                                {int.result && (
+                                  <span className="inline-block mt-1 text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+                                    {int.result}
+                                  </span>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === 'telegram' && (
+                      <TelegramChatBox
+                        recipientType="lead"
+                        recipientId={lead.id}
+                        recipientName={lead.name}
+                        telegramHandle={lead.telegram}
+                        telegramChatId={lead.telegramChatId}
+                        onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+                        onMessageSent={(newInt) => {
+                          const updatedLead: FullLeadData = {
+                            ...lead,
+                            interactions: [newInt, ...(lead.interactions || [])],
+                          };
+                          saveLeadToStorage(updatedLead);
+                          syncLeadToSupabase(updatedLead);
+                          onUpdateLead?.(updatedLead);
+                        }}
+                      />
+                    )}
+
+                    {activeTab === 'whatsapp' && (
+                      <div className="p-4 rounded-xl border border-[#25D366]/30 bg-[#25D366]/5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-[#25D366] font-bold text-xs">
+                            <WhatsAppIcon className="w-4 h-4" />
+                            <span>Чат WhatsApp ({lead.contact})</span>
+                          </div>
+                          <a
+                            href={waLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-[#25D366] text-white font-bold text-xs hover:bg-[#20ba5a] transition-colors"
+                          >
+                            Открыть диалог
+                          </a>
+                        </div>
+                        <p className="text-xs text-slate-600">
+                          Нажмите кнопку выше для мгновенного перехода в WhatsApp Web или приложение с автоматической подстановкой шаблона сообщения.
+                        </p>
+                      </div>
+                    )}
+
+                    {activeTab === 'notes' && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-700">Задачи по лиду</span>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddingTask(true)}
+                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            <Plus className="w-3 h-3" /> Назначить задачу
+                          </button>
+                        </div>
+
+                        {isAddingTask && (
+                          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/40 space-y-2">
+                            <input
+                              type="text"
+                              value={newTaskTitle}
+                              onChange={(e) => setNewTaskTitle(e.target.value)}
+                              placeholder="Текст задачи..."
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                            />
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={newTaskDue}
+                                onChange={(e) => setNewTaskDue(e.target.value)}
+                                placeholder="Срок: Сегодня, 18:00"
+                                className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAddTask()}
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs"
+                              >
+                                Создать
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          {tasks.length === 0 ? (
+                            <div className="text-center py-4 text-slate-400 text-xs">
+                              Нет активных задач
+                            </div>
+                          ) : (
+                            tasks.map(t => (
+                              <div
+                                key={t.id}
+                                className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={t.status === 'done'}
+                                    onChange={() => handleToggleTask(t.id, t.status)}
+                                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 cursor-pointer"
+                                  />
+                                  <span className={cn('truncate', t.status === 'done' ? 'line-through text-slate-400' : 'font-medium text-slate-800')}>
+                                    {t.title}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-slate-400 shrink-0 ml-2">
+                                  {t.dueDateFormatted || t.dueDate}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right 1 Col: Quick Notes Widget */}
+                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Заметки менеджера</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-amber-50/50 border border-amber-200/70 text-xs text-slate-700 leading-relaxed min-h-[90px]">
+                      {lead.comment || 'Мама очень заинтересована в подготовке к гимназии. Ученик ранее занимался с репетитором, хорошая база.'}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!quickNote.trim()) return;
+                        handleAddTimelineNote(`[Заметка]: ${quickNote.trim()}`);
+                        setQuickNote('');
+                      }}
+                      className="flex items-center gap-1.5"
+                    >
                       <input
                         type="text"
-                        value={studentName}
-                        onChange={(e) => setStudentName(e.target.value)}
-                        placeholder="Например: Анна"
+                        value={quickNote}
+                        onChange={(e) => setQuickNote(e.target.value)}
+                        placeholder="Быстрая заметка..."
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:bg-white focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="p-1.5 rounded-lg bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* ========================================================================= */
+            /* BODY EDIT MODE */
+            /* ========================================================================= */
+            <div className="flex-1 flex overflow-hidden bg-slate-50/50">
+              {/* Left Section Navigator Sidebar */}
+              <div className="w-56 border-r border-slate-200 bg-white p-3 space-y-1 shrink-0 overflow-y-auto hidden sm:block">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 mb-1">
+                  Разделы анкеты
+                </div>
+                {EDIT_SECTIONS.map((sec) => {
+                  const Icon = sec.icon;
+                  const isSelected = activeEditSection === sec.id;
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => setActiveEditSection(sec.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all cursor-pointer',
+                        isSelected
+                          ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      )}
+                    >
+                      <Icon className={cn('w-4 h-4', isSelected ? 'text-blue-600' : 'text-slate-400')} />
+                      <span>{sec.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right Form Body */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* 1. Контакт (родитель) */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <User className="w-4 h-4 text-blue-600" />
+                    Контактное лицо (родитель)
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        ФИО Родителя / Контакта
+                      </label>
+                      <input
+                        type="text"
+                        value={parentName}
+                        onChange={(e) => setParentName(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Возраст / Класс</label>
-                      <input
-                        type="text"
-                        value={studentAge}
-                        onChange={(e) => setStudentAge(e.target.value)}
-                        placeholder="12 лет"
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        Кем приходится ученику
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        {(['Мама', 'Папа', 'Сам ученик', 'Родитель'] as const).map((role) => (
+                          <button
+                            key={role}
+                            type="button"
+                            onClick={() => setParentRole(role)}
+                            className={cn(
+                              'px-3 py-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer',
+                              parentRole === role
+                                ? 'bg-blue-600 text-white border-blue-600 font-bold'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                            )}
+                          >
+                            {role}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Телефон</label>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Телефон</label>
                       <input
                         type="text"
                         value={contactPhone}
@@ -383,8 +1170,20 @@ export function LeadDetailsModal({
                         className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Telegram</label>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="parent@example.com"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Telegram</label>
                       <input
                         type="text"
                         value={telegram}
@@ -394,369 +1193,202 @@ export function LeadDetailsModal({
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* 2. Ученик */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <GraduationCap className="w-4 h-4 text-purple-600" />
+                    Данные ученика
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Имя ученика</label>
+                      <input
+                        type="text"
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="Матвей"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Возраст</label>
+                      <input
+                        type="text"
+                        value={studentAge}
+                        onChange={(e) => setStudentAge(e.target.value)}
+                        placeholder="12 лет"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Класс</label>
+                      <input
+                        type="text"
+                        value={studentGrade}
+                        onChange={(e) => setStudentGrade(e.target.value)}
+                        placeholder="6 класс"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Потребность и курс */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <Target className="w-4 h-4 text-blue-600" />
+                    Потребность, курс и цели
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        Направление / Курс
+                      </label>
+                      <input
+                        type="text"
+                        value={course}
+                        onChange={(e) => setCourse(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        Уровень знаний
+                      </label>
+                      <select
+                        value={level}
+                        onChange={(e) => setLevel(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="A0 Starter">A0 Starter (С нуля)</option>
+                        <option value="A1 Elementary">A1 Elementary</option>
+                        <option value="A2 Pre-Intermediate">A2 Pre-Intermediate</option>
+                        <option value="B1 Intermediate">B1 Intermediate</option>
+                        <option value="B2 Upper-Intermediate">B2 Upper-Intermediate</option>
+                        <option value="C1 Advanced">C1 Advanced</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Направление / Курс</label>
+                    <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Цель обучения</label>
                     <input
                       type="text"
-                      value={course}
-                      onChange={(e) => setCourse(e.target.value)}
+                      value={goal}
+                      onChange={(e) => setGoal(e.target.value)}
+                      placeholder="Например: Подтянуть оценки, сдать вступительный экзамен..."
                       className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
-              ) : (
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
-                  <div className="flex items-start justify-between">
+
+                {/* 4. Сделка и источник */}
+                <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs">
+                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    Параметры сделки и источник
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <div className="text-base font-bold text-slate-900">{lead.name}</div>
-                      {lead.studentName && lead.studentName !== lead.name && lead.clientType !== 'adult_student' && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          Ребенок: <strong className="text-slate-800">{lead.studentName}</strong>
-                          {lead.studentAge && <span> ({lead.studentAge})</span>}
-                        </div>
-                      )}
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        Потенциальная сумма (€)
+                      </label>
+                      <input
+                        type="text"
+                        value={offerAmount}
+                        onChange={(e) => setOfferAmount(e.target.value)}
+                        placeholder="120 € / мес."
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
                     </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <span className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-md block">
-                        {lead.directionOrCourse}
-                      </span>
-                      {lead.source && (
-                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 block" title="Источник обращения">
-                          {lead.source}
-                        </span>
-                      )}
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">Источник</label>
+                      <input
+                        type="text"
+                        value={source}
+                        onChange={(e) => setSource(e.target.value)}
+                        placeholder="Сайт / Форма заявки"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
                     </div>
-                  </div>
 
-                  {/* Phone + Action buttons (Identical to Student & Parent Cards) */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-                    <a
-                      href={phoneClean ? `tel:${phoneClean}` : '#'}
-                      title="Позвонить по телефону"
-                      className="font-mono text-xs text-slate-600 font-semibold hover:text-blue-600 hover:underline flex items-center gap-1.5"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-blue-600" />
-                      {formatPhone(lead.contact)}
-                    </a>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(lead.contact);
-                          toast.success(`Номер скопирован: ${lead.contact}`);
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
-                        title="Скопировать"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </button>
-
-                      {/* WhatsApp Button (Identical styling to student/parent card) */}
-                      {phoneClean && (
-                        <a
-                          href={waLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Написать в WhatsApp"
-                          className="w-7 h-7 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
-                        >
-                          <WhatsAppIcon className="w-4 h-4" />
-                        </a>
-                      )}
-
-                      {/* Telegram Button (Identical styling to student/parent card) */}
-                      {lead.telegram ? (
-                        <a
-                          href={tgLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={`Написать в Telegram (${lead.telegram})`}
-                          className="w-7 h-7 rounded-lg bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
-                        >
-                          <TelegramIcon className="w-4 h-4" />
-                        </a>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsTelegramConnectOpen(true)}
-                          title="Подключить к Telegram-боту"
-                          className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
-                        >
-                          <TelegramIcon className="w-4 h-4" />
-                        </button>
-                      )}
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                        Ответственный менеджер
+                      </label>
+                      <input
+                        type="text"
+                        value={assignedTo}
+                        onChange={(e) => setAssignedTo(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* 2. Funnel Stage Selector */}
-            <div className="space-y-2">
-              <h4 className="font-bold text-slate-800 text-xs">Этап воронки</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                {STAGE_OPTIONS.map((st) => (
-                  <button
-                    key={st.key}
-                    type="button"
-                    onClick={() => handleStageSelect(st.key as any)}
-                    className={cn(
-                      'px-2.5 py-1.5 rounded-lg border text-left text-xs font-semibold transition-all cursor-pointer flex items-center justify-between',
-                      status === st.key
-                        ? st.key === 'paid'
-                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-2xs'
-                          : 'bg-blue-50 border-blue-300 text-blue-800 shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    <span className="truncate">{st.label}</span>
-                    {status === st.key && <Check className="h-3 w-3 shrink-0" />}
-                  </button>
-                ))}
               </div>
             </div>
+          )}
 
-            {/* 3. Book Trial Lesson */}
-            <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
-                  <Calendar className="h-4 w-4 text-purple-600" />
-                  <span>Запись на пробный урок в календарь</span>
+          {/* ========================================================================= */}
+          {/* MODAL FOOTER */}
+          {/* ========================================================================= */}
+          <div className="px-5 sm:px-6 py-3.5 border-t border-slate-200 bg-white flex items-center justify-between shrink-0">
+            {!isEditing ? (
+              <>
+                <div className="text-xs text-slate-500 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>Лид синхронизирован с облаком</span>
                 </div>
-                {!isBookingTrial && (
+
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsBookingTrial(true)}
-                    className="px-3 py-1 rounded-lg bg-purple-600 text-white font-bold text-xs hover:bg-purple-700 transition-colors cursor-pointer"
+                    onClick={() => handleStageSelect('lost')}
+                    className="px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
-                    {lead.trialDate ? 'Изменить дату' : 'Записать'}
+                    В отказ
                   </button>
-                )}
-              </div>
-
-              {lead.trialDate && !isBookingTrial && (
-                <div className="p-2.5 rounded-lg bg-white border border-purple-100 flex items-center justify-between text-xs">
-                  <span className="text-slate-600">Назначенный урок:</span>
-                  <span className="font-bold text-purple-800">{lead.trialDate}</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsConvertOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Зачислить в ученики
+                  </button>
                 </div>
-              )}
-
-              {isBookingTrial && (
-                <div className="space-y-2.5 pt-1">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Выберите группу</label>
-                    <select
-                      value={selectedGroup}
-                      onChange={(e) => setSelectedGroup(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
-                    >
-                      {groups.map(g => (
-                        <option key={g.id} value={g.id}>
-                          {g.name} ({g.courseName}) • {g.schedule}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Дата и время урока</label>
-                    <input
-                      type="text"
-                      value={trialDateTime}
-                      onChange={(e) => setTrialDateTime(e.target.value)}
-                      placeholder="Например: Чт 18 сен, 16:30"
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsBookingTrial(false)}
-                      className="text-slate-500 hover:text-slate-700 cursor-pointer"
-                    >
-                      Отмена
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleBookTrial}
-                      className="px-3.5 py-1.5 rounded-lg bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors cursor-pointer"
-                    >
-                      Сохранить запись
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 4. Tasks & Next Actions */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-800 text-xs">Задачи и контроль поручений ({tasks.length})</h4>
+              </>
+            ) : (
+              <>
                 <button
                   type="button"
-                  onClick={() => setIsAddingTask(!isAddingTask)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 >
-                  <Plus className="h-3.5 w-3.5" /> Назначить задачу
+                  Отмена
                 </button>
-              </div>
 
-              {isAddingTask && (
-                <form onSubmit={handleAddTask} className="p-3 rounded-xl border border-blue-200 bg-blue-50/30 space-y-2">
-                  <input
-                    type="text"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                    placeholder="Что нужно сделать (например: позвонить маме)..."
-                    className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={newTaskDue}
-                      onChange={(e) => setNewTaskDue(e.target.value)}
-                      placeholder="Срок: Сегодня, 17:00"
-                      className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 cursor-pointer"
-                    >
-                      Создать
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              <div className="space-y-1.5">
-                {tasks.length === 0 ? (
-                  <div className="text-center py-3 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
-                    Нет назначенных задач
-                  </div>
-                ) : (
-                  tasks.map(t => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50/60 text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={t.status === 'done'}
-                          onChange={() => handleToggleTask(t.id, t.status)}
-                          className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 cursor-pointer"
-                        />
-                        <span className={cn('truncate', t.status === 'done' ? 'line-through text-slate-400' : 'font-medium text-slate-800')}>
-                          {t.title}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-slate-400 shrink-0 ml-2">
-                        {t.dueDateFormatted || t.dueDate}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* 5. Timeline / Communication Feed */}
-            <div className="space-y-3">
-              {/* Telegram In-CRM Direct Chat */}
-              <TelegramChatBox
-                recipientType="lead"
-                recipientId={lead.id}
-                recipientName={lead.name}
-                telegramHandle={lead.telegram}
-                telegramChatId={lead.telegramChatId}
-                onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
-                onMessageSent={(newInt) => {
-                  const updatedLead: FullLeadData = {
-                    ...lead,
-                    interactions: [newInt, ...(lead.interactions || [])],
-                  };
-                  saveLeadToStorage(updatedLead);
-                  syncLeadToSupabase(updatedLead);
-                  onUpdateLead?.(updatedLead);
-                }}
-              />
-
-              <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 pt-2">
-                <MessageSquare className="h-4 w-4 text-slate-500" />
-                История взаимодействия
-              </h4>
-
-              <form onSubmit={handleAddTimelineNote} className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Добавить заметку о созвоне или впечатлениях..."
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="p-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                </button>
-              </form>
-
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {(!lead.interactions || lead.interactions.length === 0) ? (
-                  <div className="text-center py-3 text-slate-400 text-xs">
-                    История пока пуста
-                  </div>
-                ) : (
-                  lead.interactions.map((int, i) => (
-                    <div key={int.id || i} className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-1">
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="font-semibold text-slate-700">{int.author}</span>
-                        <span>{int.occurredAt}</span>
-                      </div>
-                      <p className="text-slate-600 text-xs leading-relaxed">{int.content}</p>
-                      {int.result && (
-                        <span className="inline-block mt-0.5 text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">
-                          {int.result}
-                        </span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
-            <div className="text-xs text-slate-500">
-              {status === 'paid' ? (
-                <span className="text-emerald-700 font-bold">Лид оплачен</span>
-              ) : status === 'lost' ? (
-                <span className="text-slate-500 font-semibold">В архиве / отказ</span>
-              ) : (
-                <span>В процессе согласования</span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleStageSelect('lost')}
-                className="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-              >
-                В отказ
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsConvertOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors cursor-pointer"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                Зачислить в ученики
-              </button>
-            </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveAll}
+                    className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    Сохранить изменения
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -790,6 +1422,83 @@ export function LeadDetailsModal({
           onUpdateLead?.(updatedLead);
         }}
       />
+
+      {/* Trial Lesson Booking Modal */}
+      {isBookingTrial && (
+        <div
+          className="fixed inset-0 z-60 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100"
+          onClick={() => setIsBookingTrial(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
+                <Calendar className="w-4 h-4 text-purple-600" />
+                <span>Запись на пробный урок</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBookingTrial(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                  Выберите группу
+                </label>
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => setSelectedGroup(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.courseName}) • {g.schedule}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
+                  Дата и время пробного урока
+                </label>
+                <input
+                  type="text"
+                  value={trialDateTime}
+                  onChange={(e) => setTrialDateTime(e.target.value)}
+                  placeholder="Чт 18 сен, 16:30"
+                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsBookingTrial(false)}
+                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleBookTrial}
+                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors"
+              >
+                Сохранить запись
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+
