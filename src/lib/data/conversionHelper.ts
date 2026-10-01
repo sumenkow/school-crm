@@ -55,6 +55,8 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
       attendanceRate: '100%',
       history: [],
     },
+    source: lead.source || 'Прямое обращение',
+    notes: lead.comment ? `Источник: ${lead.source || 'Прямое обращение'}. ${lead.comment}` : `Источник: ${lead.source || 'Прямое обращение'}`,
   };
 
   saveStudentToStorage(newStudent);

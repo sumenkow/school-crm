@@ -40,6 +40,16 @@ const GRADE_OPTIONS = [
   '11 класс',
 ];
 
+const SOURCE_OPTIONS = [
+  'Сайт школы',
+  'Входящий звонок',
+  'WhatsApp',
+  'Telegram',
+  'ВКонтакте',
+  'Рекомендация',
+  'Яндекс.Карты',
+];
+
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
   const [mounted, setMounted] = useState(false);
   const [courses, setCourses] = useState<CourseChip[]>(FALLBACK_COURSES);
@@ -61,7 +71,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   // Course & Details
   const [directionOrCourse, setDirectionOrCourse] = useState(FALLBACK_COURSES[0].name);
   const [comment, setComment] = useState('');
-  const [source, setSource] = useState('Прямое обращение');
+  const [source, setSource] = useState(SOURCE_OPTIONS[0]);
   const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
 
   useEffect(() => {
@@ -449,47 +459,65 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
           <div className="border-t border-slate-100" />
 
-          {/* ═══ SECTION 3: DETAILS ═══ */}
-          <div className="space-y-1.5">
+          {/* ═══ SECTION 3: DETAILS & SOURCE ═══ */}
+          <div className="space-y-2">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shrink-0">3</span>
-              Детали и параметры заявки
+              Источник обращения и детали
             </p>
 
-            {/* Comment — compact 2 rows */}
-            <textarea
-              rows={2}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Комментарий: удобное время, уровень подготовки, пожелания..."
-              className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400 resize-none"
-              style={{ maxHeight: 52 }}
-            />
-
-            {/* Source + Assigned */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-600 mb-0.5 block">Источник заявки</label>
-                <select
-                  value={source}
-                  onChange={(e) => setSource(e.target.value)}
-                  className="w-full h-[34px] rounded-xl border border-slate-200 px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="Прямое обращение">Прямое обращение</option>
-                  <option value="Сайт школы">Сайт школы</option>
-                  <option value="VK">VK</option>
-                  <option value="Рекомендация друзей">Рекомендация</option>
-                  <option value="Instagram">Instagram</option>
-                  <option value="Листовка у школы">Листовка</option>
-                  <option value="Яндекс.Карты">Яндекс.Карты</option>
-                </select>
+            {/* Quick Source Chips (1-click selection) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                  <span>Источник заявки (откуда пришел лид)</span>
+                  <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] text-slate-500">
+                  Выбран: <strong className="text-blue-700 font-semibold">{source}</strong>
+                </span>
               </div>
-              <div>
+              <div className="flex flex-wrap gap-1.5">
+                {SOURCE_OPTIONS.map((src) => {
+                  const isSelected = source === src;
+                  return (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setSource(src)}
+                      className={cn(
+                        'text-xs py-1 px-2.5 rounded-lg border font-semibold transition-all flex items-center gap-1 cursor-pointer',
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-transparent'
+                      )}
+                    >
+                      <span>{src}</span>
+                      {isSelected && <Check className="h-3 w-3 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Comment + Assigned row */}
+            <div className="grid grid-cols-12 gap-2">
+              <div className="col-span-8">
+                <label className="text-[11px] font-semibold text-slate-600 mb-0.5 block">Комментарий / Запрос</label>
+                <input
+                  type="text"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Удобное время, уровень подготовки, пожелания..."
+                  className="w-full h-[34px] rounded-xl border border-slate-200 px-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                />
+              </div>
+              <div className="col-span-4">
                 <label className="text-[11px] font-semibold text-slate-600 mb-0.5 block">Ответственный</label>
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
-                  className="w-full h-[34px] rounded-xl border border-slate-200 px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full h-[34px] rounded-xl border border-slate-200 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="Елена Менеджер">Елена Менеджер</option>
                   <option value="Алексей Администратор">Алексей Администратор</option>
@@ -501,7 +529,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
           {/* ── Auto-task compact hint ── */}
           <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50/60 border border-blue-100 px-3 py-1.5 rounded-lg">
             <Zap className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-            <span>Создастся задача: <strong>«Первый звонок (+2ч)»</strong>, статус: <strong>«Новый»</strong></span>
+            <span>Создастся задача: <strong>«Первый звонок (+2ч)»</strong> • Статус: <strong>«Новый»</strong> • Источник: <strong>«{source}»</strong></span>
           </div>
 
         </form>

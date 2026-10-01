@@ -101,7 +101,7 @@ export function EnrollStudentFromLeadModal({
       telegram: lead.telegram,
       birthDate: '2014-05-15',
       grade: studentGrade.trim() || undefined,
-      notes: studentAge ? `Возраст: ${studentAge}` : undefined,
+      notes: [studentAge ? `Возраст: ${studentAge}` : '', lead.source ? `Источник: ${lead.source}` : ''].filter(Boolean).join('. ') || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       parents: parentsList,

@@ -413,10 +413,15 @@ export function LeadDetailsModal({
                         </div>
                       )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-1">
                       <span className="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-md block">
                         {lead.directionOrCourse}
                       </span>
+                      {lead.source && (
+                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 block" title="Источник обращения">
+                          {lead.source}
+                        </span>
+                      )}
                     </div>
                   </div>
 
