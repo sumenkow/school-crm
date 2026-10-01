@@ -126,44 +126,37 @@ export default function CrmPage() {
     {
       key: 'new',
       label: 'Новые',
-      badgeColor: 'bg-blue-100 text-blue-800',
-      headerBg: 'bg-slate-100/90 border-slate-200',
+      badgeColor: 'bg-blue-100 text-blue-700',
     },
     {
       key: 'contacted',
       label: 'В работе',
-      badgeColor: 'bg-amber-100 text-amber-800',
-      headerBg: 'bg-slate-100/90 border-slate-200',
+      badgeColor: 'bg-amber-100 text-amber-700',
     },
     {
       key: 'trial_scheduled',
       label: 'Пробное назначено',
-      badgeColor: 'bg-purple-100 text-purple-800',
-      headerBg: 'bg-slate-100/90 border-slate-200',
+      badgeColor: 'bg-purple-100 text-purple-700',
     },
     {
       key: 'trial_held',
       label: 'Пробное проведено',
-      badgeColor: 'bg-indigo-100 text-indigo-800',
-      headerBg: 'bg-slate-100/90 border-slate-200',
+      badgeColor: 'bg-blue-100 text-blue-700',
     },
     {
       key: 'thinking',
       label: 'Думают или Счёт',
-      badgeColor: 'bg-teal-100 text-teal-800',
-      headerBg: 'bg-slate-100/90 border-slate-200',
+      badgeColor: 'bg-teal-100 text-teal-700',
     },
     {
       key: 'paid',
       label: 'Оплачено (Успех)',
-      badgeColor: 'bg-emerald-100 text-emerald-800',
-      headerBg: 'bg-emerald-50/90 border-emerald-200',
+      badgeColor: 'bg-emerald-100 text-emerald-700',
     },
     {
       key: 'lost',
       label: 'Отказ или Архив',
       badgeColor: 'bg-slate-200 text-slate-700',
-      headerBg: 'bg-slate-100/60 border-slate-200',
     },
   ] as const, []);
 
@@ -678,34 +671,29 @@ export default function CrmPage() {
                 onDragLeave={() => handleDragLeave(col.key)}
                 onDrop={(e) => handleDrop(e, col.key)}
                 className={cn(
-                  'flex flex-col rounded-2xl border p-3 shadow-xs transition-all duration-150 min-w-0',
+                  'flex flex-col rounded-2xl border p-3 shadow-2xs transition-all duration-150 min-w-0 bg-[#F8FAFC]',
                   isOver
                     ? 'border-blue-500 ring-2 ring-blue-300 bg-blue-50/50'
-                    : col.key === 'paid'
-                    ? 'border-emerald-200 bg-emerald-50/25'
-                    : 'border-slate-200 bg-slate-100/70'
+                    : 'border-slate-200/80'
                 )}
               >
-                {/* Column Header with financial metrics */}
-                <div className={cn(
-                  'flex items-center justify-between px-2.5 py-2 rounded-xl border mb-2.5',
-                  col.headerBg
-                )}>
+                {/* Column Header with financial metrics (Clean White Card) */}
+                <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs mb-3">
                   <div className="min-w-0 flex-1 pr-1.5">
                     <span className="text-xs font-bold text-slate-900 block truncate" title={col.label}>
                       {col.label}
                     </span>
-                    <span className="text-[11px] text-slate-500 font-semibold block truncate">
+                    <span className="text-[11px] text-slate-500 font-medium block truncate mt-0.5">
                       ({stats.count}) · {stats.sumEur.toLocaleString('ru-RU')} €
                     </span>
                   </div>
-                  <span className={cn('flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full text-[11px] font-bold shadow-2xs shrink-0', col.badgeColor)}>
+                  <span className={cn('w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0', col.badgeColor)}>
                     {colLeads.length}
                   </span>
                 </div>
 
                 {/* Cards Container with internal vertical scroll */}
-                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[380px] min-h-[140px] pr-0.5">
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[420px] min-h-[140px] pr-0.5">
                   {colLeads.length === 0 ? (
                     <div className={cn(
                       'flex h-28 flex-col items-center justify-center rounded-xl border border-dashed text-xs transition-colors',
@@ -733,15 +721,15 @@ export default function CrmPage() {
           };
 
           return (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Row 1: Primary stages (4 columns) */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                     1. Первичная обработка и пробные занятия
                   </span>
-                  <span className="text-[11px] text-slate-400">4 этапа • Перетаскивайте карточки между этапами</span>
+                  <span className="text-xs text-slate-400">4 этапа • Перетаскивайте карточки между этапами</span>
                 </div>
                 <div className="grid grid-cols-4 gap-3.5">
                   {primaryColumns.map((col) => renderColumn(col))}
@@ -749,13 +737,13 @@ export default function CrmPage() {
               </div>
 
               {/* Row 2: Decision, Payment & Outcome stages (3 columns) */}
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                     2. Принятие решений, оплата и итоги
                   </span>
-                  <span className="text-[11px] text-slate-400">3 этапа воронки</span>
+                  <span className="text-xs text-slate-400">3 этапа воронки</span>
                 </div>
                 <div className="grid grid-cols-3 gap-3.5">
                   {closingColumns.map((col) => renderColumn(col))}
@@ -1067,12 +1055,10 @@ function LeadCard({
       onDragStart={onDragStart}
       onClick={onOpen}
       className={cn(
-        'rounded-xl border bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing text-left flex flex-col justify-between gap-2.5 relative group/card select-none',
-        getCourseBorderClass(lead.directionOrCourse),
-        isDragged ? 'opacity-40 shadow-lg scale-95 border-blue-400' : 'border-slate-200 hover:border-slate-300'
+        'rounded-2xl border bg-white p-3.5 shadow-2xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing text-left flex flex-col justify-between gap-2.5 relative group/card select-none',
+        isDragged ? 'opacity-40 shadow-lg scale-95 border-blue-400' : 'border-slate-200/90 hover:border-slate-300'
       )}
     >
-
       <div>
         {/* Top Row: Parent Name + Clean Currency Badge + 3-dots Menu */}
         <div className="flex items-start justify-between gap-1.5">
@@ -1084,19 +1070,19 @@ function LeadCard({
             >
               {lead.name}
             </h4>
-            {/* Row 2: Child name + age (if provided) */}
-            {lead.studentName && lead.studentName !== lead.name && lead.clientType !== 'adult_student' && (
+            {/* Row 2: Child name + age */}
+            {(lead.studentName || lead.studentAge) && (
               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                {lead.studentName}
-                {lead.studentAge && <span className="text-slate-400">, {lead.studentAge}</span>}
+                {lead.studentName || lead.name}
+                {lead.studentAge ? ` (${lead.studentAge})` : ''}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
             {/* Deal Amount Badge */}
             <span
-              className="text-[10px] font-bold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-1.5 py-0.5 rounded-md shrink-0"
+              className="text-[10.5px] font-semibold text-slate-700 bg-slate-50 border border-slate-200/90 px-2 py-0.5 rounded-md shrink-0"
               title="Потенциал сделки"
             >
               {dealAmountFormatted}
@@ -1154,25 +1140,25 @@ function LeadCard({
           </div>
         </div>
 
-        {/* Direction tag */}
-        <div className="mt-1 flex items-center justify-between text-[11px]">
-          <span className="font-semibold text-purple-700 truncate">{lead.directionOrCourse}</span>
-          <span className="text-[10px] text-slate-400 truncate">{lead.source}</span>
+        {/* Direction tag & Source */}
+        <div className="mt-1.5 flex items-center justify-between text-xs">
+          <span className="font-bold text-[#7C3AED] truncate text-xs">{lead.directionOrCourse || 'Курс не указан'}</span>
+          <span className="text-[10.5px] text-slate-400 truncate text-right">{lead.source || 'Прямой контакт'}</span>
         </div>
 
-        {/* Formatted Phone & Vector SVG Communication Icons (Same model as Students/Parents) */}
-        <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
+        {/* Formatted Phone & Vector SVG Communication Icons */}
+        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
           <a
             href={phoneClean ? `tel:+${phoneClean}` : '#'}
             onClick={(e) => e.stopPropagation()}
             title="Позвонить по телефону"
-            className="font-mono text-[11px] text-slate-500 hover:text-blue-600 hover:underline whitespace-nowrap block shrink-0 font-medium"
+            className="font-mono text-xs text-slate-600 font-medium hover:text-blue-600 hover:underline truncate"
           >
             {formattedPhoneStr}
           </a>
 
           {phoneClean && (
-            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               {/* Copy Button */}
               <button
                 type="button"
@@ -1182,9 +1168,9 @@ function LeadCard({
                   toast.success(`Номер скопирован: ${lead.contact}`);
                 }}
                 title="Скопировать"
-                className="w-6 h-6 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-6 h-6 rounded-md border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3 h-3" />
               </button>
 
               {/* WhatsApp button */}
@@ -1202,7 +1188,7 @@ function LeadCard({
                   });
                 }}
                 title="Написать в WhatsApp"
-                className="w-6 h-6 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                className="w-6 h-6 rounded-md bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5" />
               </a>
@@ -1223,7 +1209,7 @@ function LeadCard({
                   });
                 }}
                 title="Написать в Telegram"
-                className="w-6 h-6 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                className="w-6 h-6 rounded-md bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
               >
                 <TelegramIcon className="w-3.5 h-3.5" />
               </a>
@@ -1233,35 +1219,35 @@ function LeadCard({
       </div>
 
       {/* Task & Deadline Control Banner */}
-      <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
         {deadlineStatus === 'overdue' ? (
-          <div className="flex items-center gap-1.5 text-[10px] text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
-            <AlertTriangle className="h-3 w-3 text-rose-600 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] text-rose-900 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 shadow-2xs">
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
             <span className="truncate">
               <strong>Просрочено:</strong> {lead.nextAction} ({lead.nextActionDate})
             </span>
           </div>
         ) : deadlineStatus === 'today' ? (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
-            <Clock className="h-3 w-3 text-amber-600 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] text-[#92400E] bg-[#FFFBEB] px-2.5 py-1.5 rounded-lg border border-[#FDE68A] shadow-2xs">
+            <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
             <span className="truncate">
-              <strong>Сегодня:</strong> {lead.nextAction} ({lead.nextActionDate})
+              <strong>Сегодня:</strong> {lead.nextAction}
             </span>
           </div>
         ) : deadlineStatus === 'future' ? (
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-600 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
-            <Calendar className="h-3 w-3 text-slate-500 shrink-0" />
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
+            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <span className="truncate">
-              {lead.nextActionDate}: {lead.nextAction}
+              {lead.nextActionDate ? `${lead.nextActionDate}: ` : ''}{lead.nextAction}
             </span>
           </div>
         ) : (
           <button
             type="button"
             onClick={onOpen}
-            className="w-full flex items-center justify-center gap-1 py-1 rounded-lg border border-dashed border-slate-300 text-[10px] font-semibold text-slate-500 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-dashed border-slate-300 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer"
           >
-            <Plus className="h-3 w-3 text-slate-400" />
+            <Plus className="h-3.5 w-3.5 text-slate-400" />
             <span>Назначить действие</span>
           </button>
         )}
