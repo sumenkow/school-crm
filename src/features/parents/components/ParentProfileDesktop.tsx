@@ -269,21 +269,22 @@ export function ParentProfileDesktop({
         <div className="flex items-center justify-between gap-6">
           {/* Left: Parent Identity */}
           <div className="flex items-center gap-4 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-sm border border-blue-400/20 shrink-0">
-              {initials}
+            <div className="relative shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-sm border border-blue-400/20">
+                {initials}
+              </div>
+              {parent.isNew && (
+                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm ring-2 ring-white z-10 inline-flex items-center gap-0.5">
+                  NEW
+                </span>
+              )}
             </div>
 
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
                   {parent.firstName} {parent.lastName}
                 </h1>
-                {parent.isNew && (
-                  <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    NEW
-                  </span>
-                )}
                 <span className="rounded-full px-2.5 py-0.5 font-semibold text-[11px] border bg-emerald-50 text-emerald-700 border-emerald-200">
                   Активен
                 </span>

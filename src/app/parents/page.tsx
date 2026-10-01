@@ -894,23 +894,21 @@ export default function ParentsPage() {
                             <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
                               {initials}
                             </div>
+                            {p.isNew && (
+                              <span className="absolute -top-1.5 -right-2 bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-xs ring-1 ring-white z-10">
+                                NEW
+                              </span>
+                            )}
                           </Link>
 
                           <div className="min-w-0 flex-1 space-y-0.5">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <Link
-                                href={`/parents/${p.id}`}
-                                className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
-                                title={p.name}
-                              >
-                                {p.name}
-                              </Link>
-                              {p.isNew && (
-                                <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
-                                  NEW
-                                </span>
-                              )}
-                            </div>
+                            <Link
+                              href={`/parents/${p.id}`}
+                              className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block whitespace-nowrap"
+                              title={p.name}
+                            >
+                              {p.name}
+                            </Link>
 
                             <div className="flex items-center justify-between w-full mt-1 min-w-0">
                               <a
@@ -960,27 +958,35 @@ export default function ParentsPage() {
                           <span className="text-xs text-slate-400 font-semibold">— Без учеников</span>
                         ) : (
                           <div className="space-y-2">
-                            {p.children.map((c) => (
-                              <div key={c.id} className="min-w-0 space-y-0.5 min-h-[32px] flex flex-col justify-center">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <Link
-                                    href={`/students/${c.id}`}
-                                    className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
-                                    title={c.name}
-                                  >
-                                    {c.name}
+                            {p.children.map((c) => {
+                              const cInitials = c.name.split(/\s+/).map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'УЧ';
+                              return (
+                                <div key={c.id} className="min-w-0 space-y-0.5 min-h-[32px] flex items-center gap-2">
+                                  <Link href={`/students/${c.id}`} className="relative shrink-0 block">
+                                    <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
+                                      {cInitials}
+                                    </div>
+                                    {c.isNew && (
+                                      <span className="absolute -top-1 -right-1.5 bg-emerald-500 text-white text-[7px] font-extrabold px-1 py-0.2 rounded-full uppercase tracking-tighter shadow-xs ring-1 ring-white z-10">
+                                        NEW
+                                      </span>
+                                    )}
                                   </Link>
-                                  {c.isNew && (
-                                    <span className="bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
-                                      NEW
+                                  <div className="min-w-0">
+                                    <Link
+                                      href={`/students/${c.id}`}
+                                      className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors whitespace-nowrap block"
+                                      title={c.name}
+                                    >
+                                      {c.name}
+                                    </Link>
+                                    <span className="text-[11px] text-slate-400 block whitespace-nowrap">
+                                      {c.studentType || 'Школьник'}
                                     </span>
-                                  )}
+                                  </div>
                                 </div>
-                                <span className="text-[11px] text-slate-400 block truncate">
-                                  {c.studentType || 'Школьник'}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </td>
@@ -1108,24 +1114,24 @@ export default function ParentsPage() {
                   {/* Header: Avatar, Name, Action menu */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shrink-0 shadow-2xs">
-                        {initials}
+                      <div className="relative shrink-0">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-xs flex items-center justify-center shadow-2xs">
+                          {initials}
+                        </div>
+                        {p.isNew && (
+                          <span className="absolute -top-1.5 -right-2 bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-xs ring-1 ring-white z-10">
+                            NEW
+                          </span>
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <h3
-                            onClick={() => router.push(`/parents/${p.id}`)}
-                            className="font-bold text-slate-900 text-sm cursor-pointer hover:text-blue-600 transition-colors truncate"
-                            title={p.name}
-                          >
-                            {p.name}
-                          </h3>
-                          {p.isNew && (
-                            <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
-                              NEW
-                            </span>
-                          )}
-                        </div>
+                        <h3
+                          onClick={() => router.push(`/parents/${p.id}`)}
+                          className="font-bold text-slate-900 text-sm cursor-pointer hover:text-blue-600 transition-colors whitespace-nowrap"
+                          title={p.name}
+                        >
+                          {p.name}
+                        </h3>
                       </div>
                     </div>
 

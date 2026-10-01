@@ -229,6 +229,11 @@ export function StudentProfileDesktop({
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-sm border border-blue-400/20">
                 {student.firstName[0]}{student.lastName[0]}
               </div>
+              {isEntityNew(student.createdAt, (student as any).isNewUntil) && (
+                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm ring-2 ring-white z-10 inline-flex items-center gap-0.5">
+                  NEW
+                </span>
+              )}
               <span
                 className={cn(
                   'absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full ring-2 ring-white',
@@ -244,17 +249,9 @@ export function StudentProfileDesktop({
             <div className="min-w-0 space-y-1">
               {/* Top line: Name + Badges */}
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900">
                   {student.firstName} {student.lastName}
                 </h1>
-
-                {/* NEW Sticker (Active for 24h) */}
-                {isEntityNew(student.createdAt, (student as any).isNewUntil) && (
-                  <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    NEW
-                  </span>
-                )}
 
                 {/* Status Badge */}
                 <span

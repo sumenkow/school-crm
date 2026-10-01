@@ -183,6 +183,11 @@ export function StudentsDesktop({
                         <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
                           {student.initials}
                         </div>
+                        {isEntityNew(student.createdAt, student.isNewUntil) && (
+                          <span className="absolute -top-1.5 -right-2 bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-xs ring-1 ring-white z-10">
+                            NEW
+                          </span>
+                        )}
                         <span
                           className={cn(
                             'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white',
@@ -195,20 +200,13 @@ export function StudentsDesktop({
                         />
                       </Link>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Link
-                            href={`/students/${student.id}`}
-                            className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors truncate block"
-                          >
-                            {student.name}
-                          </Link>
-                          {isEntityNew(student.createdAt, student.isNewUntil) && (
-                            <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
-                              NEW
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-slate-400 block">
+                        <Link
+                          href={`/students/${student.id}`}
+                          className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors whitespace-nowrap block"
+                        >
+                          {student.name}
+                        </Link>
+                        <span className="text-[11px] text-slate-400 block whitespace-nowrap">
                           {student.isAdult ? 'Студент' : 'Школьник'}
                         </span>
                       </div>
