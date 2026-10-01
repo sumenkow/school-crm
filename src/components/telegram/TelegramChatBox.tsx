@@ -1,23 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send,
   Bot,
-  Sparkles,
   Check,
   AlertCircle,
   Link as LinkIcon,
   ExternalLink,
-  MessageSquare,
-  Clock,
-  Settings
+  Settings,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { saveInteractionToStorage, TimelineInteraction } from '@/lib/data/timelineStorage';
 import { TelegramSettingsModal } from '@/components/settings/TelegramSettingsModal';
 import { cn } from '@/lib/utils';
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  direction: 'incoming' | 'outgoing';
+  occurredAt: string;
+  result?: string;
+}
 
 interface TelegramChatBoxProps {
   recipientType: 'student' | 'lead' | 'parent';
@@ -31,7 +37,7 @@ interface TelegramChatBoxProps {
 
 const TEMPLATES = [
   {
-    label: '💳 Напоминание об оплате',
+    label: '💳 Оплата',
     text: 'Здравствуйте! Напоминаем о приближении срока оплаты абонемента за следующий учебный период. Пожалуйста, проверьте баланс в личном кабинете или свяжитесь с нами.',
   },
   {
@@ -43,10 +49,35 @@ const TEMPLATES = [
     text: 'Здравствуйте! Преподаватель добавил домашнее задание к следующему уроку. Пожалуйста, выполните его до начала занятия.',
   },
   {
-    label: '⏰ Пропуск занятия',
+    label: '⏰ Пропуск',
     text: 'Здравствуйте! Подскажите, пожалуйста, по какой причине ученик пропустил сегодняшнее занятие? Сообщите, нужна ли помощь с материалами урока.',
   },
 ];
+
+function formatChatTime(isoStr: string): string {
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
+function formatChatDate(isoStr: string): string {
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Сегодня';
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return 'Вчера';
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  } catch {
+    return '';
+  }
+}
 
 export function TelegramChatBox({
   recipientType,
@@ -57,12 +88,20 @@ export function TelegramChatBox({
   onOpenConnectModal,
   onMessageSent,
 }: TelegramChatBoxProps) {
-  const { success, error } = useToast();
+  const { success, error: showError } = useToast();
   const { userName } = useRole();
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [hasBotToken, setHasBotToken] = useState<boolean>(true);
+  const [botActivationWarning, setBotActivationWarning] = useState<string | null>(null);
+
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageCountRef = useRef(0);
 
   const checkToken = () => {
     if (typeof window !== 'undefined') {
@@ -78,22 +117,66 @@ export function TelegramChatBox({
   const hasTelegram = Boolean(telegramHandle || telegramChatId);
   const cleanHandle = (telegramHandle || '').replace(/^@/, '');
 
-  const [botActivationWarning, setBotActivationWarning] = useState<string | null>(null);
+  // Scroll to bottom of chat
+  const scrollToBottom = useCallback((smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant' });
+  }, []);
 
+  // Fetch messages from API
+  const fetchMessages = useCallback(async (showLoading = false) => {
+    if (!recipientId || !hasTelegram) return;
+    if (showLoading) setIsLoadingMessages(true);
+
+    try {
+      const res = await fetch(
+        `/api/telegram/messages?type=${recipientType}&id=${encodeURIComponent(recipientId)}`
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+        // Auto-scroll when new messages arrive
+        if (data.messages.length > lastMessageCountRef.current) {
+          lastMessageCountRef.current = data.messages.length;
+          setTimeout(() => scrollToBottom(), 100);
+        }
+      }
+    } catch {
+      // Silent fail for polling
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, [recipientId, recipientType, hasTelegram, scrollToBottom]);
+
+  // Initial load
+  useEffect(() => {
+    fetchMessages(true);
+  }, [fetchMessages]);
+
+  // Poll every 3 seconds for real-time updates
+  useEffect(() => {
+    if (!hasTelegram) return;
+    const interval = setInterval(() => fetchMessages(false), 3000);
+    return () => clearInterval(interval);
+  }, [fetchMessages, hasTelegram]);
+
+  // Send message handler
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageText.trim()) return;
 
-    const savedBotToken = typeof window !== 'undefined' ? (localStorage.getItem('crm_tg_bot_token') || '').trim() : '';
+    const savedBotToken = typeof window !== 'undefined'
+      ? (localStorage.getItem('crm_tg_bot_token') || '').trim()
+      : '';
 
     if (!hasTelegram) {
-      error('Telegram не подключен. Сначала отправьте клиенту ссылку на подключение бота.');
+      showError('Telegram не подключен. Сначала отправьте клиенту ссылку на подключение бота.');
       onOpenConnectModal?.();
       return;
     }
 
     if (!savedBotToken) {
-      error('Telegram Bot Token не настроен. Открываю настройки Telegram...');
+      showError('Telegram Bot Token не настроен. Открываю настройки Telegram...');
       setIsSettingsModalOpen(true);
       return;
     }
@@ -132,7 +215,7 @@ export function TelegramChatBox({
         throw new Error(data.error || 'Ошибка отправки через Telegram API');
       }
 
-      // Optimistically save interaction to CRM Timeline storage using server-assigned UUID
+      // Save interaction to timeline
       const newInteraction: TimelineInteraction = {
         id: data.interactionId || `int_tg_${Date.now()}`,
         studentId: recipientType === 'student' ? recipientId : undefined,
@@ -154,11 +237,24 @@ export function TelegramChatBox({
       saveInteractionToStorage(newInteraction, { skipCloudSync: true });
       onMessageSent?.(newInteraction);
 
+      // Optimistically add to chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: newInteraction.id,
+          text: messageText.trim(),
+          direction: 'outgoing' as const,
+          occurredAt: now.toISOString(),
+        },
+      ]);
+      lastMessageCountRef.current += 1;
+      setTimeout(() => scrollToBottom(), 50);
+
       setMessageText('');
       setBotActivationWarning(null);
-      success('Сообщение успешно отправлено в Telegram клиента!');
+      success('Сообщение отправлено!');
     } catch (err: any) {
-      error(err.message || 'Не удалось отправить сообщение');
+      showError(err.message || 'Не удалось отправить сообщение');
     } finally {
       setIsSending(false);
     }
@@ -175,209 +271,264 @@ export function TelegramChatBox({
     const typeCode = recipientType === 'student' ? 'st' : recipientType === 'lead' ? 'lead' : 'par';
     const link = `https://t.me/${storedBot.replace('@', '')}?start=${typeCode}_${recipientId}`;
     navigator.clipboard.writeText(link);
-    success('Ссылка на запуск бота скопирована в буфер обмена!');
+    success('Ссылка на запуск бота скопирована!');
   };
 
+  // Group messages by date for separator display
+  const groupedMessages: { date: string; items: ChatMessage[] }[] = [];
+  let currentDate = '';
+  for (const msg of messages) {
+    const msgDate = formatChatDate(msg.occurredAt);
+    if (msgDate !== currentDate) {
+      currentDate = msgDate;
+      groupedMessages.push({ date: msgDate, items: [] });
+    }
+    groupedMessages[groupedMessages.length - 1]?.items.push(msg);
+  }
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-      {/* Header & Status */}
-      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-xs flex flex-col" style={{ minHeight: '420px' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 px-5 py-3">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#229ED9]/10 text-[#229ED9]">
             <Bot size={16} />
           </div>
           <div>
-            <h4 className="text-xs font-bold text-slate-900">Чат через школьного Telegram-бота</h4>
-            <p className="text-[11px] text-slate-500">
-              Сообщения отправляются от имени бота и автоматически сохраняются в историю CRM
+            <h4 className="text-xs font-bold text-slate-900">Telegram-чат с {recipientName}</h4>
+            <p className="text-[10px] text-slate-400">
+              {hasTelegram ? (telegramHandle || `Chat ID: ${telegramChatId}`) : 'Не подключен'}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {hasTelegram ? (
-            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-1 rounded-full text-[11px] font-semibold">
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[10px] font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Подключен: {telegramHandle || `ID: ${telegramChatId}`}</span>
+              Онлайн
             </div>
           ) : (
             <button
               type="button"
               onClick={onOpenConnectModal}
-              className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-3 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer"
             >
               <LinkIcon size={12} />
-              Подключить Telegram
+              Подключить
             </button>
           )}
-
           {hasTelegram && cleanHandle && (
             <button
               type="button"
               onClick={handleOpenDirectTelegram}
-              className="inline-flex items-center gap-1 p-1 px-2 rounded-lg text-xs text-[#229ED9] hover:bg-blue-50 transition-colors cursor-pointer font-medium"
-              title="Открыть диалог в приложении Telegram"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-[#229ED9] hover:bg-blue-50 transition-colors cursor-pointer"
+              title="Открыть в приложении Telegram"
             >
-              <ExternalLink size={13} />
-              <span>Открыть в приложении</span>
+              <ExternalLink size={14} />
             </button>
           )}
         </div>
       </div>
 
-      {/* If Bot Token Not Configured Warning */}
+      {/* Bot Token Warning */}
       {!hasBotToken && (
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs animate-in fade-in duration-150">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle size={16} className="text-amber-600 shrink-0" />
-            <span>
-              Telegram-бот школы ещё не настроен. Укажите Bot Token для отправки сообщений клиентам.
-            </span>
+            <AlertCircle size={14} className="text-amber-600 shrink-0" />
+            <span>Бот не настроен.</span>
           </div>
           <button
             type="button"
             onClick={() => setIsSettingsModalOpen(true)}
-            className="inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 hover:underline shrink-0 cursor-pointer"
+            className="font-bold text-blue-700 hover:underline cursor-pointer text-xs"
           >
-            <Settings size={13} />
-            Настроить токен →
+            <Settings size={12} className="inline mr-1" />
+            Настроить
           </button>
         </div>
       )}
 
-      {/* If Bot Activation Required Warning */}
+      {/* Bot Activation Warning */}
       {botActivationWarning && (
-        <div className="rounded-xl bg-sky-50 border border-sky-200 p-3.5 space-y-2.5 text-xs text-sky-950 animate-in fade-in duration-150">
+        <div className="px-4 py-3 bg-sky-50 border-b border-sky-200 text-xs text-sky-900 space-y-2">
           <div className="flex items-start gap-2">
-            <AlertCircle size={16} className="text-sky-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-bold block">
-                Требуется активация бота пользователем {telegramHandle || recipientName}
-              </span>
-              <p className="text-[11px] text-sky-800 leading-relaxed">
-                По правилам Telegram Bot API бот не может первым написать пользователю по @username, пока тот не нажмет <strong>Start</strong> в боте.
-              </p>
-            </div>
+            <AlertCircle size={14} className="text-sky-600 shrink-0 mt-0.5" />
+            <span>Клиент должен нажать <strong>Start</strong> в боте, чтобы получать сообщения.</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-sky-200/60">
-            {cleanHandle && (
-              <button
-                type="button"
-                onClick={handleOpenDirectTelegram}
-                className="inline-flex items-center gap-1 bg-[#229ED9] text-white hover:bg-[#1c8ec4] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-              >
-                <ExternalLink size={13} />
-                <span>Открыть Telegram и отправить напрямую</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleCopyInviteLink}
-              className="inline-flex items-center gap-1 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <LinkIcon size={13} />
-              <span>Скопировать ссылку на бота для клиента</span>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={handleCopyInviteLink}
+              className="inline-flex items-center gap-1 bg-white text-slate-700 border border-slate-200 px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer hover:bg-slate-50">
+              <LinkIcon size={11} /> Скопировать ссылку на бота
             </button>
+            <button type="button" onClick={onOpenConnectModal}
+              className="text-sky-700 hover:underline text-[11px] font-semibold cursor-pointer">
+              Указать числовой Chat ID
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Not connected state */}
+      {!hasTelegram && (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+              <Bot size={24} className="text-slate-400" />
+            </div>
+            <p className="text-xs text-slate-500 font-medium">Telegram не подключен</p>
+            <p className="text-[11px] text-slate-400 max-w-xs">
+              Отправьте клиенту ссылку на бота. После активации вы сможете общаться прямо из CRM.
+            </p>
             <button
               type="button"
               onClick={onOpenConnectModal}
-              className="inline-flex items-center gap-1 text-sky-700 hover:underline px-2 py-1.5 text-xs font-semibold cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
             >
-              Указать числовой ID
+              <Bot size={14} />
+              Подключить Telegram
             </button>
           </div>
         </div>
       )}
 
-      {/* If Not Connected Banner */}
-      {!hasTelegram && (
-        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-center space-y-2">
-          <p className="text-xs text-slate-600 font-medium">
-            Клиент ещё не привязал свой Telegram к школьному боту.
-          </p>
-          <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-            Сгенерируйте персональную ссылку в один клик. Клиенту останется только нажать «Запустить» в Telegram.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenConnectModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+      {/* Chat Messages Area */}
+      {hasTelegram && (
+        <>
+          <div
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto px-4 py-3 space-y-1 bg-slate-50/50"
+            style={{ maxHeight: '320px', minHeight: '180px' }}
           >
-            <Bot size={14} />
-            Получить ссылку для подключения
-          </button>
-        </div>
-      )}
+            {isLoadingMessages && messages.length === 0 && (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw size={16} className="animate-spin text-slate-400 mr-2" />
+                <span className="text-xs text-slate-400">Загрузка сообщений...</span>
+              </div>
+            )}
 
-      {/* Quick Templates Bar */}
-      {hasTelegram && (
-        <div className="space-y-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-            Быстрые шаблоны сообщений:
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {TEMPLATES.map((tpl, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setMessageText(tpl.text)}
-                className="text-[11px] rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 px-2.5 py-1 text-slate-700 transition-colors cursor-pointer"
-              >
-                {tpl.label}
-              </button>
+            {!isLoadingMessages && messages.length === 0 && (
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center space-y-1">
+                  <p className="text-xs text-slate-400">Нет сообщений</p>
+                  <p className="text-[10px] text-slate-300">Напишите первое сообщение клиенту</p>
+                </div>
+              </div>
+            )}
+
+            {groupedMessages.map((group) => (
+              <React.Fragment key={group.date}>
+                {/* Date separator */}
+                <div className="flex items-center justify-center py-2">
+                  <span className="bg-white/80 text-[10px] text-slate-400 font-medium px-3 py-0.5 rounded-full border border-slate-100 shadow-xs">
+                    {group.date}
+                  </span>
+                </div>
+
+                {group.items.map((msg) => {
+                  const isOut = msg.direction === 'outgoing';
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={cn('flex mb-1', isOut ? 'justify-end' : 'justify-start')}
+                    >
+                      <div
+                        className={cn(
+                          'max-w-[75%] rounded-2xl px-3.5 py-2 shadow-xs text-xs leading-relaxed',
+                          isOut
+                            ? 'bg-[#229ED9] text-white rounded-br-md'
+                            : 'bg-white text-slate-800 border border-slate-200 rounded-bl-md'
+                        )}
+                      >
+                        {/* Sender label */}
+                        <p className={cn(
+                          'text-[10px] font-bold mb-0.5',
+                          isOut ? 'text-white/70' : 'text-slate-400'
+                        )}>
+                          {isOut ? (userName || 'Администратор') : recipientName}
+                        </p>
+
+                        {/* Message text */}
+                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+
+                        {/* Time + check */}
+                        <div className={cn(
+                          'flex items-center gap-1 mt-1',
+                          isOut ? 'justify-end' : 'justify-start'
+                        )}>
+                          <span className={cn(
+                            'text-[9px]',
+                            isOut ? 'text-white/50' : 'text-slate-300'
+                          )}>
+                            {formatChatTime(msg.occurredAt)}
+                          </span>
+                          {isOut && <Check size={10} className="text-white/50" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </React.Fragment>
             ))}
+
+            <div ref={messagesEndRef} />
           </div>
-        </div>
-      )}
 
-      {/* Message Form */}
-      {hasTelegram && (
-        <form onSubmit={handleSendMessage} className="space-y-3">
-          <textarea
-            rows={3}
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder={`Напишите сообщение для ${recipientName} в Telegram...`}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#229ED9]/20 focus:border-[#229ED9]"
-          />
-
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] text-slate-400">
-              Поддерживается форматирование Markdown (*жирный*, _курсив_)
-            </span>
-
-            <div className="flex items-center gap-2">
-              {cleanHandle && (
+          {/* Quick Templates */}
+          <div className="px-4 py-2 border-t border-slate-100 bg-white">
+            <div className="flex flex-wrap gap-1">
+              {TEMPLATES.map((tpl, idx) => (
                 <button
+                  key={idx}
                   type="button"
-                  onClick={handleOpenDirectTelegram}
-                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
-                  title="Открыть диалог в приложении Telegram с этим текстом"
+                  onClick={() => setMessageText(tpl.text)}
+                  className="text-[10px] rounded-lg border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 px-2 py-0.5 text-slate-600 transition-colors cursor-pointer"
                 >
-                  <ExternalLink size={13} />
-                  <span>Открыть в Telegram</span>
+                  {tpl.label}
                 </button>
-              )}
+              ))}
+            </div>
+          </div>
 
+          {/* Message Input */}
+          <form onSubmit={handleSendMessage} className="px-4 pb-4 pt-2">
+            <div className="flex items-end gap-2">
+              <textarea
+                rows={1}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder={`Сообщение для ${recipientName}...`}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#229ED9]/20 focus:border-[#229ED9] resize-none"
+                style={{ minHeight: '38px', maxHeight: '100px' }}
+              />
               <button
                 type="submit"
                 disabled={isSending || !messageText.trim()}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer',
+                  'flex items-center justify-center w-9 h-9 rounded-xl transition-colors cursor-pointer shrink-0',
                   isSending || !messageText.trim()
-                    ? 'bg-slate-300 cursor-not-allowed text-slate-500'
-                    : 'bg-[#229ED9] hover:bg-[#1c8ec4]'
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-[#229ED9] text-white hover:bg-[#1c8ec4] shadow-xs'
                 )}
               >
-                <Send size={14} className={cn(isSending && 'animate-spin')} />
-                {isSending ? 'Отправка...' : 'Отправить в Telegram'}
+                <Send size={16} className={cn(isSending && 'animate-spin')} />
               </button>
             </div>
-          </div>
-        </form>
+            <p className="text-[9px] text-slate-300 mt-1 px-1">
+              Enter — отправить · Shift+Enter — новая строка
+            </p>
+          </form>
+        </>
       )}
 
-      {/* Modal for setting up Telegram Bot credentials directly */}
+      {/* Settings Modal */}
       <TelegramSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => {
