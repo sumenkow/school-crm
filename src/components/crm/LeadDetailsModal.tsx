@@ -37,7 +37,6 @@ import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData } from '
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
-import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { ConvertLeadModal } from './ConvertLeadModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
@@ -104,7 +103,7 @@ export function LeadDetailsModal({
   // Mode & Tabs
   const [isEditing, setIsEditing] = useState(false);
   const [activeEditSection, setActiveEditSection] = useState<EditSectionId>('contact');
-  const [activeTab, setActiveTab] = useState<'history' | 'whatsapp' | 'telegram' | 'email' | 'notes' | 'files'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'whatsapp' | 'telegram' | 'notes'>('history');
 
   // Modal sub-states
   const [isConvertOpen, setIsConvertOpen] = useState(false);
@@ -159,7 +158,7 @@ export function LeadDetailsModal({
       setSource(lead.source || 'Сайт / Форма заявки');
       setAssignedTo(lead.assignedTo || userName || 'Анна Смирнова');
       setOfferAmount(lead.offerAmount || '120 € / мес.');
-      setStatus(lead.status);
+      setStatus(lead.status || 'new');
       setGeneralComment(lead.comment || '');
       setTrialDateTime(lead.trialDate || '');
 
@@ -168,7 +167,9 @@ export function LeadDetailsModal({
       setIsAddingTask(false);
       setIsAddMenuOpen(false);
 
-      getTasksForLead(lead.id).then(setTasks).catch(() => setTasks([]));
+      if (lead.id) {
+        getTasksForLead(lead.id).then((res) => setTasks(Array.isArray(res) ? res : [])).catch(() => setTasks([]));
+      }
       const g = getStoredGroups().filter(group => !group.isDeleted);
       setGroups(g);
       if (g.length > 0) setSelectedGroup(g[0].id);
@@ -184,42 +185,43 @@ export function LeadDetailsModal({
     : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
 
   // Helper metrics
-  const daysInCrm = useMemo(() => {
-    if (!lead.createdAt) return '3 дня';
+  const daysInCrm = (() => {
+    if (!lead?.createdAt) return '3 дня';
     try {
-      const parts = lead.createdAt.split('.');
+      const parts = String(lead.createdAt).split('.');
       if (parts.length === 3) {
         const createdDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-        const diffDays = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
-        return `${diffDays} дн.`;
+        if (!isNaN(createdDate.getTime())) {
+          const diffDays = Math.max(1, Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24)));
+          return `${diffDays} дн.`;
+        }
       }
     } catch {
       // fallback
     }
     return '3 дня';
-  }, [lead.createdAt]);
+  })();
 
-  const lastContactFormatted = useMemo(() => {
-    if (lead.interactions && lead.interactions.length > 0) {
-      return lead.interactions[0].occurredAt;
+  const lastContactFormatted = (() => {
+    if (Array.isArray(lead?.interactions) && lead.interactions.length > 0) {
+      return lead.interactions[0]?.occurredAt || lead.createdAt || 'Недавно';
     }
-    return lead.createdAt || 'Недавно';
-  }, [lead]);
+    return lead?.createdAt || 'Недавно';
+  })();
 
   // Actions
   const handleSaveAll = () => {
     if (!lead) return;
 
-    // Build updated lead keeping existing domain schema
     const updatedLead: FullLeadData = {
       ...lead,
       name: parentName.trim() || lead.name,
-      parentFirstName: parentName.split(' ')[1] || lead.parentFirstName,
-      parentLastName: parentName.split(' ')[0] || lead.parentLastName,
+      parentFirstName: (parentName || '').split(' ')[1] || lead.parentFirstName,
+      parentLastName: (parentName || '').split(' ')[0] || lead.parentLastName,
       parentNotes: `${parentRole}. ${email ? `Email: ${email}` : ''}`.trim(),
       studentName: studentName.trim() || undefined,
-      studentFirstName: studentName.split(' ')[0] || undefined,
-      studentLastName: studentName.split(' ')[1] || undefined,
+      studentFirstName: (studentName || '').split(' ')[0] || undefined,
+      studentLastName: (studentName || '').split(' ')[1] || undefined,
       studentAge: studentAge.trim() || undefined,
       studentGrade: studentGrade.trim() || undefined,
       grade: studentGrade.trim() || undefined,
@@ -286,7 +288,7 @@ export function LeadDetailsModal({
       status: 'trial_scheduled',
       trialDate: dt,
       directionOrCourse: grpCourse,
-      interactions: [trialInteraction, ...(lead.interactions || [])],
+      interactions: [trialInteraction, ...(Array.isArray(lead.interactions) ? lead.interactions : [])],
     };
 
     saveLeadToStorage(updatedLead);
@@ -349,7 +351,7 @@ export function LeadDetailsModal({
 
     const updatedLead: FullLeadData = {
       ...lead,
-      interactions: [newInt, ...(lead.interactions || [])],
+      interactions: [newInt, ...(Array.isArray(lead.interactions) ? lead.interactions : [])],
     };
 
     saveLeadToStorage(updatedLead);
@@ -357,6 +359,8 @@ export function LeadDetailsModal({
     onUpdateLead?.(updatedLead);
     toast.success('Заметка сохранена');
   };
+
+  const interactionsList = Array.isArray(lead?.interactions) ? lead.interactions : [];
 
   return (
     <>
@@ -541,7 +545,7 @@ export function LeadDetailsModal({
                           navigator.clipboard.writeText(lead.contact);
                           toast.success(`Номер скопирован: ${lead.contact}`);
                         }}
-                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                         title="Скопировать"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -572,7 +576,7 @@ export function LeadDetailsModal({
                           type="button"
                           onClick={() => setIsTelegramConnectOpen(true)}
                           title="Подключить Telegram"
-                          className="w-6 h-6 rounded-md bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
+                          className="w-6 h-6 rounded-md bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200"
                         >
                           <TelegramIcon className="w-3.5 h-3.5" />
                         </button>
@@ -806,7 +810,7 @@ export function LeadDetailsModal({
 
               {/* BOTTOM SECTION: TABS & QUICK NOTES */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
-                {/* Left 2 Cols: Tabs (История, WhatsApp, Telegram, Email, Заметки, Файлы) */}
+                {/* Left 2 Cols: Tabs (История, WhatsApp, Telegram, Заметки) */}
                 <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
                   {/* Tab Headers */}
                   <div className="flex items-center border-b border-slate-200 px-3 bg-slate-50/60 overflow-x-auto gap-1">
@@ -823,7 +827,7 @@ export function LeadDetailsModal({
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>История</span>
                       <span className="px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-700 text-[10px]">
-                        {lead.interactions?.length || 0}
+                        {interactionsList.length}
                       </span>
                     </button>
 
@@ -898,12 +902,12 @@ export function LeadDetailsModal({
                         </form>
 
                         <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                          {(!lead.interactions || lead.interactions.length === 0) ? (
+                          {interactionsList.length === 0 ? (
                             <div className="text-center py-6 text-slate-400 text-xs">
                               История взаимодействий пока пуста
                             </div>
                           ) : (
-                            lead.interactions.map((int, i) => (
+                            interactionsList.map((int, i) => (
                               <div key={int.id || i} className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-1">
                                 <div className="flex items-center justify-between text-[11px] text-slate-400">
                                   <span className="font-semibold text-slate-700">{int.author}</span>
@@ -933,7 +937,7 @@ export function LeadDetailsModal({
                         onMessageSent={(newInt) => {
                           const updatedLead: FullLeadData = {
                             ...lead,
-                            interactions: [newInt, ...(lead.interactions || [])],
+                            interactions: [newInt, ...(Array.isArray(lead.interactions) ? lead.interactions : [])],
                           };
                           saveLeadToStorage(updatedLead);
                           syncLeadToSupabase(updatedLead);
@@ -1501,4 +1505,3 @@ export function LeadDetailsModal({
     </>
   );
 }
-
