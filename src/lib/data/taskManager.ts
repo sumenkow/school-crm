@@ -4,7 +4,7 @@ import { FullTaskData, TimelineInteraction, INITIAL_STUDENTS, INITIAL_LEADS } fr
 import { getStoredTasks, saveTaskToStorage } from './taskStorage';
 import { getStoredStudents } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';
-import { notifyAdminOnTaskAssigned, notifyOwnerOnTaskStatusChange } from '@/lib/telegram/botNotifier';
+import { notifyAdminOnTaskAssigned, notifyOwnerOnTaskStatusChange, notifyContactOnTask } from '@/lib/telegram/botNotifier';
 
 export interface CreateTaskOptions {
   title: string;
@@ -23,6 +23,9 @@ export interface CreateTaskOptions {
   createdByRole?: string;
   createdByName?: string;
   skipTimelineInteraction?: boolean;
+  notifyAdminInTelegram?: boolean;
+  notifyContactInTelegram?: boolean;
+  contactTelegramChatId?: string;
 }
 
 /**
@@ -135,11 +138,11 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
     window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: newTask }));
   }
 
-  // 7. Telegram Bot notification (if task created by Owner/Leader, notify Admin)
-  if (options.createdByRole === 'owner' || options.createdByRole === 'developer') {
+  // 7. Telegram Bot notification to Staff / Administrator
+  if (options.notifyAdminInTelegram !== false) {
     notifyAdminOnTaskAssigned({
       title: newTask.title,
-      assignedBy: options.createdByName || 'Руководитель школы',
+      assignedBy: options.createdByName || 'Администрация школы',
       assignedTo: newTask.assignedTo,
       dueDate: dueDateFormatted,
       priority: newTask.priority,
@@ -147,7 +150,26 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
       parentName,
       leadName,
       description: options.description,
-    }).catch(() => {});
+    }).catch((err) => console.warn('Failed to send admin task notification in Telegram:', err));
+  }
+
+  // 8. Telegram Bot notification directly to Contact (if requested)
+  if (options.notifyContactInTelegram) {
+    const targetRecipientType = studentId ? 'student' : leadId ? 'lead' : parentId ? 'parent' : null;
+    const targetRecipientId = studentId || leadId || parentId;
+    const targetRecipientName = studentName || leadName || parentName || 'Клиент';
+
+    if (targetRecipientType && targetRecipientId) {
+      notifyContactOnTask({
+        recipientType: targetRecipientType,
+        recipientId: targetRecipientId,
+        recipientName: targetRecipientName,
+        chatId: options.contactTelegramChatId,
+        title: newTask.title,
+        dueDate: dueDateFormatted,
+        description: options.description,
+      }).catch((err) => console.warn('Failed to send contact task reminder in Telegram:', err));
+    }
   }
 
   return newTask;

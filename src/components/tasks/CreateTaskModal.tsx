@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckSquare, Calendar, Clock, User, Check, Users } from 'lucide-react';
+import { X, CheckSquare, Calendar, Clock, User, Check, Users, Bot, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
@@ -81,7 +81,26 @@ export function CreateTaskModal({
   );
   const [selectedEntityId, setSelectedEntityId] = useState(defaultStudentId || defaultParentId || defaultLeadId || '1');
   const [description, setDescription] = useState('');
+  const [notifyAdminInTelegram, setNotifyAdminInTelegram] = useState(true);
+  const [notifyContactInTelegram, setNotifyContactInTelegram] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const contactTelegram = React.useMemo(() => {
+    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+    if (studentScope) {
+      const st = allStudents.find((s) => s.id === studentScope.id);
+      return st?.telegram || (st as any)?.telegramChatId || '';
+    }
+    if (relatedEntity === 'student' && selectedEntityId) {
+      const st = allStudents.find((s) => s.id === selectedEntityId);
+      return st?.telegram || (st as any)?.telegramChatId || '';
+    }
+    if (relatedEntity === 'lead' && selectedEntityId) {
+      const ld = INITIAL_LEADS.find((l) => l.id === selectedEntityId);
+      return ld?.telegram || '';
+    }
+    return '';
+  }, [studentScope, relatedEntity, selectedEntityId]);
 
   if (!isOpen) return null;
 
@@ -155,6 +174,9 @@ export function CreateTaskModal({
         leadName,
         createdByRole: role,
         createdByName: userName || 'Руководитель',
+        notifyAdminInTelegram,
+        notifyContactInTelegram: notifyContactInTelegram && Boolean(contactTelegram),
+        contactTelegramChatId: contactTelegram,
       });
 
       onCreated(newTask);
@@ -443,6 +465,49 @@ export function CreateTaskModal({
               placeholder="Дополнительные детали задачи..."
               className="mt-1 w-full rounded-lg border border-slate-200 p-3 text-xs focus:outline-none"
             />
+          </div>
+
+          {/* Telegram Notification Options */}
+          <div className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/40 space-y-2.5">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+              <Bot className="h-4 w-4 text-[#229ED9]" />
+              <span>Оповещения в Telegram</span>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
+                <input
+                  type="checkbox"
+                  checked={notifyAdminInTelegram}
+                  onChange={(e) => setNotifyAdminInTelegram(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Отправить поручение дежурному администратору в Telegram</span>
+              </label>
+
+              <label
+                className={cn(
+                  'flex items-center gap-2 select-none font-medium',
+                  contactTelegram ? 'cursor-pointer text-slate-700' : 'cursor-not-allowed text-slate-400'
+                )}
+              >
+                <input
+                  type="checkbox"
+                  disabled={!contactTelegram}
+                  checked={notifyContactInTelegram && Boolean(contactTelegram)}
+                  onChange={(e) => setNotifyContactInTelegram(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  Отправить напоминание контакту в Telegram
+                  {contactTelegram ? (
+                    <strong className="text-blue-700 ml-1">({contactTelegram.startsWith('@') ? contactTelegram : `@${contactTelegram}`})</strong>
+                  ) : (
+                    <span className="text-slate-400 text-[11px] ml-1">(бот не подключен в карточке)</span>
+                  )}
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">

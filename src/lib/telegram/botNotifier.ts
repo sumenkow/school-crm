@@ -262,3 +262,44 @@ ${list}${items.length > 7 ? `\n...и ещё ${items.length - 7} платежей
     message,
   });
 }
+
+/**
+ * Sends a task notification/reminder directly to a student/parent/lead via Telegram Bot.
+ */
+export async function notifyContactOnTask(params: {
+  recipientType: 'student' | 'lead' | 'parent';
+  recipientId: string;
+  recipientName: string;
+  chatId?: string;
+  title: string;
+  dueDate: string;
+  description?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (typeof window === 'undefined') return { success: false, error: 'SSR environment' };
+
+  try {
+    const botToken = localStorage.getItem('crm_tg_bot_token') || '';
+    const message = `📌 *НАПОМИНАНИЕ ОТ ШКОЛЫ*\n\nЗдравствуйте, *${params.recipientName}*!\n\n📋 *Событие / Задача:* ${params.title}\n📅 *Срок:* ${params.dueDate}${params.description ? `\n💬 *Детали:* ${params.description}` : ''}\n\n_Если у вас возникнут вопросы, напишите в этот чат._`;
+
+    const res = await fetch('/api/telegram/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipientType: params.recipientType,
+        recipientId: params.recipientId,
+        recipientName: params.recipientName,
+        chatId: params.chatId,
+        message,
+        authorName: 'Система CRM (Уведомление)',
+        customBotToken: botToken || undefined,
+      }),
+    });
+
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    console.error('Failed to send task notification to contact in Telegram:', err);
+    return { success: false, error: err?.message || 'Network error' };
+  }
+}
+
