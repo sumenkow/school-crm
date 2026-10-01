@@ -15,9 +15,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth');
+  const isInvoicePage = pathname.startsWith('/invoices');
+  const isStandalonePage = isAuthPage || isInvoicePage;
 
   useEffect(() => {
-    if (isAuthPage) {
+    if (isStandalonePage) {
       setAuthChecked(true);
       return;
     }
@@ -51,10 +53,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.removeEventListener('visibilitychange', handleFocus);
       clearInterval(interval);
     };
-  }, [pathname, isAuthPage, router]);
+  }, [pathname, isStandalonePage, router]);
 
-  // For /login and auth pages: render ONLY the page content, no CRM sidebar/topbar
-  if (isAuthPage) {
+  // For /login, auth pages, and public/printable invoices: render ONLY page content
+  if (isStandalonePage) {
     return <>{children}</>;
   }
 
@@ -89,34 +91,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden" style={{ backgroundColor: 'var(--md-background)' }}>
+    <div className="flex h-screen w-full overflow-hidden print:h-auto print:overflow-visible" style={{ backgroundColor: 'var(--md-background)' }}>
       {/* MD3 Navigation Drawer (Desktop collapsible / Mobile slide-in) */}
-      <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      <div className="print:hidden">
+        <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+      </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 h-full min-h-0 min-w-0 overflow-hidden">
-        <div className="flex-shrink-0">
+      <div className="flex flex-col flex-1 h-full min-h-0 min-w-0 overflow-hidden print:h-auto print:overflow-visible">
+        <div className="flex-shrink-0 print:hidden">
           <TopBar onOpenMobile={() => setMobileOpen(true)} />
         </div>
         <main
-          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-5 md:p-6 w-full min-w-0"
+          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-5 md:p-6 w-full min-w-0 print:p-0 print:overflow-visible"
           style={{
             paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
           }}
         >
-          <div className="w-full min-w-0" style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          <div className="w-full min-w-0 print:max-w-none print:w-full" style={{ maxWidth: '1280px', margin: '0 auto' }}>
             {children}
           </div>
         </main>
       </div>
 
       {/* MD3 Mobile Bottom Navigation Bar in thumb reach zone */}
-      <MobileBottomNav />
+      <div className="print:hidden">
+        <MobileBottomNav />
+      </div>
 
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden backdrop-blur-xs transition-opacity"
+          className="fixed inset-0 z-40 md:hidden backdrop-blur-xs transition-opacity print:hidden"
           style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
           onClick={() => setMobileOpen(false)}
         />

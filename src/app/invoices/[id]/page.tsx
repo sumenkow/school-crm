@@ -46,6 +46,17 @@ export default function InvoiceDetailPage() {
     }
   }, [invoiceId]);
 
+  // Set browser title to "YouEurope invoice #[invoiceNumber]" so saving as PDF automatically suggests this name
+  useEffect(() => {
+    if (invoice) {
+      const originalTitle = document.title;
+      document.title = `YouEurope invoice #${invoice.invoiceNumber}`;
+      return () => {
+        document.title = originalTitle;
+      };
+    }
+  }, [invoice]);
+
   if (!invoice) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -91,7 +102,7 @@ export default function InvoiceDetailPage() {
     amount: invoice.totalAmountEUR,
     variableSymbol: invoice.variableSymbol,
     purpose: `${invoice.courseName} - ${latinStudentName}`,
-  }, 170);
+  }, 140);
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -122,10 +133,10 @@ export default function InvoiceDetailPage() {
   const isPaid = invoice.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 print:p-0 print:bg-white font-sans text-slate-900 selection:bg-blue-100">
+    <div className="min-h-screen bg-[#F8FAFC] py-6 px-4 sm:px-6 print:p-0 print:py-0 print:bg-white font-sans text-slate-900 selection:bg-blue-100">
       
       {/* Top Floating Control Bar (Hidden on print) */}
-      <div className="max-w-3xl mx-auto mb-6 flex items-center justify-between flex-wrap gap-3 print:hidden">
+      <div className="max-w-3xl mx-auto mb-5 flex items-center justify-between flex-wrap gap-3 print:hidden">
         <button
           onClick={() => router.back()}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
@@ -168,21 +179,21 @@ export default function InvoiceDetailPage() {
       {/* Main Clean Printable Invoice Sheet */}
       <div 
         id="invoice-sheet"
-        className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8 sm:p-14 space-y-9 print:shadow-none print:border-none print:rounded-none print:p-6 print:max-w-none print:w-full print:m-0"
+        className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-7 sm:p-10 space-y-6 print:space-y-4 print:shadow-none print:border-none print:rounded-none print:p-0 print:max-w-none print:w-full print:m-0"
       >
         
         {/* 1. Header: Left Logo + Right Title (Swapped as requested) */}
-        <div className="flex items-start justify-between border-b border-slate-200 pb-7 gap-4">
+        <div className="flex items-start justify-between border-b border-slate-200 pb-5 print:pb-3 gap-4">
           
           {/* Top-Left: Logo & Brand */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-slate-200 shadow-2xs relative shrink-0 bg-white flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden border border-slate-200 shadow-2xs relative shrink-0 bg-white flex items-center justify-center print:w-12 print:h-12">
               <Image
                 src="/images/logo-you-europe.jpg"
                 alt="You Europe Logo"
-                width={64}
-                height={64}
-                className="object-contain w-full h-full p-1"
+                width={56}
+                height={56}
+                className="object-contain w-full h-full p-0.5"
                 priority
               />
             </div>
@@ -193,25 +204,25 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Top-Right: INVOICE / RECHNUNG Heading & Number */}
-          <div className="text-right space-y-1">
+          <div className="text-right space-y-0.5">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 uppercase">
               INVOICE
             </h1>
-            <p className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">
+            <p className="text-[10.5px] font-bold tracking-widest text-slate-400 uppercase">
               RECHNUNG / FAKTÚRA
             </p>
           </div>
         </div>
 
         {/* 2. Meta Info Grid (Issued to & Invoice Details) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 print:gap-4 text-xs">
           {/* Left Column: Billed to */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+          <div className="space-y-1.5">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 block">
               EMPFÄNGER / ISSUED TO:
             </span>
-            <div className="space-y-1">
-              <p className="text-base font-bold text-slate-900">
+            <div className="space-y-0.5">
+              <p className="text-sm sm:text-base font-bold text-slate-900">
                 {latinParentName}
               </p>
               {latinParentName !== latinStudentName && (
@@ -236,10 +247,10 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Right Column: Invoice Details (Right-aligned on desktop) */}
-          <div className="space-y-2 sm:text-right">
-            <div className="space-y-1.5">
-              <div className="flex sm:justify-end gap-3 items-baseline">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="space-y-1.5 sm:text-right">
+            <div className="space-y-1">
+              <div className="flex sm:justify-end gap-2.5 items-baseline">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
                   INVOICE NO / RECHNUNG NR:
                 </span>
                 <span className="text-sm font-mono font-bold text-slate-900">
@@ -247,8 +258,8 @@ export default function InvoiceDetailPage() {
                 </span>
               </div>
 
-              <div className="flex sm:justify-end gap-3 items-baseline">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="flex sm:justify-end gap-2.5 items-baseline">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
                   DATUM / DATE:
                 </span>
                 <span className="text-xs font-semibold text-slate-800">
@@ -256,8 +267,8 @@ export default function InvoiceDetailPage() {
                 </span>
               </div>
 
-              <div className="flex sm:justify-end gap-3 items-baseline">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="flex sm:justify-end gap-2.5 items-baseline">
+                <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
                   FÄLLIGKEIT / DUE DATE:
                 </span>
                 <span className="text-xs font-bold text-slate-900">
@@ -265,15 +276,15 @@ export default function InvoiceDetailPage() {
                 </span>
               </div>
 
-              <div className="pt-2 sm:flex sm:justify-end">
+              <div className="pt-1 sm:flex sm:justify-end">
                 {isPaid ? (
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
-                    <CheckCircle2 size={13} />
+                  <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                    <CheckCircle2 size={12} />
                     BEZAHLT / PAID
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold">
-                    <Clock size={13} />
+                  <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                    <Clock size={12} />
                     OFFEN / DUE FOR PAYMENT
                   </span>
                 )}
@@ -283,35 +294,35 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* 3. Items Table */}
-        <div className="space-y-4">
+        <div className="space-y-3 print:space-y-2">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-900 text-slate-900 text-[11px] uppercase tracking-wider font-bold">
-                  <th className="py-3 pr-4 font-black">BESCHREIBUNG / DESCRIPTION</th>
-                  <th className="py-3 px-3 text-center font-black">PREIS / RATE</th>
-                  <th className="py-3 px-3 text-center font-black">MENGE / QTY</th>
-                  <th className="py-3 pl-3 text-right font-black">GESAMT / TOTAL</th>
+                <tr className="border-b-2 border-slate-900 text-slate-900 text-[10.5px] uppercase tracking-wider font-bold">
+                  <th className="py-2.5 pr-3 font-black">BESCHREIBUNG / DESCRIPTION</th>
+                  <th className="py-2.5 px-3 text-center font-black">PREIS / RATE</th>
+                  <th className="py-2.5 px-3 text-center font-black">MENGE / QTY</th>
+                  <th className="py-2.5 pl-3 text-right font-black">GESAMT / TOTAL</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {invoice.items.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/40">
-                    <td className="py-4 pr-4">
-                      <span className="font-bold text-slate-900 text-sm block">
+                    <td className="py-3 print:py-2 pr-3">
+                      <span className="font-bold text-slate-900 text-xs sm:text-sm block">
                         {item.description}
                       </span>
-                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                      <span className="text-[10.5px] text-slate-500 block mt-0.5">
                         Zeitraum / Period: {invoice.periodLabel}
                       </span>
                     </td>
-                    <td className="py-4 px-3 text-center font-mono font-medium text-slate-700">
+                    <td className="py-3 print:py-2 px-3 text-center font-mono font-medium text-slate-700">
                       {item.unitPriceEUR.toFixed(2)} €
                     </td>
-                    <td className="py-4 px-3 text-center font-mono font-medium text-slate-700">
+                    <td className="py-3 print:py-2 px-3 text-center font-mono font-medium text-slate-700">
                       {item.quantity}
                     </td>
-                    <td className="py-4 pl-3 text-right font-bold font-mono text-slate-900 text-sm">
+                    <td className="py-3 print:py-2 pl-3 text-right font-bold font-mono text-slate-900 text-xs sm:text-sm">
                       {item.amountEUR.toFixed(2)} €
                     </td>
                   </tr>
@@ -321,28 +332,28 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Subtotal & Total Summary */}
-          <div className="flex justify-end border-t-2 border-slate-900 pt-4">
-            <div className="w-72 space-y-2 text-xs">
+          <div className="flex justify-end border-t-2 border-slate-900 pt-3 print:pt-2">
+            <div className="w-64 sm:w-72 space-y-1.5 text-xs">
               <div className="flex justify-between text-slate-600 font-medium">
-                <span className="uppercase tracking-wider text-[11px] font-semibold">ZWISCHENSUMME / SUBTOTAL:</span>
+                <span className="uppercase tracking-wider text-[10.5px] font-semibold">ZWISCHENSUMME / SUBTOTAL:</span>
                 <span className="font-mono">{invoice.subtotalEUR.toFixed(2)} €</span>
               </div>
               
               {invoice.discountEUR > 0 && (
                 <div className="flex justify-between text-emerald-600 font-medium">
-                  <span className="uppercase tracking-wider text-[11px] font-semibold">RABATT / DISCOUNT:</span>
+                  <span className="uppercase tracking-wider text-[10.5px] font-semibold">RABATT / DISCOUNT:</span>
                   <span className="font-mono">-{invoice.discountEUR.toFixed(2)} €</span>
                 </div>
               )}
 
-              <div className="flex justify-between text-slate-500 text-[11px]">
+              <div className="flex justify-between text-slate-500 text-[10.5px]">
                 <span>MWST. / VAT (0% / Befreit):</span>
                 <span className="font-mono">0.00 €</span>
               </div>
 
-              <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 text-slate-900">
-                <span className="text-sm font-black uppercase tracking-tight">GESAMTBETRAG / TOTAL:</span>
-                <span className="text-xl font-black font-mono tracking-tight text-blue-700 print:text-black">
+              <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200 text-slate-900">
+                <span className="text-xs sm:text-sm font-black uppercase tracking-tight">GESAMTBETRAG / TOTAL:</span>
+                <span className="text-lg sm:text-xl font-black font-mono tracking-tight text-blue-700 print:text-black">
                   {invoice.totalAmountEUR.toFixed(2)} €
                 </span>
               </div>
@@ -351,29 +362,29 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* 4. Payment Info Block & SEPA QR Code & Signature */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 print:gap-4 pt-3 print:pt-2 border-t border-slate-200 items-start">
           
           {/* Bank Details (Strictly Tatra banka credentials) */}
-          <div className="md:col-span-8 space-y-3 text-xs">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+          <div className="md:col-span-8 space-y-2 text-xs">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 block">
               ZAHLUNGSINFORMATIONEN / PAYMENT INFO:
             </span>
 
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="bg-slate-50 rounded-xl p-3 sm:p-3.5 border border-slate-200 space-y-2 print:p-2.5 print:space-y-1.5 print:bg-slate-50/50">
+              <div className="flex items-center justify-between flex-wrap gap-1 text-[11px]">
                 <span className="text-slate-500 font-medium">Kontoinhaber / Account Name:</span>
                 <strong className="text-slate-900 font-semibold">{bank.accountHolder}</strong>
               </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-1 text-[11px]">
                 <span className="text-slate-500 font-medium">Bank:</span>
                 <strong className="text-slate-900 font-semibold">{bank.bankName}</strong>
               </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-200">
+              <div className="flex items-center justify-between flex-wrap gap-1 pt-1 border-t border-slate-200 text-[11px]">
                 <span className="text-slate-500 font-medium">IBAN:</span>
-                <div className="flex items-center gap-2">
-                  <strong className="text-slate-900 font-mono font-bold text-sm tracking-wide">
+                <div className="flex items-center gap-1.5">
+                  <strong className="text-slate-900 font-mono font-bold text-xs sm:text-sm tracking-wide">
                     {bank.iban}
                   </strong>
                   <button
@@ -387,23 +398,23 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-1 text-[11px]">
                 <span className="text-slate-500 font-medium">SWIFT / BIC:</span>
                 <strong className="text-slate-900 font-mono">{bank.swiftBic}</strong>
               </div>
 
               {/* Variable Symbol / Reference (Invoice Number) */}
-              <div className="flex items-center justify-between flex-wrap gap-2 bg-blue-50/80 -mx-4 -mb-4 p-3.5 rounded-b-xl border-t border-blue-100">
+              <div className="flex items-center justify-between flex-wrap gap-1.5 bg-blue-50/80 -mx-3 -mb-3 sm:-mx-3.5 sm:-mb-3.5 p-2.5 sm:p-3 rounded-b-xl border-t border-blue-100 print:-mx-2.5 print:-mb-2.5 print:p-2">
                 <div>
-                  <span className="text-[11px] font-bold text-blue-900 uppercase block">
+                  <span className="text-[10.5px] font-bold text-blue-900 uppercase block">
                     VERWENDUNGSZWECK / PAYMENT REFERENCE:
                   </span>
-                  <span className="text-[10px] text-blue-700">
+                  <span className="text-[9.5px] text-blue-700">
                     Bitte geben Sie Ihre «Fakturnummer» ({invoice.invoiceNumber}) als Verwendungszweck an
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <strong className="text-base font-mono font-black text-blue-800 bg-white px-2.5 py-0.5 rounded-md border border-blue-200">
+                  <strong className="text-sm sm:text-base font-mono font-black text-blue-800 bg-white px-2 py-0.5 rounded-md border border-blue-200">
                     {invoice.variableSymbol || invoice.invoiceNumber}
                   </strong>
                   <button
@@ -418,32 +429,32 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
 
-            <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
+            <p className="text-[9.5px] text-slate-400 leading-relaxed pt-0.5">
               <strong>Hinweis / Note:</strong> {bank.vatNote}<br />
               Vielen Dank für Ihre Zusammenarbeit! / Thank you for choosing You Europe!
             </p>
           </div>
 
           {/* QR Code & Signature (4 cols) */}
-          <div className="md:col-span-4 flex flex-col items-center justify-center text-center space-y-4 pt-1">
+          <div className="md:col-span-4 flex flex-col items-center justify-center text-center space-y-3 pt-0.5">
             {/* SEPA QR Code Container */}
-            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-1.5 inline-block">
+            <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs space-y-1 inline-block print:p-1.5 print:rounded-lg">
               <div
                 dangerouslySetInnerHTML={{ __html: qrSvg }}
-                className="w-36 h-36 flex items-center justify-center mx-auto"
+                className="w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center mx-auto"
               />
-              <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                <QrCode size={12} className="text-blue-600" />
+              <div className="flex items-center justify-center gap-1 text-[9.5px] font-bold text-slate-600 uppercase tracking-wider">
+                <QrCode size={11} className="text-blue-600" />
                 <span>SEPA Pay by QR</span>
               </div>
             </div>
 
             {/* Signature representation */}
-            <div className="pt-2 text-center">
-              <div className="font-serif italic text-lg text-slate-700 tracking-wide">
+            <div className="pt-1 text-center">
+              <div className="font-serif italic text-base sm:text-lg text-slate-700 tracking-wide">
                 Ekaterina Nezhenkina
               </div>
-              <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold border-t border-slate-200 pt-1 mt-0.5">
+              <div className="text-[8.5px] uppercase tracking-widest text-slate-400 font-semibold border-t border-slate-200 pt-0.5 mt-0.5">
                 YOU EUROPE MANAGEMENT
               </div>
             </div>
@@ -453,25 +464,34 @@ export default function InvoiceDetailPage() {
 
       </div>
 
-      {/* Strict Print CSS: Only #invoice-sheet is printed cleanly */}
+      {/* Strict Print CSS: Single-page A4 isolation */}
       <style jsx global>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm;
+          }
           html, body {
             background-color: #FFFFFF !important;
             background: #FFFFFF !important;
             color: #000000 !important;
             margin: 0 !important;
             padding: 0 !important;
+            width: 100% !important;
+            height: auto !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 10mm 12mm;
-          }
-          /* Hide navigation, sidebar, headers and buttons */
-          nav, aside, header, .print\\:hidden {
+          /* Hide all navigation, CRM layout, sidebars, headers and toolbars */
+          nav, aside, header, [role="navigation"], .sidebar, .print\\:hidden {
             display: none !important;
+            visibility: hidden !important;
+          }
+          main {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
           }
           #invoice-sheet {
             box-shadow: none !important;
@@ -483,6 +503,8 @@ export default function InvoiceDetailPage() {
             margin: 0 !important;
             display: block !important;
             visibility: visible !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
         }
       `}</style>
