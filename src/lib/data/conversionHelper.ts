@@ -174,7 +174,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
     teacherComments: [],
     tasks: [],
     documents: [],
-    source: lead.source || 'Прямое обращение',
     notes: notes || lead.studentNotes || lead.comment || `Конвертирован из CRM лида. Источник: ${lead.source || 'Прямое обращение'}`,
   };
 
