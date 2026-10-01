@@ -8,16 +8,99 @@ import { syncStudentNameCascade, syncParentNameCascade } from './nameCascadeSync
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
 /**
+ * Ensures any student object (whether from localStorage, Supabase, or mockData)
+ * has all required arrays, objects, and string fields initialized to prevent runtime crashes.
+ */
+export function normalizeStudent(st: any): FullStudentData {
+  if (!st || typeof st !== 'object') {
+    return INITIAL_STUDENTS[0];
+  }
+  const firstName = st.firstName || (st.name ? st.name.split(' ')[0] : '') || 'Ученик';
+  const lastName = st.lastName || (st.name ? st.name.split(' ').slice(1).join(' ') : '') || '';
+  const fullName = st.name || `${firstName} ${lastName}`.trim() || 'Ученик';
+
+  return {
+    id: String(st.id || `st_${Date.now()}`),
+    firstName: firstName,
+    lastName: lastName,
+    birthDate: st.birthDate || undefined,
+    grade: st.grade || '',
+    phone: st.phone || undefined,
+    telegram: st.telegram || undefined,
+    email: st.email || undefined,
+    status: (st.status as any) || 'active',
+    studentType: st.studentType || 'school_student',
+    notes: st.notes || '',
+    createdAt: st.createdAt || new Date().toISOString(),
+    updatedAt: st.updatedAt || new Date().toISOString(),
+    isNewUntil: st.isNewUntil || undefined,
+    parents: Array.isArray(st.parents)
+      ? st.parents.map((p: any) => ({
+          id: p.id || `par_${Date.now()}`,
+          name: p.name || `${p.firstName || 'Родитель'} ${p.lastName || ''}`.trim(),
+          firstName: p.firstName || (p.name ? p.name.split(' ')[0] : '') || 'Родитель',
+          lastName: p.lastName || (p.name ? p.name.split(' ').slice(1).join(' ') : '') || '',
+          phone: p.phone || '',
+          email: p.email || undefined,
+          telegram: p.telegram || undefined,
+          whatsapp: p.whatsapp || undefined,
+          relationshipType: p.relationshipType || 'Родитель',
+          isPrimary: Boolean(p.isPrimary),
+          createdAt: p.createdAt || new Date().toISOString(),
+          isNewUntil: p.isNewUntil || undefined,
+        }))
+      : (st.parentName || st.parentPhone)
+      ? [{
+          id: `par_${st.id || Date.now()}`,
+          name: st.parentName || 'Родитель',
+          firstName: st.parentName ? st.parentName.split(' ')[0] : 'Родитель',
+          lastName: st.parentName ? st.parentName.split(' ').slice(1).join(' ') : '',
+          phone: st.parentPhone || '',
+          relationshipType: 'Родитель',
+          isPrimary: true,
+          createdAt: st.createdAt || new Date().toISOString(),
+          isNewUntil: st.isNewUntil || undefined,
+        }]
+      : [],
+    groups: Array.isArray(st.groups) ? st.groups : [],
+    attendanceStats: st.attendanceStats || {
+      totalLessons: 0,
+      presentCount: 0,
+      absentCount: 0,
+      rescheduledCount: 0,
+      attendanceRate: '100%',
+      history: [],
+    },
+    finance: st.finance || {
+      activeSubscription: null as any,
+      deposit: {
+        balance: 0,
+        balanceFormatted: '0 €',
+        currency: 'EUR',
+        pricePerLesson: 12,
+        pricePerLessonFormatted: '12 €',
+      },
+      payments: [],
+    },
+    interactions: Array.isArray(st.interactions) ? st.interactions : [],
+    comments: Array.isArray(st.comments) ? st.comments : [],
+    teacherComments: Array.isArray(st.teacherComments) ? st.teacherComments : [],
+    tasks: Array.isArray(st.tasks) ? st.tasks : [],
+    documents: Array.isArray(st.documents) ? st.documents : [],
+  };
+}
+
+/**
  * Loads all students from localStorage merged with INITIAL_STUDENTS.
  * Any edits or status/type changes saved in localStorage take priority.
  */
 export function getStoredStudents(): FullStudentData[] {
-  if (typeof window === 'undefined') return INITIAL_STUDENTS;
+  if (typeof window === 'undefined') return INITIAL_STUDENTS.map((s) => normalizeStudent(s));
   try {
     const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);
-    if (!raw) return INITIAL_STUDENTS;
+    if (!raw) return INITIAL_STUDENTS.map((s) => normalizeStudent(s));
     const stored: FullStudentData[] = JSON.parse(raw);
-    if (!Array.isArray(stored) || stored.length === 0) return INITIAL_STUDENTS;
+    if (!Array.isArray(stored) || stored.length === 0) return INITIAL_STUDENTS.map((s) => normalizeStudent(s));
 
     const storedMap = new Map<string, FullStudentData>(stored.map((s) => [s.id, s]));
     const result: FullStudentData[] = [];
@@ -37,11 +120,11 @@ export function getStoredStudents(): FullStudentData[] {
       result.unshift(extra);
     }
 
-    // Hydrate all student groups to ensure bidirectional sync with groups
-    return result.map((st) => hydrateStudentGroups(st));
+    // Hydrate all student groups to ensure bidirectional sync with groups and normalize
+    return result.map((st) => normalizeStudent(hydrateStudentGroups(st)));
   } catch (err) {
     console.error('Failed to parse stored students:', err);
-    return INITIAL_STUDENTS.map((st) => hydrateStudentGroups(st));
+    return INITIAL_STUDENTS.map((st) => normalizeStudent(hydrateStudentGroups(st)));
   }
 }
 
@@ -320,8 +403,23 @@ export function saveStudentToStorage(student: FullStudentData): void {
  * Finds student by id from unified storage.
  */
 export function getStudentById(id: string): FullStudentData | undefined {
+  if (!id) return undefined;
   const list = getStoredStudents();
-  return list.find((s) => s.id === id);
+  const match = list.find((s) => s.id === id);
+  if (match) return normalizeStudent(match);
+
+  // Fallback: check raw localStorage if recently written before state sync
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);
+      if (raw) {
+        const stored: any[] = JSON.parse(raw);
+        const direct = stored.find((s) => s.id === id);
+        if (direct) return normalizeStudent(hydrateStudentGroups(direct));
+      }
+    } catch {}
+  }
+  return undefined;
 }
 
 /**

@@ -7,7 +7,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, INITIAL_LESSONS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
-import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent } from '@/lib/data/studentStorage';
+import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent, normalizeStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
@@ -352,7 +352,8 @@ export default function StudentDetailsPage() {
   const actionParam = searchParams.get('action');
 
   const [student, setStudent] = useState<FullStudentData>(() => {
-    return getStudentById(studentId) || INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+    const raw = getStudentById(studentId) || INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+    return normalizeStudent(raw);
   });
 
   // Keep latest student ref for auto-save on unmount / navigation away
@@ -372,8 +373,9 @@ export default function StudentDetailsPage() {
   const syncStudentData = useCallback(() => {
     const fresh = getStudentById(studentId);
     if (fresh) {
-      setStudent(fresh);
-      latestStudentRef.current = fresh;
+      const normalized = normalizeStudent(fresh);
+      setStudent(normalized);
+      latestStudentRef.current = normalized;
     }
   }, [studentId]);
 
@@ -382,15 +384,17 @@ export default function StudentDetailsPage() {
   useEffect(() => {
     const loaded = getStudentById(studentId);
     if (loaded) {
-      setStudent(loaded);
-      latestStudentRef.current = loaded;
+      const normalized = normalizeStudent(loaded);
+      setStudent(normalized);
+      latestStudentRef.current = normalized;
     }
 
     const handleSync = (e: any) => {
       const fresh = (e?.detail?.id === studentId ? e.detail : null) || getStudentById(studentId);
       if (fresh) {
-        setStudent(fresh);
-        latestStudentRef.current = fresh;
+        const normalized = normalizeStudent(fresh);
+        setStudent(normalized);
+        latestStudentRef.current = normalized;
       }
     };
 
@@ -1439,12 +1443,12 @@ export default function StudentDetailsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white text-2xl shadow-sm">
-              {student.firstName[0]}{student.lastName[0]}
+              {`${student.firstName?.[0] || (student as any).name?.[0] || 'У'}${student.lastName?.[0] || ''}`.toUpperCase()}
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  {student.firstName} {student.lastName}
+                  {student.firstName || ''} {student.lastName || ''}
                 </h1>
                 <span
                   className={cn(
@@ -1542,7 +1546,7 @@ export default function StudentDetailsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
+                  setStudentDirectPhone(student.phone || student.parents?.[0]?.phone || '');
                   setStudentDirectTelegram(student.telegram || '');
                   setIsConvertAdultModalOpen(true);
                 }}
@@ -1611,7 +1615,7 @@ export default function StudentDetailsPage() {
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3 border-t border-slate-100 pt-4 text-xs">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">{t('nav.groups', 'Группы')} ({student.groups.length}):</span>
+              <span className="text-slate-400">{t('nav.groups', 'Группы')} ({(student.groups || []).length}):</span>
               <button
                 type="button"
                 onClick={() => setIsEnrollGroupModalOpen(true)}
@@ -1622,16 +1626,16 @@ export default function StudentDetailsPage() {
                 {t('action.enrollNewGroup', 'Зачислить в новую группу')}
               </button>
             </div>
-            {student.groups.length === 0 ? (
+            {(student.groups || []).length === 0 ? (
               <p className="font-semibold text-slate-400 mt-0.5">{t('group.noStudents', 'Не зачислен')}</p>
             ) : (
               <div className="flex flex-wrap gap-1 mt-1">
-                {student.groups.map((grp) => (
+                {(student.groups || []).map((grp) => (
                   <span
                     key={grp.id}
                     className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200/60"
                   >
-                    {grp.name.split(' (')[0] || grp.name}
+                    {grp.name?.split(' (')[0] || grp.name}
                   </span>
                 ))}
               </div>
@@ -1639,13 +1643,13 @@ export default function StudentDetailsPage() {
           </div>
           <div>
             <span className="text-slate-400">{t('dashboard.attendance', 'Посещаемость')}:</span>
-            <p className="font-semibold text-emerald-600 mt-0.5">{student.attendanceStats.attendanceRate}</p>
+            <p className="font-semibold text-emerald-600 mt-0.5">{student.attendanceStats?.attendanceRate || '100%'}</p>
           </div>
           <div>
             <span className="text-slate-400">{t('finance.subscriptionEnd', 'Абонемент до')}:</span>
-            <p className="font-semibold text-blue-600 mt-0.5">{student.finance.activeSubscription?.renewalDate || '—'}</p>
+            <p className="font-semibold text-blue-600 mt-0.5">{student.finance?.activeSubscription?.renewalDate || '—'}</p>
           </div>
-          {student.parents[0] ? (
+          {student.parents?.[0] ? (
             <Link
               href={`/parents/${student.parents[0].id}`}
               className="cursor-pointer hover:bg-slate-50/80 p-1 rounded-lg transition-colors group block"
@@ -1869,7 +1873,7 @@ export default function StudentDetailsPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Users className="h-4 w-4 text-blue-600" />
-                  Родители и контактные лица ({student.parents.length})
+                  Родители и контактные лица ({(student.parents || []).length})
                 </h3>
                 <button className="text-xs font-semibold text-blue-600 hover:underline">
                   + Привязать родителя
@@ -1877,7 +1881,7 @@ export default function StudentDetailsPage() {
               </div>
 
               <div className="space-y-3">
-                {student.parents.map((parent) => (
+                {(student.parents || []).map((parent) => (
                   <Link
                     key={parent.id}
                     href={`/parents/${parent.id}`}
@@ -2706,8 +2710,8 @@ export default function StudentDetailsPage() {
                   onChange={(e) => setInteractionTarget(e.target.value)}
                   className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                 >
-                  <option value="student">С учеником ({student.firstName} {student.lastName})</option>
-                  {student.parents.map((p) => (
+                  <option value="student">С учеником ({student.firstName || ''} {student.lastName || ''})</option>
+                  {(student.parents || []).map((p) => (
                     <option key={p.id} value={`parent_${p.id}`}>
                       С родителем: {p.firstName} {p.lastName} ({p.relationshipType || 'Родитель'})
                     </option>
@@ -3814,7 +3818,7 @@ export default function StudentDetailsPage() {
                 </div>
                 <ul className="list-disc list-inside space-y-1 text-[11px] text-purple-800">
                   <li>
-                    Контакты родителей ({student.parents.length > 0 ? student.parents.map((p) => `${p.firstName} ${p.lastName}`).join(', ') : 'не указаны'}) <strong>сохраняются в карточке</strong> как доверенные лица семьи.
+                    Контакты родителей ({(student.parents || []).length > 0 ? (student.parents || []).map((p) => `${p.firstName || ''} ${p.lastName || ''}`.trim()).filter(Boolean).join(', ') : 'не указаны'}) <strong>сохраняются в карточке</strong> как доверенные лица семьи.
                   </li>
                   <li>
                     Студент становится <strong>основным контактным лицом</strong> и плательщиком по расписанию и счетам.

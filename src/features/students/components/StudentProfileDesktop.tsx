@@ -136,8 +136,11 @@ export function StudentProfileDesktop({
 
   const primaryParent = student.parents?.[0];
   const cleanParentName = primaryParent
-    ? `${primaryParent.firstName} ${primaryParent.lastName}`.replace(/\s*\([^)]*\)/, '').trim()
+    ? `${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.replace(/\s*\([^)]*\)/, '').trim() || 'Родитель'
     : '';
+
+  // Safe initials
+  const studentInitials = `${student.firstName?.[0] || (student as any).name?.[0] || 'У'}${student.lastName?.[0] || ''}`.toUpperCase();
 
   // Age & Grade text
   const birthDateStr = student.birthDate ? formatBirthDate(student.birthDate) : '';
@@ -215,7 +218,8 @@ export function StudentProfileDesktop({
 
   // Paid Until formatting
   const rawPaidUntil = student.finance?.activeSubscription?.renewalDate || '28.09';
-  const formattedPaidUntil = rawPaidUntil.split('.').slice(0, 2).join('.');
+  const formattedPaidUntil = (rawPaidUntil || '28.09').split('.').slice(0, 2).join('.');
+  const studentGroups = student.groups || [];
 
   return (
     <div className="hidden md:block w-full space-y-4">
@@ -227,7 +231,7 @@ export function StudentProfileDesktop({
             {/* Avatar */}
             <div className="relative shrink-0">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-sm border border-blue-400/20">
-                {student.firstName[0]}{student.lastName[0]}
+                {studentInitials}
               </div>
               {isEntityNew(student.createdAt, (student as any).isNewUntil) && (
                 <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm ring-2 ring-white z-10 inline-flex items-center gap-0.5">
@@ -250,7 +254,7 @@ export function StudentProfileDesktop({
               {/* Top line: Name + Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                  {student.firstName} {student.lastName}
+                  {student.firstName || ''} {student.lastName || ''}
                 </h1>
 
                 {/* Status Badge */}
@@ -426,14 +430,14 @@ export function StudentProfileDesktop({
         {/* Block 1: КУРС И ГРУППА / КУРСЫ (4/12) */}
         <div className="col-span-4 min-w-0 pr-3 space-y-1.5">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            {student.groups.length > 1 ? `КУРСЫ И ГРУППЫ (${student.groups.length})` : 'КУРС И ГРУППА'}
+            {studentGroups.length > 1 ? `КУРСЫ И ГРУППЫ (${studentGroups.length})` : 'КУРС И ГРУППА'}
           </span>
-          {student.groups.length > 0 ? (() => {
+          {studentGroups.length > 0 ? (() => {
             const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
             const lessonHref = upcomingLesson?.id ? `/calendar/lessons/${upcomingLesson.id}` : '/calendar';
 
-            if (student.groups.length === 1) {
-              const firstGrp = student.groups[0];
+            if (studentGroups.length === 1) {
+              const firstGrp = studentGroups[0];
               const targetGroup = storedGroups.find(g => g.id === firstGrp.id || g.name === firstGrp.name || g.courseName === firstGrp.courseName) || INITIAL_GROUPS.find(g => g.name === firstGrp.name) || INITIAL_GROUPS[0];
               const groupHref = `/groups/${targetGroup.id}`;
 
@@ -484,7 +488,7 @@ export function StudentProfileDesktop({
             // Multiple groups (2 or more courses)
             return (
               <div className="space-y-2">
-                {student.groups.map((grp, gIdx) => {
+                {studentGroups.map((grp, gIdx) => {
                   const cleanGrpName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
                   const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === cleanGrpName || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
                   const teacherName = grp.teacherName || 'Мария Иванова';

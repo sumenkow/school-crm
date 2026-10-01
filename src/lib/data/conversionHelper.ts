@@ -26,18 +26,24 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
   const parentId = parentName ? `par_${Date.now()}` : undefined;
   const paymentId = `pay_${Date.now()}`;
 
-  // 1. Create Student Data
+  const firstName = lead.studentFirstName || (lead.name ? lead.name.split(' ')[0] : '') || lead.name || 'Ученик';
+  const lastName = lead.studentLastName || (lead.name ? lead.name.split(' ').slice(1).join(' ') : '') || '';
+
+  // 1. Create Student Data with complete normalized structure
   const newStudent: any = {
     id: studentId,
-    name: lead.name,
-    firstName: lead.studentFirstName || lead.name.split(' ')[0] || lead.name,
-    lastName: lead.studentLastName || lead.name.split(' ')[1] || '',
+    name: `${firstName} ${lastName}`.trim(),
+    firstName: firstName,
+    lastName: lastName,
+    studentType: studentType || 'school_student',
+    grade: studentType === 'adult_student' ? 'Студент' : '1 класс',
     phone: studentType === 'adult_student' ? lead.contact : undefined,
     parentPhone: studentType === 'school_student' ? (parentPhone || lead.contact) : undefined,
     parentName: studentType === 'school_student' ? (parentName || lead.name) : undefined,
     status: 'active',
     joinedAt: startDate || new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     parents: parentName ? [{
       id: parentId,
@@ -67,6 +73,22 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
       attendanceRate: '100%',
       history: [],
     },
+    finance: {
+      activeSubscription: null,
+      deposit: {
+        balance: 0,
+        balanceFormatted: currency === 'EUR' ? '0 €' : '0 ₽',
+        currency: currency || 'EUR',
+        pricePerLesson: tariffAmount ? Math.max(1, Math.round(tariffAmount / 8)) : 12,
+        pricePerLessonFormatted: currency === 'EUR' ? '12 €' : '1 050 ₽',
+      },
+      payments: [],
+    },
+    interactions: [],
+    comments: [],
+    teacherComments: [],
+    tasks: [],
+    documents: [],
     source: lead.source || 'Прямое обращение',
     notes: lead.comment ? `Источник: ${lead.source || 'Прямое обращение'}. ${lead.comment}` : `Источник: ${lead.source || 'Прямое обращение'}`,
   };

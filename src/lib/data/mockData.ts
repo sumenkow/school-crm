@@ -95,6 +95,9 @@ export interface FullStudentData extends Student {
   interactions: TimelineInteraction[];
   tasks: Task[];
   teacherComments?: TeacherComment[];
+  comments?: any[];
+  documents?: any[];
+  isNewUntil?: string;
 }
 
 export const INITIAL_STUDENTS: FullStudentData[] = [
