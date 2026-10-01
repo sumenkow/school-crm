@@ -135,10 +135,41 @@ export function TelegramChatBox({
       const data = await res.json();
       if (data.success && Array.isArray(data.messages)) {
         setMessages(data.messages);
-        // Auto-scroll when new messages arrive
+
+        // Auto-scroll and sync to timeline when new messages arrive
         if (data.messages.length > lastMessageCountRef.current) {
           lastMessageCountRef.current = data.messages.length;
           setTimeout(() => scrollToBottom(), 100);
+
+          // Synchronize incoming messages with global timeline storage
+          try {
+            data.messages.forEach((msg: any) => {
+              if (msg.direction === 'incoming') {
+                const dateObj = new Date(msg.occurredAt || Date.now());
+                const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('ru-RU') : '01.10.2026';
+                const timeStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '12:00';
+
+                const incomingInt: TimelineInteraction = {
+                  id: msg.id,
+                  studentId: recipientType === 'student' ? recipientId : undefined,
+                  leadId: recipientType === 'lead' ? recipientId : undefined,
+                  parentId: recipientType === 'parent' ? recipientId : undefined,
+                  studentName: recipientType === 'student' ? recipientName : undefined,
+                  parentName: recipientType === 'parent' ? recipientName : undefined,
+                  targetType: recipientType,
+                  targetName: recipientName,
+                  occurredAt: `${dateStr}, ${timeStr}`,
+                  createdAt: msg.occurredAt || new Date().toISOString(),
+                  channel: 'telegram',
+                  type: 'follow_up',
+                  author: recipientName || 'Клиент Telegram',
+                  content: `💬 Входящее в Telegram: «${msg.text}»`,
+                  result: msg.result || 'Ответ клиента в Telegram',
+                };
+                saveInteractionToStorage(incomingInt, { skipCloudSync: true });
+              }
+            });
+          } catch {}
         }
       }
     } catch {

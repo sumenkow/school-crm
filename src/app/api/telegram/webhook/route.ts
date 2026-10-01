@@ -126,49 +126,129 @@ export async function POST(request: NextRequest) {
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createAdminClient();
 
-        // 1. Check all students in DB
-        const { data: allDbStudents } = await supabase.from('students').select('id, first_name, last_name, telegram');
-        if (allDbStudents && allDbStudents.length > 0) {
-          const stMatch = allDbStudents.find((s) => {
+        // 1. Fetch candidates from DB
+        const [{ data: allDbStudents }, { data: allDbParents }, { data: allDbLeads }] = await Promise.all([
+          supabase.from('students').select('id, first_name, last_name, telegram'),
+          supabase.from('parents').select('id, first_name, last_name, telegram'),
+          supabase.from('leads').select('id, name, contact, telegram'),
+        ]);
+
+        const strChatId = chatId ? String(chatId).trim() : '';
+
+        // TIER 1: Exact numeric chatId match (highest confidence)
+        if (strChatId) {
+          const stExact = (allDbStudents || []).find((s) => s.telegram && String(s.telegram).trim() === strChatId);
+          if (stExact) {
+            matchedStudentId = stExact.id;
+            matchedEntityName = `Ученик: ${stExact.first_name || ''} ${stExact.last_name || ''}`.trim();
+          }
+
+          if (!matchedStudentId) {
+            const prExact = (allDbParents || []).find((p) => p.telegram && String(p.telegram).trim() === strChatId);
+            if (prExact) {
+              matchedParentId = prExact.id;
+              matchedEntityName = `Родитель: ${prExact.first_name || ''} ${prExact.last_name || ''}`.trim();
+            }
+          }
+
+          if (!matchedStudentId && !matchedParentId) {
+            const ldExact = (allDbLeads || []).find((l) => (l.telegram && String(l.telegram).trim() === strChatId) || (l.contact && String(l.contact).trim() === strChatId));
+            if (ldExact) {
+              matchedLeadId = ldExact.id;
+              matchedEntityName = `Лид: ${ldExact.name || ''}`.trim();
+            }
+          }
+        }
+
+        // TIER 2: If not found by exact numeric chatId, look for recent outbound dialog context
+        // Check who received the last outbound Telegram message from this sender or recently in CRM
+        if (!matchedStudentId && !matchedParentId && !matchedLeadId) {
+          // Look up all entities that match by username or searchTerms
+          const matchingStudents = (allDbStudents || []).filter((s) => {
             if (!s.telegram) return false;
             const norm = String(s.telegram).trim().toLowerCase();
             return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
           });
-          if (stMatch) {
-            matchedStudentId = stMatch.id;
-            matchedEntityName = `Ученик: ${stMatch.first_name || ''} ${stMatch.last_name || ''}`.trim();
-          }
-        }
 
-        // 2. Check parents in DB
-        if (!matchedStudentId) {
-          const { data: allDbParents } = await supabase.from('parents').select('id, first_name, last_name, telegram');
-          if (allDbParents && allDbParents.length > 0) {
-            const prMatch = allDbParents.find((p) => {
-              if (!p.telegram) return false;
-              const norm = String(p.telegram).trim().toLowerCase();
-              return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
+          const matchingParents = (allDbParents || []).filter((p) => {
+            if (!p.telegram) return false;
+            const norm = String(p.telegram).trim().toLowerCase();
+            return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
+          });
+
+          const matchingLeads = (allDbLeads || []).filter((l) => {
+            const contactNorm = l.contact ? String(l.contact).trim().toLowerCase() : '';
+            const tgNorm = l.telegram ? String(l.telegram).trim().toLowerCase() : '';
+            return searchTerms.some((term) => {
+              const t = term.toLowerCase().replace(/^@/, '');
+              return (contactNorm && contactNorm.replace(/^@/, '') === t) || (tgNorm && tgNorm.replace(/^@/, '') === t);
             });
-            if (prMatch) {
-              matchedParentId = prMatch.id;
-              matchedEntityName = `Родитель: ${prMatch.first_name || ''} ${prMatch.last_name || ''}`.trim();
+          });
+
+          const candidateStudentIds = matchingStudents.map((s) => s.id);
+          const candidateParentIds = matchingParents.map((p) => p.id);
+          const candidateLeadIds = matchingLeads.map((l) => l.id);
+
+          // If multiple candidates exist, check who was contacted most recently in interactions
+          if (candidateStudentIds.length + candidateParentIds.length + candidateLeadIds.length > 1) {
+            const { data: recentOutbound } = await supabase
+              .from('interactions')
+              .select('student_id, parent_id, lead_id, created_at')
+              .eq('channel', 'telegram')
+              .order('created_at', { ascending: false })
+              .limit(10);
+
+            if (recentOutbound && recentOutbound.length > 0) {
+              for (const row of recentOutbound) {
+                if (row.student_id && candidateStudentIds.includes(row.student_id)) {
+                  matchedStudentId = row.student_id;
+                  const st = matchingStudents.find((s) => s.id === row.student_id);
+                  matchedEntityName = `Ученик: ${st?.first_name || ''} ${st?.last_name || ''}`.trim();
+                  break;
+                }
+                if (row.parent_id && candidateParentIds.includes(row.parent_id)) {
+                  matchedParentId = row.parent_id;
+                  const pr = matchingParents.find((p) => p.id === row.parent_id);
+                  matchedEntityName = `Родитель: ${pr?.first_name || ''} ${pr?.last_name || ''}`.trim();
+                  break;
+                }
+                if (row.lead_id && candidateLeadIds.includes(row.lead_id)) {
+                  matchedLeadId = row.lead_id;
+                  const ld = matchingLeads.find((l) => l.id === row.lead_id);
+                  matchedEntityName = `Лид: ${ld?.name || ''}`.trim();
+                  break;
+                }
+              }
+            }
+          }
+
+          // Fallback to first matching candidate if no outbound context found
+          if (!matchedStudentId && !matchedParentId && !matchedLeadId) {
+            if (matchingStudents.length > 0) {
+              matchedStudentId = matchingStudents[0].id;
+              matchedEntityName = `Ученик: ${matchingStudents[0].first_name || ''} ${matchingStudents[0].last_name || ''}`.trim();
+            } else if (matchingParents.length > 0) {
+              matchedParentId = matchingParents[0].id;
+              matchedEntityName = `Родитель: ${matchingParents[0].first_name || ''} ${matchingParents[0].last_name || ''}`.trim();
+            } else if (matchingLeads.length > 0) {
+              matchedLeadId = matchingLeads[0].id;
+              matchedEntityName = `Лид: ${matchingLeads[0].name || ''}`.trim();
             }
           }
         }
 
-        // 3. Check leads in DB
-        if (!matchedStudentId && !matchedParentId) {
-          const { data: allDbLeads } = await supabase.from('leads').select('id, name, contact');
-          if (allDbLeads && allDbLeads.length > 0) {
-            const ldMatch = allDbLeads.find((l) => {
-              if (!l.contact) return false;
-              const norm = String(l.contact).trim().toLowerCase();
-              return searchTerms.some((term) => norm === term.toLowerCase() || norm.replace(/^@/, '') === term.toLowerCase().replace(/^@/, ''));
-            });
-            if (ldMatch) {
-              matchedLeadId = ldMatch.id;
-              matchedEntityName = `Лид: ${ldMatch.name || ''}`.trim();
+        // TIER 3: Auto-bind numeric chatId if not yet recorded
+        if (strChatId) {
+          try {
+            if (matchedStudentId) {
+              await supabase.from('students').update({ telegram: strChatId }).eq('id', matchedStudentId);
+            } else if (matchedParentId) {
+              await supabase.from('parents').update({ telegram: strChatId }).eq('id', matchedParentId);
+            } else if (matchedLeadId) {
+              await supabase.from('leads').update({ telegram: strChatId }).eq('id', matchedLeadId);
             }
+          } catch (bindErr) {
+            console.warn('Auto-binding chatId error in webhook:', bindErr);
           }
         }
 
