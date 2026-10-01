@@ -42,7 +42,7 @@ import {
   Filter,
   Video
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isEntityNew } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
@@ -110,7 +110,13 @@ export default function ParentDetailsPage() {
       groups: s.groups || [],
       status: s.status,
       attendance: s.attendanceStats?.attendanceRate || '100%',
+      isNew: isEntityNew(s.createdAt, (s as any).isNewUntil),
     }));
+
+    const isParentNew = Boolean(
+      isEntityNew((matchedParent as any)?.createdAt, (matchedParent as any)?.isNewUntil) ||
+      matchedStudents.some((s) => isEntityNew(s.createdAt, (s as any).isNewUntil))
+    );
 
     return {
       id: parentId,
@@ -125,6 +131,7 @@ export default function ParentDetailsPage() {
       notifyTelegram: (matchedParent as any)?.notifyTelegram !== false,
       notifyEmail: (matchedParent as any)?.notifyEmail !== false,
       notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00.',
+      isNew: isParentNew,
       children: linkedChildren.length > 0 ? linkedChildren : [
         {
           id: '1',

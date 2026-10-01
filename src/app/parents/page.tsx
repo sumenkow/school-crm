@@ -41,7 +41,7 @@ import {
 } from '@/lib/data/studentStorage';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { AddChildModal } from '@/components/parents/AddChildModal';
-import { cn } from '@/lib/utils';
+import { cn, isEntityNew } from '@/lib/utils';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -62,6 +62,7 @@ export interface ChildDetails {
   studentType?: string;
   nextLesson?: string;
   teacherName?: string;
+  isNew?: boolean;
 }
 
 export interface ParentRecord {
@@ -85,6 +86,9 @@ export interface ParentRecord {
   debtFormatted?: string;
   debtBalance?: number;
   isDeleted?: boolean;
+  isNew?: boolean;
+  createdAt?: string;
+  isNewUntil?: string;
 }
 
 const INITIAL_PARENTS: ParentRecord[] = [
@@ -270,9 +274,11 @@ function getMergedParents(): ParentRecord[] {
         notifyTelegram: rawParent.notifyTelegram !== undefined ? rawParent.notifyTelegram : existing.notifyTelegram,
         notifyEmail: rawParent.notifyEmail !== undefined ? rawParent.notifyEmail : existing.notifyEmail,
         relationshipType: existing.relationshipType || rawParent.relationshipType,
+        isNew: Boolean(existing.isNew || rawParent.isNew || Array.from(existingChildrenMap.values()).some((c) => c.isNew)),
       });
     } else {
       const key = cleanP ? `phone_${cleanP}` : `id_${rawParent.id}`;
+      const isNewParent = Boolean(rawParent.isNew || isEntityNew(rawParent.createdAt, rawParent.isNewUntil) || (rawParent.children || []).some((c) => c.isNew));
       parentMap.set(key, {
         id: rawParent.id,
         name: rawParent.name,
@@ -288,6 +294,9 @@ function getMergedParents(): ParentRecord[] {
         children: rawParent.children || [],
         totalPaid: '0 €',
         balanceStatus: 'paid',
+        isNew: isNewParent,
+        createdAt: rawParent.createdAt,
+        isNewUntil: rawParent.isNewUntil,
       });
     }
   };
@@ -310,6 +319,7 @@ function getMergedParents(): ParentRecord[] {
         const stCategory = st.studentType === 'adult_student' ? 'Студент' : 'Школьник';
         const stNextLesson = st.groups?.[0]?.schedule || 'Ср 21 сен, 18:45';
         const stTeacher = st.groups?.[0]?.teacherName || 'Мария Иванова';
+        const isChildNew = isEntityNew(st.createdAt, (st as any).isNewUntil);
 
         const childInfo: ChildDetails = {
           id: st.id,
@@ -318,7 +328,10 @@ function getMergedParents(): ParentRecord[] {
           studentType: stCategory,
           nextLesson: stNextLesson,
           teacherName: stTeacher,
+          isNew: isChildNew,
         };
+
+        const isParentNew = isChildNew || isEntityNew((pr as any).createdAt, (pr as any).isNewUntil);
 
         addOrMergeParent({
           id: pr.id || `pr_${st.id}`,
@@ -333,6 +346,9 @@ function getMergedParents(): ParentRecord[] {
           notifyEmail: (pr as any).notifyEmail !== false,
           relationshipType: (pr as any).relationshipType || 'Родитель',
           children: [childInfo],
+          isNew: isParentNew,
+          createdAt: (pr as any).createdAt,
+          isNewUntil: (pr as any).isNewUntil,
         });
       }
     }
@@ -881,13 +897,20 @@ export default function ParentsPage() {
                           </Link>
 
                           <div className="min-w-0 flex-1 space-y-0.5">
-                            <Link
-                              href={`/parents/${p.id}`}
-                              className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
-                              title={p.name}
-                            >
-                              {p.name}
-                            </Link>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <Link
+                                href={`/parents/${p.id}`}
+                                className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                                title={p.name}
+                              >
+                                {p.name}
+                              </Link>
+                              {p.isNew && (
+                                <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
 
                             <div className="flex items-center justify-between w-full mt-1 min-w-0">
                               <a
@@ -939,13 +962,20 @@ export default function ParentsPage() {
                           <div className="space-y-2">
                             {p.children.map((c) => (
                               <div key={c.id} className="min-w-0 space-y-0.5 min-h-[32px] flex flex-col justify-center">
-                                <Link
-                                  href={`/students/${c.id}`}
-                                  className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
-                                  title={c.name}
-                                >
-                                  {c.name}
-                                </Link>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Link
+                                    href={`/students/${c.id}`}
+                                    className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+                                    title={c.name}
+                                  >
+                                    {c.name}
+                                  </Link>
+                                  {c.isNew && (
+                                    <span className="bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
+                                      NEW
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-[11px] text-slate-400 block truncate">
                                   {c.studentType || 'Школьник'}
                                 </span>
@@ -1082,13 +1112,20 @@ export default function ParentsPage() {
                         {initials}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3
-                          onClick={() => router.push(`/parents/${p.id}`)}
-                          className="font-bold text-slate-900 text-sm cursor-pointer hover:text-blue-600 transition-colors truncate"
-                          title={p.name}
-                        >
-                          {p.name}
-                        </h3>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3
+                            onClick={() => router.push(`/parents/${p.id}`)}
+                            className="font-bold text-slate-900 text-sm cursor-pointer hover:text-blue-600 transition-colors truncate"
+                            title={p.name}
+                          >
+                            {p.name}
+                          </h3>
+                          {p.isNew && (
+                            <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
+                              NEW
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 

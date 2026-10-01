@@ -87,11 +87,13 @@ export function EnrollStudentFromLeadModal({
         preferredChannel: 'telegram' as const,
         relationshipType,
         isPrimary: true,
+        createdAt: new Date().toISOString(),
+        isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       }
     ];
 
     // 1. Create student in INITIAL_STUDENTS and unified storage
-    const newStudent: FullStudentData = {
+    const newStudent: FullStudentData & { isNewUntil?: string } = {
       id: newStudentId,
       firstName: studentFirstName.trim() || 'Ученик',
       lastName: studentLastName.trim() || 'Новый',
@@ -103,6 +105,7 @@ export function EnrollStudentFromLeadModal({
       grade: studentGrade.trim() || undefined,
       notes: [studentAge ? `Возраст: ${studentAge}` : '', lead.source ? `Источник: ${lead.source}` : ''].filter(Boolean).join('. ') || undefined,
       createdAt: new Date().toISOString(),
+      isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       updatedAt: new Date().toISOString(),
       parents: parentsList,
       groups: [

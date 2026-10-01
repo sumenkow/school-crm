@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Copy, Phone, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isEntityNew } from '@/lib/utils';
 import { StudentListItem } from '@/app/students/page';
 import { restoreStudent } from '@/lib/data/studentStorage';
 import { useToast } from '@/context/ToastContext';
@@ -195,12 +195,19 @@ export function StudentsDesktop({
                         />
                       </Link>
                       <div className="min-w-0">
-                        <Link
-                          href={`/students/${student.id}`}
-                          className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block"
-                        >
-                          {student.name}
-                        </Link>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Link
+                            href={`/students/${student.id}`}
+                            className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors truncate block"
+                          >
+                            {student.name}
+                          </Link>
+                          {isEntityNew(student.createdAt, student.isNewUntil) && (
+                            <span className="bg-emerald-500 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs shrink-0 inline-flex items-center">
+                              NEW
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[11px] text-slate-400 block">
                           {student.isAdult ? 'Студент' : 'Школьник'}
                         </span>

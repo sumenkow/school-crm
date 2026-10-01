@@ -9,9 +9,10 @@ import {
   Edit,
   GraduationCap,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  Sparkles,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isEntityNew } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
@@ -246,6 +247,14 @@ export function StudentProfileDesktop({
                   {student.firstName} {student.lastName}
                 </h1>
 
+                {/* NEW Sticker (Active for 24h) */}
+                {isEntityNew(student.createdAt, (student as any).isNewUntil) && (
+                  <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    NEW
+                  </span>
+                )}
+
                 {/* Status Badge */}
                 <span
                   className={cn(
@@ -415,10 +424,9 @@ export function StudentProfileDesktop({
       </div>
 
       {/* LEVEL 2: Metrics Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-4 gap-4 divide-x divide-slate-100">
-        {/* Block 1: КУРС И ГРУППА */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-12 gap-4 divide-x divide-slate-100">
         {/* Block 1: КУРС И ГРУППА / КУРСЫ */}
-        <div className="space-y-1">
+        <div className="col-span-4 min-w-0 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             {student.groups.length > 1 ? `КУРСЫ И ГРУППЫ (${student.groups.length})` : 'КУРС И ГРУППА'}
           </span>
@@ -476,7 +484,7 @@ export function StudentProfileDesktop({
 
             // Multiple groups (2 or more courses)
             return (
-              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {student.groups.map((grp, gIdx) => {
                   const cleanGrpName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
                   const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === cleanGrpName || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
@@ -486,7 +494,7 @@ export function StudentProfileDesktop({
                   ) || INITIAL_TEACHERS[0];
 
                   return (
-                    <div key={grp.id || gIdx} className="space-y-0.5 border-b border-slate-100/80 pb-1 last:border-0 last:pb-0">
+                    <div key={grp.id || gIdx} className="space-y-0.5 border-b border-slate-100/80 pb-1.5 last:border-0 last:pb-0">
                       <Link
                         href={`/groups/${targetGroup.id}`}
                         className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline truncate block"
@@ -494,15 +502,15 @@ export function StudentProfileDesktop({
                       >
                         {cleanGrpName}
                       </Link>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 gap-2">
                         <Link
                           href={`/teachers/${targetTeacher.id}`}
-                          className="hover:text-blue-600 hover:underline truncate"
+                          className="hover:text-blue-600 hover:underline truncate min-w-0"
                         >
                           {teacherName}
                         </Link>
                         {grp.schedule && (
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">
+                          <span className="text-[10px] text-slate-600 font-mono shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/60">
                             {grp.schedule.split('•')[0]?.trim() || grp.schedule}
                           </span>
                         )}
@@ -518,7 +526,7 @@ export function StudentProfileDesktop({
         </div>
 
         {/* Block 2: ПРЕДСТАВИТЕЛЬ (Bugfix: display parent if present in student.parents regardless of adult_student) */}
-        <div className="pl-4 space-y-1">
+        <div className="col-span-3 min-w-0 pl-4 space-y-1">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
             ПРЕДСТАВИТЕЛЬ
           </span>
@@ -566,7 +574,7 @@ export function StudentProfileDesktop({
         {/* Block 3: ПОСЕЩАЕМОСТЬ */}
         <div
           onClick={() => onSelectTab('attendance')}
-          className="pl-4 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
+          className="col-span-2 min-w-0 pl-4 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
           title="Перейти к посещаемости"
         >
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block group-hover:text-blue-600">
@@ -620,7 +628,7 @@ export function StudentProfileDesktop({
         <div
           onClick={() => role !== 'teacher' && onSelectTab('finance')}
           className={cn(
-            "pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
+            "col-span-3 min-w-0 pl-4 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
             role !== 'teacher' ? "cursor-pointer hover:bg-slate-50/60" : "cursor-default"
           )}
           title={role !== 'teacher' ? "Перейти к финансам" : "Доступ к финансам ограничен"}

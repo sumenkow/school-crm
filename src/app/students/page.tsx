@@ -71,6 +71,8 @@ export interface StudentListItem {
   absentLessons?: number;
   isDeleted?: boolean;
   deletedAt?: string;
+  createdAt?: string;
+  isNewUntil?: string;
   rawStudentObj: FullStudentData;
 }
 
@@ -167,6 +169,8 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
     absentLessons,
     isDeleted: Boolean(s.isDeleted || (s as any).is_deleted),
     deletedAt: s.deletedAt || (s as any).deleted_at,
+    createdAt: s.createdAt,
+    isNewUntil: (s as any).isNewUntil,
     rawStudentObj: s,
   };
 }

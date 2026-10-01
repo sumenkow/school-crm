@@ -20,7 +20,8 @@ import {
   Calendar,
   Users,
   ChevronDown,
-  Copy
+  Copy,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -54,6 +55,7 @@ export interface ParentProfileDesktopProps {
     notifyTelegram?: boolean;
     notifyEmail?: boolean;
     notes?: string;
+    isNew?: boolean;
     children: Array<{
       id: string;
       name: string;
@@ -276,6 +278,12 @@ export function ParentProfileDesktop({
                 <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate">
                   {parent.firstName} {parent.lastName}
                 </h1>
+                {parent.isNew && (
+                  <span className="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    NEW
+                  </span>
+                )}
                 <span className="rounded-full px-2.5 py-0.5 font-semibold text-[11px] border bg-emerald-50 text-emerald-700 border-emerald-200">
                   Активен
                 </span>
