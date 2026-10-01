@@ -65,15 +65,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role restrictions for owner-only routes
+  // Check role restrictions for owner-only routes (/analytics, /settings)
   if (OWNER_ONLY_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    // 1. Fast path: check role from JWT metadata (instant in-memory check, 0ms)
+    let role = (user.user_metadata?.role || user.app_metadata?.role) as string | undefined;
 
-    const role = profile?.role as string | undefined;
+    // 2. Slow fallback: query profiles table only if role is missing in metadata
+    if (!role) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        role = profile?.role as string | undefined;
+      } catch {
+        // Fallback silently if DB is unreachable
+      }
+    }
+
     if (!role || !['developer', 'owner'].includes(role)) {
       // Redirect non-owners to dashboard
       const dashboardUrl = request.nextUrl.clone();
