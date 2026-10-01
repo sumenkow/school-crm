@@ -3,6 +3,7 @@
 import { FullGroupData, INITIAL_GROUPS, FullStudentData } from './mockData';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';
+import { persistEntityToCloud } from './cloudSync';
 import type { TimelineInteraction } from './mockData';
 
 const GROUPS_STORAGE_KEY = 'crm_groups_master_v2';
@@ -121,21 +122,8 @@ export function saveGroupToStorage(group: FullGroupData): void {
       console.error('Failed to save group to storage:', err);
     }
 
-    // 3. Supabase Cloud DB direct write
-    import('@/lib/supabase/client').then(async ({ createClient }) => {
-      try {
-        const supabase = createClient();
-        await supabase.from('groups').upsert({
-          id: group.id,
-          name: group.name,
-          capacity: group.capacity || 8,
-          status: group.status || 'active',
-          is_mock_data: false,
-        });
-      } catch (e) {
-        // ignore in offline
-      }
-    }).catch(() => {});
+    // 3. Supabase Cloud DB write via sync layer
+    persistEntityToCloud('group', group);
   }
 }
 
@@ -363,6 +351,7 @@ export function softDeleteGroup(groupId: string): void {
     deleted_at: now,
   };
   saveGroupToStorage(updatedGroup);
+  persistEntityToCloud('group', { id: groupId }, 'delete');
 }
 
 export function restoreGroup(groupId: string): void {
@@ -376,4 +365,5 @@ export function restoreGroup(groupId: string): void {
     deleted_at: undefined,
   };
   saveGroupToStorage(updatedGroup);
+  persistEntityToCloud('group', updatedGroup);
 }

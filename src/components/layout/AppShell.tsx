@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { createClient } from '@/lib/supabase/client';
+import { hydrateAllDataFromCloud } from '@/lib/data/cloudSync';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,10 +28,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.replace('/login');
       } else {
         setAuthChecked(true);
+        // Hydrate all CRM entities from Supabase Cloud DB
+        hydrateAllDataFromCloud();
       }
     }).catch(() => {
       router.replace('/login');
     });
+
+    const handleFocus = () => {
+      hydrateAllDataFromCloud();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [pathname, isAuthPage, router]);
 
   // For /login and auth pages: render ONLY the page content, no CRM sidebar/topbar

@@ -1,7 +1,6 @@
-'use client';
-
 import { TimelineInteraction, INITIAL_STUDENTS } from './mockData';
 import { getStoredStudents } from './studentStorage';
+import { persistEntityToCloud } from './cloudSync';
 
 export type { TimelineInteraction };
 
@@ -144,23 +143,8 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
       }
     }
 
-    // Supabase dual-write (fire-and-forget)
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('interactions').upsert({
-          id: item.id,
-          student_id: item.studentId || null,
-          parent_id: item.parentId || null,
-          lead_id: (item as any).leadId || null,
-          type: (item.type as any) || 'comment',
-          title: (item as any).title || item.content?.slice(0, 50) || 'Заметка',
-          description: item.content || (item as any).description || null,
-          created_at: isoCreatedAt,
-          is_mock_data: false,
-        }).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
+    // Supabase Cloud DB write via sync layer
+    persistEntityToCloud('interaction', item);
 
     // Dispatch global event for reactive UI update
     window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: item }));

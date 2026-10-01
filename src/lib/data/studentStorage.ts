@@ -4,6 +4,7 @@ import { FullStudentData, INITIAL_STUDENTS, INITIAL_GROUPS, TimelineInteraction 
 import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timelineStorage';
 import { savePaymentToStorage } from './paymentStorage';
 import { syncStudentNameCascade, syncParentNameCascade } from './nameCascadeSync';
+import { persistEntityToCloud } from './cloudSync';
 
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
@@ -334,60 +335,8 @@ export function saveStudentToStorage(student: FullStudentData): void {
       }
       localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(currentStudents));
 
-      import('@/lib/supabase/client').then(({ createClient }) => {
-        try {
-          const supabase = createClient();
-          const firstName = studentToSave.firstName || (studentToSave as any).name?.split(' ')[0] || '';
-          const lastName = studentToSave.lastName || (studentToSave as any).name?.split(' ').slice(1).join(' ') || '';
-          
-          let birthDateIso: string | null = null;
-          if (studentToSave.birthDate) {
-            try {
-              if (studentToSave.birthDate.includes('.')) {
-                birthDateIso = new Date(studentToSave.birthDate.split('.').reverse().join('-')).toISOString().slice(0, 10);
-              } else {
-                birthDateIso = new Date(studentToSave.birthDate).toISOString().slice(0, 10);
-              }
-            } catch {}
-          }
-
-          // 1. Upsert Student
-          supabase.from('students').upsert({
-            id: studentToSave.id,
-            first_name: firstName,
-            last_name: lastName,
-            birth_date: birthDateIso,
-            phone: studentToSave.phone || null,
-            telegram: studentToSave.telegram || null,
-            status: (studentToSave.status as any) || 'active',
-            notes: studentToSave.notes || (studentToSave as any).comment || null,
-            updated_at: new Date().toISOString(),
-            is_mock_data: false,
-          }).then(() => {}, (err) => console.warn('Supabase student upsert error:', err));
-
-          // 2. Upsert Parents if present
-          if (studentToSave.parents && studentToSave.parents.length > 0) {
-            for (const pr of studentToSave.parents) {
-              if (pr.id) {
-                supabase.from('parents').upsert({
-                  id: pr.id,
-                  first_name: pr.firstName || 'Родитель',
-                  last_name: pr.lastName || lastName,
-                  phone: pr.phone || null,
-                  email: pr.email || null,
-                  telegram: pr.telegram || null,
-                  whatsapp: pr.whatsapp || null,
-                  preferred_channel: pr.preferredChannel || 'telegram',
-                  updated_at: new Date().toISOString(),
-                  is_mock_data: false,
-                }).then(() => {}, () => {});
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('Supabase client error:', e);
-        }
-      }).catch(() => {});
+      // Persist to Supabase Cloud DB via sync layer
+      persistEntityToCloud('student', studentToSave);
 
       // Notify other views if not currently reconciling
       if (!isReconcilingGlobally) {
@@ -1000,17 +949,7 @@ export function softDeleteStudent(studentId: string): void {
     };
 
     saveStudentToStorage(updated);
-
-    // Supabase dual-write
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('students').update({
-          status: 'archived',
-        }).eq('id', studentId).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
-
+    persistEntityToCloud('student', { id: studentId }, 'delete');
     window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
   } catch (err) {
     console.error('Failed to soft delete student:', err);
@@ -1035,17 +974,7 @@ export function restoreStudent(studentId: string): void {
     };
 
     saveStudentToStorage(updated);
-
-    // Supabase dual-write
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('students').update({
-          status: 'active',
-        }).eq('id', studentId).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
-
+    persistEntityToCloud('student', updated);
     window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updated }));
   } catch (err) {
     console.error('Failed to restore student:', err);
@@ -1073,16 +1002,7 @@ export function softDeleteParent(parentId: string): void {
     current.add(parentId);
     localStorage.setItem(DELETED_PARENTS_KEY, JSON.stringify(Array.from(current)));
 
-    // Supabase dual-write
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('parents').update({
-          notes: '[ARCHIVED_DELETED]',
-        }).eq('id', parentId).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
-
+    persistEntityToCloud('parent', { id: parentId }, 'delete');
     window.dispatchEvent(new CustomEvent('crm-parents-changed'));
   } catch (err) {
     console.error('Failed to soft delete parent:', err);
@@ -1096,16 +1016,7 @@ export function restoreParent(parentId: string): void {
     current.delete(parentId);
     localStorage.setItem(DELETED_PARENTS_KEY, JSON.stringify(Array.from(current)));
 
-    // Supabase dual-write
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('parents').update({
-          notes: null,
-        }).eq('id', parentId).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
-
+    persistEntityToCloud('parent', { id: parentId, notes: null });
     window.dispatchEvent(new CustomEvent('crm-parents-changed'));
   } catch (err) {
     console.error('Failed to restore parent:', err);

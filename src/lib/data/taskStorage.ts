@@ -1,7 +1,6 @@
-'use client';
-
 import { FullTaskData, INITIAL_TASKS } from './mockData';
 import { createClient } from '@/lib/supabase/client';
+import { persistEntityToCloud } from './cloudSync';
 
 const TASKS_STORAGE_KEY = 'crm_tasks_v1';
 
@@ -105,27 +104,7 @@ export function saveTaskToStorage(task: FullTaskData): void {
       console.error('Error writing tasks to localStorage:', e);
     }
 
-    try {
-      const supabase = createClient();
-      supabase.from('tasks').upsert({
-        id: task.id,
-        title: task.title,
-        task_type: task.taskType || 'other',
-        student_id: task.studentId || null,
-        parent_id: task.parentId || null,
-        lead_id: task.leadId || null,
-        due_date: task.dueDate || new Date().toISOString().slice(0, 10),
-        status: task.status,
-        priority: task.priority,
-        description: task.description || null,
-        assigned_to: task.assignedTo || null,
-        is_mock_data: false,
-      }).then(({ error }) => {
-        if (error) console.error('Error upserting task to Supabase:', error);
-      });
-    } catch (e) {
-      console.error('Error initializing Supabase client for task write:', e);
-    }
+    persistEntityToCloud('task', task);
 
     // 3. Dispatch global event for immediate reactive updates in UI
     try {

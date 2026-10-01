@@ -3,6 +3,7 @@
 import { FullLessonData, INITIAL_LESSONS, INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from './mockData';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
 import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timelineStorage';
+import { persistEntityToCloud } from './cloudSync';
 
 const LESSONS_STORAGE_KEY = 'crm_lessons_master_v2';
 
@@ -118,30 +119,8 @@ export function saveLessonToStorage(lesson: FullLessonData): void {
       console.error('Failed to save lesson to localStorage:', err);
     }
 
-    // 3. Supabase dual-write (fire-and-forget)
-    import('@/lib/supabase/client').then(async ({ createClient }) => {
-      try {
-        const supabase = createClient();
-        await supabase.from('lessons').upsert({
-          id: lesson.id,
-          group_id: lesson.groupId || null,
-          teacher_id: lesson.teacherId || null,
-          title: lesson.topic || lesson.groupName,
-          date: lesson.date,
-          start_time: lesson.startTime,
-          end_time: lesson.endTime,
-          room: lesson.room,
-          status: lesson.status,
-          topic: lesson.topic,
-          homework: lesson.homework,
-          online_meeting_url: lesson.onlineMeetingUrl,
-          is_trial: lesson.isTrial || false,
-          is_mock_data: false,
-        });
-      } catch (e) {
-        // ignore in offline / dev mode
-      }
-    }).catch(() => {});
+    // 3. Supabase Cloud DB write via sync layer
+    persistEntityToCloud('lesson', lesson);
   }
 }
 

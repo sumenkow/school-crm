@@ -2,6 +2,7 @@
 
 import { FullPaymentData, INITIAL_PAYMENTS } from './mockData';
 import { getEurRubRate, getCurrencyRateMeta } from './currencyHelper';
+import { persistEntityToCloud } from './cloudSync';
 
 const PAYMENTS_STORAGE_KEY = 'crm_payments_v2';
 
@@ -114,28 +115,10 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
     INITIAL_PAYMENTS.unshift(paymentWithRate);
   }
 
-  // 2. Direct Supabase Cloud DB write
+  // 2. Direct Supabase Cloud DB write via sync layer
   if (typeof window !== 'undefined') {
     try {
-      import('@/lib/supabase/client').then(({ createClient }) => {
-        try {
-          const supabase = createClient();
-          supabase.from('payments').upsert({
-            id: paymentWithRate.id,
-            student_id: payment.studentId || null,
-            parent_id: payment.parentId || null,
-            amount: typeof payment.amount === 'number' ? payment.amount : parseFloat(String(payment.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-            payment_date: payment.paymentDate ? new Date(payment.paymentDate.split('.').reverse().join('-')).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-            period_label: payment.periodLabel || (payment as any).period || 'Оплата',
-            status: (payment.status as any) || 'paid',
-            payment_method: (payment.paymentMethod as any) || 'cash',
-            comment: payment.comment || null,
-            is_mock_data: false,
-          }).then(() => {}, (err) => console.warn('Supabase payment upsert error:', err));
-        } catch (e) {
-          console.warn('Supabase client error:', e);
-        }
-      }).catch(() => {});
+      persistEntityToCloud('payment', paymentWithRate);
 
       // Notify all views
       window.dispatchEvent(new CustomEvent('crm-payments-changed', { detail: payment }));
@@ -180,12 +163,14 @@ export function settleOverduePayments(
             remainingBudget -= debt;
             settledCount++;
             settledAmount += debt;
-            return {
+            const settledRecord = {
               ...p,
               status: 'paid' as const,
               paymentDate: todayStr,
               comment: p.comment ? `${p.comment} (Погашено ${todayStr})` : `Задолженность погашена ${todayStr}`,
             };
+            persistEntityToCloud('payment', settledRecord);
+            return settledRecord;
           }
         }
         return p;
