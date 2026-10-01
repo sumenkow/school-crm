@@ -200,8 +200,11 @@ export function LeadDetailsModal({
       const g = getStoredGroups().filter(group => !group.isDeleted);
       setGroups(g);
       if (g.length > 0) {
-        const matched = g.find(item => item.courseName?.toLowerCase() === (lead.directionOrCourse || '').toLowerCase()) || g[0];
-        setSelectedGroup(matched.id);
+        const leadCourse = (lead.directionOrCourse || '').toLowerCase();
+        const matched = g.find(item => (item.courseName || '').toLowerCase() === leadCourse) || g[0];
+        if (matched) {
+          setSelectedGroup(matched.id);
+        }
       }
     }
   }, [lead, userName]);
@@ -286,11 +289,18 @@ export function LeadDetailsModal({
   })();
 
   // Filtered groups for chosen course
-  const matchingGroups = groups.filter(g =>
-    !course || g.courseName?.toLowerCase().includes(course.toLowerCase()) || course.toLowerCase().includes(g.courseName?.toLowerCase())
-  );
-  const displayedGroups = matchingGroups.length > 0 ? matchingGroups : groups;
-  const currentSelectedGroupObj = groups.find(g => g.id === selectedGroup);
+  const matchingGroups = useMemo(() => {
+    if (!Array.isArray(groups)) return [];
+    if (!course?.trim()) return groups;
+    const cLower = course.trim().toLowerCase();
+    return groups.filter(g => {
+      const gCourse = (g?.courseName || '').toLowerCase();
+      return (gCourse && (gCourse.includes(cLower) || cLower.includes(gCourse)));
+    });
+  }, [groups, course]);
+
+  const displayedGroups = matchingGroups.length > 0 ? matchingGroups : (Array.isArray(groups) ? groups : []);
+  const currentSelectedGroupObj = Array.isArray(groups) ? groups.find(g => g.id === selectedGroup) : undefined;
 
   // Actions
   const handleSaveAll = () => {
@@ -756,7 +766,7 @@ export function LeadDetailsModal({
                     Этап воронки (1 клик для переключения):
                   </span>
                   <span className="text-xs font-bold text-blue-700">
-                    {STAGE_OPTIONS.find(s => s.key === status)?.label}
+                    {STAGE_OPTIONS.find(s => s.key === status)?.label || status}
                   </span>
                 </div>
 

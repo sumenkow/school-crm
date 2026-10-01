@@ -58,7 +58,8 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
       setGroups(allG);
 
       // Find matching group by course if possible
-      const matched = allG.find(g => g.courseName?.toLowerCase() === (lead.directionOrCourse || '').toLowerCase()) || allG[0];
+      const leadCourse = (lead.directionOrCourse || '').toLowerCase();
+      const matched = allG.find(g => (g.courseName || '').toLowerCase() === leadCourse) || allG[0];
       if (matched) {
         setSelectedGroupId(matched.id);
       }
@@ -67,8 +68,13 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
 
   // Filtered groups
   const filteredGroups = useMemo(() => {
+    if (!Array.isArray(groups)) return [];
     if (!courseName.trim()) return groups;
-    const match = groups.filter(g => g.courseName?.toLowerCase().includes(courseName.toLowerCase()) || courseName.toLowerCase().includes(g.courseName?.toLowerCase()));
+    const cLower = courseName.trim().toLowerCase();
+    const match = groups.filter(g => {
+      const gCourse = (g?.courseName || '').toLowerCase();
+      return (gCourse && (gCourse.includes(cLower) || cLower.includes(gCourse)));
+    });
     return match.length > 0 ? match : groups;
   }, [groups, courseName]);
 
