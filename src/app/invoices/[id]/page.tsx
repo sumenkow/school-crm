@@ -48,13 +48,29 @@ export default function InvoiceDetailPage() {
 
   // Set browser title to "YouEurope invoice #[invoiceNumber]" so saving as PDF automatically suggests this name
   useEffect(() => {
-    if (invoice) {
-      const originalTitle = document.title;
-      document.title = `YouEurope invoice #${invoice.invoiceNumber}`;
-      return () => {
-        document.title = originalTitle;
-      };
+    if (!invoice) return;
+    const titleStr = `YouEurope invoice #${invoice.invoiceNumber}`;
+    document.title = titleStr;
+
+    let titleEl = document.querySelector('title');
+    if (!titleEl) {
+      titleEl = document.createElement('title');
+      document.head.appendChild(titleEl);
     }
+    titleEl.textContent = titleStr;
+
+    const enforceTitle = () => {
+      document.title = titleStr;
+      if (titleEl) titleEl.textContent = titleStr;
+    };
+
+    window.addEventListener('beforeprint', enforceTitle);
+    window.addEventListener('focus', enforceTitle);
+
+    return () => {
+      window.removeEventListener('beforeprint', enforceTitle);
+      window.removeEventListener('focus', enforceTitle);
+    };
   }, [invoice]);
 
   if (!invoice) {
@@ -112,6 +128,12 @@ export default function InvoiceDetailPage() {
   };
 
   const handlePrint = () => {
+    if (invoice) {
+      const titleStr = `YouEurope invoice #${invoice.invoiceNumber}`;
+      document.title = titleStr;
+      const titleEl = document.querySelector('title');
+      if (titleEl) titleEl.textContent = titleStr;
+    }
     window.print();
   };
 
@@ -134,6 +156,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4 sm:px-6 print:p-0 print:py-0 print:bg-white font-sans text-slate-900 selection:bg-blue-100">
+      <title>{`YouEurope invoice #${invoice.invoiceNumber}`}</title>
       
       {/* Top Floating Control Bar (Hidden on print) */}
       <div className="max-w-3xl mx-auto mb-5 flex items-center justify-between flex-wrap gap-3 print:hidden">

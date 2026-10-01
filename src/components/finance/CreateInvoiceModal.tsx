@@ -80,6 +80,8 @@ export function CreateInvoiceModal({
   const [sendViaTelegram, setSendViaTelegram] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isDirectPayer = Boolean(studentId || parentId);
+
   const applyStudentData = (st: FullStudentData) => {
     setSelectedStudentId(st.id);
     const fullName = `${st.firstName} ${st.lastName}`.trim();
@@ -116,24 +118,32 @@ export function CreateInvoiceModal({
       let activeSt: FullStudentData | undefined;
       if (studentId) {
         activeSt = allStudents.find((s) => s.id === studentId);
-      }
-      if (!activeSt && studentName) {
+      } else if (parentId) {
+        activeSt = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
+      } else if (studentName) {
         activeSt = allStudents.find((s) => `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentName.toLowerCase()));
-      }
-      if (!activeSt && allStudents.length > 0) {
-        activeSt = allStudents[0];
       }
 
       if (activeSt) {
         applyStudentData(activeSt);
-      } else {
+        if (parentId && parentName) {
+          setCurrentParentId(parentId);
+          setCurrentParentName(parentName);
+          if (parentTelegram) setCurrentParentTelegram(parentTelegram);
+          if (parentEmail) setCurrentParentEmail(parentEmail);
+          if (parentPhone) setCurrentParentPhone(parentPhone);
+        }
+      } else if (studentId || parentId) {
         setSelectedStudentId(studentId || 'st_1');
-        setCurrentStudentName(studentName || 'Schüler');
+        setCurrentStudentName(studentName || parentName || 'Schüler');
         setCurrentParentId(parentId);
         setCurrentParentName(parentName);
         setCurrentParentTelegram(parentTelegram);
         setCurrentParentEmail(parentEmail);
         setCurrentParentPhone(parentPhone);
+      } else if (allStudents.length > 0) {
+        // Finance page: select first student by default
+        applyStudentData(allStudents[0]);
       }
 
       const nextNum = getNextInvoiceNumber();
@@ -312,9 +322,31 @@ export function CreateInvoiceModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-600 mb-1">
-                Выберите ученика / плательщика <span className="text-rose-500">*</span>
+                {isDirectPayer ? 'Плательщик / Ученик' : 'Выберите ученика / плательщика'} <span className="text-rose-500">*</span>
               </label>
-              {students.length > 0 ? (
+              {isDirectPayer ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">
+                      <User size={15} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {currentStudentName || studentName}
+                      </p>
+                      {currentParentName && currentParentName !== currentStudentName ? (
+                        <p className="text-[11px] text-slate-500 truncate">
+                          Родитель: <span className="text-slate-700 font-medium">{currentParentName}</span>
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 truncate">
+                          Прямой плательщик
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : students.length > 0 ? (
                 <select
                   value={selectedStudentId}
                   onChange={(e) => {
@@ -338,11 +370,6 @@ export function CreateInvoiceModal({
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-900">
                   {currentStudentName || 'Ученик'}
                 </div>
-              )}
-              {currentParentName && currentParentName !== currentStudentName && (
-                <p className="text-[11px] text-slate-500 mt-1 pl-0.5 truncate">
-                  Представитель: <strong className="text-slate-700 font-semibold">{currentParentName}</strong>
-                </p>
               )}
             </div>
 
