@@ -45,8 +45,7 @@ import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { cn } from '@/lib/utils';
-import { formatPhone, normalizePhone } from '@/app/crm/page';
+import { cn, formatPhone, normalizePhone } from '@/lib/utils';
 
 export const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -255,9 +254,17 @@ export function LeadDetailsModal({
 
   // Helper metrics
   const daysInCrm = (() => {
-    if (!lead?.createdAt) return '3 дня';
+    if (!lead?.createdAt) return '1 дн.';
     try {
-      const parts = String(lead.createdAt).split('.');
+      const raw = String(lead.createdAt);
+      if (raw.includes('T') || (raw.includes('-') && raw.length >= 10)) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          const diffDays = Math.max(1, Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24)));
+          return `${diffDays} дн.`;
+        }
+      }
+      const parts = raw.split('.');
       if (parts.length === 3) {
         const createdDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
         if (!isNaN(createdDate.getTime())) {
@@ -268,7 +275,7 @@ export function LeadDetailsModal({
     } catch {
       // fallback
     }
-    return '3 дня';
+    return '1 дн.';
   })();
 
   const lastContactFormatted = (() => {

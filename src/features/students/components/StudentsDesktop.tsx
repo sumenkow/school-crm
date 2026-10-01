@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Copy, Phone, Check } from 'lucide-react';
 import { cn, isEntityNew } from '@/lib/utils';
-import { StudentListItem } from '@/app/students/page';
+import type { StudentListItem } from '@/app/students/page';
 import { restoreStudent } from '@/lib/data/studentStorage';
 import { useToast } from '@/context/ToastContext';
 
