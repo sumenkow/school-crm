@@ -78,6 +78,12 @@ export function CreateInvoiceModal({
     if (isOpen) {
       const nextNum = getNextInvoiceNumber();
       setInvoiceNumber(nextNum);
+      if (defaultCourseName) {
+        setCourseName(defaultCourseName);
+      }
+      if (defaultAmountEUR) {
+        setAmountEUR(defaultAmountEUR);
+      }
       const now = new Date();
       setIssueDate(now.toLocaleDateString('ru-RU'));
 
@@ -85,7 +91,7 @@ export function CreateInvoiceModal({
       due.setDate(due.getDate() + 3);
       setDueDate(due.toLocaleDateString('ru-RU'));
     }
-  }, [isOpen]);
+  }, [isOpen, defaultCourseName, defaultAmountEUR]);
 
   if (!isOpen) return null;
 
@@ -250,7 +256,7 @@ export function CreateInvoiceModal({
               </div>
             </div>
             <div>
-              <label className="block font-semibold text-slate-600 mb-1">Название курса</label>
+              <label className="block font-semibold text-slate-600 mb-1">Название курса (на немецком)</label>
               <input
                 type="text"
                 value={courseName}
@@ -259,6 +265,23 @@ export function CreateInvoiceModal({
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
               />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {['Deutsch A1', 'Deutsch A2', 'Deutsch B1', 'Deutsch B2', 'Texteschreiben', 'Grammatik', 'EPD Vorbereitung'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCourseName(c)}
+                    className={cn(
+                      'text-[10px] px-2 py-0.5 rounded-md font-semibold transition-colors cursor-pointer border',
+                      courseName === c
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                    )}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

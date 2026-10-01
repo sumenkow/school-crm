@@ -1463,6 +1463,7 @@ export default function StudentDetailsPage() {
         onOpenCreateTaskModal={() => setIsCreateTaskModalOpen(true)}
         onOpenEditStudentModal={handleOpenEditStudentModal}
         onOpenTelegramConnect={() => setIsTelegramConnectOpen(true)}
+        onOpenCreateInvoiceModal={() => setIsInvoiceModalOpen(true)}
         onConvertAdultModal={() => {
           setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
           setStudentDirectTelegram(student.telegram || '');
@@ -1633,6 +1634,15 @@ export default function StudentDetailsPage() {
               >
                 <CreditCard className="h-3.5 w-3.5" />
                 {t('action.addPayment', 'Добавить платёж')}
+              </button>
+            )}
+            {role !== 'teacher' && (
+              <button
+                onClick={() => setIsInvoiceModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+              >
+                <FileText className="h-3.5 w-3.5 text-blue-600" />
+                Выставить счёт
               </button>
             )}
             {role !== 'teacher' && (
@@ -3983,10 +3993,10 @@ export default function StudentDetailsPage() {
         studentName={`${student.firstName} ${student.lastName}`}
         parentId={student.parents?.[0]?.id}
         parentName={student.parents?.[0] ? `${student.parents[0].firstName || ''} ${student.parents[0].lastName || ''}`.trim() : undefined}
-        parentTelegram={student.telegram}
+        parentTelegram={student.telegram || student.parents?.[0]?.telegram}
         parentEmail={student.parents?.[0]?.email}
         parentPhone={student.phone || student.parents?.[0]?.phone}
-        defaultCourseName={student.groups?.[0]?.courseName || 'EPD Vorbereitung'}
+        defaultCourseName={student.groups?.[0]?.courseName || student.groups?.[0]?.name || 'EPD Vorbereitung'}
         defaultAmountEUR={270.0}
       />
 

@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Copy,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -87,6 +88,7 @@ export interface ParentProfileDesktopProps {
   onSelectTab: (tabKey: string) => void;
   onSendReminder: (channel: 'whatsapp' | 'telegram') => void;
   onOpenTelegramConnect?: () => void;
+  onOpenCreateInvoiceModal?: () => void;
 }
 
 export function ParentProfileDesktop({
@@ -102,6 +104,7 @@ export function ParentProfileDesktop({
   onSelectTab,
   onSendReminder,
   onOpenTelegramConnect,
+  onOpenCreateInvoiceModal,
 }: ParentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const [isReminderDropdownOpen, setIsReminderDropdownOpen] = useState(false);
@@ -400,6 +403,19 @@ export function ParentProfileDesktop({
               </button>
             )}
 
+            {/* Выставить счёт */}
+            {role !== 'teacher' && (
+              <button
+                type="button"
+                onClick={onOpenCreateInvoiceModal}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Сформировать европейский счёт на оплату (Faktúra)"
+              >
+                <FileText className="h-3.5 w-3.5 text-blue-600" />
+                Выставить счёт
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onOpenCreateTaskModal}
@@ -438,6 +454,20 @@ export function ParentProfileDesktop({
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
                     <span>Редактировать</span>
                   </button>
+
+                  {role !== 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreDropdownOpen(false);
+                        onOpenCreateInvoiceModal?.();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium cursor-pointer"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Выставить счёт (Faktúra)</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

@@ -1112,6 +1112,7 @@ export default function ParentDetailsPage() {
           onOpenEditParentModal={handleOpenEdit}
           onOpenLinkChildModal={() => setIsAddChildModalOpen(true)}
           onOpenTelegramConnect={() => setIsTelegramConnectOpen(true)}
+          onOpenCreateInvoiceModal={() => setIsInvoiceModalOpen(true)}
           onDeleteParent={() => {
             if (confirm(`Удалить контакт представителя ${parent.firstName} ${parent.lastName}? Связанные ученики не будут удалены.`)) {
               success('Родитель перемещён в архив');

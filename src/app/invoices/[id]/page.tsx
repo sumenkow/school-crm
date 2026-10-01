@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Printer,
   Copy,
@@ -9,12 +10,9 @@ import {
   CheckCircle2,
   Clock,
   ArrowLeft,
-  Building2,
-  QrCode,
-  Download,
   Share2,
   CreditCard,
-  Send,
+  QrCode,
 } from 'lucide-react';
 import {
   getStoredInvoices,
@@ -61,7 +59,7 @@ export default function InvoiceDetailPage() {
           </p>
           <button
             onClick={() => router.push('/finance')}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
             <ArrowLeft size={14} />
             Вернуться в CRM
@@ -71,7 +69,14 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const bank = invoice.bankDetails;
+  const bank = invoice.bankDetails || {
+    accountHolder: 'Ekaterina Nezhenkina',
+    bankName: 'Tatra banka, a.s.',
+    iban: 'SK34 1100 0000 0029 3766 3128',
+    swiftBic: 'TATRSKBX',
+    vatNote: 'Nicht umsatzsteuerpflichtig gem. Kleinunternehmerregelung / Steuerbefreit',
+  };
+
   const qrSvg = generateSepaQrSvg({
     name: bank.accountHolder,
     iban: bank.iban,
@@ -79,7 +84,7 @@ export default function InvoiceDetailPage() {
     amount: invoice.totalAmountEUR,
     variableSymbol: invoice.variableSymbol,
     purpose: `${invoice.courseName} - ${invoice.studentName}`,
-  }, 220);
+  }, 170);
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -90,6 +95,11 @@ export default function InvoiceDetailPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleShareLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    success('Ссылка на счёт скопирована в буфер обмена');
   };
 
   const handleMarkPaid = () => {
@@ -105,23 +115,33 @@ export default function InvoiceDetailPage() {
   const isPaid = invoice.status === 'paid';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 py-6 px-4 sm:px-6">
-      {/* Top Toolbar (Hidden on Print) */}
-      <div className="max-w-3xl mx-auto mb-4 flex items-center justify-between flex-wrap gap-3 print:hidden">
+    <div className="min-h-screen bg-[#F8FAFC] py-8 px-4 sm:px-6 print:p-0 print:bg-white font-sans text-slate-900 selection:bg-blue-100">
+      
+      {/* Top Floating Control Bar (Strictly hidden on print) */}
+      <div className="max-w-3xl mx-auto mb-6 flex items-center justify-between flex-wrap gap-3 print:hidden">
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
         >
           <ArrowLeft size={14} />
           Назад в CRM
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleShareLink}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer"
+            title="Скопировать публичную ссылку для клиента"
+          >
+            <Share2 size={14} />
+            Поделиться ссылкой
+          </button>
+
           {!isPaid && (
             <button
               onClick={handleMarkPaid}
               disabled={isMarkingPaid}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
             >
               <CheckCircle2 size={14} />
               Отметить как оплаченный
@@ -130,253 +150,298 @@ export default function InvoiceDetailPage() {
 
           <button
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <Printer size={14} />
-            Печать / Скачать PDF
+            Печать / Сохранить в PDF
           </button>
         </div>
       </div>
 
-      {/* Main Invoice Document (A4 Container) */}
-      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden print:shadow-none print:border-none print:rounded-none p-6 sm:p-10 space-y-8">
+      {/* Main Editorial Invoice Sheet */}
+      <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200/80 p-8 sm:p-14 space-y-9 print:shadow-none print:border-none print:rounded-none print:p-8 print:max-w-none print:w-full print:m-0">
         
-        {/* 1. Header: School & Invoice meta */}
-        <div className="flex items-start justify-between flex-wrap gap-4 border-b border-slate-100 pb-6">
+        {/* 1. Header: Left Title + Right Logo */}
+        <div className="flex items-start justify-between border-b border-slate-200 pb-7 gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-sm">
-                YE
-              </div>
-              <div>
-                <h1 className="text-lg font-black text-slate-900 tracking-tight">You Europe</h1>
-                <p className="text-[11px] text-slate-500 font-medium">Sprach- & Bildungszentrum</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-600 pt-2">
-              <strong>{bank.accountHolder}</strong><br />
-              Bratislava, Slovensko / Wien, Österreich<br />
-              {bank.vatNote}
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 uppercase">
+              INVOICE
+            </h1>
+            <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+              RECHNUNG / FAKTÚRA
             </p>
           </div>
 
-          <div className="text-right space-y-1">
-            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 rounded-full mb-1">
-              Faktúra / Rechnung
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 font-mono tracking-tight">
-              № {invoice.invoiceNumber}
-            </h2>
-            <p className="text-xs text-slate-500">
-              Variabilný symbol (VS): <strong className="text-slate-900 font-mono">{invoice.variableSymbol}</strong>
-            </p>
-            <div className="pt-2">
-              {isPaid ? (
-                <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
-                  <CheckCircle2 size={13} />
-                  Оплачено (Bezahlt)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold">
-                  <Clock size={13} />
-                  К оплате (Zu zahlen)
-                </span>
-              )}
+          <div className="flex items-center gap-3.5 text-right">
+            <div className="hidden sm:block space-y-0.5">
+              <span className="block text-sm font-black text-slate-900 tracking-tight">YOU EUROPE</span>
+              <span className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Sprachzentrum</span>
+            </div>
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-slate-200 shadow-2xs relative shrink-0 bg-white flex items-center justify-center">
+              <Image
+                src="/images/logo-you-europe.jpg"
+                alt="You Europe Logo"
+                width={64}
+                height={64}
+                className="object-contain w-full h-full p-1"
+                priority
+              />
             </div>
           </div>
         </div>
 
-        {/* 2. Customer & Dates Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs bg-slate-50/70 p-5 rounded-2xl border border-slate-100">
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Получатель счёта / Odberateľ / Kunde:
+        {/* 2. Meta Info Grid (Issued to & Invoice Details) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
+          {/* Left Column: Billed to */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+              EMPFÄNGER / ISSUED TO:
             </span>
-            <p className="text-sm font-bold text-slate-900">
-              {invoice.parentName || invoice.studentName}
-            </p>
-            <p className="text-slate-600">
-              Ученик / Schüler: <strong>{invoice.studentName}</strong>
-            </p>
-            {invoice.parentPhone && <p className="text-slate-500">Тел: {invoice.parentPhone}</p>}
-            {invoice.parentEmail && <p className="text-slate-500">Email: {invoice.parentEmail}</p>}
+            <div className="space-y-1">
+              <p className="text-base font-bold text-slate-900">
+                {invoice.parentName || invoice.studentName}
+              </p>
+              {invoice.parentName && invoice.parentName !== invoice.studentName && (
+                <p className="text-slate-600 font-medium">
+                  Schüler / Student: <strong>{invoice.studentName}</strong>
+                </p>
+              )}
+              <p className="text-slate-500">
+                Online-Sprachkurs / Online Course
+              </p>
+              {invoice.parentEmail && (
+                <p className="text-slate-500">
+                  Email: {invoice.parentEmail}
+                </p>
+              )}
+              {invoice.parentPhone && (
+                <p className="text-slate-500">
+                  Tel: {invoice.parentPhone}
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-1.5 sm:text-right">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Даты и условия / Zahlungsbedingungen:
-            </span>
-            <p className="text-slate-600">
-              Дата выставления / Dátum vystavenia: <strong className="text-slate-900">{invoice.issueDate}</strong>
-            </p>
-            <p className="text-slate-600">
-              Срок оплаты / Bis dahin zu zahlen: <strong className="text-rose-700 font-bold">{invoice.dueDate}</strong>
-            </p>
-            <p className="text-slate-600">
-              Период / Zeitraum: <strong className="text-slate-900">{invoice.periodLabel}</strong>
-            </p>
-            <p className="text-slate-600">
-              Способ оплаты: <strong className="text-slate-900">SEPA Banküberweisung</strong>
-            </p>
+          {/* Right Column: Invoice Details (Right-aligned on desktop) */}
+          <div className="space-y-2 sm:text-right">
+            <div className="space-y-1.5">
+              <div className="flex sm:justify-end gap-3 items-baseline">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  INVOICE NO / RECHNUNG NR:
+                </span>
+                <span className="text-sm font-mono font-bold text-slate-900">
+                  {invoice.invoiceNumber}
+                </span>
+              </div>
+
+              <div className="flex sm:justify-end gap-3 items-baseline">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  DATUM / DATE:
+                </span>
+                <span className="text-xs font-semibold text-slate-800">
+                  {invoice.issueDate}
+                </span>
+              </div>
+
+              <div className="flex sm:justify-end gap-3 items-baseline">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  FÄLLIGKEIT / DUE DATE:
+                </span>
+                <span className="text-xs font-bold text-slate-900">
+                  {invoice.dueDate}
+                </span>
+              </div>
+
+              <div className="pt-2 sm:flex sm:justify-end">
+                {isPaid ? (
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full text-xs font-bold">
+                    <CheckCircle2 size={13} />
+                    BEZAHLT / PAID
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold">
+                    <Clock size={13} />
+                    OFFEN / DUE FOR PAYMENT
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* 3. Items Table */}
-        <div className="space-y-3">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b-2 border-slate-200 text-slate-500 text-[11px] uppercase tracking-wider">
-                <th className="py-2.5 pr-4 font-bold">Услуга / Beschreibung</th>
-                <th className="py-2.5 px-3 text-center font-bold">Кол-во</th>
-                <th className="py-2.5 px-3 text-right font-bold">Тариф</th>
-                <th className="py-2.5 pl-3 text-right font-bold">Сумма</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-800">
-              {invoice.items.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/40">
-                  <td className="py-3.5 pr-4 font-semibold text-slate-900">
-                    {item.description}
-                  </td>
-                  <td className="py-3.5 px-3 text-center text-slate-600 font-mono">
-                    {item.quantity}
-                  </td>
-                  <td className="py-3.5 px-3 text-right font-mono text-slate-700">
-                    {item.unitPriceEUR.toFixed(2)} €
-                  </td>
-                  <td className="py-3.5 pl-3 text-right font-bold font-mono text-slate-900">
-                    {item.amountEUR.toFixed(2)} €
-                  </td>
+        <div className="space-y-4">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-900 text-slate-900 text-[11px] uppercase tracking-wider font-bold">
+                  <th className="py-3 pr-4 font-black">BESCHREIBUNG / DESCRIPTION</th>
+                  <th className="py-3 px-3 text-center font-black">PREIS / RATE</th>
+                  <th className="py-3 px-3 text-center font-black">MENGE / QTY</th>
+                  <th className="py-3 pl-3 text-right font-black">GESAMT / TOTAL</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-800">
+                {invoice.items.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/40">
+                    <td className="py-4 pr-4">
+                      <span className="font-bold text-slate-900 text-sm block">
+                        {item.description}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block mt-0.5">
+                        Zeitraum / Period: {invoice.periodLabel}
+                      </span>
+                    </td>
+                    <td className="py-4 px-3 text-center font-mono font-medium text-slate-700">
+                      {item.unitPriceEUR.toFixed(2)} €
+                    </td>
+                    <td className="py-4 px-3 text-center font-mono font-medium text-slate-700">
+                      {item.quantity}
+                    </td>
+                    <td className="py-4 pl-3 text-right font-bold font-mono text-slate-900 text-sm">
+                      {item.amountEUR.toFixed(2)} €
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Total Box */}
-          <div className="flex justify-end pt-2">
-            <div className="w-64 bg-slate-900 text-white rounded-2xl p-4 space-y-1.5 shadow-xs">
-              <div className="flex justify-between text-xs text-white/70">
-                <span>Итого без скидки:</span>
+          {/* Subtotal & Total Summary */}
+          <div className="flex justify-end border-t-2 border-slate-900 pt-4">
+            <div className="w-72 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-600 font-medium">
+                <span className="uppercase tracking-wider text-[11px] font-semibold">ZWISCHENSUMME / SUBTOTAL:</span>
                 <span className="font-mono">{invoice.subtotalEUR.toFixed(2)} €</span>
               </div>
+              
               {invoice.discountEUR > 0 && (
-                <div className="flex justify-between text-xs text-emerald-400">
-                  <span>Скидка:</span>
+                <div className="flex justify-between text-emerald-600 font-medium">
+                  <span className="uppercase tracking-wider text-[11px] font-semibold">RABATT / DISCOUNT:</span>
                   <span className="font-mono">-{invoice.discountEUR.toFixed(2)} €</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-black border-t border-white/20 pt-2 text-white">
-                <span>ИТОГО К ОПЛАТЕ:</span>
-                <span className="text-emerald-400 font-mono">{invoice.totalAmountEUR.toFixed(2)} €</span>
+
+              <div className="flex justify-between text-slate-500 text-[11px]">
+                <span>MWST. / VAT (0% / Befreit):</span>
+                <span className="font-mono">0.00 €</span>
+              </div>
+
+              <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 text-slate-900">
+                <span className="text-sm font-black uppercase tracking-tight">GESAMTBETRAG / TOTAL:</span>
+                <span className="text-xl font-black font-mono tracking-tight text-blue-700 print:text-black">
+                  {invoice.totalAmountEUR.toFixed(2)} €
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 4. SEPA Payment Instructions & QR Code Box */}
-        <div className="rounded-2xl border-2 border-blue-200/80 bg-gradient-to-r from-blue-50/60 to-indigo-50/40 p-6 space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2 border-b border-blue-200/60 pb-3">
-            <div className="flex items-center gap-2">
-              <CreditCard className="text-blue-600 h-5 w-5" />
-              <h3 className="text-sm font-bold text-slate-900">
-                Реквизиты для оплаты через банк (SEPA / Tatra banka)
-              </h3>
-            </div>
-            <span className="text-[11px] font-bold text-blue-700 bg-blue-100/80 px-2.5 py-0.5 rounded-full">
-              Tatra banka, a.s.
+        {/* 4. Payment Info Block & SEPA QR Code & Signature */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 pt-4 border-t border-slate-200 items-start">
+          
+          {/* Bank Details (8 cols) */}
+          <div className="md:col-span-8 space-y-3 text-xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+              ZAHLUNGSINFORMATIONEN / PAYMENT INFO:
             </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {/* Bank details & Copyable fields */}
-            <div className="md:col-span-2 space-y-3 text-xs">
-              <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Получатель (Kontoinhaber)</span>
-                  <span className="font-bold text-slate-900 text-sm">{bank.accountHolder}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(bank.accountHolder, 'Получатель')}
-                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  title="Скопировать"
-                >
-                  {copiedField === 'Получатель' ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                </button>
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-slate-500 font-medium">Bank:</span>
+                <strong className="text-slate-900 font-semibold">{bank.bankName || 'Tatra banka, a.s.'}</strong>
               </div>
 
-              <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">IBAN счёта</span>
-                  <span className="font-bold font-mono text-slate-900 text-sm tracking-wide">{bank.iban}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCopy(bank.iban.replace(/\s+/g, ''), 'IBAN')}
-                  className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  title="Скопировать IBAN"
-                >
-                  {copiedField === 'IBAN' ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                </button>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-slate-500 font-medium">Kontoinhaber / Account Name:</span>
+                <strong className="text-slate-900 font-semibold">{bank.accountHolder}</strong>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">SWIFT / BIC</span>
-                    <span className="font-bold font-mono text-slate-900">{bank.swiftBic}</span>
-                  </div>
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-200">
+                <span className="text-slate-500 font-medium">IBAN:</span>
+                <div className="flex items-center gap-2">
+                  <strong className="text-slate-900 font-mono font-bold text-sm tracking-wide">
+                    {bank.iban}
+                  </strong>
                   <button
                     type="button"
-                    onClick={() => handleCopy(bank.swiftBic, 'SWIFT')}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
+                    onClick={() => handleCopy(bank.iban.replace(/\s/g, ''), 'IBAN')}
+                    className="p-1 text-slate-400 hover:text-blue-600 print:hidden cursor-pointer"
+                    title="Копировать IBAN"
                   >
-                    {copiedField === 'SWIFT' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-                  </button>
-                </div>
-
-                <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Variabilný symbol (VS)</span>
-                    <span className="font-bold font-mono text-blue-700 text-sm">{invoice.variableSymbol}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(String(invoice.variableSymbol), 'VS')}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  >
-                    {copiedField === 'VS' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                    {copiedField === 'IBAN' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                   </button>
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed">
-                <strong>Важно:</strong> Пожалуйста, обязательно укажите номер счёта <strong>«{invoice.invoiceNumber}»</strong> в поле <em>Variabilný symbol</em> или в назначении перевода для автоматического зачисления оплаты.
+              {bank.swiftBic && (
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-slate-500 font-medium">SWIFT / BIC:</span>
+                  <strong className="text-slate-900 font-mono">{bank.swiftBic}</strong>
+                </div>
+              )}
+
+              {/* Variable Symbol / Reference */}
+              <div className="flex items-center justify-between flex-wrap gap-2 bg-blue-50/80 -mx-4 -mb-4 p-3.5 rounded-b-xl border-t border-blue-100">
+                <div>
+                  <span className="text-[11px] font-bold text-blue-900 uppercase block">
+                    VERWENDUNGSZWECK / PAYMENT REFERENCE:
+                  </span>
+                  <span className="text-[10px] text-blue-700">
+                    Bitte Rechnungsnummer angeben / Please use invoice number as reference
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <strong className="text-base font-mono font-black text-blue-800 bg-white px-2.5 py-0.5 rounded-md border border-blue-200">
+                    {invoice.variableSymbol || invoice.invoiceNumber}
+                  </strong>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(String(invoice.variableSymbol || invoice.invoiceNumber), 'Verwendungszweck')}
+                    className="p-1 text-blue-600 hover:text-blue-800 print:hidden cursor-pointer"
+                    title="Копировать номер счёта"
+                  >
+                    {copiedField === 'Verwendungszweck' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* SEPA EPC QR-Code */}
-            <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl border border-blue-200/80 shadow-2xs text-center space-y-2">
+            <p className="text-[10px] text-slate-400 leading-relaxed pt-1">
+              <strong>Hinweis / Note:</strong> {bank.vatNote || 'Nicht umsatzsteuerpflichtig gem. Kleinunternehmerregelung / Steuerbefreit (Exempt from VAT).'}<br />
+              Vielen Dank für Ihre Zusammenarbeit! / Thank you for choosing You Europe!
+            </p>
+          </div>
+
+          {/* QR Code & Signature (4 cols) */}
+          <div className="md:col-span-4 flex flex-col items-center justify-center text-center space-y-4 pt-1">
+            {/* SEPA QR Code Container */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-1.5 inline-block">
               <div
-                className="w-[180px] h-[180px] flex items-center justify-center"
                 dangerouslySetInnerHTML={{ __html: qrSvg }}
+                className="w-36 h-36 flex items-center justify-center mx-auto"
               />
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                SEPA Pay by QR
-              </span>
-              <p className="text-[10px] text-slate-400 leading-tight">
-                Отсканируйте в приложении Tatra banka, Revolut, Erste или другого банка ЕС
-              </p>
+              <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                <QrCode size={12} className="text-blue-600" />
+                <span>SEPA Pay by QR</span>
+              </div>
+            </div>
+
+            {/* Signature representation */}
+            <div className="pt-2 text-center">
+              <div className="font-serif italic text-lg text-slate-700 tracking-wide">
+                Ekaterina Nezhenkina
+              </div>
+              <div className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold border-t border-slate-200 pt-1 mt-0.5">
+                YOU EUROPE MANAGEMENT
+              </div>
             </div>
           </div>
+
         </div>
 
-        {/* 5. Footer notes */}
-        <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Сгенерировано в You Europe CRM • {invoice.createdAt ? new Date(invoice.createdAt).toLocaleDateString('ru-RU') : invoice.issueDate}</span>
-          <span>Vystavil: Ekaterina Nezhenkina</span>
-        </div>
       </div>
+
     </div>
   );
 }

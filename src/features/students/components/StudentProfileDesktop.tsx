@@ -12,6 +12,7 @@ import {
   MoreHorizontal,
   Sparkles,
   Clock,
+  FileText,
 } from 'lucide-react';
 import { cn, isEntityNew } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -102,6 +103,7 @@ export interface StudentProfileDesktopProps {
   onDeleteStudent: () => void;
   onSelectTab: (tabKey: string) => void;
   onOpenTelegramConnect?: () => void;
+  onOpenCreateInvoiceModal?: () => void;
 }
 
 export function StudentProfileDesktop({
@@ -118,6 +120,7 @@ export function StudentProfileDesktop({
   onDeleteStudent,
   onSelectTab,
   onOpenTelegramConnect,
+  onOpenCreateInvoiceModal,
 }: StudentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -366,7 +369,20 @@ export function StudentProfileDesktop({
               </button>
             )}
 
-            {/* 2. ✓ Создать задачу */}
+            {/* 2. 🧾 Выставить счёт */}
+            {role !== 'teacher' && (
+              <button
+                type="button"
+                onClick={onOpenCreateInvoiceModal}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Сформировать европейский счёт на оплату (Faktúra)"
+              >
+                <FileText className="h-3.5 w-3.5 text-blue-600" />
+                Выставить счёт
+              </button>
+            )}
+
+            {/* 3. ✓ Создать задачу */}
             <button
               type="button"
               onClick={onOpenCreateTaskModal}
@@ -376,7 +392,7 @@ export function StudentProfileDesktop({
               Создать задачу
             </button>
 
-            {/* 3. ··· (Ещё) Dropdown */}
+            {/* 4. ··· (Ещё) Dropdown */}
             <div className="relative" ref={moreRef}>
               <button
                 type="button"
@@ -400,6 +416,20 @@ export function StudentProfileDesktop({
                     <Edit className="h-3.5 w-3.5 text-blue-600" />
                     <span>Редактировать профиль</span>
                   </button>
+
+                  {role !== 'teacher' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMoreDropdownOpen(false);
+                        onOpenCreateInvoiceModal?.();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors font-medium cursor-pointer"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Выставить счёт (Faktúra)</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
