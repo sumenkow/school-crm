@@ -139,7 +139,26 @@ export async function sendTelegramDirectMessage(params: {
 
     const data = await res.json();
     if (!data.ok) {
-      return { success: false, error: data.description || 'Failed to send message' };
+      const desc = data.description || '';
+      if (desc.includes('chat not found')) {
+        if (String(chatId).startsWith('@') || /[a-zA-Z]/.test(String(chatId))) {
+          return {
+            success: false,
+            error: `Для личных сообщений в Telegram Bot API требуется числовой Chat ID (например, 123456789), а не @username ${chatId}. Узнайте свой ID в @userinfobot и нажмите кнопку Start в вашем боте.`,
+          };
+        }
+        return {
+          success: false,
+          error: `Чат ${chatId} не найден ботом. Убедитесь, что получатель запустил бота командой /start.`,
+        };
+      }
+      if (desc.includes('bot was blocked by the user')) {
+        return {
+          success: false,
+          error: `Бот заблокирован пользователем (${chatId}). Нажмите «Запустить» в диалоге с ботом.`,
+        };
+      }
+      return { success: false, error: desc || 'Failed to send message' };
     }
 
     return { success: true, messageId: data.result?.message_id };

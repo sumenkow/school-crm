@@ -14,6 +14,7 @@ import {
   Bell,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Globe,
   RefreshCw,
   Zap
@@ -334,76 +335,139 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
           </div>
 
           {/* Admin Chat ID */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700 flex items-center gap-1.5">
-                <UserCheck size={14} className="text-blue-600" />
-                Chat ID Администратора / Дежурной смены:
-              </label>
-              <a
-                href="https://t.me/userinfobot"
-                target="_blank"
-                rel="noreferrer"
-                className="text-[11px] text-blue-600 hover:underline inline-flex items-center gap-1"
-              >
-                Узнать ID в @userinfobot
-                <ExternalLink size={11} />
-              </a>
-            </div>
-            <input
-              type="text"
-              placeholder="Например: 987654321 или @school_admins"
-              value={adminChatId}
-              onChange={(e) => setAdminChatId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
-            />
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-[11px] text-slate-400">
-                Сюда приходят новые поручения от руководителя, заявки и напоминания.
-              </p>
-              <button
-                type="button"
-                onClick={() => handleSendTest('admin')}
-                disabled={testSending}
-                className="text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline shrink-0 cursor-pointer"
-              >
-                Тест для админа →
-              </button>
-            </div>
-          </div>
+          {(() => {
+            const isNotNumeric = (val: string) => {
+              const trimmed = val.trim();
+              return trimmed.length > 0 && (trimmed.startsWith('@') || !/^-?\d+$/.test(trimmed));
+            };
+            const adminIsUsername = isNotNumeric(adminChatId);
+            const ownerIsUsername = isNotNumeric(ownerChatId);
 
-          {/* Owner Chat ID */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700 flex items-center gap-1.5">
-                <Shield size={14} className="text-purple-600" />
-                Chat ID Руководителя / Владельца:
-              </label>
-              <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
-                Конфиденциально
-              </span>
-            </div>
-            <input
-              type="text"
-              placeholder="Например: 123456789"
-              value={ownerChatId}
-              onChange={(e) => setOwnerChatId(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 font-mono"
-            />
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-[11px] text-slate-400">
-                Сюда приходят отчеты аудита, уведомления о просроченных задачах и выполнении поручений.
-              </p>
-              <button
-                type="button"
-                onClick={() => handleSendTest('owner')}
-                disabled={testSending}
-                className="text-[11px] text-purple-600 hover:text-purple-800 font-bold hover:underline shrink-0 cursor-pointer"
-              >
-                Тест для руководителя →
-              </button>
-            </div>
-          </div>
+            return (
+              <>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <UserCheck size={14} className="text-blue-600" />
+                      Chat ID Администратора / Дежурной смены:
+                    </label>
+                    <a
+                      href="https://t.me/userinfobot"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-blue-600 hover:underline inline-flex items-center gap-1"
+                    >
+                      Узнать ID в @userinfobot
+                      <ExternalLink size={11} />
+                    </a>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Например: 123456789 (только цифры)"
+                    value={adminChatId}
+                    onChange={(e) => setAdminChatId(e.target.value)}
+                    className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 font-mono ${
+                      adminIsUsername
+                        ? 'border-amber-400 focus:ring-amber-500/20 focus:border-amber-500'
+                        : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                  />
+                  {adminIsUsername && (
+                    <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] space-y-1.5 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                        <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                        <span>Требуется числовой Chat ID, а не @username ({adminChatId})</span>
+                      </div>
+                      <p className="text-amber-700 leading-normal">
+                        Telegram Bot API запрещает ботам писать по @username. Необходим ваш личный цифровой ID (например: <code className="bg-amber-100 px-1 py-0.5 rounded font-mono font-bold text-amber-900">123456789</code>). Также не забудьте нажать кнопку «Запустить» (/start) в диалоге с ботом школы.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <a
+                          href="https://t.me/userinfobot"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200/70 hover:bg-amber-200 text-amber-950 font-bold transition-colors"
+                        >
+                          1. Узнать ID в @userinfobot <ExternalLink size={10} />
+                        </a>
+                        {botInfo?.username && (
+                          <a
+                            href={`https://t.me/${botInfo.username}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold transition-colors"
+                          >
+                            2. Нажать /start в @{botInfo.username} <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[11px] text-slate-400">
+                      Сюда приходят новые поручения от руководителя, заявки и напоминания.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleSendTest('admin')}
+                      disabled={testSending}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-bold hover:underline shrink-0 cursor-pointer"
+                    >
+                      Тест для админа →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Owner Chat ID */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <Shield size={14} className="text-purple-600" />
+                      Chat ID Руководителя / Владельца:
+                    </label>
+                    <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+                      Конфиденциально
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Например: 123456789 (только цифры)"
+                    value={ownerChatId}
+                    onChange={(e) => setOwnerChatId(e.target.value)}
+                    className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 font-mono ${
+                      ownerIsUsername
+                        ? 'border-amber-400 focus:ring-amber-500/20 focus:border-amber-500'
+                        : 'border-slate-200 focus:ring-purple-500/20 focus:border-purple-500'
+                    }`}
+                  />
+                  {ownerIsUsername && (
+                    <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-[11px] space-y-1.5 animate-in fade-in duration-150">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                        <AlertTriangle size={13} className="text-amber-600 shrink-0" />
+                        <span>Требуется числовой Chat ID, а не @username ({ownerChatId})</span>
+                      </div>
+                      <p className="text-amber-700 leading-normal">
+                        Укажите личный числовой ID руководителя из <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="underline font-bold">@userinfobot</a>.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[11px] text-slate-400">
+                      Сюда приходят отчеты аудита, уведомления о просроченных задачах и выполнении поручений.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleSendTest('owner')}
+                      disabled={testSending}
+                      className="text-[11px] text-purple-600 hover:text-purple-800 font-bold hover:underline shrink-0 cursor-pointer"
+                    >
+                      Тест для руководителя →
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
           {/* Test Status Banner */}
           {testStatus && (
@@ -424,16 +488,28 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
           )}
 
           {/* Help Box */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-1.5 text-[11px] text-slate-600">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2 text-[11px] text-slate-600">
             <p className="font-bold text-slate-800 flex items-center gap-1.5">
               <HelpCircle size={13} className="text-blue-600" />
-              Как запустить бота для учеников и лидов:
+              Инструкция по настройке Telegram:
             </p>
-            <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-500">
-              <li>Укажите API Token вашего бота от @BotFather.</li>
-              <li>Нажмите кнопку <strong>«Зарегистрировать»</strong> в блоке Webhook.</li>
-              <li>В карточке любого ученика или лида нажмите <strong>«Подключить Telegram»</strong> и скопируйте персональную ссылку для клиента.</li>
-            </ol>
+            <div className="space-y-1.5 text-slate-600">
+              <p>
+                <strong>1. Для уведомлений Администратора / Руководителя:</strong>
+              </p>
+              <ul className="list-disc list-inside pl-1 space-y-0.5 text-slate-500">
+                <li>Откройте бота <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">@userinfobot</a> и нажмите <strong>/start</strong>.</li>
+                <li>Скопируйте число из строки <strong>Id</strong> (например: <code className="font-mono font-bold text-slate-700">123456789</code>) и вставьте в поле выше.</li>
+                <li>Откройте вашего созданного бота школы и нажмите кнопку <strong>«Запустить»</strong> (/start), чтобы разрешить ему писать вам.</li>
+              </ul>
+              <p className="pt-1">
+                <strong>2. Для учеников, родителей и лидов:</strong>
+              </p>
+              <ul className="list-disc list-inside pl-1 space-y-0.5 text-slate-500">
+                <li>Нажмите синюю кнопку <strong>«Зарегистрировать»</strong> в блоке Webhook выше.</li>
+                <li>В профиле ученика/лида нажмите <strong>«Подключить Telegram»</strong> и отправьте клиенту персональную ссылку. При переходе бот свяжет чат с CRM автоматически.</li>
+              </ul>
+            </div>
           </div>
         </div>
 

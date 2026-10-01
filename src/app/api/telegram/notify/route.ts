@@ -62,7 +62,18 @@ export async function POST(request: NextRequest) {
 
         const tgData = await tgRes.json();
         if (!tgData.ok) {
-          errors.push(`Chat ${chatId}: ${tgData.description || 'Failed to send'}`);
+          const desc = tgData.description || '';
+          if (desc.includes('chat not found')) {
+            if (String(chatId).startsWith('@') || /[a-zA-Z]/.test(String(chatId))) {
+              errors.push(`Для личных сообщений в Telegram Bot API требуется числовой Chat ID (например, 123456789), а не username ${chatId}. Узнайте свой ID в боте @userinfobot и отправьте вашему боту команду /start.`);
+            } else {
+              errors.push(`Чат ${chatId} не найден ботом. Убедитесь, что вы написали боту команду /start.`);
+            }
+          } else if (desc.includes('bot was blocked by the user')) {
+            errors.push(`Бот заблокирован пользователем (${chatId}). Нажмите «Запустить» в диалоге с ботом.`);
+          } else {
+            errors.push(`Chat ${chatId}: ${desc || 'Failed to send'}`);
+          }
         }
       } catch (e: any) {
         errors.push(`Chat ${chatId}: ${e?.message || 'Network error'}`);
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (errors.length > 0 && errors.length === targetChatIds.size) {
-      return NextResponse.json({ success: false, error: errors.join(', ') }, { status: 502 });
+      return NextResponse.json({ success: false, error: errors.join('\n') }, { status: 502 });
     }
 
     return NextResponse.json({ success: true, sentToCount: targetChatIds.size - errors.length });
