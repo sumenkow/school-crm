@@ -72,19 +72,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Dual-write outbound interaction to Supabase
+    // Dual-write outbound interaction to Supabase with deterministic UUID
+    const interactionId = crypto.randomUUID();
+    const sentAtIso = new Date().toISOString();
+
     try {
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createAdminClient();
         await supabase.from('interactions').insert({
+          id: interactionId,
           student_id: recipientType === 'student' ? recipientId : null,
           lead_id: recipientType === 'lead' ? recipientId : null,
           parent_id: recipientType === 'parent' ? recipientId : null,
           channel: 'telegram',
           type: 'follow_up',
-          content: message.trim(),
+          content: `✈️ Сообщение в Telegram: «${message.trim()}»`,
           result: `Исходящее сообщение в Telegram (${recipientName || 'Клиент'})`,
-          occurred_at: new Date().toISOString(),
+          occurred_at: sentAtIso,
         });
       }
     } catch (dbErr) {
@@ -94,7 +98,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       messageId: sendResult.messageId,
-      sentAt: new Date().toISOString(),
+      interactionId,
+      sentAt: sentAtIso,
     });
   } catch (error: any) {
     console.error('Error in /api/telegram/send:', error);

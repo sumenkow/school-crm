@@ -398,14 +398,19 @@ export function deductLessonFromDeposit(
   const formattedBalance = `${newBalance.toLocaleString('ru-RU')} ${currencySymbol}`;
   const formattedDeduct = `${deduct.toLocaleString('ru-RU')} ${currencySymbol}`;
 
-  const todayStr = new Date().toLocaleDateString('ru-RU');
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const todayStr = now.toLocaleDateString('ru-RU');
+
   const expenseInteraction: TimelineInteraction = {
     id: `int_deduct_${Date.now()}`,
     studentId: student.id,
     studentName: `${student.firstName} ${student.lastName}`,
     parentId: student.parents?.[0]?.id,
     parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-    occurredAt: 'Только что',
+    occurredAt: nowFormatted,
+    createdAt: now.toISOString(),
     channel: 'other',
     type: 'status_change',
     author: 'Система (списание по стоимости курса)',
@@ -569,13 +574,18 @@ export function settleDebtsFromDeposit(studentId: string): {
         availableDeposit -= debtAmount;
         settledAmount += debtAmount;
 
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
         newInteractions.push({
           id: `int_settle_${Date.now()}_${p.id}`,
           studentId: student.id,
           studentName: `${student.firstName} ${student.lastName}`,
           parentId: student.parents?.[0]?.id,
           parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-          occurredAt: 'Только что',
+          occurredAt: nowFormatted,
+          createdAt: now.toISOString(),
           channel: 'other',
           type: 'status_change',
           author: 'Система (списание долга с депозита)',
@@ -612,13 +622,18 @@ export function settleDebtsFromDeposit(studentId: string): {
         settledAmount += covered;
         availableDeposit = 0;
 
+        const now = new Date();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
         newInteractions.push({
           id: `int_settle_part_${Date.now()}_${p.id}`,
           studentId: student.id,
           studentName: `${student.firstName} ${student.lastName}`,
           parentId: student.parents?.[0]?.id,
           parentName: student.parents?.[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-          occurredAt: 'Только что',
+          occurredAt: nowFormatted,
+          createdAt: now.toISOString(),
           channel: 'other',
           type: 'status_change',
           author: 'Система (частичное списание долга с депозита)',
@@ -776,13 +791,18 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
           debt.status = 'paid';
           debt.method = 'Списание с семейного депозита';
 
+          const now = new Date();
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
           // Log interaction on debtor
           saveInteractionToStorage({
             id: `int_fam_settle_${Date.now()}_${debt.id}`,
             studentId: debtor.id,
             studentName: `${debtor.firstName} ${debtor.lastName}`,
             parentId,
-            occurredAt: 'Только что',
+            occurredAt: nowFormatted,
+            createdAt: now.toISOString(),
             channel: 'other',
             type: 'status_change',
             author: 'Система (семейный депозит)',
@@ -796,7 +816,8 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
             studentId: donor.id,
             studentName: `${donor.firstName} ${donor.lastName}`,
             parentId,
-            occurredAt: 'Только что',
+            occurredAt: nowFormatted,
+            createdAt: now.toISOString(),
             channel: 'other',
             type: 'status_change',
             author: 'Система (семейный депозит)',
@@ -811,12 +832,17 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
           donorDeposit = 0;
           debt.amount = `${remaining.toLocaleString('ru-RU')} ${currencySymbol}`;
 
+          const now = new Date();
+          const pad = (n: number) => String(n).padStart(2, '0');
+          const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
           saveInteractionToStorage({
             id: `int_fam_part_${Date.now()}_${debt.id}`,
             studentId: debtor.id,
             studentName: `${debtor.firstName} ${debtor.lastName}`,
             parentId,
-            occurredAt: 'Только что',
+            occurredAt: nowFormatted,
+            createdAt: now.toISOString(),
             channel: 'other',
             type: 'status_change',
             author: 'Система (семейный депозит)',

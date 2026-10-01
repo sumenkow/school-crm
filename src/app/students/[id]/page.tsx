@@ -639,13 +639,18 @@ export default function StudentDetailsPage() {
       setStudent(updatedStudent);
     } else {
       const updatedGroups = student.groups.filter((g) => (groupId ? g.id !== groupId : true) && (groupName ? g.name !== groupName : true));
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
       const removeInteraction: TimelineInteraction = {
         id: `int_${Date.now()}`,
         studentId: student.id,
         studentName: `${student.firstName} ${student.lastName}`,
         parentId: student.parents[0]?.id,
         parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-        occurredAt: 'Только что',
+        occurredAt: nowFormatted,
+        createdAt: now.toISOString(),
         channel: 'other',
         type: 'status_change',
         author: userName || 'Администратор школы',
@@ -683,13 +688,18 @@ export default function StudentDetailsPage() {
 
     const parentsNames = student.parents.map((p) => `${p.firstName} ${p.lastName}`).join(', ');
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const conversionInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
       parentId: student.parents[0]?.id,
       parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор школы',
@@ -777,13 +787,18 @@ export default function StudentDetailsPage() {
       changes.push(`Группы: ${newGroups.map((g) => g.name).join(', ') || 'нет групп'}`);
     }
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const editInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
       studentName: `${newFirstName} ${newLastName}`,
       parentId: student.parents[0]?.id,
       parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор школы',
@@ -870,13 +885,18 @@ export default function StudentDetailsPage() {
     };
 
     const targetIsParent = Boolean(newTask.parentId);
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const taskInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
       parentId: newTask.parentId || student.parents[0]?.id,
       parentName: newTask.parentName || (student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined),
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор школы',
@@ -925,13 +945,18 @@ export default function StudentDetailsPage() {
   const handleSaveNotes = () => {
     const updatedNotes = editedNotes.trim();
     if (updatedNotes !== (student.notes || '').trim()) {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
       const notesInteraction: TimelineInteraction = {
         id: `int_${Date.now()}`,
         studentId: student.id,
         studentName: `${student.firstName} ${student.lastName}`,
         parentId: student.parents[0]?.id,
         parentName: student.parents[0] ? `${student.parents[0].firstName} ${student.parents[0].lastName}` : undefined,
-        occurredAt: 'Только что',
+        occurredAt: nowFormatted,
+        createdAt: now.toISOString(),
         channel: 'other',
         type: 'status_change',
         author: userName || 'Администратор школы',
@@ -970,7 +995,8 @@ export default function StudentDetailsPage() {
     if (!newTeacherCommentText.trim()) return;
 
     const now = new Date();
-    const dateFormatted = `${now.toLocaleDateString('ru-RU')}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const dateFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
     const newComment: TeacherComment = {
       id: `tc_${Date.now()}`,
@@ -994,7 +1020,8 @@ export default function StudentDetailsPage() {
       id: `int_tc_${Date.now()}`,
       studentId: student.id,
       studentName: `${student.firstName} ${student.lastName}`,
-      occurredAt: 'Только что',
+      occurredAt: dateFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'other',
       author: userName || 'Преподаватель',
@@ -1109,13 +1136,18 @@ export default function StudentDetailsPage() {
       toast.success(`Выписка успешно отправлена на ${representativeEmail}`);
       setIsEmailStatementModalOpen(false);
 
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
       const emailInteraction: TimelineInteraction = {
         id: `int_email_${Date.now()}`,
         studentId: student.id,
         studentName: `${student.firstName} ${student.lastName}`,
         parentId: targetParent?.id,
         parentName: targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : undefined,
-        occurredAt: 'Только что',
+        occurredAt: nowFormatted,
+        createdAt: now.toISOString(),
         channel: 'email',
         type: 'other',
         author: userName || 'Сотрудник',
@@ -1194,6 +1226,10 @@ export default function StudentDetailsPage() {
     const targetParentId = !isStudent ? interactionTarget.replace('parent_', '') : null;
     const targetParent = targetParentId ? student.parents.find((p) => p.id === targetParentId) || student.parents[0] : undefined;
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newEntry: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
@@ -1203,7 +1239,8 @@ export default function StudentDetailsPage() {
       targetType: isStudent ? 'student' : 'parent',
       targetName: isStudent ? `${student.firstName} ${student.lastName}` : (targetParent ? `${targetParent.firstName} ${targetParent.lastName}` : 'Родитель'),
       targetRole: isStudent ? 'Ученик' : (targetParent?.relationshipType ? `Родитель (${targetParent.relationshipType})` : 'Родитель'),
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: newChannel,
       type: 'follow_up',
       author: userName || 'Администратор школы',

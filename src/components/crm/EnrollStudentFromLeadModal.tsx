@@ -73,6 +73,10 @@ export function EnrollStudentFromLeadModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newStudentId = `std_${Date.now()}`;
     const newParentId = studentType === 'adult_student' ? '' : `prnt_${Date.now()}`;
     const targetGroup = INITIAL_GROUPS.find((g) => g.id === selectedGroupId) || INITIAL_GROUPS[0];
@@ -167,7 +171,8 @@ export function EnrollStudentFromLeadModal({
         {
           id: `int_${Date.now()}`,
           studentId: newStudentId,
-          occurredAt: 'Только что',
+          occurredAt: nowFormatted,
+          createdAt: now.toISOString(),
           channel: 'other',
           type: 'initial_contact',
           author: 'Система CRM',

@@ -16,6 +16,7 @@ import {
   INITIAL_LESSONS,
 } from './mockData';
 import { normalizeStudent } from './studentStorage';
+import { deduplicateTimelineInteractions } from './timelineStorage';
 
 export async function persistEntityToCloud(
   entity: 'student' | 'parent' | 'lead' | 'task' | 'payment' | 'interaction' | 'group' | 'lesson',
@@ -400,6 +401,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
     const hydratedInteractions: TimelineInteraction[] = (interactions || []).map((i: any) => {
       const st = (students || []).find((s: any) => s.id === i.student_id);
       const pr = (parents || []).find((parent: any) => parent.id === i.parent_id);
+      const isoTime = i.occurred_at || i.created_at;
 
       return {
         id: i.id,
@@ -408,10 +410,10 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
         parentId: i.parent_id,
         parentName: pr ? `${pr.first_name} ${pr.last_name}` : undefined,
         leadId: i.lead_id,
-        occurredAt: i.occurred_at
-          ? `${new Date(i.occurred_at).toLocaleDateString('ru-RU')}, ${new Date(i.occurred_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-          : 'Сегодня',
-        createdAt: i.occurred_at || i.created_at,
+        occurredAt: isoTime
+          ? `${new Date(isoTime).toLocaleDateString('ru-RU')}, ${new Date(isoTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+          : '01.09.2026, 12:00',
+        createdAt: isoTime || new Date().toISOString(),
         channel: (i.channel as any) || 'other',
         type: (i.type as any) || 'follow_up',
         author: 'Администратор',
@@ -428,17 +430,10 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       if (raw) localInteractions = JSON.parse(raw);
     } catch {}
 
-    const mergedInteractions = [...hydratedInteractions];
-    for (const li of localInteractions) {
-      const exists = mergedInteractions.some((hi) => hi.id === li.id);
-      if (!exists) {
-        mergedInteractions.push(li);
-        persistEntityToCloud('interaction', li);
-      }
-    }
+    const allCombined = deduplicateTimelineInteractions([...hydratedInteractions, ...localInteractions]);
 
-    if (mergedInteractions.length > 0) {
-      localStorage.setItem('crm_timeline_interactions_v1', JSON.stringify(mergedInteractions));
+    if (allCombined.length > 0) {
+      localStorage.setItem('crm_timeline_interactions_v1', JSON.stringify(allCombined));
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
     }
 

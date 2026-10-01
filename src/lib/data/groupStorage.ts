@@ -198,6 +198,10 @@ export function excludeStudentFromGroup(params: {
       return true;
     });
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const removeInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: targetStudent.id,
@@ -206,7 +210,8 @@ export function excludeStudentFromGroup(params: {
       parentName: targetStudent.parents?.[0]
         ? `${targetStudent.parents[0].firstName} ${targetStudent.parents[0].lastName}`
         : undefined,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: authorName || 'Администратор школы',
@@ -295,6 +300,10 @@ export function enrollStudentToGroup(params: {
       joinedAt: new Date().toLocaleDateString('ru-RU'),
     };
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const enrollInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: targetStudent.id,
@@ -303,7 +312,8 @@ export function enrollStudentToGroup(params: {
       parentName: targetStudent.parents?.[0]
         ? `${targetStudent.parents[0].firstName} ${targetStudent.parents[0].lastName}`
         : undefined,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: authorName || 'Администратор школы',

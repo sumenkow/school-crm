@@ -49,6 +49,46 @@ function toUUID(str?: string): string {
   return `${hex.slice(0, 8)}-aaaa-4aaa-8aaa-${tail}`;
 }
 
+function parseDateToISO(val?: string | number | null): string {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'number') {
+    const d = new Date(val < 10000000000 ? val * 1000 : val);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  }
+  const str = String(val).trim();
+  if (!str) return new Date().toISOString();
+
+  if (str.includes('T') || (str.includes('-') && str.endsWith('Z'))) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  const ruMatch = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (ruMatch) {
+    const day = parseInt(ruMatch[1], 10);
+    const month = parseInt(ruMatch[2], 10) - 1;
+    const year = parseInt(ruMatch[3], 10);
+    const hours = ruMatch[4] ? parseInt(ruMatch[4], 10) : 12;
+    const minutes = ruMatch[5] ? parseInt(ruMatch[5], 10) : 0;
+    const seconds = ruMatch[6] ? parseInt(ruMatch[6], 10) : 0;
+    const d = new Date(year, month, day, hours, minutes, seconds);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    return new Date(parsed).toISOString();
+  }
+
+  return new Date().toISOString();
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -327,13 +367,14 @@ export async function POST(request: NextRequest) {
 
         const channel = validChannels.includes(data.channel) ? data.channel : 'other';
         const type = validTypes.includes(data.type) ? data.type : 'follow_up';
+        const occurredAtIso = parseDateToISO(data.occurred_at || data.occurredAt || data.createdAt || data.created_at || data.date);
 
         const interactionRow = {
           id: interactionId,
           student_id: data.studentId || data.student_id ? toUUID(data.studentId || data.student_id) : null,
           parent_id: data.parentId || data.parent_id ? toUUID(data.parentId || data.parent_id) : null,
           lead_id: data.leadId || data.lead_id ? toUUID(data.leadId || data.lead_id) : null,
-          occurred_at: data.occurredAt && data.occurredAt.includes('T') ? data.occurredAt : new Date().toISOString(),
+          occurred_at: occurredAtIso,
           channel,
           type,
           content: data.content || '',

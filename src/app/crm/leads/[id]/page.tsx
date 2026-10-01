@@ -859,10 +859,15 @@ export default function LeadDetailsPage() {
   };
 
   const handleStudentCreated = (newStudent: NewStudentData) => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const enrollmentInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: newStudent.id,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор',

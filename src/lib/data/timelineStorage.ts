@@ -4,7 +4,71 @@ import { persistEntityToCloud } from './cloudSync';
 
 export type { TimelineInteraction };
 
-const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
+export const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
+
+/**
+ * Universal date parser that reliably converts ISO dates, Russian date formats
+ * (DD.MM.YYYY, HH:mm), YYYY-MM-DD, or timestamps to a standard ISO 8601 string.
+ * Never overrides an existing valid date with NOW.
+ */
+export function parseDateToISO(val?: string | number | null): string {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'number') {
+    const d = new Date(val < 10000000000 ? val * 1000 : val);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  }
+  const str = String(val).trim();
+  if (!str) return new Date().toISOString();
+
+  // 1. If already valid ISO
+  if (str.includes('T') || (str.includes('-') && str.endsWith('Z'))) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // 2. Russian format: DD.MM.YYYY, HH:mm or DD.MM.YYYY
+  const ruMatch = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (ruMatch) {
+    const day = parseInt(ruMatch[1], 10);
+    const month = parseInt(ruMatch[2], 10) - 1;
+    const year = parseInt(ruMatch[3], 10);
+    const hours = ruMatch[4] ? parseInt(ruMatch[4], 10) : 12;
+    const minutes = ruMatch[5] ? parseInt(ruMatch[5], 10) : 0;
+    const seconds = ruMatch[6] ? parseInt(ruMatch[6], 10) : 0;
+    const d = new Date(year, month, day, hours, minutes, seconds);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // 3. ISO Date format: YYYY-MM-DD or YYYY-MM-DD HH:mm:ss
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // 4. Standard Date.parse
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    return new Date(parsed).toISOString();
+  }
+
+  return new Date().toISOString();
+}
+
+/**
+ * Normalizes text content for duplicate detection by stripping chat prefixes,
+ * brackets, quotes, and redundant whitespace.
+ */
+export function normalizeInteractionText(content?: string): string {
+  if (!content) return '';
+  return content
+    .toLowerCase()
+    .replace(/^(?:✈️\s*)?сообщение\s+в\s+telegram:\s*[«"']?/i, '')
+    .replace(/^(?:💬\s*)?входящее\s+в\s+telegram:\s*[«"']?/i, '')
+    .replace(/[»"']\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 /**
  * Parses interaction date and time into a precise Unix timestamp (in milliseconds)
@@ -13,48 +77,23 @@ const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
 export function parseInteractionTimestamp(item: TimelineInteraction): number {
   if (!item) return 0;
 
-  // 1. Check if ID embeds a Unix millisecond timestamp (e.g., int_1726485000000, int_deduct_1726485000000)
-  const idMatch = (item.id || '').match(/(\d{10,13})/);
-  const idTimestamp = idMatch ? parseInt(idMatch[1], 10) : null;
-  const idTimeMs = idTimestamp ? (idTimestamp < 10000000000 ? idTimestamp * 1000 : idTimestamp) : null;
-
-  // 2. Check explicit ISO/date fields if present
-  const explicitDate = (item as any).created_at || (item as any).date;
-  if (explicitDate && !isNaN(new Date(explicitDate).getTime())) {
-    return new Date(explicitDate).getTime();
+  // 1. Check explicit ISO/date fields if present
+  const explicitDate = (item as any).created_at || (item as any).createdAt || (item as any).date;
+  if (explicitDate) {
+    const d = new Date(parseDateToISO(explicitDate));
+    if (!isNaN(d.getTime())) return d.getTime();
   }
 
   const str = (item.occurredAt || '').trim();
 
-  // If "Только что", prefer the ID timestamp if created recently, otherwise current time
-  if (!str || str.toLowerCase().includes('только что') || str.toLowerCase().includes('just now')) {
-    return idTimeMs || Date.now();
-  }
+  // 2. Check if ID embeds a Unix millisecond timestamp
+  const idMatch = (item.id || '').match(/(\d{10,13})/);
+  const idTimestamp = idMatch ? parseInt(idMatch[1], 10) : null;
+  const idTimeMs = idTimestamp ? (idTimestamp < 10000000000 ? idTimestamp * 1000 : idTimestamp) : null;
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  const currentDate = now.getDate();
+  if (!str) return idTimeMs || 0;
 
-  // Handle "Сегодня, HH:mm"
-  if (str.toLowerCase().startsWith('сегодня') || str.toLowerCase().startsWith('today')) {
-    const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
-    const hours = timeMatch ? parseInt(timeMatch[1], 10) : now.getHours();
-    const minutes = timeMatch ? parseInt(timeMatch[2], 10) : now.getMinutes();
-    const d = new Date(currentYear, currentMonth, currentDate, hours, minutes, 0, 0);
-    return d.getTime();
-  }
-
-  // Handle "Вчера, HH:mm"
-  if (str.toLowerCase().startsWith('вчера') || str.toLowerCase().startsWith('yesterday')) {
-    const timeMatch = str.match(/(\d{1,2}):(\d{2})/);
-    const hours = timeMatch ? parseInt(timeMatch[1], 10) : 12;
-    const minutes = timeMatch ? parseInt(timeMatch[2], 10) : 0;
-    const d = new Date(currentYear, currentMonth, currentDate - 1, hours, minutes, 0, 0);
-    return d.getTime();
-  }
-
-  // Handle "DD.MM.YYYY, HH:mm" or "DD.MM.YYYY" or "YYYY-MM-DD"
+  // 3. Handle "DD.MM.YYYY, HH:mm" or "DD.MM.YYYY"
   const ddmmyyyyMatch = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:,\s*(\d{1,2}):(\d{2}))?/);
   if (ddmmyyyyMatch) {
     const day = parseInt(ddmmyyyyMatch[1], 10);
@@ -66,14 +105,68 @@ export function parseInteractionTimestamp(item: TimelineInteraction): number {
     return d.getTime();
   }
 
-  // Fallback to Date.parse
+  // 4. Fallback to Date.parse
   const parsed = Date.parse(str);
   if (!isNaN(parsed)) {
     return parsed;
   }
 
-  // Fallback to id timestamp or 0
   return idTimeMs || 0;
+}
+
+/**
+ * Intelligent deduplication of timeline interactions.
+ * Combines items sharing identical ID or same recipient + channel + normalized text within 5 mins.
+ */
+export function deduplicateTimelineInteractions(interactions: TimelineInteraction[]): TimelineInteraction[] {
+  const result: TimelineInteraction[] = [];
+
+  for (const item of interactions) {
+    if (!item) continue;
+
+    const normText = normalizeInteractionText(item.content);
+    const itemTime = parseInteractionTimestamp(item);
+    const targetKey = `${item.studentId || ''}_${item.parentId || ''}_${(item as any).leadId || ''}`;
+
+    // Look for an existing match in result list
+    const existingIdx = result.findIndex((existing) => {
+      // 1. Direct ID match
+      if (existing.id && item.id && existing.id === item.id) return true;
+
+      // 2. Semantic match for identical message sent to same recipient
+      const existingTargetKey = `${existing.studentId || ''}_${existing.parentId || ''}_${(existing as any).leadId || ''}`;
+      if (existingTargetKey !== targetKey) return false;
+
+      const existingNorm = normalizeInteractionText(existing.content);
+      if (!normText || !existingNorm || existingNorm !== normText) return false;
+
+      const existingTime = parseInteractionTimestamp(existing);
+      // Within 5 minutes window (300,000 ms) or exact same timestamp
+      const timeDiff = Math.abs(existingTime - itemTime);
+      return timeDiff < 300000;
+    });
+
+    if (existingIdx === -1) {
+      result.push(item);
+    } else {
+      // Merge into canonical item: prefer UUID format for ID and richer metadata
+      const existing = result[existingIdx];
+      const isItemUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id || '');
+      const isExistingUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing.id || '');
+
+      result[existingIdx] = {
+        ...existing,
+        ...item,
+        id: isExistingUUID ? existing.id : (isItemUUID ? item.id : (existing.id || item.id)),
+        content: (item.content && item.content.length > (existing.content || '').length) ? item.content : existing.content,
+        result: item.result || existing.result,
+        occurredAt: existing.occurredAt || item.occurredAt,
+        createdAt: (existing as any).createdAt || (item as any).createdAt,
+      };
+    }
+  }
+
+  return sortTimelineChronologicalDesc(result);
 }
 
 /**
@@ -99,7 +192,8 @@ export function getStoredInteractions(): TimelineInteraction[] {
   try {
     const raw = localStorage.getItem(TIMELINE_STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? deduplicateTimelineInteractions(parsed) : [];
   } catch (err) {
     console.error('Failed to parse stored interactions:', err);
     return [];
@@ -109,7 +203,10 @@ export function getStoredInteractions(): TimelineInteraction[] {
 /**
  * Saves a new interaction to localStorage and syncs with INITIAL_STUDENTS in-memory.
  */
-export function saveInteractionToStorage(item: TimelineInteraction): void {
+export function saveInteractionToStorage(
+  item: TimelineInteraction,
+  options?: { skipCloudSync?: boolean }
+): void {
   if (typeof window === 'undefined') return;
   try {
     const now = new Date();
@@ -117,19 +214,19 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
     const todayStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-    // Never leave relative 'Только что' or 'Сегодня' unpersisted — freeze exact date and time
+    // Freeze exact date and time permanently — never leave relative strings
     if (!item.occurredAt || item.occurredAt === 'Только что') {
       item.occurredAt = `${todayStr}, ${timeStr}`;
     } else if (item.occurredAt.toLowerCase().startsWith('сегодня')) {
       item.occurredAt = item.occurredAt.replace(/сегодня/i, todayStr);
     }
 
-    const isoCreatedAt = (item as any).created_at || (item as any).createdAt || (item as any).date || now.toISOString();
+    const isoCreatedAt = parseDateToISO((item as any).created_at || (item as any).createdAt || (item as any).date || item.occurredAt);
     (item as any).createdAt = isoCreatedAt;
     (item as any).created_at = isoCreatedAt;
 
     const existing = getStoredInteractions();
-    const updated = [item, ...existing.filter((i) => i.id !== item.id)];
+    const updated = deduplicateTimelineInteractions([item, ...existing.filter((i) => i.id !== item.id)]);
     localStorage.setItem(TIMELINE_STORAGE_KEY, JSON.stringify(updated));
 
     // Also sync with INITIAL_STUDENTS in-memory if studentId is provided
@@ -137,14 +234,14 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
       const idx = INITIAL_STUDENTS.findIndex((s) => s.id === item.studentId);
       if (idx !== -1) {
         const studentInteractions = INITIAL_STUDENTS[idx].interactions || [];
-        if (!studentInteractions.some((i) => i.id === item.id)) {
-          INITIAL_STUDENTS[idx].interactions = sortTimelineChronologicalDesc([item, ...studentInteractions]);
-        }
+        INITIAL_STUDENTS[idx].interactions = deduplicateTimelineInteractions([item, ...studentInteractions]);
       }
     }
 
-    // Supabase Cloud DB write via sync layer
-    persistEntityToCloud('interaction', item);
+    // Supabase Cloud DB write via sync layer (unless explicitly skipped)
+    if (!options?.skipCloudSync) {
+      persistEntityToCloud('interaction', item);
+    }
 
     // Dispatch global event for reactive UI update
     window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: item }));
@@ -154,7 +251,7 @@ export function saveInteractionToStorage(item: TimelineInteraction): void {
 }
 
 /**
- * Retrieves full unified timeline for a lead, sorted newest on top.
+ * Retrieves full unified timeline for a lead, sorted newest on top with duplicate filtering.
  */
 export function getCombinedLeadTimeline(
   leadId: string,
@@ -162,20 +259,18 @@ export function getCombinedLeadTimeline(
   convertedStudentId?: string
 ): TimelineInteraction[] {
   const stored = getStoredInteractions();
-  const map = new Map<string, TimelineInteraction>();
-
-  baseInteractions.forEach((i) => map.set(i.id, i));
+  const list: TimelineInteraction[] = [...baseInteractions];
 
   stored.forEach((i) => {
     if (
       (i as any).leadId === leadId ||
       (convertedStudentId && i.studentId === convertedStudentId)
     ) {
-      map.set(i.id, i);
+      list.push(i);
     }
   });
 
-  return sortTimelineChronologicalDesc(Array.from(map.values()));
+  return deduplicateTimelineInteractions(list);
 }
 
 /**
@@ -206,9 +301,7 @@ export function isRoutineTimelineNoise(item: TimelineInteraction): boolean {
 }
 
 /**
- * Retrieves full unified timeline for a student, sorted newest on top.
- * Includes direct student interactions PLUS interactions with any of the student's parents
- * AND historical lead interactions from before conversion.
+ * Retrieves full unified timeline for a student, sorted newest on top with deduplication.
  */
 export function getCombinedStudentTimeline(
   studentId: string,
@@ -216,27 +309,27 @@ export function getCombinedStudentTimeline(
   parentIds: string[] = []
 ): TimelineInteraction[] {
   const stored = getStoredInteractions();
-  const map = new Map<string, TimelineInteraction>();
-  
+  const list: TimelineInteraction[] = [];
+
   // Base student interactions
   baseInteractions.forEach((i) => {
     if (!isRoutineTimelineNoise(i)) {
-      map.set(i.id, i);
+      list.push(i);
     }
   });
 
-  // Check stored interactions matching student, lead, or parents
+  // Stored interactions matching student, lead, or parents
   stored.forEach((i) => {
     const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
     const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
     const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId === studentId;
 
     if ((isStudentMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
-      map.set(i.id, i);
+      list.push(i);
     }
   });
 
-  // Check all known students for matching student or parent interactions
+  // Check all known students
   const allKnownStudents = typeof window !== 'undefined'
     ? [...INITIAL_STUDENTS, ...getStoredStudents()]
     : INITIAL_STUDENTS;
@@ -247,18 +340,17 @@ export function getCombinedStudentTimeline(
         const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
         const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
         if ((isStudentMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
-          map.set(i.id, i);
+          list.push(i);
         }
       });
     }
   });
 
-  return sortTimelineChronologicalDesc(Array.from(map.values()));
+  return deduplicateTimelineInteractions(list);
 }
 
 /**
- * Retrieves full unified timeline for a parent, sorted newest on top.
- * Includes direct parent interactions PLUS interactions with all of the parent's children.
+ * Retrieves full unified timeline for a parent, sorted newest on top with deduplication.
  */
 export function getCombinedParentTimeline(
   parentId: string,
@@ -266,22 +358,17 @@ export function getCombinedParentTimeline(
   baseInteractions: TimelineInteraction[] = []
 ): TimelineInteraction[] {
   const stored = getStoredInteractions();
-  const map = new Map<string, TimelineInteraction>();
+  const list: TimelineInteraction[] = [...baseInteractions];
 
-  // Base interactions
-  baseInteractions.forEach((i) => map.set(i.id, i));
-
-  // Stored interactions matching parent or children
   stored.forEach((i) => {
     if (
       i.parentId === parentId ||
       (i.studentId && childrenIds.includes(i.studentId))
     ) {
-      map.set(i.id, i);
+      list.push(i);
     }
   });
 
-  // Also scan all students (INITIAL_STUDENTS and getStoredStudents) for children belonging to this parent
   const allKnownStudents = typeof window !== 'undefined'
     ? [...INITIAL_STUDENTS, ...getStoredStudents()]
     : INITIAL_STUDENTS;
@@ -289,12 +376,12 @@ export function getCombinedParentTimeline(
   allKnownStudents.forEach((st) => {
     if (childrenIds.includes(st.id) || st.parents?.some((p) => p.id === parentId)) {
       (st.interactions || []).forEach((i) => {
-        map.set(i.id, i);
+        list.push(i);
       });
     }
   });
 
-  return sortTimelineChronologicalDesc(Array.from(map.values()));
+  return deduplicateTimelineInteractions(list);
 }
 
 export interface InteractionTargetInfo {

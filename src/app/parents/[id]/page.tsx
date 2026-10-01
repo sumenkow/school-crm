@@ -684,13 +684,18 @@ export default function ParentDetailsPage() {
     }));
 
     // Add event to family timeline
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const childInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: newChild.id,
       studentName: newChild.name,
       parentId: parent.id,
       parentName: `${parent.firstName} ${parent.lastName}`,
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: 'telegram',
       type: 'status_change',
       author: userName || 'Администратор школы',
@@ -1033,6 +1038,10 @@ export default function ParentDetailsPage() {
     const targetChild = parent.children.find((c) => c.id === newNoteTargetChildId) || parent.children[0];
     const isTargetingChild = newNoteTargetChildId !== 'parent';
 
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const newEntry: TimelineInteraction = {
       id: `int_${Date.now()}`,
       parentId: parent.id,
@@ -1042,7 +1051,8 @@ export default function ParentDetailsPage() {
       targetType: isTargetingChild ? 'student' : 'parent',
       targetName: isTargetingChild ? targetChild?.name : `${parent.firstName} ${parent.lastName}`,
       targetRole: isTargetingChild ? 'Ученик' : 'Родитель',
-      occurredAt: 'Только что',
+      occurredAt: nowFormatted,
+      createdAt: now.toISOString(),
       channel: newNoteChannel,
       type: 'follow_up',
       author: userName || 'Администратор школы',

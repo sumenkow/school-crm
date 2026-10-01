@@ -132,9 +132,9 @@ export function TelegramChatBox({
         throw new Error(data.error || 'Ошибка отправки через Telegram API');
       }
 
-      // Optimistically save interaction to CRM Timeline storage
+      // Optimistically save interaction to CRM Timeline storage using server-assigned UUID
       const newInteraction: TimelineInteraction = {
-        id: `int_tg_${Date.now()}`,
+        id: data.interactionId || `int_tg_${Date.now()}`,
         studentId: recipientType === 'student' ? recipientId : undefined,
         leadId: recipientType === 'lead' ? recipientId : undefined,
         parentId: recipientType === 'parent' ? recipientId : undefined,
@@ -143,7 +143,7 @@ export function TelegramChatBox({
         targetType: recipientType,
         targetName: recipientName,
         occurredAt: `${dateStr}, ${timeStr}`,
-        createdAt: now.toISOString(),
+        createdAt: data.sentAt || now.toISOString(),
         channel: 'telegram',
         type: 'follow_up',
         author: userName || 'Администратор школы',
@@ -151,7 +151,7 @@ export function TelegramChatBox({
         result: 'Отправлено в Telegram-чат',
       };
 
-      saveInteractionToStorage(newInteraction);
+      saveInteractionToStorage(newInteraction, { skipCloudSync: true });
       onMessageSent?.(newInteraction);
 
       setMessageText('');
