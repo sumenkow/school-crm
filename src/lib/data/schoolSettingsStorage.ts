@@ -6,9 +6,12 @@ export interface SchoolProfileData {
   name: string;
   slogan: string;
   legalEntity: string;
+  accountHolder?: string;
   inn: string;
   ogrn: string;
   bankAccount: string;
+  iban?: string;
+  swiftBic?: string;
   bankName: string;
   bik: string;
   phone: string;
@@ -18,24 +21,33 @@ export interface SchoolProfileData {
   roomsDescription: string;
   workHours: string;
   timezone: string;
+  currency?: string;
+  vatNote?: string;
+  nextInvoiceNumber?: number;
 }
 
 export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
-  name: 'Онлайн-школа',
-  slogan: 'Центр детского развития, робототехники и языков',
-  legalEntity: 'ИП Руководитель школы',
-  inn: '770123456789',
-  ogrn: '321774600123456',
-  bankAccount: '40802810100000012345',
-  bankName: 'АО «ТБанк», БИК 044525974',
-  bik: '044525974',
-  phone: '+7 (495) 777-11-22',
-  email: '',
+  name: 'You Europe',
+  slogan: 'Центр европейского образования и подготовки',
+  legalEntity: 'Ekaterina Nezhenkina',
+  accountHolder: 'Ekaterina Nezhenkina',
+  inn: '',
+  ogrn: '',
+  bankAccount: 'SK3411000000002937663128',
+  iban: 'SK34 1100 0000 0029 3766 3128',
+  swiftBic: 'TATRSKBX',
+  bankName: 'Tatra banka, a.s.',
+  bik: '1100',
+  phone: '+7 9817155337',
+  email: 'info@youeurope.eu',
   branchName: 'Онлайн-школа (Основной аккаунт)',
-  address: 'Онлайн (Zoom, Google Meet, интерактивная доска)',
+  address: 'Bratislava, Slovensko / Wien, Österreich',
   roomsDescription: 'Интерактивные онлайн-комнаты',
   workHours: 'Пн-Сб 09:00 - 21:00',
-  timezone: 'UTC+3 (Москва)',
+  timezone: 'UTC+1 (Братислава / Вена)',
+  currency: 'EUR',
+  vatNote: 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH',
+  nextInvoiceNumber: 20260342,
 };
 
 const SCHOOL_SETTINGS_STORAGE_KEY = 'crm_school_profile_v1';

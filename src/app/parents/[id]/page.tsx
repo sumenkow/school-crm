@@ -47,6 +47,7 @@ import { useToast } from '@/context/ToastContext';
 import { AddChildModal, AddedChildData } from '@/components/parents/AddChildModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForParent } from '@/lib/data/upcomingPaymentsHelper';
 import { useLanguage } from '@/context/LanguageContext';
@@ -377,6 +378,7 @@ export default function ParentDetailsPage() {
   const [isAddChildModalOpen, setIsAddChildModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [paymentChildFilter, setPaymentChildFilter] = useState<'all' | string>('all');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'open' | 'done'>('all');
@@ -1201,6 +1203,14 @@ export default function ParentDetailsPage() {
 
           {/* Top Hero Actions */}
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              Выставить счёт
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -2515,6 +2525,21 @@ export default function ParentDetailsPage() {
           setRefreshTrigger((prev) => prev + 1);
           success('Платёж успешно зафиксирован в карточке семьи!');
         }}
+      />
+
+      {/* CREATE INVOICE MODAL */}
+      <CreateInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        parentId={parent.id}
+        parentName={`${parent.firstName} ${parent.lastName}`}
+        parentTelegram={parent.telegram}
+        parentEmail={parent.email}
+        parentPhone={parent.phone}
+        studentId={parent.children[0]?.id}
+        studentName={parent.children[0]?.name || `${parent.firstName} ${parent.lastName}`}
+        defaultCourseName="EPD Vorbereitung"
+        defaultAmountEUR={270.0}
       />
 
       {/* TELEGRAM CONNECT MODAL */}

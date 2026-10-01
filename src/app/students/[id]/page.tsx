@@ -13,6 +13,7 @@ import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
@@ -563,6 +564,7 @@ export default function StudentDetailsPage() {
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
 
   // Flexible per-lesson rate & Email Statement states
@@ -2652,6 +2654,15 @@ export default function StudentDetailsPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setIsInvoiceModalOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+                title="Сформировать европейский счёт на оплату (Faktúra)"
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                Выставить счёт
+              </button>
+              <button
+                type="button"
                 onClick={handleOpenEmailStatementModal}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
                 title="Отправить выписку представителю на email"
@@ -3962,6 +3973,21 @@ export default function StudentDetailsPage() {
             latestStudentRef.current = fresh;
           }
         }}
+      />
+
+      {/* CREATE INVOICE MODAL */}
+      <CreateInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        studentId={student.id}
+        studentName={`${student.firstName} ${student.lastName}`}
+        parentId={student.parents?.[0]?.id}
+        parentName={student.parents?.[0] ? `${student.parents[0].firstName || ''} ${student.parents[0].lastName || ''}`.trim() : undefined}
+        parentTelegram={student.telegram}
+        parentEmail={student.parents?.[0]?.email}
+        parentPhone={student.phone || student.parents?.[0]?.phone}
+        defaultCourseName={student.groups?.[0]?.courseName || 'EPD Vorbereitung'}
+        defaultAmountEUR={270.0}
       />
 
       {/* SCHEDULE LESSON MODAL */}

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, MessageCircle, Calendar, User, CheckCircle2, Clock, Send, AlertCircle } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
+import { DatePicker } from '@/components/common/DatePicker';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -20,10 +21,19 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
     { id: '2', author: 'Родитель', text: 'Попросили отсрочку до пятницы', time: 'Сегодня, 11:30' },
   ]);
   const [status, setStatus] = useState<'in_progress' | 'waiting' | 'resolved'>('in_progress');
+  const [dueDate, setDueDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [dueDateFormatted, setDueDateFormatted] = useState<string>('Сегодня, 18:00');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (taskData) {
+      setDueDate(taskData.dueDate || new Date().toISOString().slice(0, 10));
+      setDueDateFormatted(taskData.dueDateFormatted || 'Сегодня, 18:00');
+    }
+  }, [taskData]);
 
   if (!isOpen || !taskData || !mounted) return null;
 
@@ -43,6 +53,40 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
     toast.success('Заметка добавлена');
   };
 
+  const handleReschedule = (newIsoDate: string, newFormattedDisplay?: string) => {
+    const display = newFormattedDisplay || newIsoDate;
+    setDueDate(newIsoDate);
+    setDueDateFormatted(display);
+
+    // Save to storage & Supabase cloud DB
+    saveTaskToStorage({
+      id: taskData.entityId || taskData.id,
+      title: `${taskData.label || 'Задача'}: ${taskData.name || ''}`,
+      taskType: taskData.taskType || 'Retention',
+      assignedTo: taskData.assignedTo || 'Анастасия (Админ)',
+      dueDate: newIsoDate,
+      dueDateFormatted: display,
+      status: status === 'resolved' ? 'done' : (status as any),
+      priority: taskData.priority || 'medium',
+      description: taskData.description,
+      isOverdue: false,
+      rescheduledAt: new Date().toISOString(),
+      rescheduledBy: 'Анастасия (Админ)',
+    });
+
+    setComments(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        author: 'Система',
+        text: `Срок задачи перенесен на ${display}`,
+        time: 'Только что',
+      }
+    ]);
+
+    toast.success(`Срок перенесен на ${display}`);
+  };
+
   const handleCompleteTask = () => {
     setStatus('resolved');
     
@@ -50,12 +94,12 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
     saveTaskToStorage({
       id: taskData.entityId || taskData.id,
       title: `${taskData.label || 'Задача'}: ${taskData.name || ''}`,
-      taskType: 'Retention',
-      assignedTo: 'Анастасия (Админ)',
-      dueDate: new Date().toISOString().slice(0, 10),
-      dueDateFormatted: new Date().toLocaleDateString('ru-RU'),
+      taskType: taskData.taskType || 'Retention',
+      assignedTo: taskData.assignedTo || 'Анастасия (Админ)',
+      dueDate: dueDate,
+      dueDateFormatted: dueDateFormatted,
       status: 'done',
-      priority: 'medium',
+      priority: taskData.priority || 'medium',
       description: taskData.description,
       isOverdue: false,
     });
@@ -134,8 +178,8 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
             <div>
               <p className="text-[11px] text-slate-400 font-medium uppercase">Крайний срок</p>
               <div className="flex items-center gap-1.5 mt-1">
-                <Clock size={14} className="text-amber-500" />
-                <span className="text-xs font-semibold text-slate-700">Сегодня, 18:00</span>
+                <Clock size={14} className="text-amber-500 shrink-0" />
+                <span className="text-xs font-semibold text-slate-700 truncate">{dueDateFormatted}</span>
               </div>
             </div>
             <div>
@@ -189,18 +233,27 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
 
         {/* Footer */}
         <div className="flex-shrink-0 bg-white border-t border-slate-200 px-4 sm:px-6 pt-3 pb-[calc(env(safe-area-inset-bottom)+28px)] sm:pb-4 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] flex items-center justify-between">
-          <button 
-            type="button"
-            onClick={() => toast.success('Срок перенесен на завтра')}
-            className="text-xs font-semibold text-slate-600 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-200/60 transition-colors flex items-center gap-1.5"
-          >
-            <Clock size={14} /> Перенести срок
-          </button>
+          <DatePicker
+            value={dueDate}
+            onChange={handleReschedule}
+            placement="top"
+            align="left"
+            className="w-auto inline-block"
+            customTrigger={({ toggle }) => (
+              <button 
+                type="button"
+                onClick={toggle}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-200/60 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Clock size={14} /> Перенести срок
+              </button>
+            )}
+          />
 
           <button 
             type="button"
             onClick={handleCompleteTask}
-            className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-2"
+            className="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-2 cursor-pointer"
           >
             <CheckCircle2 size={16} /> Закрыть задачу как выполненную
           </button>

@@ -4,23 +4,8 @@ import React, { useState } from 'react';
 import { X, School, Building2, Phone, Mail, MapPin, Clock, Check } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
-export interface SchoolProfileData {
-  name: string;
-  slogan: string;
-  legalEntity: string;
-  inn: string;
-  ogrn: string;
-  bankAccount: string;
-  bankName: string;
-  bik: string;
-  phone: string;
-  email: string;
-  branchName: string;
-  address: string;
-  roomsDescription: string;
-  workHours: string;
-  timezone: string;
-}
+import { SchoolProfileData } from '@/lib/data/schoolSettingsStorage';
+export type { SchoolProfileData };
 
 interface SchoolProfileModalProps {
   isOpen: boolean;
@@ -35,7 +20,7 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
 
   if (!isOpen) return null;
 
-  const handleChange = (field: keyof SchoolProfileData, value: string) => {
+  const handleChange = <K extends keyof SchoolProfileData>(field: K, value: SchoolProfileData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -183,60 +168,80 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
             </div>
           </div>
 
-          {/* Юридические реквизиты */}
+          {/* Юридические и банковские реквизиты (SEPA / Tatra banka) */}
           <div className="space-y-3 pt-2 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400">
-              Юридические реквизиты (для договоров и оплат)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-2">
-                <label className="block text-slate-600 font-semibold mb-1">Юридическое наименование</label>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400">
+                Банковские реквизиты для счетов (SEPA / Tatra banka)
+              </h3>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Европейский стандарт (EUR)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Владелец счёта (Kontoinhaber)</label>
                 <input
                   type="text"
-                  value={formData.legalEntity}
-                  onChange={(e) => handleChange('legalEntity', e.target.value)}
+                  value={formData.accountHolder || formData.legalEntity || ''}
+                  onChange={(e) => handleChange('accountHolder', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="ООО «Смарт Академи» / ИП Смирнов А.В."
+                  placeholder="Ekaterina Nezhenkina"
                 />
               </div>
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">ИНН</label>
+                <label className="block text-slate-600 font-semibold mb-1">Наименование банка (Banka)</label>
                 <input
                   type="text"
-                  value={formData.inn}
-                  onChange={(e) => handleChange('inn', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="7701234567"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">ОГРН / ОГРНИП</label>
-                <input
-                  type="text"
-                  value={formData.ogrn}
-                  onChange={(e) => handleChange('ogrn', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="1234567890123"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Расчетный счет</label>
-                <input
-                  type="text"
-                  value={formData.bankAccount}
-                  onChange={(e) => handleChange('bankAccount', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="40802810000000000000"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Банк / БИК</label>
-                <input
-                  type="text"
-                  value={formData.bankName}
+                  value={formData.bankName || ''}
                   onChange={(e) => handleChange('bankName', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="АО «ТБанк», БИК 044525974"
+                  placeholder="Tatra banka, a.s."
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">IBAN счёта</label>
+                <input
+                  type="text"
+                  value={formData.iban || formData.bankAccount || ''}
+                  onChange={(e) => {
+                    handleChange('iban', e.target.value);
+                    handleChange('bankAccount', e.target.value);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-hidden"
+                  placeholder="SK34 1100 0000 0029 3766 3128"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">SWIFT / BIC код</label>
+                <input
+                  type="text"
+                  value={formData.swiftBic || 'TATRSKBX'}
+                  onChange={(e) => handleChange('swiftBic', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-hidden"
+                  placeholder="TATRSKBX"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Следующий номер счёта (Faktur Nummer)</label>
+                <input
+                  type="number"
+                  value={formData.nextInvoiceNumber || 20260342}
+                  onChange={(e) => handleChange('nextInvoiceNumber', parseInt(e.target.value, 10) || 20260342)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono font-bold focus:border-blue-500 focus:outline-hidden"
+                  placeholder="20260342"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Статус НДС (VAT note)</label>
+                <input
+                  type="text"
+                  value={formData.vatNote || 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH'}
+                  onChange={(e) => handleChange('vatNote', e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
+                  placeholder="Nicht umsatzsteuerpflichtig / Neplatiteľ DPH"
                 />
               </div>
             </div>

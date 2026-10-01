@@ -26,6 +26,8 @@ import { getStoredStudents } from '@/lib/data/studentStorage';
 import { calculateMultiCurrencyTotals, getEurRubRate, convertRubToEur } from '@/lib/data/currencyHelper';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
+import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
+import { getStoredInvoices, EuropeanInvoiceData, markInvoiceAsPaid } from '@/lib/data/invoiceStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { useLanguage } from '@/context/LanguageContext';
 import { useRole } from '@/context/RoleContext';
@@ -67,17 +69,21 @@ function FinanceContent() {
   const rate = getEurRubRate();
   const [students, setStudents] = useState(() => (typeof window !== 'undefined' ? getStoredStudents() : []));
 
-  const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions' | 'debts'>(
-    filterParam === 'overdue' ? 'debts' : 'payments'
+  const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions' | 'debts' | 'invoices'>(
+    filterParam === 'overdue' ? 'debts' : filterParam === 'invoices' ? 'invoices' : 'payments'
   );
   const [payments, setPayments] = useState<FullPaymentData[]>(() => {
     return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
+  const [invoices, setInvoices] = useState<EuropeanInvoiceData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredInvoices() : [];
   });
   const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(INITIAL_SUBSCRIPTIONS);
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
 
   const syncPayments = useCallback(() => {
     setPayments(getStoredPayments());
+    setInvoices(getStoredInvoices());
   }, []);
 
   useFocusSync(syncPayments);
@@ -86,19 +92,24 @@ function FinanceContent() {
     syncPayments();
     window.addEventListener('crm-payments-changed', syncPayments);
     window.addEventListener('crm-students-changed', syncPayments);
+    window.addEventListener('crm-invoices-changed', syncPayments);
     return () => {
       window.removeEventListener('crm-payments-changed', syncPayments);
       window.removeEventListener('crm-students-changed', syncPayments);
+      window.removeEventListener('crm-invoices-changed', syncPayments);
     };
   }, [syncPayments]);
 
   useEffect(() => {
     if (filterParam === 'overdue') {
       setActiveTab('debts');
+    } else if (filterParam === 'invoices') {
+      setActiveTab('invoices');
     }
   }, [filterParam]);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<string | undefined>();
   const [selectedParentForPayment, setSelectedParentForPayment] = useState<string | undefined>();
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
@@ -220,6 +231,13 @@ function FinanceContent() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsInvoiceModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+          >
+            <Receipt className="h-4 w-4" />
+            Выставить счёт (Faktúra)
+          </button>
+          <button
             onClick={() => setIsPaymentModalOpen(true)}
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
           >
@@ -297,11 +315,26 @@ function FinanceContent() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-2">
+      <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('invoices')}
+          className={cn(
+            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
+            activeTab === 'invoices'
+              ? 'border-blue-600 text-blue-600 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          )}
+        >
+          <Receipt className="h-3.5 w-3.5" />
+          <span>Счета на оплату (Faktúry)</span>
+          <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[10px] font-bold">
+            {invoices.length}
+          </span>
+        </button>
         <button
           onClick={() => setActiveTab('payments')}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer',
+            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap',
             activeTab === 'payments'
               ? 'border-blue-600 text-blue-600 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -312,7 +345,7 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('subscriptions')}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer',
+            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap',
             activeTab === 'subscriptions'
               ? 'border-blue-600 text-blue-600 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -323,7 +356,7 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('debts')}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer',
+            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
             activeTab === 'debts'
               ? 'border-rose-600 text-rose-700 font-bold'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -742,6 +775,118 @@ function FinanceContent() {
         </div>
       )}
 
+      {/* TAB: СЧЕТА НА ОПЛАТУ (FAKTÚRY) */}
+      {activeTab === 'invoices' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs text-slate-500">
+              Выставленные счета на оплату через Tatra banka (SEPA). Автоматическая генерация QR-кода и номеров счетов.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Выставить новый счёт
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            {invoices.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <Receipt className="h-10 w-10 text-slate-300 mx-auto" />
+                <p className="text-sm font-bold text-slate-700">Счета пока не выставлялись</p>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Нажмите кнопку «Выставить новый счёт», чтобы сформировать официальную европейскую Faktúra с QR-кодом для оплаты.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                      <th className="py-3 px-4">№ счёта (VS)</th>
+                      <th className="py-3 px-4">Дата / Срок</th>
+                      <th className="py-3 px-4">Ученик / Плательщик</th>
+                      <th className="py-3 px-4">Курс / Период</th>
+                      <th className="py-3 px-4 text-right">Сумма</th>
+                      <th className="py-3 px-4 text-center">Статус</th>
+                      <th className="py-3 px-4 text-right">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                    {invoices.map((inv) => {
+                      const isPaid = inv.status === 'paid';
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-blue-700">
+                            <Link href={`/invoices/${inv.id}`} className="hover:underline flex items-center gap-1">
+                              <Receipt size={13} />
+                              {inv.invoiceNumber}
+                            </Link>
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">
+                            <div>{inv.issueDate}</div>
+                            <div className="text-[10px] text-rose-700 font-semibold">до {inv.dueDate}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900">{inv.studentName}</div>
+                            {inv.parentName && <div className="text-[11px] text-slate-400">{inv.parentName}</div>}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-slate-800">{inv.courseName}</div>
+                            <div className="text-[11px] text-slate-500">{inv.periodLabel}</div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-sm">
+                            {inv.totalAmountEUR.toFixed(2)} €
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {isPaid ? (
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                <CheckCircle2 size={11} /> Оплачен
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                <Clock size={11} /> Ожидает
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!isPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    markInvoiceAsPaid(inv.id);
+                                    setInvoices(getStoredInvoices());
+                                    setPayments(getStoredPayments());
+                                  }}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Отметить как оплаченный"
+                                >
+                                  <CheckCircle2 size={15} />
+                                </button>
+                              )}
+                              <Link
+                                href={`/invoices/${inv.id}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+                              >
+                                Открыть счёт →
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
       <RecordPaymentModal
         isOpen={isPaymentModalOpen}
@@ -753,6 +898,17 @@ function FinanceContent() {
         initialStudentId={selectedStudentForPayment}
         initialParentId={selectedParentForPayment}
         onRecorded={handlePaymentRecorded}
+      />
+
+      <CreateInvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => {
+          setIsInvoiceModalOpen(false);
+          setInvoices(getStoredInvoices());
+        }}
+        onInvoiceCreated={() => {
+          setInvoices(getStoredInvoices());
+        }}
       />
 
       <CreateSubscriptionModal

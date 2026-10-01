@@ -12,6 +12,9 @@ interface DatePickerProps {
   required?: boolean;
   className?: string;
   disabled?: boolean;
+  placement?: 'top' | 'bottom';
+  align?: 'left' | 'right';
+  customTrigger?: (props: { isOpen: boolean; toggle: () => void; valueDisplay: string }) => React.ReactNode;
 }
 
 export function DatePicker({
@@ -22,6 +25,9 @@ export function DatePicker({
   required,
   className,
   disabled,
+  placement = 'bottom',
+  align = 'left',
+  customTrigger,
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -140,26 +146,40 @@ export function DatePicker({
         </label>
       )}
 
-      {/* Trigger Button (Strictly Read-Only to prevent text typing) */}
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={cn(
-          'w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-left transition-colors hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20',
-          disabled && 'opacity-60 cursor-not-allowed bg-slate-50',
-          isOpen && 'border-blue-500 ring-2 ring-blue-500/20'
-        )}
-      >
-        <span className={cn(value ? 'text-slate-900 font-semibold' : 'text-slate-400')}>
-          {value ? formatDateDisplay(selectedDate) : placeholder}
-        </span>
-        <CalendarIcon className="h-4 w-4 text-slate-400" />
-      </button>
+      {/* Trigger Button */}
+      {customTrigger ? (
+        customTrigger({
+          isOpen,
+          toggle: () => !disabled && setIsOpen(!isOpen),
+          valueDisplay: value ? formatDateDisplay(selectedDate) : placeholder,
+        })
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          className={cn(
+            'w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-left transition-colors hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20',
+            disabled && 'opacity-60 cursor-not-allowed bg-slate-50',
+            isOpen && 'border-blue-500 ring-2 ring-blue-500/20'
+          )}
+        >
+          <span className={cn(value ? 'text-slate-900 font-semibold' : 'text-slate-400')}>
+            {value ? formatDateDisplay(selectedDate) : placeholder}
+          </span>
+          <CalendarIcon className="h-4 w-4 text-slate-400" />
+        </button>
+      )}
 
       {/* Interactive Calendar Popover */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-72 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl animate-in fade-in zoom-in-95 duration-150">
+        <div 
+          className={cn(
+            "absolute z-50 w-72 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl animate-in fade-in zoom-in-95 duration-150",
+            placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-1',
+            align === 'right' ? 'right-0' : 'left-0'
+          )}
+        >
           {/* Preset Buttons Header */}
           <div className="flex items-center justify-between gap-1 pb-3 border-b border-slate-100">
             <button

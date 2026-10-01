@@ -51,7 +51,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       {/* Floating Snackbars Container */}
       <div
-        className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none"
+        className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none"
         style={{ maxWidth: '420px', width: 'calc(100% - 40px)' }}
       >
         {toasts.map((toast) => {
