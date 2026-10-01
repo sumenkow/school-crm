@@ -111,24 +111,65 @@ export async function POST(request: NextRequest) {
     let matchedStudentId: string | null = null;
     let matchedLeadId: string | null = null;
     let matchedParentId: string | null = null;
+    let matchedEntityName: string = '';
+
+    const searchQueries: string[] = [];
+    if (senderUsername) {
+      searchQueries.push(`telegram.eq.${senderUsername}`);
+      searchQueries.push(`telegram.eq.${senderUsername.replace('@', '')}`);
+    }
+    if (chatId) {
+      searchQueries.push(`telegram.eq.${chatId}`);
+    }
 
     try {
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createAdminClient();
 
-        // Search for student with matching telegram username or matching note
-        if (senderUsername) {
-          const { data: st } = await supabase.from('students').select('id').or(`telegram.eq.${senderUsername},telegram.eq.${senderUsername.replace('@', '')}`).limit(1).maybeSingle();
-          if (st) matchedStudentId = st.id;
+        if (searchQueries.length > 0) {
+          const filterStr = searchQueries.join(',');
 
-          if (!matchedStudentId) {
-            const { data: ld } = await supabase.from('leads').select('id').or(`telegram.eq.${senderUsername},telegram.eq.${senderUsername.replace('@', '')}`).limit(1).maybeSingle();
-            if (ld) matchedLeadId = ld.id;
+          // Search students
+          const { data: st } = await supabase
+            .from('students')
+            .select('id, first_name, last_name')
+            .or(filterStr)
+            .limit(1)
+            .maybeSingle();
+
+          if (st) {
+            matchedStudentId = st.id;
+            matchedEntityName = `Ученик: ${st.first_name || ''} ${st.last_name || ''}`.trim();
           }
 
+          // Search leads
+          if (!matchedStudentId) {
+            const { data: ld } = await supabase
+              .from('leads')
+              .select('id, name')
+              .or(filterStr)
+              .limit(1)
+              .maybeSingle();
+
+            if (ld) {
+              matchedLeadId = ld.id;
+              matchedEntityName = `Лид: ${ld.name || ''}`.trim();
+            }
+          }
+
+          // Search parents
           if (!matchedStudentId && !matchedLeadId) {
-            const { data: pr } = await supabase.from('parents').select('id').or(`telegram.eq.${senderUsername},telegram.eq.${senderUsername.replace('@', '')}`).limit(1).maybeSingle();
-            if (pr) matchedParentId = pr.id;
+            const { data: pr } = await supabase
+              .from('parents')
+              .select('id, first_name, last_name')
+              .or(filterStr)
+              .limit(1)
+              .maybeSingle();
+
+            if (pr) {
+              matchedParentId = pr.id;
+              matchedEntityName = `Родитель: ${pr.first_name || ''} ${pr.last_name || ''}`.trim();
+            }
           }
         }
 
@@ -139,7 +180,7 @@ export async function POST(request: NextRequest) {
           lead_id: matchedLeadId,
           parent_id: matchedParentId,
           type: 'follow_up',
-          title: `Сообщение от ${senderName}`,
+          title: `Сообщение от ${senderName}${matchedEntityName ? ` (${matchedEntityName})` : ''}`,
           description: text,
           created_at: new Date().toISOString(),
           is_mock_data: false,
@@ -147,6 +188,22 @@ export async function POST(request: NextRequest) {
       }
     } catch (dbErr) {
       console.warn('DB logging error for incoming message in Telegram webhook:', dbErr);
+    }
+
+    // Forward incoming message notification to Administrator
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+    if (botToken && adminChatId && String(adminChatId) !== String(chatId)) {
+      try {
+        const clientDesc = matchedEntityName || 'Новый контакт (не привязан к CRM)';
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId: adminChatId,
+          text: `💬 *Новое входящее сообщение в Telegram*\n\n👤 *${senderName}* (${senderUsername || `ID: ${chatId}`})\n🏷 *Статус:* ${clientDesc}\n\n📝 *Текст сообщения:*\n«${text}»\n\n_Ответить можно прямо из CRM_`,
+          parseMode: 'Markdown',
+        });
+      } catch (forwardErr) {
+        console.warn('Could not forward client message to Admin TG:', forwardErr);
+      }
     }
 
     return NextResponse.json({
@@ -157,6 +214,7 @@ export async function POST(request: NextRequest) {
       matchedStudentId,
       matchedLeadId,
       matchedParentId,
+      matchedEntityName,
     });
   } catch (error: any) {
     console.error('Error handling Telegram Webhook:', error);
