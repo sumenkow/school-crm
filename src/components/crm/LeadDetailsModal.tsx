@@ -119,10 +119,10 @@ export function LeadDetailsModal({
   if (!isOpen || !lead) return null;
 
   const phoneClean = normalizePhone(contactPhone || lead.contact);
-  const waLink = `https://wa.me/${phoneClean}`;
+  const waLink = phoneClean ? `https://wa.me/${phoneClean}` : '#';
   const tgLink = telegram
-    ? `https://t.me/${telegram.replace('@', '')}`
-    : `https://wa.me/${phoneClean}`;
+    ? `https://t.me/${String(telegram).replace('@', '')}`
+    : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
 
   const handleSaveContactDetails = () => {
     if (!lead) return;

@@ -2,9 +2,9 @@ import { getStoredStudents } from './studentStorage';
 import { FullStudentData, FullLeadData } from './mockData';
 import { calculateMultiCurrencyTotals, getEurRubRate, convertEurToRub, convertRubToEur } from './currencyHelper';
 
-export function normalizeContact(contact?: string): string {
+export function normalizeContact(contact?: any): string {
   if (!contact) return '';
-  return contact.replace(/[^\d\w]/g, '').toLowerCase();
+  return String(contact).replace(/[^\d\w]/g, '').toLowerCase();
 }
 
 export interface UnifiedFinancialSummary {

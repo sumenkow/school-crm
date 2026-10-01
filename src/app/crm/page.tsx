@@ -41,26 +41,27 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 
-export function normalizePhone(phone?: string): string {
+export function normalizePhone(phone?: string | number): string {
   if (!phone) return '';
-  let clean = phone.replace(/\D/g, '');
+  const str = String(phone).trim();
+  let clean = str.replace(/\D/g, '');
   if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
     clean = '7' + clean.slice(1);
   }
   return clean;
 }
 
-export function formatPhone(phone?: string): string {
+export function formatPhone(phone?: string | number): string {
   if (!phone) return '—';
   const clean = normalizePhone(phone);
-  if (!clean) return phone;
+  if (!clean) return String(phone);
   if (clean.length === 11 && clean.startsWith('7')) {
     return `+7 (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9, 11)}`;
   }
   if (clean.length > 6) {
     return `+${clean.slice(0, 1)} (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9)}`;
   }
-  return phone;
+  return String(phone);
 }
 
 export default function CrmPage() {
@@ -300,14 +301,21 @@ export default function CrmPage() {
     setDraggedLeadId(null);
   };
 
-  const activeLeads = leads.filter((l) => !l.is_deleted && !(l as any).isDeleted);
-  const deletedLeads = leads.filter((l) => l.is_deleted || (l as any).isDeleted);
+  const activeLeads = (leads || []).filter((l) => l && !l.is_deleted && !(l as any).isDeleted);
+  const deletedLeads = (leads || []).filter((l) => l && (l.is_deleted || (l as any).isDeleted));
 
   const displayedLeads = (tabFilter === 'active' ? activeLeads : deletedLeads).filter((lead) => {
+    if (!lead) return false;
+    const nameStr = String(lead.name || '').toLowerCase();
+    const contactStr = String(lead.contact || '');
+    const studentStr = String(lead.studentName || '').toLowerCase();
+    const search = (searchTerm || '').trim().toLowerCase();
+
     const matchesSearch =
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.contact.includes(searchTerm) ||
-      (lead.studentName && lead.studentName.toLowerCase().includes(searchTerm.toLowerCase()));
+      !search ||
+      nameStr.includes(search) ||
+      contactStr.includes(search) ||
+      studentStr.includes(search);
     const matchesDirection = directionFilter === 'all' || lead.directionOrCourse === directionFilter;
     return matchesSearch && matchesDirection;
   });
@@ -317,6 +325,7 @@ export default function CrmPage() {
     const rate = getEurRubRate();
     let sumEur = 0;
     activeLeads.forEach((l) => {
+      if (!l) return;
       if (l.status === 'lost' || (l.status as string) === 'no_response') return;
       if (l.offerAmount) {
         const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
@@ -329,11 +338,15 @@ export default function CrmPage() {
           return;
         }
       }
-      const fin = getLeadFinancialSummary(l);
-      if (fin.deposit > 0) {
-        sumEur += fin.deposit;
-      } else {
-        sumEur += 80; // default estimated student contract amount in EUR
+      try {
+        const fin = getLeadFinancialSummary(l);
+        if (fin && fin.deposit > 0) {
+          sumEur += fin.deposit;
+        } else {
+          sumEur += 80; // default estimated student contract amount in EUR
+        }
+      } catch {
+        sumEur += 80;
       }
     });
     return Math.round(sumEur);
@@ -347,6 +360,7 @@ export default function CrmPage() {
   const leadAmountCache = useMemo(() => new Map<string, number>(), []);
 
   const getCachedLeadEur = useCallback((l: FullLeadData, rate: number): number => {
+    if (!l) return 0;
     const cacheKey = `${l.id}_${l.offerAmount || ''}_${l.finance?.deposit?.balance || 0}_${rate}`;
     const cached = leadAmountCache.get(cacheKey);
     if (cached !== undefined) return cached;
@@ -359,8 +373,12 @@ export default function CrmPage() {
       }
     }
     if (itemEur === 0) {
-      const fin = getLeadFinancialSummary(l);
-      itemEur = fin.deposit > 0 ? fin.deposit : 80;
+      try {
+        const fin = getLeadFinancialSummary(l);
+        itemEur = fin && fin.deposit > 0 ? fin.deposit : 80;
+      } catch {
+        itemEur = 80;
+      }
     }
     const rounded = Math.round(itemEur);
     leadAmountCache.set(cacheKey, rounded);
@@ -376,6 +394,7 @@ export default function CrmPage() {
     }
 
     for (const l of displayedLeads) {
+      if (!l) continue;
       const key = (l.status === 'no_response' ? 'lost' : l.status) as string;
       if (!stats[key]) stats[key] = { count: 0, sumEur: 0 };
       stats[key].count += 1;
@@ -792,7 +811,7 @@ export default function CrmPage() {
                                 <WhatsAppIcon className="w-3 h-3" />
                               </a>
                               <a
-                                href={lead.telegram ? `https://t.me/${lead.telegram.replace('@', '')}` : `https://wa.me/${normalizePhone(lead.contact)}`}
+                                href={lead.telegram ? `https://t.me/${String(lead.telegram).replace('@', '')}` : `https://wa.me/${normalizePhone(lead.contact)}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 title="Написать в Telegram"
@@ -813,7 +832,7 @@ export default function CrmPage() {
                       </td>
                       <td className="px-3 py-3 text-right">
                         {lead.offerAmount ? (
-                          <span className="font-bold text-slate-800">{lead.offerAmount.replace('++', '+')}</span>
+                          <span className="font-bold text-slate-800">{String(lead.offerAmount).replace('++', '+')}</span>
                         ) : finSummary.deposit > 0 ? (
                           <span className="font-semibold text-emerald-700">+{finSummary.formattedDeposit}</span>
                         ) : (
@@ -999,9 +1018,10 @@ function LeadCard({
 
   // Clean formatted deal amount without double ++
   const dealAmountFormatted = useMemo(() => {
+    if (!lead) return '80 € (8 000 ₽)';
     const raw = lead.offerAmount;
     if (raw) {
-      const clean = raw.replace(/\+\+/g, '+').trim();
+      const clean = String(raw).replace(/\+\+/g, '+').trim();
       const num = parseFloat(clean.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
       if (num > 0) {
         if (clean.includes('€') || num <= 500) {
@@ -1012,17 +1032,19 @@ function LeadCard({
         return `${eur} € (${num.toLocaleString('ru-RU')} ₽)`;
       }
     }
-    const fin = getLeadFinancialSummary(lead);
-    if (fin.deposit > 0) {
-      return `${fin.deposit} € (${fin.depositRub.toLocaleString('ru-RU')} ₽)`;
-    }
+    try {
+      const fin = getLeadFinancialSummary(lead);
+      if (fin && fin.deposit > 0) {
+        return `${fin.deposit} € (${fin.depositRub.toLocaleString('ru-RU')} ₽)`;
+      }
+    } catch {}
     return '80 € (8 000 ₽)';
   }, [lead]);
 
   // Deadline calculation
   const deadlineStatus = useMemo(() => {
-    if (!lead.nextAction) return 'empty';
-    const str = (lead.nextActionDate || '').toLowerCase();
+    if (!lead?.nextAction) return 'empty';
+    const str = String(lead.nextActionDate || '').toLowerCase();
     if (str.includes('просроч') || str.includes('вчера') || str.includes('2026-08') || str.includes('01.09') || str.includes('02.09')) {
       return 'overdue';
     }
@@ -1030,12 +1052,14 @@ function LeadCard({
       return 'today';
     }
     return 'future';
-  }, [lead.nextAction, lead.nextActionDate]);
+  }, [lead?.nextAction, lead?.nextActionDate]);
 
-  const phoneClean = normalizePhone(lead.contact);
-  const formattedPhoneStr = formatPhone(lead.contact);
+  const phoneClean = normalizePhone(lead?.contact);
+  const formattedPhoneStr = formatPhone(lead?.contact);
   const waLink = phoneClean ? `https://wa.me/${phoneClean}` : '#';
-  const tgLink = lead.telegram ? `https://t.me/${lead.telegram.replace('@', '')}` : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
+  const tgLink = lead?.telegram
+    ? `https://t.me/${String(lead.telegram).replace('@', '')}`
+    : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
 
   return (
     <div
