@@ -170,9 +170,25 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       });
     });
 
-    if (hydratedStudents.length > 0) {
-      localStorage.setItem('crm_students_v2', JSON.stringify(hydratedStudents));
-      for (const hs of hydratedStudents) {
+    // Merge with existing local students to prevent data loss
+    let localStudents: FullStudentData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_students_v2');
+      if (raw) localStudents = JSON.parse(raw);
+    } catch {}
+
+    const mergedStudents = [...hydratedStudents];
+    for (const ls of localStudents) {
+      const exists = mergedStudents.some((hs) => hs.id === ls.id || (`${hs.firstName} ${hs.lastName}`.trim().toLowerCase() === `${ls.firstName} ${ls.lastName}`.trim().toLowerCase()));
+      if (!exists) {
+        mergedStudents.push(ls);
+        persistEntityToCloud('student', ls);
+      }
+    }
+
+    if (mergedStudents.length > 0) {
+      localStorage.setItem('crm_students_v2', JSON.stringify(mergedStudents));
+      for (const hs of mergedStudents) {
         const idx = INITIAL_STUDENTS.findIndex((x) => x.id === hs.id);
         if (idx !== -1) INITIAL_STUDENTS[idx] = hs;
         else INITIAL_STUDENTS.unshift(hs);
@@ -204,9 +220,24 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       updatedAt: l.updated_at,
     }));
 
-    if (hydratedLeads.length > 0) {
-      localStorage.setItem('crm_leads_v2', JSON.stringify(hydratedLeads));
-      for (const hl of hydratedLeads) {
+    let localLeads: FullLeadData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_leads_v2');
+      if (raw) localLeads = JSON.parse(raw);
+    } catch {}
+
+    const mergedLeads = [...hydratedLeads];
+    for (const ll of localLeads) {
+      const exists = mergedLeads.some((hl) => hl.id === ll.id || (hl.name && ll.name && hl.name.trim().toLowerCase() === ll.name.trim().toLowerCase()));
+      if (!exists) {
+        mergedLeads.push(ll);
+        persistEntityToCloud('lead', ll);
+      }
+    }
+
+    if (mergedLeads.length > 0) {
+      localStorage.setItem('crm_leads_v2', JSON.stringify(mergedLeads));
+      for (const hl of mergedLeads) {
         const idx = INITIAL_LEADS.findIndex((x) => x.id === hl.id);
         if (idx !== -1) INITIAL_LEADS[idx] = hl;
         else INITIAL_LEADS.unshift(hl);
@@ -230,9 +261,24 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       description: t.description,
     }));
 
-    if (hydratedTasks.length > 0) {
-      localStorage.setItem('crm_tasks_v1', JSON.stringify(hydratedTasks));
-      for (const ht of hydratedTasks) {
+    let localTasks: FullTaskData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_tasks_v1');
+      if (raw) localTasks = JSON.parse(raw);
+    } catch {}
+
+    const mergedTasks = [...hydratedTasks];
+    for (const lt of localTasks) {
+      const exists = mergedTasks.some((ht) => ht.id === lt.id);
+      if (!exists) {
+        mergedTasks.push(lt);
+        persistEntityToCloud('task', lt);
+      }
+    }
+
+    if (mergedTasks.length > 0) {
+      localStorage.setItem('crm_tasks_v1', JSON.stringify(mergedTasks));
+      for (const ht of mergedTasks) {
         const idx = INITIAL_TASKS.findIndex((x) => x.id === ht.id);
         if (idx !== -1) INITIAL_TASKS[idx] = ht;
         else INITIAL_TASKS.unshift(ht);
@@ -273,9 +319,24 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       };
     });
 
-    if (hydratedGroups.length > 0) {
-      localStorage.setItem('crm_groups_master_v2', JSON.stringify(hydratedGroups));
-      for (const hg of hydratedGroups) {
+    let localGroups: FullGroupData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_groups_master_v2');
+      if (raw) localGroups = JSON.parse(raw);
+    } catch {}
+
+    const mergedGroups = [...hydratedGroups];
+    for (const lg of localGroups) {
+      const exists = mergedGroups.some((hg) => hg.id === lg.id || (hg.name && lg.name && hg.name.trim().toLowerCase() === lg.name.trim().toLowerCase()));
+      if (!exists) {
+        mergedGroups.push(lg);
+        persistEntityToCloud('group', lg);
+      }
+    }
+
+    if (mergedGroups.length > 0) {
+      localStorage.setItem('crm_groups_master_v2', JSON.stringify(mergedGroups));
+      for (const hg of mergedGroups) {
         const idx = INITIAL_GROUPS.findIndex((x) => x.id === hg.id);
         if (idx !== -1) INITIAL_GROUPS[idx] = hg;
         else INITIAL_GROUPS.unshift(hg);
@@ -310,9 +371,24 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       };
     });
 
-    if (hydratedPayments.length > 0) {
-      localStorage.setItem('crm_payments_v2', JSON.stringify(hydratedPayments));
-      for (const hp of hydratedPayments) {
+    let localPayments: FullPaymentData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_payments_v2');
+      if (raw) localPayments = JSON.parse(raw);
+    } catch {}
+
+    const mergedPayments = [...hydratedPayments];
+    for (const lp of localPayments) {
+      const exists = mergedPayments.some((hp) => hp.id === lp.id);
+      if (!exists) {
+        mergedPayments.push(lp);
+        persistEntityToCloud('payment', lp);
+      }
+    }
+
+    if (mergedPayments.length > 0) {
+      localStorage.setItem('crm_payments_v2', JSON.stringify(mergedPayments));
+      for (const hp of mergedPayments) {
         const idx = INITIAL_PAYMENTS.findIndex((x) => x.id === hp.id);
         if (idx !== -1) INITIAL_PAYMENTS[idx] = hp;
         else INITIAL_PAYMENTS.unshift(hp);
@@ -346,8 +422,23 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       };
     });
 
-    if (hydratedInteractions.length > 0) {
-      localStorage.setItem('crm_timeline_interactions_v1', JSON.stringify(hydratedInteractions));
+    let localInteractions: TimelineInteraction[] = [];
+    try {
+      const raw = localStorage.getItem('crm_timeline_interactions_v1');
+      if (raw) localInteractions = JSON.parse(raw);
+    } catch {}
+
+    const mergedInteractions = [...hydratedInteractions];
+    for (const li of localInteractions) {
+      const exists = mergedInteractions.some((hi) => hi.id === li.id);
+      if (!exists) {
+        mergedInteractions.push(li);
+        persistEntityToCloud('interaction', li);
+      }
+    }
+
+    if (mergedInteractions.length > 0) {
+      localStorage.setItem('crm_timeline_interactions_v1', JSON.stringify(mergedInteractions));
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
     }
 
@@ -369,9 +460,24 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       students: [],
     }));
 
-    if (hydratedLessons.length > 0) {
-      localStorage.setItem('crm_lessons_master_v2', JSON.stringify(hydratedLessons));
-      for (const hl of hydratedLessons) {
+    let localLessons: FullLessonData[] = [];
+    try {
+      const raw = localStorage.getItem('crm_lessons_master_v2');
+      if (raw) localLessons = JSON.parse(raw);
+    } catch {}
+
+    const mergedLessons = [...hydratedLessons];
+    for (const ll of localLessons) {
+      const exists = mergedLessons.some((hl) => hl.id === ll.id);
+      if (!exists) {
+        mergedLessons.push(ll);
+        persistEntityToCloud('lesson', ll);
+      }
+    }
+
+    if (mergedLessons.length > 0) {
+      localStorage.setItem('crm_lessons_master_v2', JSON.stringify(mergedLessons));
+      for (const hl of mergedLessons) {
         const idx = INITIAL_LESSONS.findIndex((x) => x.id === hl.id);
         if (idx !== -1) INITIAL_LESSONS[idx] = hl;
         else INITIAL_LESSONS.unshift(hl);
