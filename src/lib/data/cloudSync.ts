@@ -190,7 +190,14 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
     if (mergedStudents.length > 0) {
       localStorage.setItem('crm_students_v2', JSON.stringify(mergedStudents));
       for (const hs of mergedStudents) {
-        const idx = INITIAL_STUDENTS.findIndex((x) => x.id === hs.id);
+        const hsName = `${hs.firstName || ''} ${hs.lastName || ''}`.trim().toLowerCase();
+        // Match by ID first, then by full name to replace mock students with short IDs
+        let idx = INITIAL_STUDENTS.findIndex((x) => x.id === hs.id);
+        if (idx === -1 && hsName) {
+          idx = INITIAL_STUDENTS.findIndex((x) =>
+            `${x.firstName || ''} ${x.lastName || ''}`.trim().toLowerCase() === hsName
+          );
+        }
         if (idx !== -1) INITIAL_STUDENTS[idx] = hs;
         else INITIAL_STUDENTS.unshift(hs);
       }
@@ -239,7 +246,11 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
     if (mergedLeads.length > 0) {
       localStorage.setItem('crm_leads_v2', JSON.stringify(mergedLeads));
       for (const hl of mergedLeads) {
-        const idx = INITIAL_LEADS.findIndex((x) => x.id === hl.id);
+        const hlName = (hl.name || '').trim().toLowerCase();
+        let idx = INITIAL_LEADS.findIndex((x) => x.id === hl.id);
+        if (idx === -1 && hlName) {
+          idx = INITIAL_LEADS.findIndex((x) => (x.name || '').trim().toLowerCase() === hlName);
+        }
         if (idx !== -1) INITIAL_LEADS[idx] = hl;
         else INITIAL_LEADS.unshift(hl);
       }

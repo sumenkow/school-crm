@@ -7,6 +7,46 @@ export type { TimelineInteraction };
 export const TIMELINE_STORAGE_KEY = 'crm_timeline_interactions_v1';
 
 /**
+ * Deterministic mock ↔ UUID equivalence map (mirrors server-side toUUID).
+ * Returns a Set of all known aliases for a given entity ID so that
+ * timeline lookups work regardless of whether the page was loaded with
+ * a legacy short ID or a Supabase UUID.
+ */
+const MOCK_UUID_PAIRS: [string, string][] = [
+  ['1', 'b1111111-1111-4111-8111-111111111111'],
+  ['2', 'b2222222-2222-4222-8222-222222222222'],
+  ['3', 'b3333333-3333-4333-8333-333333333333'],
+  ['4', 'b4444444-4444-4444-8444-444444444444'],
+  ['5', 'b5555555-5555-4555-8555-555555555555'],
+  ['6', 'b6666666-6666-4666-8666-666666666666'],
+  ['st_1', 'b1111111-1111-4111-8111-111111111111'],
+  ['st_2', 'b2222222-2222-4222-8222-222222222222'],
+  ['st_3', 'b3333333-3333-4333-8333-333333333333'],
+  ['st_4', 'b4444444-4444-4444-8444-444444444444'],
+  ['st_5', 'b5555555-5555-4555-8555-555555555555'],
+  ['p1', 'a1111111-1111-4111-8111-111111111111'],
+  ['p2', 'a2222222-2222-4222-8222-222222222222'],
+  ['p3', 'a3333333-3333-4333-8333-333333333333'],
+  ['p4', 'a4444444-4444-4444-8444-444444444444'],
+  ['p5', 'a5555555-5555-4555-8555-555555555555'],
+  ['p6', 'a6666666-6666-4666-8666-666666666666'],
+  ['lead_1', 'd1111111-1111-4111-8111-111111111111'],
+  ['lead_2', 'd2222222-2222-4222-8222-222222222222'],
+  ['lead_3', 'd3333333-3333-4333-8333-333333333333'],
+];
+
+export function getEquivalentIds(id: string): Set<string> {
+  const result = new Set<string>([id]);
+  for (const [mock, uuid] of MOCK_UUID_PAIRS) {
+    if (id === mock || id === uuid) {
+      result.add(mock);
+      result.add(uuid);
+    }
+  }
+  return result;
+}
+
+/**
  * Universal date parser that reliably converts ISO dates, Russian date formats
  * (DD.MM.YYYY, HH:mm), YYYY-MM-DD, or timestamps to a standard ISO 8601 string.
  * Never overrides an existing valid date with NOW.
@@ -261,10 +301,13 @@ export function getCombinedLeadTimeline(
   const stored = getStoredInteractions();
   const list: TimelineInteraction[] = [...baseInteractions];
 
+  const leadIdSet = getEquivalentIds(leadId);
+  const studentIdSet = convertedStudentId ? getEquivalentIds(convertedStudentId) : new Set<string>();
+
   stored.forEach((i) => {
     if (
-      (i as any).leadId === leadId ||
-      (convertedStudentId && i.studentId === convertedStudentId)
+      ((i as any).leadId && leadIdSet.has(String((i as any).leadId))) ||
+      (i.studentId && studentIdSet.has(String(i.studentId)))
     ) {
       list.push(i);
     }
@@ -311,6 +354,13 @@ export function getCombinedStudentTimeline(
   const stored = getStoredInteractions();
   const list: TimelineInteraction[] = [];
 
+  // Build equivalence sets so mock IDs ('1', 'p1') and UUIDs match each other
+  const studentIdSet = getEquivalentIds(studentId);
+  const parentIdSets = new Set<string>();
+  for (const pid of parentIds) {
+    for (const eq of getEquivalentIds(pid)) parentIdSets.add(eq);
+  }
+
   // Base student interactions
   baseInteractions.forEach((i) => {
     if (!isRoutineTimelineNoise(i)) {
@@ -320,9 +370,9 @@ export function getCombinedStudentTimeline(
 
   // Stored interactions matching student, lead, or parents
   stored.forEach((i) => {
-    const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
-    const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
-    const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId === studentId;
+    const isStudentMatch = i.studentId && studentIdSet.has(String(i.studentId));
+    const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
+    const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId && studentIdSet.has(String((i as any).convertedStudentId));
 
     if ((isStudentMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
       list.push(i);
@@ -335,10 +385,10 @@ export function getCombinedStudentTimeline(
     : INITIAL_STUDENTS;
 
   allKnownStudents.forEach((st) => {
-    if (st.parents?.some((p) => parentIds.map(String).includes(String(p.id))) || String(st.id) === String(studentId)) {
+    if (st.parents?.some((p) => parentIdSets.has(String(p.id))) || studentIdSet.has(String(st.id))) {
       (st.interactions || []).forEach((i) => {
-        const isStudentMatch = i.studentId && String(i.studentId) === String(studentId);
-        const isParentMatch = i.parentId && parentIds.map(String).includes(String(i.parentId));
+        const isStudentMatch = i.studentId && studentIdSet.has(String(i.studentId));
+        const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
         if ((isStudentMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
           list.push(i);
         }
@@ -360,10 +410,17 @@ export function getCombinedParentTimeline(
   const stored = getStoredInteractions();
   const list: TimelineInteraction[] = [...baseInteractions];
 
+  // Build equivalence sets for cross-format matching
+  const parentIdSet = getEquivalentIds(parentId);
+  const childIdSets = new Set<string>();
+  for (const cid of childrenIds) {
+    for (const eq of getEquivalentIds(cid)) childIdSets.add(eq);
+  }
+
   stored.forEach((i) => {
     if (
-      i.parentId === parentId ||
-      (i.studentId && childrenIds.includes(i.studentId))
+      (i.parentId && parentIdSet.has(String(i.parentId))) ||
+      (i.studentId && childIdSets.has(String(i.studentId)))
     ) {
       list.push(i);
     }
@@ -374,7 +431,7 @@ export function getCombinedParentTimeline(
     : INITIAL_STUDENTS;
 
   allKnownStudents.forEach((st) => {
-    if (childrenIds.includes(st.id) || st.parents?.some((p) => p.id === parentId)) {
+    if (childIdSets.has(st.id) || st.parents?.some((p) => parentIdSet.has(p.id))) {
       (st.interactions || []).forEach((i) => {
         list.push(i);
       });
