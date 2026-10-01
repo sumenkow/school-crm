@@ -47,7 +47,7 @@ const SOURCE_OPTIONS = [
   'Telegram',
   'ВКонтакте',
   'Рекомендация',
-  'Яндекс.Карты',
+  'Instagram',
 ];
 
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
