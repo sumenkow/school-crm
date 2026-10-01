@@ -34,7 +34,7 @@ import {
   Settings,
   Sparkles
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizePhone, formatPhone } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/currencyHelper';
@@ -47,7 +47,7 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 
-export { normalizePhone, formatPhone } from '@/lib/utils';
+export { normalizePhone, formatPhone };
 
 export function getLeadDeadlineStatus(lead?: FullLeadData | null): 'overdue' | 'today' | 'future' | 'empty' {
   if (!lead?.nextAction) return 'empty';
