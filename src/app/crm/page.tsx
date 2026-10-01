@@ -31,7 +31,7 @@ import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/moc
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
 import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/currencyHelper';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
-import { LeadDrawer } from '@/components/crm/LeadDrawer';
+import { LeadDetailsModal, WhatsAppIcon, TelegramIcon } from '@/components/crm/LeadDetailsModal';
 import { ConvertLeadModal } from '@/components/crm/ConvertLeadModal';
 import { softDeleteLead, restoreLead, getStoredLeads, syncLeadToSupabase, saveLeadToStorage } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
@@ -783,9 +783,40 @@ export default function CrmPage() {
                       onClick={() => setSelectedLeadForDrawer(lead)}
                       className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     >
-                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 truncate">
+                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
                         <div className="truncate">{lead.name}</div>
-                        <div className="text-[11px] text-slate-400 font-normal font-mono truncate">{formatPhone(lead.contact)}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <a
+                            href={lead.contact ? `tel:+${normalizePhone(lead.contact)}` : '#'}
+                            onClick={(e) => e.stopPropagation()}
+                            title="Позвонить по телефону"
+                            className="text-[11px] text-slate-500 font-mono hover:text-blue-600 hover:underline truncate"
+                          >
+                            {formatPhone(lead.contact)}
+                          </a>
+                          {normalizePhone(lead.contact) && (
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <a
+                                href={`https://wa.me/${normalizePhone(lead.contact)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Написать в WhatsApp"
+                                className="w-5 h-5 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                              >
+                                <WhatsAppIcon className="w-3 h-3" />
+                              </a>
+                              <a
+                                href={lead.telegram ? `https://t.me/${lead.telegram.replace('@', '')}` : `https://wa.me/${normalizePhone(lead.contact)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Написать в Telegram"
+                                className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                              >
+                                <TelegramIcon className="w-3 h-3" />
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-3 truncate">
                         <span className="font-medium text-slate-800">{lead.studentName || '—'}</span>
@@ -841,8 +872,8 @@ export default function CrmPage() {
         )}
       </div>
 
-      {/* Slide Drawer on the right (Desktop 480-520px) */}
-      <LeadDrawer
+      {/* Lead Details Modal Window (Same unified modal pattern as Students/Parents) */}
+      <LeadDetailsModal
         isOpen={Boolean(selectedLeadForDrawer)}
         lead={selectedLeadForDrawer}
         onClose={() => setSelectedLeadForDrawer(null)}
@@ -1015,7 +1046,10 @@ function LeadCard({
     return 'future';
   }, [lead.nextAction, lead.nextActionDate]);
 
-  const phoneDigits = (lead.contact || '').replace(/[^\d+]/g, '');
+  const phoneClean = normalizePhone(lead.contact);
+  const formattedPhoneStr = formatPhone(lead.contact);
+  const waLink = phoneClean ? `https://wa.me/${phoneClean}` : '#';
+  const tgLink = lead.telegram ? `https://t.me/${lead.telegram.replace('@', '')}` : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
 
   return (
     <div
@@ -1115,72 +1149,75 @@ function LeadCard({
           <span className="text-[10px] text-slate-400 truncate">{lead.source}</span>
         </div>
 
-        {/* Formatted Phone & Vector SVG Communication Icons */}
+        {/* Formatted Phone & Vector SVG Communication Icons (Same model as Students/Parents) */}
         <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
-          <span className="font-mono text-[11px] text-slate-700 font-medium truncate">
-            {formatPhone(lead.contact)}
-          </span>
+          <a
+            href={phoneClean ? `tel:+${phoneClean}` : '#'}
+            onClick={(e) => e.stopPropagation()}
+            title="Позвонить по телефону"
+            className="font-mono text-[11px] text-slate-500 hover:text-blue-600 hover:underline whitespace-nowrap block shrink-0 font-medium"
+          >
+            {formattedPhoneStr}
+          </a>
 
-          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {/* Copy Button */}
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard.writeText(lead.contact);
-                toast.success(`Номер скопирован: ${lead.contact}`);
-              }}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-              title="Скопировать номер"
-            >
-              <Copy className="h-3 w-3" />
-            </button>
-
-            {/* WhatsApp SVG Icon */}
-            <button
-              type="button"
-              onClick={() => triggerWhatsAppContact({
-                phone: lead.contact,
-                leadId: lead.id,
-                leadName: lead.name,
-                author: 'Администратор',
-              })}
-              className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-              title="Написать в WhatsApp"
-            >
-              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.59 1.956.883 2.806.883 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.766-5.768-5.766zm9.969 5.766c0 5.485-4.464 9.949-9.969 9.949-1.745 0-3.385-.45-4.818-1.246l-5.213 1.359 1.383-5.074c-.9-1.487-1.393-3.218-1.393-4.988 0-5.485 4.464-9.949 9.969-9.949 5.485 0 10.042 4.464 10.041 9.949z" />
-              </svg>
-            </button>
-
-            {/* Telegram SVG Icon */}
-            {lead.telegram && (
+          {phoneClean && (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {/* Copy Button */}
               <button
                 type="button"
-                onClick={() => triggerTelegramContact({
-                  telegram: lead.telegram,
-                  phone: lead.contact,
-                  leadId: lead.id,
-                  leadName: lead.name,
-                  author: 'Администратор',
-                })}
-                className="p-1 rounded-md text-sky-500 hover:bg-sky-50 transition-colors cursor-pointer"
-                title="Написать в Telegram"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(lead.contact);
+                  toast.success(`Номер скопирован: ${lead.contact}`);
+                }}
+                title="Скопировать"
+                className="w-6 h-6 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
               >
-                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
-                </svg>
+                <Copy className="w-3.5 h-3.5" />
               </button>
-            )}
 
-            {/* Phone Call Button */}
-            <a
-              href={`tel:${phoneDigits}`}
-              className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
-              title="Позвонить"
-            >
-              <Phone className="h-3 w-3" />
-            </a>
-          </div>
+              {/* WhatsApp button */}
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerWhatsAppContact({
+                    phone: lead.contact,
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    author: 'Администратор',
+                  });
+                }}
+                title="Написать в WhatsApp"
+                className="w-6 h-6 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+              </a>
+
+              {/* Telegram button */}
+              <a
+                href={tgLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  triggerTelegramContact({
+                    telegram: lead.telegram,
+                    phone: lead.contact,
+                    leadId: lead.id,
+                    leadName: lead.name,
+                    author: 'Администратор',
+                  });
+                }}
+                title="Написать в Telegram"
+                className="w-6 h-6 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+              >
+                <TelegramIcon className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
