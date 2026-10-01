@@ -26,7 +26,13 @@ import {
   Check,
   CheckSquare,
   Square,
-  X
+  X,
+  GraduationCap,
+  Users,
+  TrendingUp,
+  SlidersHorizontal,
+  Settings,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
@@ -64,6 +70,34 @@ export function formatPhone(phone?: string | number): string {
   return String(phone);
 }
 
+export function getLeadDeadlineStatus(lead?: FullLeadData | null): 'overdue' | 'today' | 'future' | 'empty' {
+  if (!lead?.nextAction) return 'empty';
+  const str = String(lead.nextActionDate || '').toLowerCase();
+  if (
+    str.includes('просроч') ||
+    str.includes('вчера') ||
+    str.includes('2026-08') ||
+    str.includes('01.09') ||
+    str.includes('02.09') ||
+    str.includes('30.09') ||
+    str.includes('30 сен')
+  ) {
+    return 'overdue';
+  }
+  if (
+    str.includes('сегодня') ||
+    str.includes('12:00') ||
+    str.includes('13:00') ||
+    str.includes('15:00') ||
+    str.includes('16:30') ||
+    str.includes('17:00') ||
+    str.includes('18:00')
+  ) {
+    return 'today';
+  }
+  return 'future';
+}
+
 export default function CrmPage() {
   const router = useRouter();
   const toast = useToast();
@@ -72,6 +106,8 @@ export default function CrmPage() {
   const [leads, setLeads] = useState<FullLeadData[]>(() => getStoredLeads(true, true));
   const [tabFilter, setTabFilter] = useState<'active' | 'deleted'>('active');
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [activeStageGroup, setActiveStageGroup] = useState<'primary' | 'closing'>('primary');
+  const [segmentFilter, setSegmentFilter] = useState<'all' | 'need_action' | 'overdue' | 'today' | 'no_action'>('all');
   const [mobileStageFilter, setMobileStageFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState('all');
@@ -126,36 +162,50 @@ export default function CrmPage() {
     {
       key: 'new',
       label: 'Новые',
+      dotColor: 'bg-blue-500',
+      bgTint: 'bg-[#F4F8FE] border-blue-100/90',
       badgeColor: 'bg-blue-100 text-blue-700',
     },
     {
       key: 'contacted',
       label: 'В работе',
+      dotColor: 'bg-amber-500',
+      bgTint: 'bg-[#FEF9F3] border-amber-100/90',
       badgeColor: 'bg-amber-100 text-amber-700',
     },
     {
       key: 'trial_scheduled',
       label: 'Пробное назначено',
+      dotColor: 'bg-purple-500',
+      bgTint: 'bg-[#FAF6FE] border-purple-100/90',
       badgeColor: 'bg-purple-100 text-purple-700',
     },
     {
       key: 'trial_held',
       label: 'Пробное проведено',
-      badgeColor: 'bg-blue-100 text-blue-700',
+      dotColor: 'bg-emerald-500',
+      bgTint: 'bg-[#F2FBF7] border-emerald-100/90',
+      badgeColor: 'bg-emerald-100 text-emerald-700',
     },
     {
       key: 'thinking',
       label: 'Думают или Счёт',
+      dotColor: 'bg-teal-500',
+      bgTint: 'bg-[#F0FDFA] border-teal-100/90',
       badgeColor: 'bg-teal-100 text-teal-700',
     },
     {
       key: 'paid',
       label: 'Оплачено (Успех)',
+      dotColor: 'bg-emerald-600',
+      bgTint: 'bg-[#F2FBF7] border-emerald-100/90',
       badgeColor: 'bg-emerald-100 text-emerald-700',
     },
     {
       key: 'lost',
       label: 'Отказ или Архив',
+      dotColor: 'bg-slate-400',
+      bgTint: 'bg-slate-50 border-slate-200/90',
       badgeColor: 'bg-slate-200 text-slate-700',
     },
   ] as const, []);
@@ -297,58 +347,6 @@ export default function CrmPage() {
   const activeLeads = (leads || []).filter((l) => l && !l.is_deleted && !(l as any).isDeleted);
   const deletedLeads = (leads || []).filter((l) => l && (l.is_deleted || (l as any).isDeleted));
 
-  const displayedLeads = (tabFilter === 'active' ? activeLeads : deletedLeads).filter((lead) => {
-    if (!lead) return false;
-    const nameStr = String(lead.name || '').toLowerCase();
-    const contactStr = String(lead.contact || '');
-    const studentStr = String(lead.studentName || '').toLowerCase();
-    const search = (searchTerm || '').trim().toLowerCase();
-
-    const matchesSearch =
-      !search ||
-      nameStr.includes(search) ||
-      contactStr.includes(search) ||
-      studentStr.includes(search);
-    const matchesDirection = directionFilter === 'all' || lead.directionOrCourse === directionFilter;
-    return matchesSearch && matchesDirection;
-  });
-
-  // Calculate total potential volume of active funnel
-  const funnelTotalEur = useMemo(() => {
-    const rate = getEurRubRate();
-    let sumEur = 0;
-    activeLeads.forEach((l) => {
-      if (!l) return;
-      if (l.status === 'lost' || (l.status as string) === 'no_response') return;
-      if (l.offerAmount) {
-        const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-        if (num > 0) {
-          if (String(l.offerAmount).includes('€') || num <= 500) {
-            sumEur += num;
-          } else {
-            sumEur += convertRubToEur(num, rate);
-          }
-          return;
-        }
-      }
-      try {
-        const fin = getLeadFinancialSummary(l);
-        if (fin && fin.deposit > 0) {
-          sumEur += fin.deposit;
-        } else {
-          sumEur += 80; // default estimated student contract amount in EUR
-        }
-      } catch {
-        sumEur += 80;
-      }
-    });
-    return Math.round(sumEur);
-  }, [activeLeads]);
-
-  const funnelTotalRub = useMemo(() => {
-    return convertEurToRub(funnelTotalEur, getEurRubRate());
-  }, [funnelTotalEur]);
-
   // Fast memoized lead amount calculation cache (Map)
   const leadAmountCache = useMemo(() => new Map<string, number>(), []);
 
@@ -378,20 +376,116 @@ export default function CrmPage() {
     return rounded;
   }, [leadAmountCache]);
 
+  const displayedLeads = useMemo(() => {
+    const base = tabFilter === 'active' ? activeLeads : deletedLeads;
+    return base.filter((lead) => {
+      if (!lead) return false;
+      const nameStr = String(lead.name || '').toLowerCase();
+      const contactStr = String(lead.contact || '');
+      const studentStr = String(lead.studentName || '').toLowerCase();
+      const search = (searchTerm || '').trim().toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        nameStr.includes(search) ||
+        contactStr.includes(search) ||
+        studentStr.includes(search);
+      const matchesDirection = directionFilter === 'all' || lead.directionOrCourse === directionFilter;
+
+      if (!matchesSearch || !matchesDirection) return false;
+
+      // Segment filter
+      if (tabFilter === 'active' && segmentFilter !== 'all') {
+        const dStatus = getLeadDeadlineStatus(lead);
+        if (segmentFilter === 'need_action') {
+          return dStatus === 'today' || dStatus === 'overdue' || dStatus === 'empty';
+        }
+        if (segmentFilter === 'overdue') {
+          return dStatus === 'overdue';
+        }
+        if (segmentFilter === 'today') {
+          return dStatus === 'today';
+        }
+        if (segmentFilter === 'no_action') {
+          return dStatus === 'empty';
+        }
+      }
+
+      return true;
+    });
+  }, [tabFilter, activeLeads, deletedLeads, searchTerm, directionFilter, segmentFilter]);
+
+  // Calculate total potential volume of active funnel
+  const funnelTotalEur = useMemo(() => {
+    const rate = getEurRubRate();
+    let sumEur = 0;
+    activeLeads.forEach((l) => {
+      if (!l) return;
+      if (l.status === 'lost' || (l.status as string) === 'no_response') return;
+      sumEur += getCachedLeadEur(l, rate);
+    });
+    return Math.round(sumEur);
+  }, [activeLeads, getCachedLeadEur]);
+
+  // Comprehensive KPI stats for dashboard summary and stepper groups
+  const kpiStats = useMemo(() => {
+    const rate = getEurRubRate();
+    let todayCount = 0;
+    let overdueCount = 0;
+    let noActionCount = 0;
+    let primaryCount = 0;
+    let primarySum = 0;
+    let closingCount = 0;
+    let closingSum = 0;
+
+    activeLeads.forEach((l) => {
+      if (!l) return;
+      const dStatus = getLeadDeadlineStatus(l);
+      if (dStatus === 'today') todayCount++;
+      if (dStatus === 'overdue') overdueCount++;
+      if (dStatus === 'empty') noActionCount++;
+
+      const leadEur = getCachedLeadEur(l, rate);
+      if (['new', 'contacted', 'trial_scheduled', 'trial_held'].includes(l.status)) {
+        primaryCount++;
+        primarySum += leadEur;
+      } else {
+        closingCount++;
+        closingSum += leadEur;
+      }
+    });
+
+    return {
+      activeCount: activeLeads.length,
+      todayCount,
+      overdueCount,
+      noActionCount,
+      needActionCount: todayCount + overdueCount + noActionCount,
+      primaryCount,
+      primarySum: Math.round(primarySum),
+      closingCount,
+      closingSum: Math.round(closingSum),
+    };
+  }, [activeLeads, getCachedLeadEur]);
+
   // Stage potential calculations with O(1) cache lookup
   const stageStats = useMemo(() => {
     const rate = getEurRubRate();
-    const stats: Record<string, { count: number; sumEur: number }> = {};
+    const stats: Record<string, { count: number; sumEur: number; actionsCount: number }> = {};
     for (const c of columns) {
-      stats[c.key] = { count: 0, sumEur: 0 };
+      stats[c.key] = { count: 0, sumEur: 0, actionsCount: 0 };
     }
 
     for (const l of displayedLeads) {
       if (!l) continue;
       const key = (l.status === 'no_response' ? 'lost' : l.status) as string;
-      if (!stats[key]) stats[key] = { count: 0, sumEur: 0 };
+      if (!stats[key]) stats[key] = { count: 0, sumEur: 0, actionsCount: 0 };
       stats[key].count += 1;
       stats[key].sumEur += getCachedLeadEur(l, rate);
+      const dStatus = getLeadDeadlineStatus(l);
+      if (dStatus !== 'empty') {
+        stats[key].actionsCount += 1;
+      }
     }
 
     return stats;
@@ -419,51 +513,68 @@ export default function CrmPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 w-full min-w-0">
-      {/* Title & Actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Top Header: Title & Actions & KPI Cards */}
+      <div className="flex flex-col gap-3.5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              {t('crm.title', 'CRM Лиды и Воронка')}
+              {t('crm.title', 'CRM и Лиды')}
             </h1>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-              Объем воронки: {funnelTotalEur.toLocaleString('ru-RU')} €
-            </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {t('crm.subtitle', 'Единая сквозная воронка, контроль дедлайнов и конверсия в постоянных учеников')}
+            {t('crm.subtitle', 'Воронка продаж, обработка заявок и конверсия в учеников')}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Active / Deleted Tab Switcher */}
-          <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setTabFilter('active')}
-              className={cn(
-                'rounded-md px-3 py-1.5 transition-all cursor-pointer',
-                tabFilter === 'active' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              Активные ({activeLeads.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTabFilter('deleted')}
-              className={cn(
-                'rounded-md px-3 py-1.5 transition-all cursor-pointer flex items-center gap-1',
-                tabFilter === 'deleted' ? 'bg-white shadow-xs text-rose-700 font-bold' : 'text-slate-600 hover:text-rose-600'
-              )}
-            >
-              <Trash2 className="h-3 w-3" />
-              Корзина ({deletedLeads.length})
-            </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* KPI 1: Active Leads */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200/90 rounded-2xl px-3 py-2 shadow-2xs">
+            <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-slate-900 block leading-tight">{kpiStats.activeCount}</span>
+              <span className="text-[10.5px] text-slate-500 font-medium block leading-tight">активных лидов</span>
+            </div>
           </div>
 
+          {/* KPI 2: Funnel Sum EUR */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200/90 rounded-2xl px-3 py-2 shadow-2xs">
+            <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-slate-900 block leading-tight">{funnelTotalEur.toLocaleString('ru-RU')} €</span>
+              <span className="text-[10.5px] text-slate-500 font-medium block leading-tight">сумма воронки</span>
+            </div>
+          </div>
+
+          {/* KPI 3: Today Actions */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200/90 rounded-2xl px-3 py-2 shadow-2xs">
+            <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-slate-900 block leading-tight">{kpiStats.todayCount}</span>
+              <span className="text-[10.5px] text-slate-500 font-medium block leading-tight">действий сегодня</span>
+            </div>
+          </div>
+
+          {/* KPI 4: Overdue */}
+          <div className="flex items-center gap-2 bg-white border border-slate-200/90 rounded-2xl px-3 py-2 shadow-2xs">
+            <div className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-sm font-bold text-slate-900 block leading-tight">{kpiStats.overdueCount}</span>
+              <span className="text-[10.5px] text-slate-500 font-medium block leading-tight">просрочено</span>
+            </div>
+          </div>
+
+          {/* Create Lead Button */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
           >
             <Plus className="h-4 w-4" />
             {t('action.createLead', 'Новый лид')}
@@ -471,61 +582,245 @@ export default function CrmPage() {
         </div>
       </div>
 
-      {/* Filter and View Mode Switcher */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-        <div className="relative flex-1 max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('crm.search', 'Поиск лида по имени, телефону или ученику...')}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+      {/* Stepper Tabs for Funnel Stages & View Switcher */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 max-w-3xl">
+          {/* Stepper Tab 1: Primary Stages */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveStageGroup('primary');
+              setTabFilter('active');
+            }}
+            className={cn(
+              'rounded-2xl p-3 flex items-center gap-3 transition-all text-left cursor-pointer shadow-2xs',
+              activeStageGroup === 'primary' && tabFilter === 'active'
+                ? 'bg-blue-50/80 border-2 border-blue-500 ring-2 ring-blue-100'
+                : 'bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80'
+            )}
+          >
+            <div className={cn(
+              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+              activeStageGroup === 'primary' && tabFilter === 'active'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-500'
+            )}>
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">
+                1. Первичная обработка и пробные занятия
+              </span>
+              <span className={cn(
+                'text-xs font-semibold block truncate mt-0.5',
+                activeStageGroup === 'primary' && tabFilter === 'active' ? 'text-blue-600' : 'text-slate-400'
+              )}>
+                4 этапа · {kpiStats.primaryCount} лидов · {kpiStats.primarySum.toLocaleString('ru-RU')} €
+              </span>
+            </div>
+          </button>
+
+          {/* Stepper Tab 2: Decision, Payment & Outcome Stages */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveStageGroup('closing');
+              setTabFilter('active');
+            }}
+            className={cn(
+              'rounded-2xl p-3 flex items-center gap-3 transition-all text-left cursor-pointer shadow-2xs',
+              activeStageGroup === 'closing' && tabFilter === 'active'
+                ? 'bg-blue-50/80 border-2 border-blue-500 ring-2 ring-blue-100'
+                : 'bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80'
+            )}
+          >
+            <div className={cn(
+              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+              activeStageGroup === 'closing' && tabFilter === 'active'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-500'
+            )}>
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 block truncate">
+                2. Принятие решения, оплата и итоги
+              </span>
+              <span className={cn(
+                'text-xs font-semibold block truncate mt-0.5',
+                activeStageGroup === 'closing' && tabFilter === 'active' ? 'text-blue-600' : 'text-slate-400'
+              )}>
+                3 этапа · {kpiStats.closingCount} лидов · {kpiStats.closingSum.toLocaleString('ru-RU')} €
+              </span>
+            </div>
+          </button>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Filter className="h-3.5 w-3.5" />
-            <span>{t('crm.filterCourse', 'Курс:')}</span>
-            <select
-              value={directionFilter}
-              onChange={(e) => setDirectionFilter(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none"
-            >
-              <option value="all">{t('crm.allDirections', 'Все направления')}</option>
-              <option value="Английский язык">Английский язык</option>
-              <option value="Робототехника">Робототехника</option>
-              <option value="Математика">Математика</option>
-              <option value="Олимпиадная математика">Олимпиадная математика</option>
-            </select>
-          </div>
-
-          {/* Desktop View Switcher: ONLY 2 buttons (Kanban & Table) according to specification */}
-          <div className="hidden md:flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
+        {/* View Switcher: Kanban / Table + Settings */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-medium border border-slate-200/80">
             <button
               onClick={() => setViewMode('kanban')}
-              title="Канбан-доска (единый горизонтальный ряд)"
               className={cn(
-                'flex items-center gap-1 rounded-md px-3 py-1.5 transition-all cursor-pointer',
-                viewMode === 'kanban' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all cursor-pointer text-xs',
+                viewMode === 'kanban' ? 'bg-white shadow-xs font-bold text-blue-600 border border-slate-200/60' : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              <Columns className="h-3.5 w-3.5 text-blue-600" />
+              <Columns className="h-3.5 w-3.5" />
               <span>Канбан-доска</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              title="Таблица лидов"
               className={cn(
-                'flex items-center gap-1 rounded-md px-3 py-1.5 transition-all cursor-pointer',
-                viewMode === 'table' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
+                'flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition-all cursor-pointer text-xs',
+                viewMode === 'table' ? 'bg-white shadow-xs font-bold text-blue-600 border border-slate-200/60' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <List className="h-3.5 w-3.5" />
               <span>Таблица</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            title="Настройки воронки"
+            className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Filter and Segment Pills Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-2xl p-2.5 shadow-2xs">
+        {/* Left Segment Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Quick Search Dropdown / Input */}
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Все лиды"
+              className="h-8 w-36 sm:w-44 rounded-xl border border-slate-200 bg-slate-50/80 pl-8 pr-2.5 text-xs text-slate-800 placeholder-slate-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium"
+            />
+          </div>
+
+          {/* Pill 1: All */}
+          <button
+            type="button"
+            onClick={() => setSegmentFilter('all')}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+              segmentFilter === 'all'
+                ? 'bg-blue-50 text-blue-700 border border-blue-200 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <span>Все</span>
+            <span className="text-[10.5px] px-1.5 py-0.2 rounded-md bg-blue-100/70 text-blue-800 font-bold">
+              {kpiStats.activeCount}
+            </span>
+          </button>
+
+          {/* Pill 2: Need action */}
+          <button
+            type="button"
+            onClick={() => setSegmentFilter('need_action')}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+              segmentFilter === 'need_action'
+                ? 'bg-rose-50 text-rose-700 border border-rose-200 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <span>Требуют действия</span>
+            <span className="text-[10.5px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-800 font-bold">
+              {kpiStats.needActionCount}
+            </span>
+          </button>
+
+          {/* Pill 3: Overdue */}
+          <button
+            type="button"
+            onClick={() => setSegmentFilter('overdue')}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+              segmentFilter === 'overdue'
+                ? 'bg-rose-50 text-rose-700 border border-rose-200 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <span>Просроченные</span>
+            <span className="text-[10.5px] px-1.5 py-0.2 rounded-md bg-rose-100 text-rose-800 font-bold">
+              {kpiStats.overdueCount}
+            </span>
+          </button>
+
+          {/* Pill 4: Today */}
+          <button
+            type="button"
+            onClick={() => setSegmentFilter('today')}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+              segmentFilter === 'today'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <span>Сегодня</span>
+            <span className="text-[10.5px] px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 font-bold">
+              {kpiStats.todayCount}
+            </span>
+          </button>
+
+          {/* Pill 5: No action */}
+          <button
+            type="button"
+            onClick={() => setSegmentFilter('no_action')}
+            className={cn(
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5',
+              segmentFilter === 'no_action'
+                ? 'bg-purple-50 text-purple-700 border border-purple-200 font-bold'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            <span>Без следующего действия</span>
+            <span className="text-[10.5px] px-1.5 py-0.2 rounded-md bg-purple-100 text-purple-800 font-bold">
+              {kpiStats.noActionCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Right Filter Dropdowns */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <GraduationCap className="h-3.5 w-3.5 text-slate-400" />
+            <select
+              value={directionFilter}
+              onChange={(e) => setDirectionFilter(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="all">Курс: Все направления</option>
+              <option value="Английский язык">Английский язык</option>
+              <option value="Немецкий язык">Немецкий язык</option>
+              <option value="Робототехника">Робототехника</option>
+              <option value="Математика">Математика</option>
+              <option value="Олимпиадная математика">Олимпиадная математика</option>
+              <option value="Подготовка к школе">Подготовка к школе</option>
+              <option value="Python Start">Python Start</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setDirectionFilter('all')}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+            <span>Фильтры</span>
+          </button>
         </div>
       </div>
 
@@ -655,13 +950,15 @@ export default function CrmPage() {
 
       {/* DESKTOP VIEWS (KANBAN HORIZONTAL ROW / TABLE) */}
       <div className="hidden md:block">
-        {/* VIEW 1: KANBAN BOARD IN 2 LOGICAL ROWS (NO HORIZONTAL SCROLL) */}
+        {/* VIEW 1: KANBAN BOARD WITH SINGLE-ROW STEPPER */}
         {viewMode === 'kanban' && tabFilter === 'active' && (() => {
+          const activeColumns = activeStageGroup === 'primary' ? primaryColumns : closingColumns;
+
           const renderColumn = (col: (typeof columns)[number]) => {
             const colLeads = displayedLeads.filter(
               (l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response')
             );
-            const stats = stageStats[col.key] || { count: 0, sumEur: 0 };
+            const stats = stageStats[col.key] || { count: 0, sumEur: 0, actionsCount: 0 };
             const isOver = dragOverColKey === col.key;
 
             return (
@@ -671,32 +968,39 @@ export default function CrmPage() {
                 onDragLeave={() => handleDragLeave(col.key)}
                 onDrop={(e) => handleDrop(e, col.key)}
                 className={cn(
-                  'flex flex-col rounded-2xl border p-3 shadow-2xs transition-all duration-150 min-w-0 bg-[#F8FAFC]',
-                  isOver
-                    ? 'border-blue-500 ring-2 ring-blue-300 bg-blue-50/50'
-                    : 'border-slate-200/80'
+                  'flex flex-col rounded-2xl border p-3.5 shadow-2xs transition-all duration-150 min-w-0',
+                  col.bgTint,
+                  isOver ? 'border-blue-500 ring-2 ring-blue-300 bg-blue-50/70' : 'border-slate-200/90'
                 )}
               >
-                {/* Column Header with financial metrics (Clean White Card) */}
-                <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs mb-3">
-                  <div className="min-w-0 flex-1 pr-1.5">
-                    <span className="text-xs font-bold text-slate-900 block truncate" title={col.label}>
+                {/* Column Header */}
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', col.dotColor)} />
+                    <span className="text-sm font-bold text-slate-900 truncate" title={col.label}>
                       {col.label}
                     </span>
-                    <span className="text-[11px] text-slate-500 font-medium block truncate mt-0.5">
-                      ({stats.count}) · {stats.sumEur.toLocaleString('ru-RU')} €
-                    </span>
                   </div>
-                  <span className={cn('w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0', col.badgeColor)}>
-                    {colLeads.length}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="w-6 h-6 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-blue-600 flex items-center justify-center transition-colors shadow-2xs cursor-pointer"
+                    title="Добавить лид на этот этап"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {/* Cards Container with internal vertical scroll */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[420px] min-h-[140px] pr-0.5">
+                {/* Subtitle with stats */}
+                <div className="text-xs text-slate-500 font-medium mb-3">
+                  {colLeads.length} {colLeads.length === 1 ? 'лид' : colLeads.length < 5 ? 'лида' : 'лидов'} · {stats.sumEur} € · {stats.actionsCount} {stats.actionsCount === 1 ? 'действие' : stats.actionsCount < 5 ? 'действия' : 'действий'}
+                </div>
+
+                {/* Cards Container without ugly inner scrollbar */}
+                <div className="space-y-3 flex-1 min-h-[140px]">
                   {colLeads.length === 0 ? (
                     <div className={cn(
-                      'flex h-28 flex-col items-center justify-center rounded-xl border border-dashed text-xs transition-colors',
+                      'flex h-32 flex-col items-center justify-center rounded-2xl border border-dashed text-xs transition-colors bg-white/60',
                       isOver ? 'border-blue-400 bg-blue-50 text-blue-600 font-semibold' : 'border-slate-300 text-slate-400'
                     )}>
                       {isOver ? 'Отпустите для переноса' : 'Нет лидов'}
@@ -721,34 +1025,11 @@ export default function CrmPage() {
           };
 
           return (
-            <div className="space-y-5">
-              {/* Row 1: Primary stages (4 columns) */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                    1. Первичная обработка и пробные занятия
-                  </span>
-                  <span className="text-xs text-slate-400">4 этапа • Перетаскивайте карточки между этапами</span>
-                </div>
-                <div className="grid grid-cols-4 gap-3.5">
-                  {primaryColumns.map((col) => renderColumn(col))}
-                </div>
-              </div>
-
-              {/* Row 2: Decision, Payment & Outcome stages (3 columns) */}
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    2. Принятие решений, оплата и итоги
-                  </span>
-                  <span className="text-xs text-slate-400">3 этапа воронки</span>
-                </div>
-                <div className="grid grid-cols-3 gap-3.5">
-                  {closingColumns.map((col) => renderColumn(col))}
-                </div>
-              </div>
+            <div className={cn(
+              'grid gap-3.5 items-start',
+              activeStageGroup === 'primary' ? 'grid-cols-4' : 'grid-cols-3'
+            )}>
+              {activeColumns.map((col) => renderColumn(col))}
             </div>
           );
         })()}
@@ -1064,24 +1345,24 @@ function LeadCard({
           <div className="min-w-0 flex-1">
             {/* Row 1: Bold Parent Name */}
             <h4
-              className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors truncate block"
+              className="font-bold text-slate-900 text-sm hover:text-blue-600 transition-colors truncate block"
               title={lead.name}
             >
               {lead.name}
             </h4>
             {/* Row 2: Child name + age */}
             {(lead.studentName || lead.studentAge) && (
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+              <p className="text-xs text-slate-500 font-medium mt-0.5 truncate">
                 {lead.studentName || lead.name}
-                {lead.studentAge ? ` (${lead.studentAge})` : ''}
+                {lead.studentAge ? ` · ${lead.studentAge}` : ''}
               </p>
             )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {/* Deal Amount Badge */}
+            {/* Deal Amount */}
             <span
-              className="text-[10.5px] font-semibold text-slate-700 bg-slate-50 border border-slate-200/90 px-2 py-0.5 rounded-md shrink-0"
+              className="text-xs font-bold text-slate-900 shrink-0"
               title="Потенциал сделки"
             >
               {dealAmountFormatted}
@@ -1140,38 +1421,29 @@ function LeadCard({
         </div>
 
         {/* Direction tag & Source */}
-        <div className="mt-1.5 flex items-center justify-between text-xs">
-          <span className="font-bold text-[#7C3AED] truncate text-xs">{lead.directionOrCourse || 'Курс не указан'}</span>
-          <span className="text-[10.5px] text-slate-400 truncate text-right">{lead.source || 'Прямой контакт'}</span>
+        <div className="mt-2 flex items-center gap-1.5 text-xs flex-wrap">
+          <span className="bg-purple-50 text-purple-700 font-semibold text-[11px] px-2.5 py-0.5 rounded-md border border-purple-100 truncate">
+            {lead.directionOrCourse || 'Курс не указан'}
+          </span>
+          <span className="bg-slate-100 text-slate-600 font-medium text-[11px] px-2 py-0.5 rounded-md truncate">
+            {lead.source || 'Прямой контакт'}
+          </span>
         </div>
 
         {/* Formatted Phone & Vector SVG Communication Icons */}
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
           <a
             href={phoneClean ? `tel:+${phoneClean}` : '#'}
             onClick={(e) => e.stopPropagation()}
             title="Позвонить по телефону"
-            className="font-mono text-xs text-slate-600 font-medium hover:text-blue-600 hover:underline truncate"
+            className="font-mono text-xs text-blue-600 font-medium hover:underline truncate flex items-center gap-1.5"
           >
-            {formattedPhoneStr}
+            <Phone className="w-3.5 h-3.5 text-blue-500" />
+            <span>{formattedPhoneStr}</span>
           </a>
 
           {phoneClean && (
             <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-              {/* Copy Button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(lead.contact);
-                  toast.success(`Номер скопирован: ${lead.contact}`);
-                }}
-                title="Скопировать"
-                className="w-6 h-6 rounded-md border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-slate-50 flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <Copy className="w-3 h-3" />
-              </button>
-
               {/* WhatsApp button */}
               <a
                 href={waLink}
@@ -1187,7 +1459,7 @@ function LeadCard({
                   });
                 }}
                 title="Написать в WhatsApp"
-                className="w-6 h-6 rounded-md bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                className="w-6 h-6 rounded-full bg-[#25D366]/15 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/30 cursor-pointer"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5" />
               </a>
@@ -1208,7 +1480,7 @@ function LeadCard({
                   });
                 }}
                 title="Написать в Telegram"
-                className="w-6 h-6 rounded-md bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                className="w-6 h-6 rounded-full bg-[#229ED9]/15 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/30 cursor-pointer"
               >
                 <TelegramIcon className="w-3.5 h-3.5" />
               </a>
@@ -1220,34 +1492,79 @@ function LeadCard({
       {/* Task & Deadline Control Banner */}
       <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
         {deadlineStatus === 'overdue' ? (
-          <div className="flex items-center gap-1.5 text-[11px] text-rose-900 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 shadow-2xs">
-            <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-            <span className="truncate">
-              <strong>Просрочено:</strong> {lead.nextAction} ({lead.nextActionDate})
-            </span>
+          <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-xl p-2.5 flex items-start justify-between gap-2 shadow-2xs">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-rose-800 leading-tight">
+                  Просрочено, {lead.nextActionDate || '30.09'}
+                </p>
+                <p className="text-xs text-rose-950 font-medium mt-0.5 leading-snug">
+                  {lead.nextAction || 'Связаться с родителем'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="text-rose-400 hover:text-rose-600 p-0.5 cursor-pointer shrink-0"
+              title="Открыть задачу"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : deadlineStatus === 'today' ? (
-          <div className="flex items-center gap-1.5 text-[11px] text-[#92400E] bg-[#FFFBEB] px-2.5 py-1.5 rounded-lg border border-[#FDE68A] shadow-2xs">
-            <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-            <span className="truncate">
-              <strong>Сегодня:</strong> {lead.nextAction}
-            </span>
+          <div className="bg-[#FFF8E6] border border-[#FDE3A7] rounded-xl p-2.5 flex items-start justify-between gap-2 shadow-2xs">
+            <div className="flex items-start gap-2 min-w-0">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-amber-800 leading-tight">
+                  Сегодня, {lead.nextActionDate?.includes(':') ? lead.nextActionDate.split(' ').pop() : '13:00'}
+                </p>
+                <p className="text-xs text-amber-950 font-medium mt-0.5 leading-snug">
+                  {lead.nextAction}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="text-amber-500 hover:text-amber-700 p-0.5 cursor-pointer shrink-0"
+              title="Открыть задачу"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : deadlineStatus === 'future' ? (
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
-            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span className="truncate">
-              {lead.nextActionDate ? `${lead.nextActionDate}: ` : ''}{lead.nextAction}
-            </span>
+          <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-start justify-between gap-2 shadow-2xs">
+            <div className="flex items-start gap-2 min-w-0">
+              <Calendar className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-700 leading-tight">
+                  {lead.nextActionDate || 'Запланировано'}
+                </p>
+                <p className="text-xs text-slate-800 font-medium mt-0.5 leading-snug">
+                  {lead.nextAction}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer shrink-0"
+              title="Открыть задачу"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : (
           <button
             type="button"
             onClick={onOpen}
-            className="w-full flex items-center justify-center gap-1 py-1.5 rounded-lg border border-dashed border-slate-300 text-[11px] font-semibold text-slate-500 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 text-xs font-semibold text-amber-800 hover:bg-amber-100/60 transition-colors cursor-pointer"
           >
-            <Plus className="h-3.5 w-3.5 text-slate-400" />
-            <span>Назначить действие</span>
+            <Plus className="h-3.5 w-3.5 text-amber-600" />
+            <span>+ Назначить действие</span>
           </button>
         )}
       </div>
