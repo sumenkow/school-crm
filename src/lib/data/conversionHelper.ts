@@ -101,7 +101,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
   // 1. Create Student Data with complete normalized structure
   const newStudent: FullStudentData = {
     id: studentId,
-    name: fullStudentName,
     firstName: firstName,
     lastName: lastName,
     studentType: studentType || 'school_student',
@@ -113,7 +112,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
     telegram: parentTelegram || lead.telegram,
     email: parentEmail,
     status: 'active',
-    joinedAt: startDate || new Date().toISOString().slice(0, 10),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -121,7 +119,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
       ? [
           {
             id: parentId || `par_${Date.now()}`,
-            name: effectiveParentName,
             firstName: effectiveParentName.split(' ')[0] || effectiveParentName,
             lastName: effectiveParentName.split(' ').slice(1).join(' ') || '',
             phone: effectiveParentPhone || lead.contact,
@@ -130,8 +127,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
             preferredChannel: preferredChannel || 'phone',
             relationshipType: 'Родитель',
             isPrimary: true,
-            createdAt: new Date().toISOString(),
-            isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           },
         ]
       : [],
