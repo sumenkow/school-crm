@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
@@ -10,31 +10,56 @@ import {
   Calendar,
   Phone,
   MessageSquare,
-  DollarSign,
   Clock,
   Filter,
-  LayoutGrid,
+  Columns,
   List,
   ChevronRight,
   ChevronLeft,
-  UserCheck,
   Copy,
-  ExternalLink,
-  Columns,
   AlertTriangle,
   Wallet,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  MoreVertical,
+  CheckCircle2,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
 import { getLeadFinancialSummary } from '@/lib/data/balanceHelper';
+import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/currencyHelper';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
-import { softDeleteLead, restoreLead, getStoredLeads } from '@/lib/data/leadStorage';
+import { LeadDrawer } from '@/components/crm/LeadDrawer';
+import { ConvertLeadModal } from '@/components/crm/ConvertLeadModal';
+import { softDeleteLead, restoreLead, getStoredLeads, syncLeadToSupabase, saveLeadToStorage } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
+
+export function normalizePhone(phone?: string): string {
+  if (!phone) return '';
+  let clean = phone.replace(/\D/g, '');
+  if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
+    clean = '7' + clean.slice(1);
+  }
+  return clean;
+}
+
+export function formatPhone(phone?: string): string {
+  if (!phone) return '—';
+  const clean = normalizePhone(phone);
+  if (!clean) return phone;
+  if (clean.length === 11 && clean.startsWith('7')) {
+    return `+7 (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9, 11)}`;
+  }
+  if (clean.length > 6) {
+    return `+${clean.slice(0, 1)} (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9)}`;
+  }
+  return phone;
+}
 
 export default function CrmPage() {
   const router = useRouter();
@@ -43,11 +68,17 @@ export default function CrmPage() {
   const { t } = useLanguage();
   const [leads, setLeads] = useState<FullLeadData[]>(() => getStoredLeads(true, true));
   const [tabFilter, setTabFilter] = useState<'active' | 'deleted'>('active');
-  const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [mobileStageFilter, setMobileStageFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<FullLeadData | null>(null);
+  const [leadForConvertModal, setLeadForConvertModal] = useState<FullLeadData | null>(null);
+  const [leadForLossModal, setLeadForLossModal] = useState<FullLeadData | null>(null);
+  const [lossReasonInput, setLossReasonInput] = useState<string>('');
+  const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+  const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
   const kanbanRef = useRef<HTMLDivElement>(null);
 
   // Sync leads from localStorage and in-memory stores
@@ -95,13 +126,12 @@ export default function CrmPage() {
     }
   };
 
-  // Support for Windows vertical mouse wheel horizontal scrolling
-  React.useEffect(() => {
+  // Support for mouse wheel horizontal scrolling
+  useEffect(() => {
     const el = kanbanRef.current;
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
-      // If user scrolls vertically without shift key, convert to horizontal scroll
       if (e.deltaY !== 0 && e.deltaX === 0 && !e.shiftKey) {
         e.preventDefault();
         el.scrollBy({ left: e.deltaY * 0.8, behavior: 'auto' });
@@ -112,40 +142,87 @@ export default function CrmPage() {
     return () => el.removeEventListener('wheel', onWheel);
   }, [viewMode]);
 
-  // Regulated 8 statuses from Section 12
-  const columns = [
-    { key: 'new', label: t('crm.stageNew', 'Новые'), badgeColor: 'bg-blue-100 text-blue-800' },
-    { key: 'contacted', label: t('crm.stageContacted', 'В работе'), badgeColor: 'bg-amber-100 text-amber-800' },
-    { key: 'trial_scheduled', label: t('crm.stageTrialScheduled', 'Пробное назначено'), badgeColor: 'bg-purple-100 text-purple-800' },
-    { key: 'trial_held', label: t('crm.stageTrialCompleted', 'Пробное проведено'), badgeColor: 'bg-indigo-100 text-indigo-800' },
-    { key: 'thinking', label: t('crm.stageThinking', 'Думают / Счёт'), badgeColor: 'bg-teal-100 text-teal-800' },
-    { key: 'paid', label: t('crm.stagePaid', 'Оплачено (Успех)'), badgeColor: 'bg-emerald-100 text-emerald-800' },
-    { key: 'lost', label: t('crm.stageLost', 'Потерян'), badgeColor: 'bg-rose-100 text-rose-800' },
-    { key: 'no_response', label: t('crm.stageNoResponse', 'Не отвечает'), badgeColor: 'bg-slate-200 text-slate-700' },
-  ] as const;
+  // Unified sequence of 7 stages according to specification
+  const columns = useMemo(() => [
+    {
+      key: 'new',
+      label: 'Новые',
+      badgeColor: 'bg-blue-100 text-blue-800',
+      headerBg: 'bg-slate-100/90 border-slate-200',
+    },
+    {
+      key: 'contacted',
+      label: 'В работе',
+      badgeColor: 'bg-amber-100 text-amber-800',
+      headerBg: 'bg-slate-100/90 border-slate-200',
+    },
+    {
+      key: 'trial_scheduled',
+      label: 'Пробное назначено',
+      badgeColor: 'bg-purple-100 text-purple-800',
+      headerBg: 'bg-slate-100/90 border-slate-200',
+    },
+    {
+      key: 'trial_held',
+      label: 'Пробное проведено',
+      badgeColor: 'bg-indigo-100 text-indigo-800',
+      headerBg: 'bg-slate-100/90 border-slate-200',
+    },
+    {
+      key: 'thinking',
+      label: 'Думают или Счёт',
+      badgeColor: 'bg-teal-100 text-teal-800',
+      headerBg: 'bg-slate-100/90 border-slate-200',
+    },
+    {
+      key: 'paid',
+      label: 'Оплачено (Успех)',
+      badgeColor: 'bg-emerald-100 text-emerald-800',
+      headerBg: 'bg-emerald-50/90 border-emerald-200',
+    },
+    {
+      key: 'lost',
+      label: 'Отказ или Архив',
+      badgeColor: 'bg-slate-200 text-slate-700',
+      headerBg: 'bg-slate-100/60 border-slate-200',
+    },
+  ] as const, []);
 
   const handleLeadCreated = (newLead: FullLeadData) => {
-    // Reset filters so the new lead is immediately visible in the "Новые" column
     setSearchTerm('');
     setDirectionFilter('all');
     setLeads((prev) => {
       const updated = [newLead, ...prev.filter((l) => l.id !== newLead.id)];
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
-          import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(newLead));
-        } catch (e) {
-          console.error('Failed to sync to localStorage', e);
-        }
-      }
+      saveLeadToStorage(newLead);
+      syncLeadToSupabase(newLead);
       return updated;
     });
-    toast.success(`Лид «${newLead.name}» успешно создан и добавлен в список новых`);
+    toast.success(`Лид «${newLead.name}» успешно создан и добавлен в воронку`);
   };
 
   const handleQuickStatusChange = (leadId: string, newStatus: FullLeadData['status']) => {
     const targetLead = leads.find((l) => l.id === leadId);
     if (!targetLead || targetLead.status === newStatus) return;
+
+    // Special case 1: Drop/Move to 'paid' -> open confirmation modal to convert to student
+    if (newStatus === 'paid') {
+      setLeadForConvertModal(targetLead);
+      return;
+    }
+
+    // Special case 2: Drop/Move to 'lost' -> open loss reason modal
+    if (newStatus === 'lost') {
+      setLossReasonInput(targetLead.lossReason || '');
+      setLeadForLossModal(targetLead);
+      return;
+    }
+
+    commitStatusChange(leadId, newStatus);
+  };
+
+  const commitStatusChange = (leadId: string, newStatus: FullLeadData['status'], extra?: { lossReason?: string }) => {
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
 
     const oldStatusObj = columns.find((c) => c.key === targetLead.status);
     const newStatusObj = columns.find((c) => c.key === newStatus);
@@ -168,42 +245,29 @@ export default function CrmPage() {
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор',
-      content: `Сменил(а) статус воронки: «${oldStatusObj?.label || targetLead.status}» → «${newStatusObj?.label || newStatus}»`,
+      content: `Сменил(а) этап воронки: «${oldStatusObj?.label || targetLead.status}» → «${newStatusObj?.label || newStatus}»${extra?.lossReason ? ` (Причина: ${extra.lossReason})` : ''}`,
       result: `Этап воронки: ${newStatusObj?.label || newStatus}`,
     };
 
     const updatedInteractions = [statusChangeInteraction, ...(targetLead.interactions || [])];
 
-    const updatedLead = { ...targetLead, status: newStatus, interactions: updatedInteractions };
+    const updatedLead: FullLeadData = {
+      ...targetLead,
+      status: newStatus,
+      interactions: updatedInteractions,
+      lossReason: extra?.lossReason !== undefined ? extra.lossReason : targetLead.lossReason,
+    };
 
-    setLeads((prev) => {
-      const updated = prev.map((l) =>
-        l.id === leadId
-          ? updatedLead
-          : l
-      );
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
-          import('@/lib/data/leadStorage').then((m) => m.syncLeadToSupabase(updatedLead));
-        } catch (e) {
-          console.error('Failed to sync to localStorage', e);
-        }
-      }
-      return updated;
-    });
-
-    // Also update in-memory INITIAL_LEADS so it persists across views
-    const idx = INITIAL_LEADS.findIndex((l) => l.id === leadId);
-    if (idx !== -1) {
-      INITIAL_LEADS[idx] = {
-        ...INITIAL_LEADS[idx],
-        status: newStatus,
-        interactions: updatedInteractions,
-      };
+    // Optimistic UI state update
+    setLeads((prev) => prev.map((l) => (l.id === leadId ? updatedLead : l)));
+    if (selectedLeadForDrawer?.id === leadId) {
+      setSelectedLeadForDrawer(updatedLead);
     }
 
-    toast.success(`Статус «${targetLead.name}» изменен на «${newStatusObj?.label}» и зафиксирован в таймлайне`);
+    saveLeadToStorage(updatedLead);
+    syncLeadToSupabase(updatedLead);
+
+    toast.success(`Лид «${targetLead.name}» перемещен на этап «${newStatusObj?.label || newStatus}»`);
   };
 
   const handleDeleteLead = (leadId: string) => {
@@ -213,6 +277,9 @@ export default function CrmPage() {
         l.id === leadId ? { ...l, isDeleted: true, is_deleted: true, deletedAt: new Date().toISOString() } : l
       )
     );
+    if (selectedLeadForDrawer?.id === leadId) {
+      setSelectedLeadForDrawer(null);
+    }
     toast.success('Лид перемещен в корзину');
   };
 
@@ -224,6 +291,32 @@ export default function CrmPage() {
       )
     );
     toast.success('Лид успешно восстановлен');
+  };
+
+  const handleDragStart = (leadId: string) => {
+    setDraggedLeadId(leadId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, colKey: string) => {
+    e.preventDefault();
+    if (dragOverColKey !== colKey) {
+      setDragOverColKey(colKey);
+    }
+  };
+
+  const handleDragLeave = (colKey: string) => {
+    if (dragOverColKey === colKey) {
+      setDragOverColKey(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetColKey: string) => {
+    e.preventDefault();
+    setDragOverColKey(null);
+    if (!draggedLeadId) return;
+
+    handleQuickStatusChange(draggedLeadId, targetColKey as FullLeadData['status']);
+    setDraggedLeadId(null);
   };
 
   const activeLeads = leads.filter((l) => !l.is_deleted && !(l as any).isDeleted);
@@ -238,6 +331,68 @@ export default function CrmPage() {
     return matchesSearch && matchesDirection;
   });
 
+  // Calculate total potential volume of active funnel
+  const funnelTotalEur = useMemo(() => {
+    const rate = getEurRubRate();
+    let sumEur = 0;
+    activeLeads.forEach((l) => {
+      if (l.status === 'lost' || (l.status as string) === 'no_response') return;
+      if (l.offerAmount) {
+        const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (num > 0) {
+          if (String(l.offerAmount).includes('€') || num <= 500) {
+            sumEur += num;
+          } else {
+            sumEur += convertRubToEur(num, rate);
+          }
+          return;
+        }
+      }
+      const fin = getLeadFinancialSummary(l);
+      if (fin.deposit > 0) {
+        sumEur += fin.deposit;
+      } else {
+        sumEur += 80; // default estimated student contract amount in EUR
+      }
+    });
+    return Math.round(sumEur);
+  }, [activeLeads]);
+
+  const funnelTotalRub = useMemo(() => {
+    return convertEurToRub(funnelTotalEur, getEurRubRate());
+  }, [funnelTotalEur]);
+
+  // Stage potential calculations
+  const stageStats = useMemo(() => {
+    const rate = getEurRubRate();
+    const stats: Record<string, { count: number; sumEur: number }> = {};
+    columns.forEach(c => {
+      stats[c.key] = { count: 0, sumEur: 0 };
+    });
+
+    displayedLeads.forEach(l => {
+      // Map legacy 'no_response' to 'lost'
+      const key = (l.status === 'no_response' ? 'lost' : l.status) as string;
+      if (!stats[key]) stats[key] = { count: 0, sumEur: 0 };
+      stats[key].count += 1;
+
+      let itemEur = 0;
+      if (l.offerAmount) {
+        const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (num > 0) {
+          itemEur = (String(l.offerAmount).includes('€') || num <= 500) ? num : convertRubToEur(num, rate);
+        }
+      }
+      if (itemEur === 0) {
+        const fin = getLeadFinancialSummary(l);
+        itemEur = fin.deposit > 0 ? fin.deposit : 80;
+      }
+      stats[key].sumEur += Math.round(itemEur);
+    });
+
+    return stats;
+  }, [displayedLeads, columns]);
+
   if (role === 'teacher') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 bg-white rounded-2xl border border-slate-200 shadow-xs">
@@ -250,7 +405,7 @@ export default function CrmPage() {
         </p>
         <Link
           href="/schedule"
-          className="rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-purple-700 transition-colors"
+          className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           Перейти к расписанию
         </Link>
@@ -259,15 +414,23 @@ export default function CrmPage() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-5 w-full min-w-0">
       {/* Title & Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{t('crm.title', 'CRM Лиды и Воронка')}</h1>
-          <p className="text-xs sm:text-sm text-slate-500">
-            {t('crm.subtitle', 'Управление обращениями, пробными уроками и конверсией в постоянных учеников')}
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              {t('crm.title', 'CRM Лиды и Воронка')}
+            </h1>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+              Объем воронки: {funnelTotalEur.toLocaleString('ru-RU')} € (≈ {funnelTotalRub.toLocaleString('ru-RU')} ₽)
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            {t('crm.subtitle', 'Единая сквозная воронка, контроль дедлайнов и конверсия в постоянных учеников')}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           {/* Active / Deleted Tab Switcher */}
           <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
@@ -290,13 +453,13 @@ export default function CrmPage() {
               )}
             >
               <Trash2 className="h-3 w-3" />
-              Удаленные ({deletedLeads.length})
+              Корзина ({deletedLeads.length})
             </button>
           </div>
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer shrink-0"
           >
             <Plus className="h-4 w-4" />
             {t('action.createLead', 'Новый лид')}
@@ -313,7 +476,7 @@ export default function CrmPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={t('crm.search', 'Поиск лида по имени, телефону или ученику...')}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-purple-500"
+            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
 
@@ -329,50 +492,40 @@ export default function CrmPage() {
               <option value="all">{t('crm.allDirections', 'Все направления')}</option>
               <option value="Английский язык">Английский язык</option>
               <option value="Робототехника">Робототехника</option>
-              <option value="Олимпиадная математика">Математика</option>
+              <option value="Математика">Математика</option>
+              <option value="Олимпиадная математика">Олимпиадная математика</option>
             </select>
           </div>
 
-          {/* Desktop View Switcher (Hidden on Mobile) */}
+          {/* Desktop View Switcher: ONLY 2 buttons (Kanban & Table) according to specification */}
           <div className="hidden md:flex rounded-lg bg-slate-100 p-0.5 text-xs font-medium">
             <button
-              onClick={() => setViewMode('grid')}
-              title={t('crm.viewGrid', 'Сетка (На одном листе)')}
-              className={cn(
-                'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all cursor-pointer',
-                viewMode === 'grid' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
-              )}
-            >
-              <LayoutGrid className="h-3.5 w-3.5 text-purple-600" />
-              <span>{t('crm.viewGrid', 'Сетка')}</span>
-            </button>
-            <button
               onClick={() => setViewMode('kanban')}
-              title={t('crm.viewBoard', 'Доска (Горизонтально)')}
+              title="Канбан-доска (единый горизонтальный ряд)"
               className={cn(
-                'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all cursor-pointer',
+                'flex items-center gap-1 rounded-md px-3 py-1.5 transition-all cursor-pointer',
                 viewMode === 'kanban' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <Columns className="h-3.5 w-3.5 text-blue-600" />
-              <span>{t('crm.viewBoard', 'Доска')}</span>
+              <span>Канбан-доска</span>
             </button>
             <button
               onClick={() => setViewMode('table')}
-              title={t('crm.viewTable', 'Таблица')}
+              title="Таблица лидов"
               className={cn(
-                'flex items-center gap-1 rounded-md px-2.5 py-1 transition-all cursor-pointer',
+                'flex items-center gap-1 rounded-md px-3 py-1.5 transition-all cursor-pointer',
                 viewMode === 'table' ? 'bg-white shadow-xs font-bold text-slate-900' : 'text-slate-600 hover:text-slate-900'
               )}
             >
               <List className="h-3.5 w-3.5" />
-              <span>{t('crm.viewTable', 'Таблица')}</span>
+              <span>Таблица</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Horizontal Stage Chips (Scrollable) */}
+      {/* Mobile Horizontal Stage Filter */}
       {tabFilter === 'active' && (
         <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-1 -mx-2 px-2 no-scrollbar">
           <button
@@ -381,14 +534,14 @@ export default function CrmPage() {
             className={cn(
               'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all',
               mobileStageFilter === 'all'
-                ? 'bg-purple-600 text-white shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             )}
           >
             Все ({displayedLeads.length})
           </button>
           {columns.map((col) => {
-            const count = displayedLeads.filter((l) => l.status === col.key).length;
+            const count = displayedLeads.filter((l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response')).length;
             return (
               <button
                 key={col.key}
@@ -397,17 +550,12 @@ export default function CrmPage() {
                 className={cn(
                   'shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5',
                   mobileStageFilter === col.key
-                    ? 'bg-purple-600 text-white shadow-xs'
+                    ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 )}
               >
                 <span>{col.label}</span>
-                <span
-                  className={cn(
-                    'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
-                    mobileStageFilter === col.key ? 'bg-white/20 text-white' : col.badgeColor
-                  )}
-                >
+                <span className={cn('text-[10px] px-1.5 py-0.2 rounded-full font-bold', col.badgeColor)}>
                   {count}
                 </span>
               </button>
@@ -445,9 +593,9 @@ export default function CrmPage() {
                 {displayedLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-slate-50/80">
                     <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">{lead.name}</td>
-                    <td className="px-3 py-3">{lead.studentName}</td>
+                    <td className="px-3 py-3">{lead.studentName || '—'}</td>
                     <td className="px-3 py-3 text-purple-700 font-medium">{lead.directionOrCourse}</td>
-                    <td className="px-3 py-3 font-mono">{lead.contact}</td>
+                    <td className="px-3 py-3 font-mono">{formatPhone(lead.contact)}</td>
                     <td className="px-3 py-3 text-slate-400">
                       {lead.deletedAt ? new Date(lead.deletedAt).toLocaleDateString('ru-RU') : 'Недавно'}
                     </td>
@@ -469,13 +617,13 @@ export default function CrmPage() {
         </div>
       )}
 
-      {/* MOBILE LIST: Single column of cards filtered by mobileStageFilter */}
+      {/* MOBILE LIST: Single column of cards */}
       {tabFilter === 'active' && (
         <div className="md:hidden space-y-2.5">
           {(() => {
             const mobileLeads = mobileStageFilter === 'all'
               ? displayedLeads
-              : displayedLeads.filter((l) => l.status === mobileStageFilter);
+              : displayedLeads.filter((l) => l.status === mobileStageFilter || (mobileStageFilter === 'lost' && (l.status as string) === 'no_response'));
 
             if (mobileLeads.length === 0) {
               return (
@@ -491,228 +639,221 @@ export default function CrmPage() {
                 lead={lead}
                 columns={columns}
                 onQuickStatusChange={handleQuickStatusChange}
-                onOpen={() => router.push(`/crm/leads/${lead.id}`)}
-                onCopyPhone={() => {
-                  navigator.clipboard.writeText(lead.contact);
-                  toast.success(`Номер скопирован: ${lead.contact}`);
-                }}
+                onOpen={() => setSelectedLeadForDrawer(lead)}
                 onDeleteLead={handleDeleteLead}
+                isDragged={draggedLeadId === lead.id}
+                onDragStart={() => handleDragStart(lead.id)}
               />
             ));
           })()}
         </div>
       )}
 
-      {/* DESKTOP VIEWS (GRID / KANBAN / TABLE) */}
-      <div className="hidden md:block space-y-6">
-        {/* VIEW 1: GRID MODE (ALL ON ONE SHEET / SCREEN, SCROLLS DOWN) */}
-        {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {columns.map((col) => {
-            const colLeads = displayedLeads.filter((l) => l.status === col.key);
-
-            return (
-              <div
-                key={col.key}
-                className="flex flex-col rounded-2xl border border-slate-200 bg-slate-100/70 p-3 shadow-xs min-h-[220px]"
-              >
-                {/* Column Header */}
-                <div className="flex items-center justify-between px-1 pb-2.5 border-b border-slate-200/80 mb-2.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-800">{col.label}</span>
-                  </div>
-                  <span className={cn('flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full text-[11px] font-bold shadow-xs', col.badgeColor)}>
-                    {colLeads.length}
-                  </span>
-                </div>
-
-                {/* Cards in column */}
-                <div className="space-y-2.5 flex-1">
-                  {colLeads.length === 0 ? (
-                    <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-400">
-                      Нет лидов
-                    </div>
-                  ) : (
-                    colLeads.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        columns={columns}
-                        onQuickStatusChange={handleQuickStatusChange}
-                        onOpen={() => router.push(`/crm/leads/${lead.id}`)}
-                        onCopyPhone={() => {
-                          navigator.clipboard.writeText(lead.contact);
-                          toast.success(`Номер скопирован: ${lead.contact}`);
-                        }}
-                        onDeleteLead={handleDeleteLead}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* VIEW 2: KANBAN BOARD (HORIZONTAL WITH PROMINENT CONTROLS & SCROLLBAR) */}
-      {viewMode === 'kanban' && (
-        <div className="space-y-3">
-          {/* Scroll Navigation Controls */}
-          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
-            <span className="flex items-center gap-1.5 font-medium">
-              <span>Горизонтальная воронка (8 этапов)</span>
-              <span className="text-slate-400">• Используйте стрелки или Shift + колесико</span>
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => scrollKanban('left')}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-xs transition-colors"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" /> Влево
-              </button>
-              <button
-                onClick={() => scrollKanban('right')}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-xs transition-colors"
-              >
-                Вправо <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div
-            ref={kanbanRef}
-            className="flex gap-4 overflow-x-auto pb-4 scroll-smooth"
-            style={{
-              scrollbarWidth: 'auto',
-              scrollbarColor: '#94a3b8 #e2e8f0',
-            }}
-          >
-            {columns.map((col) => {
-              const colLeads = displayedLeads.filter((l) => l.status === col.key);
-
-              return (
-                <div
-                  key={col.key}
-                  className="flex w-72 shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-100/70 p-3 shadow-xs"
+      {/* DESKTOP VIEWS (KANBAN HORIZONTAL ROW / TABLE) */}
+      <div className="hidden md:block">
+        {/* VIEW 1: KANBAN BOARD IN ONE CONTINUOUS HORIZONTAL ROW (7 COLUMNS) */}
+        {viewMode === 'kanban' && tabFilter === 'active' && (
+          <div className="space-y-3">
+            {/* Scroll Navigation Bar */}
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-2 text-xs text-slate-600">
+              <span className="flex items-center gap-2 font-medium">
+                <span className="font-bold text-slate-800">Единая горизонтальная воронка (7 этапов)</span>
+                <span className="text-slate-400">• Перетаскивайте карточки мышью между этапами</span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => scrollKanban('left')}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-2xs transition-colors cursor-pointer"
                 >
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between px-1 pb-3">
-                    <span className="text-xs font-bold text-slate-800">{col.label}</span>
-                    <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold shadow-xs', col.badgeColor)}>
-                      {colLeads.length}
-                    </span>
-                  </div>
+                  <ChevronLeft className="h-3.5 w-3.5" /> Влево
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollKanban('right')}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 shadow-2xs transition-colors cursor-pointer"
+                >
+                  Вправо <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
 
-                  {/* Cards in column */}
-                  <div className="space-y-3 flex-1">
-                    {colLeads.length === 0 ? (
-                      <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 text-[11px] text-slate-400">
-                        Нет лидов
-                      </div>
-                    ) : (
-                      colLeads.map((lead) => (
-                        <LeadCard
-                          key={lead.id}
-                          lead={lead}
-                          columns={columns}
-                          onQuickStatusChange={handleQuickStatusChange}
-                          onOpen={() => router.push(`/crm/leads/${lead.id}`)}
-                          onCopyPhone={() => {
-                            navigator.clipboard.writeText(lead.contact);
-                            toast.success(`Номер скопирован: ${lead.contact}`);
-                          }}
-                          onDeleteLead={handleDeleteLead}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+            {/* Continuous horizontal row of 7 columns */}
+            <div
+              ref={kanbanRef}
+              className="flex gap-3.5 overflow-x-auto pb-4 scroll-smooth min-w-0"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#94a3b8 #f1f5f9',
+              }}
+            >
+              {columns.map((col) => {
+                const colLeads = displayedLeads.filter(
+                  (l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response')
+                );
+                const stats = stageStats[col.key] || { count: 0, sumEur: 0 };
+                const isOver = dragOverColKey === col.key;
 
-      {/* VIEW 3: TABLE VIEW */}
-      {viewMode === 'table' && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-              <tr>
-                <th className="py-3.5 pl-4 pr-3">{t('crm.tableLeadContact', 'Лид / Контакт')}</th>
-                <th className="px-3 py-3.5">{t('crm.tableStudent', 'Ученик')}</th>
-                <th className="px-3 py-3.5">{t('crm.tableCourse', 'Курс')}</th>
-                <th className="px-3 py-3.5 text-right">{t('crm.tableBalance', 'Баланс')}</th>
-                <th className="px-3 py-3.5">{t('crm.tableStage', 'Статус воронки')}</th>
-                <th className="px-3 py-3.5">{t('crm.tableNextAction', 'Следующее действие')}</th>
-                <th className="py-3.5 pl-3 pr-4">{t('crm.tableAssignee', 'Ответственный')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {displayedLeads.map((lead) => {
-                const finSummary = getLeadFinancialSummary(lead);
                 return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                    className="hover:bg-slate-50/80 cursor-pointer"
+                  <div
+                    key={col.key}
+                    onDragOver={(e) => handleDragOver(e, col.key)}
+                    onDragLeave={() => handleDragLeave(col.key)}
+                    onDrop={(e) => handleDrop(e, col.key)}
+                    className={cn(
+                      'flex flex-col rounded-2xl border p-3 shadow-xs shrink-0 transition-all duration-150',
+                      // Fixed width between 260px and 280px as required
+                      'w-[275px]',
+                      isOver
+                        ? 'border-blue-500 ring-2 ring-blue-300 bg-blue-50/50'
+                        : col.key === 'paid'
+                        ? 'border-emerald-200 bg-emerald-50/25'
+                        : 'border-slate-200 bg-slate-100/70'
+                    )}
                   >
-                    <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
-                      <div>{lead.name}</div>
-                      <div className="text-[11px] text-slate-400 font-normal">{lead.contact}</div>
-                    </td>
-                    <td className="px-3 py-3">{lead.studentName}</td>
-                    <td className="px-3 py-3 font-medium text-purple-700">{lead.directionOrCourse}</td>
-                    <td className="px-3 py-3 text-right">
-                      {finSummary.isNegative ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-bold text-rose-700">
-                          <AlertTriangle className="h-3 w-3 text-rose-600" />
-                          {finSummary.formattedNet}
+                    {/* Column Header with financial metrics */}
+                    <div className={cn(
+                      'flex items-center justify-between px-2 py-2 rounded-xl border mb-3',
+                      col.headerBg
+                    )}>
+                      <div className="min-w-0 flex-1 pr-1.5">
+                        <span className="text-xs font-bold text-slate-900 block truncate" title={col.label}>
+                          {col.label}
                         </span>
-                      ) : finSummary.deposit > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                          <Wallet className="h-3 w-3 text-emerald-600" />
-                          {finSummary.formattedDeposit}
+                        <span className="text-[11px] text-slate-500 font-semibold block truncate">
+                          ({stats.count}) · {stats.sumEur.toLocaleString('ru-RU')} €
                         </span>
+                      </div>
+                      <span className={cn('flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full text-[11px] font-bold shadow-2xs shrink-0', col.badgeColor)}>
+                        {colLeads.length}
+                      </span>
+                    </div>
+
+                    {/* Cards Container with internal vertical scroll */}
+                    <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[calc(100vh-270px)] pr-0.5">
+                      {colLeads.length === 0 ? (
+                        <div className={cn(
+                          'flex h-28 flex-col items-center justify-center rounded-xl border border-dashed text-xs transition-colors',
+                          isOver ? 'border-blue-400 bg-blue-50 text-blue-600 font-semibold' : 'border-slate-300 text-slate-400'
+                        )}>
+                          {isOver ? 'Отпустите для переноса' : 'Нет лидов'}
+                        </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400">0 ₽</span>
+                        colLeads.map((lead) => (
+                          <LeadCard
+                            key={lead.id}
+                            lead={lead}
+                            columns={columns}
+                            onQuickStatusChange={handleQuickStatusChange}
+                            onOpen={() => setSelectedLeadForDrawer(lead)}
+                            onDeleteLead={handleDeleteLead}
+                            isDragged={draggedLeadId === lead.id}
+                            onDragStart={() => handleDragStart(lead.id)}
+                          />
+                        ))
                       )}
-                    </td>
-                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={lead.status}
-                        onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
-                        className={cn(
-                          'rounded-lg px-2 py-1 font-semibold text-[11px] border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-400',
-                          lead.status === 'paid' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                          lead.status === 'trial_held' && 'bg-indigo-50 text-indigo-800 border-indigo-200',
-                          lead.status === 'trial_scheduled' && 'bg-purple-50 text-purple-800 border-purple-200',
-                          lead.status === 'thinking' && 'bg-teal-50 text-teal-800 border-teal-200',
-                          lead.status === 'new' && 'bg-blue-50 text-blue-800 border-blue-200',
-                          lead.status === 'lost' && 'bg-rose-50 text-rose-800 border-rose-200',
-                          lead.status === 'contacted' && 'bg-amber-50 text-amber-800 border-amber-200',
-                          lead.status === 'no_response' && 'bg-slate-100 text-slate-700 border-slate-300'
-                        )}
-                      >
-                        {columns.map((c) => (
-                          <option key={c.key} value={c.key}>{c.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3">
-                      <p className="font-medium text-slate-800">{lead.nextAction || '—'}</p>
-                      <p className="text-[10px] text-amber-700 font-semibold">{lead.nextActionDate}</p>
-                    </td>
-                    <td className="py-3 pl-3 pr-4 text-slate-600">{lead.assignedTo}</td>
-                  </tr>
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: TABLE VIEW */}
+        {viewMode === 'table' && tabFilter === 'active' && (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <table className="w-full text-left text-xs table-fixed">
+              <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
+                <tr>
+                  <th className="py-3.5 pl-4 pr-3 w-[26%]">Лид / Контакт</th>
+                  <th className="px-3 py-3.5 w-[20%]">Ученик</th>
+                  <th className="px-3 py-3.5 w-[16%]">Курс</th>
+                  <th className="px-3 py-3.5 w-[14%] text-right">Потенциал / Баланс</th>
+                  <th className="px-3 py-3.5 w-[14%]">Этап воронки</th>
+                  <th className="py-3.5 pl-3 pr-4 w-[10%] text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {displayedLeads.map((lead) => {
+                  const finSummary = getLeadFinancialSummary(lead);
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedLeadForDrawer(lead)}
+                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                    >
+                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 truncate">
+                        <div className="truncate">{lead.name}</div>
+                        <div className="text-[11px] text-slate-400 font-normal font-mono truncate">{formatPhone(lead.contact)}</div>
+                      </td>
+                      <td className="px-3 py-3 truncate">
+                        <span className="font-medium text-slate-800">{lead.studentName || '—'}</span>
+                        {lead.studentAge && <span className="text-slate-400 text-[11px]"> ({lead.studentAge})</span>}
+                      </td>
+                      <td className="px-3 py-3 font-medium text-purple-700 truncate">
+                        {lead.directionOrCourse}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        {lead.offerAmount ? (
+                          <span className="font-bold text-slate-800">{lead.offerAmount.replace('++', '+')}</span>
+                        ) : finSummary.deposit > 0 ? (
+                          <span className="font-semibold text-emerald-700">+{finSummary.formattedDeposit}</span>
+                        ) : (
+                          <span className="text-slate-400">80 € (8 000 ₽)</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={lead.status === 'no_response' ? 'lost' : lead.status}
+                          onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
+                          className={cn(
+                            'rounded-lg px-2.5 py-1 font-semibold text-[11px] border border-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400',
+                            lead.status === 'paid' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                            lead.status === 'trial_held' && 'bg-indigo-50 text-indigo-800 border-indigo-200',
+                            lead.status === 'trial_scheduled' && 'bg-purple-50 text-purple-800 border-purple-200',
+                            lead.status === 'thinking' && 'bg-teal-50 text-teal-800 border-teal-200',
+                            lead.status === 'new' && 'bg-blue-50 text-blue-800 border-blue-200',
+                            (lead.status === 'lost' || (lead.status as string) === 'no_response') && 'bg-slate-100 text-slate-700 border-slate-300',
+                            lead.status === 'contacted' && 'bg-amber-50 text-amber-800 border-amber-200'
+                          )}
+                        >
+                          {columns.map((c) => (
+                            <option key={c.key} value={c.key}>{c.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-3 pl-3 pr-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLeadForDrawer(lead)}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          Открыть
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Slide Drawer on the right (Desktop 480-520px) */}
+      <LeadDrawer
+        isOpen={Boolean(selectedLeadForDrawer)}
+        lead={selectedLeadForDrawer}
+        onClose={() => setSelectedLeadForDrawer(null)}
+        onUpdateLead={(updated) => {
+          setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+          setSelectedLeadForDrawer(updated);
+        }}
+        onStatusChange={(leadId, newStatus) => {
+          handleQuickStatusChange(leadId, newStatus);
+        }}
+      />
 
       {/* Modal to create new lead */}
       <CreateLeadModal
@@ -720,6 +861,78 @@ export default function CrmPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleLeadCreated}
       />
+
+      {/* Modal: Confirmation & 1-click enroll to students on drop in "Оплачено (Успех)" */}
+      {leadForConvertModal && (
+        <ConvertLeadModal
+          isOpen={Boolean(leadForConvertModal)}
+          lead={leadForConvertModal}
+          onClose={() => setLeadForConvertModal(null)}
+          onSuccess={(studentId) => {
+            commitStatusChange(leadForConvertModal.id, 'paid');
+            setLeadForConvertModal(null);
+            toast.success('Лид успешно переведен в базу учеников и оплачен!');
+          }}
+        />
+      )}
+
+      {/* Modal: Quick loss reason when dropped into "Отказ или Архив" */}
+      {leadForLossModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl space-y-4 border border-slate-200">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Фиксация причины отказа</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Лид «{leadForLossModal.name}» переносится в архив</p>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <label className="font-semibold text-slate-700 block">Укажите или выберите причину:</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {['Не отвечает', 'Дорого', 'Не подошло расписание', 'Выбрали других'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setLossReasonInput(r)}
+                    className={cn(
+                      'px-2 py-1 rounded-lg border text-[11px] transition-colors cursor-pointer',
+                      lossReasonInput === r ? 'bg-rose-50 border-rose-300 text-rose-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={lossReasonInput}
+                onChange={(e) => setLossReasonInput(e.target.value)}
+                placeholder="Своя причина..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setLeadForLossModal(null)}
+                className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  commitStatusChange(leadForLossModal.id, 'lost', { lossReason: lossReasonInput || 'Отказ' });
+                  setLeadForLossModal(null);
+                }}
+                className="px-3.5 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+              >
+                Перенести в архив
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -733,84 +946,196 @@ interface LeadCardProps {
   columns: readonly { readonly key: string; readonly label: string; readonly badgeColor: string }[];
   onQuickStatusChange: (leadId: string, newStatus: FullLeadData['status']) => void;
   onOpen: () => void;
-  onCopyPhone: () => void;
   onDeleteLead: (leadId: string) => void;
+  isDragged?: boolean;
+  onDragStart?: () => void;
 }
 
 function getCourseBorderClass(course?: string) {
-  if (!course) return 'border-l-4 border-l-purple-500';
+  if (!course) return 'border-l-4 border-l-blue-500';
   const c = course.toLowerCase();
   if (c.includes('англ') || c.includes('english')) return 'border-l-4 border-l-purple-500';
   if (c.includes('робот') || c.includes('robot')) return 'border-l-4 border-l-amber-500';
   if (c.includes('матем') || c.includes('math')) return 'border-l-4 border-l-emerald-500';
-  return 'border-l-4 border-l-indigo-500';
+  return 'border-l-4 border-l-blue-500';
 }
 
-function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone, onDeleteLead }: LeadCardProps) {
-  const { t } = useLanguage();
-  const finSummary = getLeadFinancialSummary(lead);
+function LeadCard({
+  lead,
+  columns,
+  onQuickStatusChange,
+  onOpen,
+  onDeleteLead,
+  isDragged,
+  onDragStart,
+}: LeadCardProps) {
+  const toast = useToast();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const displayName = lead.clientType === 'adult_student'
-    ? lead.name
-    : (lead.studentName && lead.name !== lead.studentName ? `${lead.name} (${lead.studentName})` : lead.name);
+  // Close 3-dots menu on clicking outside
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleOutside = () => setMenuOpen(false);
+    window.addEventListener('click', handleOutside);
+    return () => window.removeEventListener('click', handleOutside);
+  }, [menuOpen]);
+
+  // Clean formatted deal amount without double ++
+  const dealAmountFormatted = useMemo(() => {
+    const raw = lead.offerAmount;
+    if (raw) {
+      const clean = raw.replace(/\+\+/g, '+').trim();
+      const num = parseFloat(clean.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+      if (num > 0) {
+        if (clean.includes('€') || num <= 500) {
+          const rub = convertEurToRub(num);
+          return `${num} € (${rub.toLocaleString('ru-RU')} ₽)`;
+        }
+        const eur = convertRubToEur(num);
+        return `${eur} € (${num.toLocaleString('ru-RU')} ₽)`;
+      }
+    }
+    const fin = getLeadFinancialSummary(lead);
+    if (fin.deposit > 0) {
+      return `${fin.deposit} € (${fin.depositRub.toLocaleString('ru-RU')} ₽)`;
+    }
+    return '80 € (8 000 ₽)';
+  }, [lead]);
+
+  // Deadline calculation
+  const deadlineStatus = useMemo(() => {
+    if (!lead.nextAction) return 'empty';
+    const str = (lead.nextActionDate || '').toLowerCase();
+    if (str.includes('просроч') || str.includes('вчера') || str.includes('2026-08') || str.includes('01.09') || str.includes('02.09')) {
+      return 'overdue';
+    }
+    if (str.includes('сегодня') || str.includes('12:00') || str.includes('15:00') || str.includes('16:30') || str.includes('17:00') || str.includes('18:00')) {
+      return 'today';
+    }
+    return 'future';
+  }, [lead.nextAction, lead.nextActionDate]);
+
+  const phoneDigits = (lead.contact || '').replace(/[^\d+]/g, '');
 
   return (
     <div
+      draggable={true}
+      onDragStart={onDragStart}
       onClick={onOpen}
       className={cn(
-        "rounded-xl border bg-white p-2.5 shadow-xs hover:shadow-md transition-all cursor-pointer text-left flex flex-col justify-between",
+        'rounded-xl border bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing text-left flex flex-col justify-between gap-2.5 relative group/card select-none',
         getCourseBorderClass(lead.directionOrCourse),
-        finSummary.isNegative ? "border-rose-300 ring-1 ring-rose-200/60" : "border-slate-200"
+        isDragged ? 'opacity-40 shadow-lg scale-95 border-blue-400' : 'border-slate-200 hover:border-slate-300'
       )}
     >
       <div>
-        {/* Header: Name + Trash */}
-        <div className="flex items-start justify-between gap-1">
-          <h4 className="font-bold text-slate-900 text-xs hover:text-purple-600 transition-colors line-clamp-1 flex-1" title={displayName}>
-            {displayName}
-          </h4>
-          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`Переместить лид «${lead.name}» в корзину?`)) {
-                  onDeleteLead(lead.id);
-                }
-              }}
-              className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-              title="Удалить в корзину"
+        {/* Top Row: Parent Name + Clean Currency Badge + 3-dots Menu */}
+        <div className="flex items-start justify-between gap-1.5">
+          <div className="min-w-0 flex-1">
+            {/* Row 1: Bold Parent Name */}
+            <h4
+              className="font-bold text-slate-900 text-xs hover:text-blue-600 transition-colors truncate block"
+              title={lead.name}
             >
-              <Trash2 className="h-3 w-3" />
-            </button>
+              {lead.name}
+            </h4>
+            {/* Row 2: Child name + age (if provided) */}
+            {lead.studentName && lead.studentName !== lead.name && lead.clientType !== 'adult_student' && (
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                {lead.studentName}
+                {lead.studentAge && <span className="text-slate-400">, {lead.studentAge}</span>}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {/* Deal Amount Badge */}
+            <span
+              className="text-[10px] font-bold text-slate-700 bg-slate-100/90 border border-slate-200/80 px-1.5 py-0.5 rounded-md shrink-0"
+              title="Потенциал сделки"
+            >
+              {dealAmountFormatted}
+            </span>
+
+            {/* 3-Dots Context Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Опции"
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-6 z-30 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl text-xs space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    Переместить на этап
+                  </div>
+                  {columns.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => {
+                        onQuickStatusChange(lead.id, c.key as FullLeadData['status']);
+                        setMenuOpen(false);
+                      }}
+                      className={cn(
+                        'w-full text-left px-2 py-1 rounded-md text-[11px] transition-colors flex items-center justify-between',
+                        lead.status === c.key ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
+                      )}
+                    >
+                      <span className="truncate">{c.label}</span>
+                    </button>
+                  ))}
+                  <div className="border-t border-slate-100 my-1" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Переместить лид «${lead.name}» в корзину?`)) {
+                        onDeleteLead(lead.id);
+                        setMenuOpen(false);
+                      }
+                    }}
+                    className="w-full text-left px-2 py-1 rounded-md text-[11px] text-rose-600 hover:bg-rose-50 font-semibold transition-colors flex items-center gap-1.5"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span>В корзину</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Direction & Balance Row */}
-        <div className="flex items-center justify-between gap-1 mt-0.5">
-          <span className="text-[10px] font-semibold text-purple-700 truncate">{lead.directionOrCourse}</span>
-          {finSummary.isNegative ? (
-            <span className="text-[10px] font-bold text-rose-600 shrink-0">
-              {finSummary.formattedNet}
-            </span>
-          ) : finSummary.deposit > 0 ? (
-            <span className="text-[10px] font-semibold text-emerald-600 shrink-0">
-              +{finSummary.formattedDeposit}
-            </span>
-          ) : null}
+        {/* Direction tag */}
+        <div className="mt-1 flex items-center justify-between text-[11px]">
+          <span className="font-semibold text-purple-700 truncate">{lead.directionOrCourse}</span>
+          <span className="text-[10px] text-slate-400 truncate">{lead.source}</span>
         </div>
 
-        {/* Contact links */}
-        <div className="mt-1.5 flex items-center justify-between gap-1 text-[10px] text-slate-600 pt-1 border-t border-slate-100">
-          <span className="truncate text-slate-600 font-mono text-[10px]">{lead.contact}</span>
+        {/* Formatted Phone & Vector SVG Communication Icons */}
+        <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-center justify-between text-xs">
+          <span className="font-mono text-[11px] text-slate-700 font-medium truncate">
+            {formatPhone(lead.contact)}
+          </span>
+
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {/* Copy Button */}
             <button
               type="button"
-              onClick={onCopyPhone}
-              className="p-0.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-              title={t('crm.copyPhone', 'Скопировать')}
+              onClick={() => {
+                navigator.clipboard.writeText(lead.contact);
+                toast.success(`Номер скопирован: ${lead.contact}`);
+              }}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Скопировать номер"
             >
-              <Copy size={11} />
+              <Copy className="h-3 w-3" />
             </button>
+
+            {/* WhatsApp SVG Icon */}
             <button
               type="button"
               onClick={() => triggerWhatsAppContact({
@@ -819,11 +1144,15 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone, onD
                 leadName: lead.name,
                 author: 'Администратор',
               })}
-              className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[9px] cursor-pointer"
+              className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
               title="Написать в WhatsApp"
             >
-              WA
+              <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.59 1.956.883 2.806.883 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.587-5.766-5.768-5.766zm9.969 5.766c0 5.485-4.464 9.949-9.969 9.949-1.745 0-3.385-.45-4.818-1.246l-5.213 1.359 1.383-5.074c-.9-1.487-1.393-3.218-1.393-4.988 0-5.485 4.464-9.949 9.969-9.949 5.485 0 10.042 4.464 10.041 9.949z" />
+              </svg>
             </button>
+
+            {/* Telegram SVG Icon */}
             {lead.telegram && (
               <button
                 type="button"
@@ -834,48 +1163,61 @@ function LeadCard({ lead, columns, onQuickStatusChange, onOpen, onCopyPhone, onD
                   leadName: lead.name,
                   author: 'Администратор',
                 })}
-                className="px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 font-bold hover:bg-sky-100 text-[9px] cursor-pointer"
+                className="p-1 rounded-md text-sky-500 hover:bg-sky-50 transition-colors cursor-pointer"
                 title="Написать в Telegram"
               >
-                TG
+                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" />
+                </svg>
               </button>
             )}
+
+            {/* Phone Call Button */}
             <a
-              href={`tel:${lead.contact.replace(/[^\d+]/g, '')}`}
-              className="p-0.5 rounded text-blue-600 hover:bg-blue-50"
+              href={`tel:${phoneDigits}`}
+              className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
               title="Позвонить"
             >
-              <Phone size={11} />
+              <Phone className="h-3 w-3" />
             </a>
           </div>
         </div>
-
-        {/* 1-line task deadline (AI UX 4.3) */}
-        {lead.nextAction && (
-          <div className="mt-1.5 flex items-center gap-1 text-[10px] text-amber-900 bg-amber-50/90 px-1.5 py-0.5 rounded border border-amber-200/60 truncate">
-            <Clock className="h-2.5 w-2.5 text-amber-600 shrink-0" />
-            <span className="truncate">
-              <span className="font-semibold text-amber-800">{lead.nextActionDate || 'Сегодня'}:</span> {lead.nextAction}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Flat full-width bottom selector button [ Изменить статус лида ] (AI UX 4.3) */}
-      <div className="mt-2 pt-1 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
-        <select
-          value={lead.status}
-          onChange={(e) => onQuickStatusChange(lead.id, e.target.value as FullLeadData['status'])}
-          className="w-full text-center rounded-md border border-slate-200 bg-slate-50 hover:bg-purple-50 hover:border-purple-300 py-1 px-1.5 text-[10px] font-semibold text-slate-700 cursor-pointer transition-colors focus:outline-none focus:ring-1 focus:ring-purple-400"
-        >
-          {columns.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+      {/* Task & Deadline Control Banner */}
+      <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+        {deadlineStatus === 'overdue' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-rose-800 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+            <AlertTriangle className="h-3 w-3 text-rose-600 shrink-0" />
+            <span className="truncate">
+              <strong>Просрочено:</strong> {lead.nextAction} ({lead.nextActionDate})
+            </span>
+          </div>
+        ) : deadlineStatus === 'today' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-amber-900 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
+            <Clock className="h-3 w-3 text-amber-600 shrink-0" />
+            <span className="truncate">
+              <strong>Сегодня:</strong> {lead.nextAction} ({lead.nextActionDate})
+            </span>
+          </div>
+        ) : deadlineStatus === 'future' ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-600 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">
+            <Calendar className="h-3 w-3 text-slate-500 shrink-0" />
+            <span className="truncate">
+              {lead.nextActionDate}: {lead.nextAction}
+            </span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="w-full flex items-center justify-center gap-1 py-1 rounded-lg border border-dashed border-slate-300 text-[10px] font-semibold text-slate-500 hover:bg-slate-50 hover:border-slate-400 transition-colors cursor-pointer"
+          >
+            <Plus className="h-3 w-3 text-slate-400" />
+            <span>Назначить действие</span>
+          </button>
+        )}
       </div>
     </div>
   );
 }
-
