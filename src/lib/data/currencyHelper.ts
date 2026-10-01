@@ -307,4 +307,19 @@ export function parsePaymentAmountEUR(val: any, defaultVal = 120, customRate?: n
   return parsed;
 }
 
+/**
+ * Converts a payment amount to base EUR using its historical exchangeRate if recorded.
+ */
+export function convertPaymentToEur(payment: {
+  amount: number;
+  currency?: string;
+  exchangeRate?: number;
+}): number {
+  if (!payment) return 0;
+  if (payment.currency === 'EUR') return payment.amount;
+  const rate = payment.exchangeRate && payment.exchangeRate > 0 ? payment.exchangeRate : getEurRubRate();
+  return rate > 0 ? payment.amount / rate : payment.amount;
+}
+
+
 

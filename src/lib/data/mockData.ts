@@ -1843,6 +1843,8 @@ export interface FullPaymentData {
   status: 'paid' | 'expected' | 'overdue' | 'refund';
   paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'invoice';
   currency?: 'RUB' | 'EUR';
+  exchangeRate?: number;
+  exchangeRateSource?: string;
   paymentType?: 'subscription' | 'prepayment' | 'one_time';
   recordedBy: string;
   comment?: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import { FullPaymentData, INITIAL_PAYMENTS } from './mockData';
+import { getEurRubRate, getCurrencyRateMeta } from './currencyHelper';
 
 const PAYMENTS_STORAGE_KEY = 'crm_payments_v2';
 
@@ -96,12 +97,21 @@ export async function fetchPaymentsFromSupabase(): Promise<FullPaymentData[]> {
  * Dispatches 'crm-payments-changed' event.
  */
 export function savePaymentToStorage(payment: FullPaymentData): void {
-  // 1. In-memory update
-  const idx = INITIAL_PAYMENTS.findIndex((p) => p.id === payment.id);
+  // 1. Ensure exchangeRate is captured at payment time
+  const currentRate = payment.exchangeRate || getEurRubRate();
+  const currentRateSource = payment.exchangeRateSource || getCurrencyRateMeta()?.source || 'ЦБ РФ';
+  const paymentWithRate: FullPaymentData = {
+    ...payment,
+    exchangeRate: currentRate,
+    exchangeRateSource: currentRateSource,
+  };
+
+  // In-memory update
+  const idx = INITIAL_PAYMENTS.findIndex((p) => p.id === paymentWithRate.id);
   if (idx !== -1) {
-    INITIAL_PAYMENTS[idx] = payment;
+    INITIAL_PAYMENTS[idx] = paymentWithRate;
   } else {
-    INITIAL_PAYMENTS.unshift(payment);
+    INITIAL_PAYMENTS.unshift(paymentWithRate);
   }
 
   // 2. Direct Supabase Cloud DB write
@@ -111,7 +121,7 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
         try {
           const supabase = createClient();
           supabase.from('payments').upsert({
-            id: payment.id,
+            id: paymentWithRate.id,
             student_id: payment.studentId || null,
             parent_id: payment.parentId || null,
             amount: typeof payment.amount === 'number' ? payment.amount : parseFloat(String(payment.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0,

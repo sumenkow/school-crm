@@ -461,18 +461,27 @@ export function settleStudentOverdueDebts(studentId: string): void {
  * If deposit >= debt: debt is marked 'paid', deposit is reduced by debt amount.
  * If deposit < debt: deposit is reduced to 0, debt is partially reduced.
  */
+const studentSettlementLock = new Set<string>();
+const familySettlementLock = new Set<string>();
+
 export function settleDebtsFromDeposit(studentId: string): {
   settled: boolean;
   settledAmount: number;
   remainingDeposit: number;
   remainingDebt: number;
 } {
-  const student = getStudentById(studentId);
-  if (!student) {
+  if (studentSettlementLock.has(studentId)) {
     return { settled: false, settledAmount: 0, remainingDeposit: 0, remainingDebt: 0 };
   }
+  studentSettlementLock.add(studentId);
 
-  const currentDeposit = student.finance?.deposit;
+  try {
+    const student = getStudentById(studentId);
+    if (!student) {
+      return { settled: false, settledAmount: 0, remainingDeposit: 0, remainingDebt: 0 };
+    }
+
+    const currentDeposit = student.finance?.deposit;
   let availableDeposit = currentDeposit?.balance || 0;
   if (availableDeposit <= 0) {
     return { settled: false, settledAmount: 0, remainingDeposit: 0, remainingDebt: 0 };
@@ -658,12 +667,15 @@ export function settleDebtsFromDeposit(studentId: string): {
     .filter((p: any) => p.studentId === studentId && p.status === 'overdue')
     .reduce((sum: number, p: any) => sum + (typeof p.amount === 'number' ? p.amount : 0), 0);
 
-  return {
-    settled: settledAmount > 0,
-    settledAmount,
-    remainingDeposit: availableDeposit,
-    remainingDebt,
-  };
+    return {
+      settled: settledAmount > 0,
+      settledAmount,
+      remainingDeposit: availableDeposit,
+      remainingDebt,
+    };
+  } finally {
+    studentSettlementLock.delete(studentId);
+  }
 }
 
 /**
@@ -677,15 +689,18 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
   settledAmount: number;
 } {
   if (typeof window === 'undefined') return { settled: false, settledAmount: 0 };
+  if (familySettlementLock.has(parentId)) return { settled: false, settledAmount: 0 };
+  familySettlementLock.add(parentId);
 
-  const allStudents = getStoredStudents();
-  const familyStudents = allStudents.filter(
-    (s) => s.parents?.some((p) => p.id === parentId)
-  );
+  try {
+    const allStudents = getStoredStudents();
+    const familyStudents = allStudents.filter(
+      (s) => s.parents?.some((p) => p.id === parentId)
+    );
 
-  if (familyStudents.length < 2) {
-    return { settled: false, settledAmount: 0 };
-  }
+    if (familyStudents.length < 2) {
+      return { settled: false, settledAmount: 0 };
+    }
 
   let totalSettled = 0;
 
@@ -819,7 +834,10 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
     }
   }
 
-  return { settled: totalSettled > 0, settledAmount: totalSettled };
+    return { settled: totalSettled > 0, settledAmount: totalSettled };
+  } finally {
+    familySettlementLock.delete(parentId);
+  }
 }
 
 let isReconcilingGlobally = false;

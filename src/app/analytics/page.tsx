@@ -43,7 +43,7 @@ import { useRole } from '@/context/RoleContext';
 import { Shield } from 'lucide-react';
 import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceReport';
 
-type FunnelStageKey = 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'paid';
+type FunnelStageKey = 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost';
 
 export default function AnalyticsPage() {
   const { role } = useRole();
@@ -93,26 +93,31 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Dynamic funnel calculation tied to real CRM leads data
+  // Dynamic funnel calculation tied to real CRM leads data (7 stages)
   const activeLeads = leads.filter((l) => !l.is_deleted && !(l as any).isDeleted);
   const totalLeadsCount = activeLeads.length || 1;
 
   const countNew = activeLeads.length;
-  const countContacted = activeLeads.filter((l) => l.status !== 'new' && l.status !== 'no_response').length;
-  const countTrialScheduled = activeLeads.filter((l) => l.status === 'trial_scheduled' || l.status === 'trial_held' || l.status === 'paid' || !!l.trialDate).length;
-  const countTrialHeld = activeLeads.filter((l) => l.status === 'trial_held' || l.status === 'paid').length;
+  const countContacted = activeLeads.filter((l) => l.status !== 'new' && l.status !== 'lost' && (l.status as string) !== 'no_response').length;
+  const countTrialScheduled = activeLeads.filter((l) => l.status === 'trial_scheduled' || l.status === 'trial_held' || l.status === 'thinking' || l.status === 'paid' || !!l.trialDate).length;
+  const countTrialHeld = activeLeads.filter((l) => l.status === 'trial_held' || l.status === 'thinking' || l.status === 'paid').length;
+  const countThinking = activeLeads.filter((l) => l.status === 'thinking' || l.status === 'paid').length;
   const countPaid = activeLeads.filter((l) => l.status === 'paid').length;
+  const countLost = activeLeads.filter((l) => l.status === 'lost' || (l.status as string) === 'no_response').length;
 
   const rateNew = '100%';
   const rateContacted = `${Math.round((countContacted / totalLeadsCount) * 1000) / 10}%`;
   const rateTrialScheduled = `${Math.round((countTrialScheduled / totalLeadsCount) * 1000) / 10}%`;
   const rateTrialHeld = `${Math.round((countTrialHeld / totalLeadsCount) * 1000) / 10}%`;
+  const rateThinking = `${Math.round((countThinking / totalLeadsCount) * 1000) / 10}%`;
   const ratePaid = `${Math.round((countPaid / totalLeadsCount) * 1000) / 10}%`;
+  const rateLost = `${Math.round((countLost / totalLeadsCount) * 1000) / 10}%`;
 
   const dropContacted = countNew > 0 ? `-${(Math.round(((countNew - countContacted) / countNew) * 1000) / 10)}%` : '0%';
   const dropTrialScheduled = countContacted > 0 ? `-${(Math.round(((countContacted - countTrialScheduled) / countContacted) * 1000) / 10)}%` : '0%';
   const dropTrialHeld = countTrialScheduled > 0 ? `-${(Math.round(((countTrialScheduled - countTrialHeld) / countTrialScheduled) * 1000) / 10)}%` : '0%';
-  const dropPaid = countTrialHeld > 0 ? `-${(Math.round(((countTrialHeld - countPaid) / countTrialHeld) * 1000) / 10)}%` : '0%';
+  const dropThinking = countTrialHeld > 0 ? `-${(Math.round(((countTrialHeld - countThinking) / countTrialHeld) * 1000) / 10)}%` : '0%';
+  const dropPaid = countThinking > 0 ? `-${(Math.round(((countThinking - countPaid) / countThinking) * 1000) / 10)}%` : '0%';
 
   const funnelSteps: Array<{
     id: FunnelStageKey;
@@ -123,6 +128,7 @@ export default function AnalyticsPage() {
     rate: string;
     drop: string | null;
     isGoal?: boolean;
+    isNegative?: boolean;
     leadStatuses: string[];
     badgeColor: string;
   }> = [
@@ -130,7 +136,7 @@ export default function AnalyticsPage() {
       id: 'new',
       stepNumber: 1,
       label: 'Новые обращения (Лиды)',
-      description: 'Поступившие онлайн-заявки и первичные звонки',
+      description: 'Поступившие онлайн-заявки, звонки и мессенджеры',
       count: countNew,
       rate: rateNew,
       drop: null,
@@ -140,12 +146,12 @@ export default function AnalyticsPage() {
     {
       id: 'contacted',
       stepNumber: 2,
-      label: 'Успешный контакт / Квалификация',
+      label: 'В работе / Квалификация',
       description: 'Менеджер связался с родителем, выявлены цели и потребности',
       count: countContacted,
       rate: rateContacted,
       drop: dropContacted,
-      leadStatuses: ['contacted', 'thinking'],
+      leadStatuses: ['contacted'],
       badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
     },
     {
@@ -171,9 +177,20 @@ export default function AnalyticsPage() {
       badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     },
     {
-      id: 'paid',
+      id: 'thinking',
       stepNumber: 5,
-      label: 'Оплата абонемента (Конверсия)',
+      label: 'Принятие решения / Счёт',
+      description: 'Согласование расписания, выбор тарифа и выставление счета',
+      count: countThinking,
+      rate: rateThinking,
+      drop: dropThinking,
+      leadStatuses: ['thinking'],
+      badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
+    },
+    {
+      id: 'paid',
+      stepNumber: 6,
+      label: 'Оплата абонемента (Успех)',
       description: 'Оплачен абонемент, ученик зачислен в регулярную группу',
       count: countPaid,
       rate: ratePaid,
@@ -181,6 +198,18 @@ export default function AnalyticsPage() {
       isGoal: true,
       leadStatuses: ['paid'],
       badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    },
+    {
+      id: 'lost',
+      stepNumber: 7,
+      label: 'Отказ / В архиве',
+      description: 'Неквалифицированные лиды, перенос или отказ от занятий',
+      count: countLost,
+      rate: rateLost,
+      drop: null,
+      isNegative: true,
+      leadStatuses: ['lost', 'no_response'],
+      badgeColor: 'bg-slate-100 text-slate-700 border-slate-300',
     },
   ];
 

@@ -22,7 +22,11 @@ import {
   MoreVertical,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Check,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, TimelineInteraction } from '@/lib/data/mockData';
@@ -77,6 +81,76 @@ export default function CrmPage() {
   const [lossReasonInput, setLossReasonInput] = useState<string>('');
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dragOverColKey, setDragOverColKey] = useState<string | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
+  const toggleSelectLead = useCallback((leadId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearLeadSelection = useCallback(() => {
+    setSelectedLeadIds(new Set());
+  }, []);
+
+  const handleBulkMoveStage = useCallback((newStatus: FullLeadData['status']) => {
+    if (selectedLeadIds.size === 0) return;
+    const updated = leads.map((l) => {
+      if (selectedLeadIds.has(l.id)) {
+        return { ...l, status: newStatus };
+      }
+      return l;
+    });
+    setLeads(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('crm-leads-changed'));
+    }
+    toast.success(`Перемещено ${selectedLeadIds.size} лидов`);
+    setSelectedLeadIds(new Set());
+  }, [leads, selectedLeadIds, toast]);
+
+  const handleBulkAssign = useCallback((managerName: string) => {
+    if (selectedLeadIds.size === 0) return;
+    const updated = leads.map((l) => {
+      if (selectedLeadIds.has(l.id)) {
+        return { ...l, assignedTo: managerName };
+      }
+      return l;
+    });
+    setLeads(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('crm-leads-changed'));
+    }
+    toast.success(`Ответственный назначен для ${selectedLeadIds.size} лидов: ${managerName}`);
+    setSelectedLeadIds(new Set());
+  }, [leads, selectedLeadIds, toast]);
+
+  const handleBulkDelete = useCallback(() => {
+    if (selectedLeadIds.size === 0) return;
+    if (!confirm(`Перенести выбранные лиды (${selectedLeadIds.size} шт.) в архив?`)) return;
+    const updated = leads.map((l) => {
+      if (selectedLeadIds.has(l.id)) {
+        return { ...l, is_deleted: true, status: 'lost' as const };
+      }
+      return l;
+    });
+    setLeads(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_leads_v2', JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('crm-leads-changed'));
+    }
+    toast.success(`Удалено в архив ${selectedLeadIds.size} лидов`);
+    setSelectedLeadIds(new Set());
+  }, [leads, selectedLeadIds, toast]);
 
   // Sync leads from localStorage and in-memory stores
   const syncLeads = useCallback(() => {
@@ -308,6 +382,10 @@ export default function CrmPage() {
     return matchesSearch && matchesDirection;
   });
 
+  const selectAllDisplayed = useCallback(() => {
+    setSelectedLeadIds(new Set(displayedLeads.map((l) => l.id)));
+  }, [displayedLeads]);
+
   // Calculate total potential volume of active funnel
   const funnelTotalEur = useMemo(() => {
     const rate = getEurRubRate();
@@ -339,36 +417,47 @@ export default function CrmPage() {
     return convertEurToRub(funnelTotalEur, getEurRubRate());
   }, [funnelTotalEur]);
 
-  // Stage potential calculations
+  // Fast memoized lead amount calculation cache (Map)
+  const leadAmountCache = useMemo(() => new Map<string, number>(), []);
+
+  const getCachedLeadEur = useCallback((l: FullLeadData, rate: number): number => {
+    const cacheKey = `${l.id}_${l.offerAmount || ''}_${l.finance?.deposit?.balance || 0}_${rate}`;
+    const cached = leadAmountCache.get(cacheKey);
+    if (cached !== undefined) return cached;
+
+    let itemEur = 0;
+    if (l.offerAmount) {
+      const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+      if (num > 0) {
+        itemEur = (String(l.offerAmount).includes('€') || num <= 500) ? num : convertRubToEur(num, rate);
+      }
+    }
+    if (itemEur === 0) {
+      const fin = getLeadFinancialSummary(l);
+      itemEur = fin.deposit > 0 ? fin.deposit : 80;
+    }
+    const rounded = Math.round(itemEur);
+    leadAmountCache.set(cacheKey, rounded);
+    return rounded;
+  }, [leadAmountCache]);
+
+  // Stage potential calculations with O(1) cache lookup
   const stageStats = useMemo(() => {
     const rate = getEurRubRate();
     const stats: Record<string, { count: number; sumEur: number }> = {};
-    columns.forEach(c => {
+    for (const c of columns) {
       stats[c.key] = { count: 0, sumEur: 0 };
-    });
+    }
 
-    displayedLeads.forEach(l => {
-      // Map legacy 'no_response' to 'lost'
+    for (const l of displayedLeads) {
       const key = (l.status === 'no_response' ? 'lost' : l.status) as string;
       if (!stats[key]) stats[key] = { count: 0, sumEur: 0 };
       stats[key].count += 1;
-
-      let itemEur = 0;
-      if (l.offerAmount) {
-        const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-        if (num > 0) {
-          itemEur = (String(l.offerAmount).includes('€') || num <= 500) ? num : convertRubToEur(num, rate);
-        }
-      }
-      if (itemEur === 0) {
-        const fin = getLeadFinancialSummary(l);
-        itemEur = fin.deposit > 0 ? fin.deposit : 80;
-      }
-      stats[key].sumEur += Math.round(itemEur);
-    });
+      stats[key].sumEur += getCachedLeadEur(l, rate);
+    }
 
     return stats;
-  }, [displayedLeads, columns]);
+  }, [displayedLeads, columns, getCachedLeadEur]);
 
   if (role === 'teacher') {
     return (
@@ -690,6 +779,8 @@ export default function CrmPage() {
                         onDeleteLead={handleDeleteLead}
                         isDragged={draggedLeadId === lead.id}
                         onDragStart={() => handleDragStart(lead.id)}
+                        isSelected={selectedLeadIds.has(lead.id)}
+                        onToggleSelect={(e) => toggleSelectLead(lead.id, e)}
                       />
                     ))
                   )}
@@ -737,8 +828,22 @@ export default function CrmPage() {
             <table className="w-full text-left text-xs table-fixed">
               <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
                 <tr>
-                  <th className="py-3.5 pl-4 pr-3 w-[26%]">Лид / Контакт</th>
-                  <th className="px-3 py-3.5 w-[20%]">Ученик</th>
+                  <th className="py-3.5 pl-3 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={displayedLeads.length > 0 && selectedLeadIds.size === displayedLeads.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllDisplayed();
+                        } else {
+                          clearLeadSelection();
+                        }
+                      }}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3.5 pl-2 pr-3 w-[25%]">Лид / Контакт</th>
+                  <th className="px-3 py-3.5 w-[19%]">Ученик</th>
                   <th className="px-3 py-3.5 w-[16%]">Курс</th>
                   <th className="px-3 py-3.5 w-[14%] text-right">Потенциал / Баланс</th>
                   <th className="px-3 py-3.5 w-[14%]">Этап воронки</th>
@@ -752,9 +857,20 @@ export default function CrmPage() {
                     <tr
                       key={lead.id}
                       onClick={() => setSelectedLeadForDrawer(lead)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
+                      className={cn(
+                        'hover:bg-slate-50/80 cursor-pointer transition-colors',
+                        selectedLeadIds.has(lead.id) && 'bg-blue-50/40'
+                      )}
                     >
-                      <td className="py-3 pl-4 pr-3 font-semibold text-slate-900">
+                      <td className="py-3 pl-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.has(lead.id)}
+                          onChange={() => toggleSelectLead(lead.id)}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3 pl-2 pr-3 font-semibold text-slate-900">
                         <div className="truncate">{lead.name}</div>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <a
@@ -935,6 +1051,71 @@ export default function CrmPage() {
           </div>
         </div>
       )}
+
+      {/* Floating Bulk Action Bar */}
+      {selectedLeadIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-3.5 text-xs animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-2 pr-3 border-r border-slate-700">
+            <span className="font-bold text-white bg-blue-600 px-2 py-0.5 rounded-full text-[11px]">
+              {selectedLeadIds.size}
+            </span>
+            <span className="font-medium text-slate-200">выбрано</span>
+          </div>
+
+          {/* Move to Stage */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 text-[11px]">Этап:</span>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) handleBulkMoveStage(e.target.value as any);
+              }}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="" disabled>Переместить на...</option>
+              {columns.map((c) => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assign manager */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 text-[11px]">Ответственный:</span>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) handleBulkAssign(e.target.value);
+              }}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="" disabled>Назначить...</option>
+              <option value="Елена Менеджер">Елена Менеджер</option>
+              <option value="Алексей Администратор">Алексей Администратор</option>
+            </select>
+          </div>
+
+          {/* Bulk Delete */}
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30 transition-colors font-semibold cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>В архив</span>
+          </button>
+
+          {/* Clear */}
+          <button
+            type="button"
+            onClick={clearLeadSelection}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1 cursor-pointer"
+            title="Снять выделение"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -951,6 +1132,8 @@ interface LeadCardProps {
   onDeleteLead: (leadId: string) => void;
   isDragged?: boolean;
   onDragStart?: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: (e: React.MouseEvent) => void;
 }
 
 function getCourseBorderClass(course?: string) {
@@ -970,6 +1153,8 @@ function LeadCard({
   onDeleteLead,
   isDragged,
   onDragStart,
+  isSelected,
+  onToggleSelect,
 }: LeadCardProps) {
   const toast = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1030,9 +1215,33 @@ function LeadCard({
       className={cn(
         'rounded-xl border bg-white p-3 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing text-left flex flex-col justify-between gap-2.5 relative group/card select-none',
         getCourseBorderClass(lead.directionOrCourse),
-        isDragged ? 'opacity-40 shadow-lg scale-95 border-blue-400' : 'border-slate-200 hover:border-slate-300'
+        isDragged ? 'opacity-40 shadow-lg scale-95 border-blue-400' : 'border-slate-200 hover:border-slate-300',
+        isSelected && 'ring-2 ring-blue-500 bg-blue-50/20'
       )}
     >
+      {/* Checkbox for selection (visible on hover or when card is selected) */}
+      <div
+        className={cn(
+          'absolute -top-1.5 -left-1.5 z-10 transition-opacity',
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleSelect?.(e);
+        }}
+      >
+        <div
+          className={cn(
+            'w-4 h-4 rounded border flex items-center justify-center cursor-pointer transition-all shadow-xs',
+            isSelected
+              ? 'bg-blue-600 border-blue-600 text-white'
+              : 'bg-white border-slate-300 hover:border-blue-500'
+          )}
+        >
+          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+        </div>
+      </div>
+
       <div>
         {/* Top Row: Parent Name + Clean Currency Badge + 3-dots Menu */}
         <div className="flex items-start justify-between gap-1.5">
