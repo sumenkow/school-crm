@@ -25,20 +25,21 @@ export function getStoredLeads(includeConverted: boolean = false, includeDeleted
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const storedMap = new Map<string, FullLeadData>(parsed.map((l) => [l.id, l]));
-        const merged: FullLeadData[] = [];
-        for (const init of INITIAL_LEADS) {
-          if (storedMap.has(init.id)) {
-            merged.push(storedMap.get(init.id)!);
-            storedMap.delete(init.id);
-          } else {
-            merged.push(init);
-          }
+        const seenIds = new Set<string>();
+        const seenNames = new Set<string>();
+        const result: FullLeadData[] = [];
+
+        for (const l of parsed) {
+          if (!l || !l.id) continue;
+          const cleanName = (l.name || '').trim().toLowerCase();
+          if (seenIds.has(l.id)) continue;
+          if (cleanName && seenNames.has(cleanName)) continue;
+
+          seenIds.add(l.id);
+          if (cleanName) seenNames.add(cleanName);
+          result.push(l);
         }
-        for (const extra of storedMap.values()) {
-          merged.unshift(extra);
-        }
-        leads = merged;
+        leads = result;
       }
     }
 

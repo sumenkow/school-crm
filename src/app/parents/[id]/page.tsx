@@ -68,13 +68,25 @@ export default function ParentDetailsPage() {
   // Load parent and linked children from unified storage (supports converted leads)
   const [parent, setParent] = useState(() => {
     const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
-    const cleanId = String(parentId || '').trim();
+    const cleanId = String(parentId || '').trim().toLowerCase();
     const numId = cleanId.replace(/^p/, '');
+
+    const fixedMap: Record<string, string> = {
+      'p1': 'a1111111-1111-4111-8111-111111111111',
+      'p2': 'a2222222-2222-4222-8222-222222222222',
+      'p3': 'a3333333-3333-4333-8333-333333333333',
+      'p4': 'a4444444-4444-4444-8444-444444444444',
+      'p5': 'a5555555-5555-4555-8555-555555555555',
+      'p6': 'a6666666-6666-4666-8666-666666666666',
+      'p7': 'a7777777-7777-4777-8777-777777777777',
+    };
 
     const isMatchingParent = (p: any) => {
       if (!p || !p.id) return false;
-      const pid = String(p.id).trim();
-      return pid === cleanId || pid === `p${numId}` || pid.replace(/^p/, '') === numId;
+      const pid = String(p.id).trim().toLowerCase();
+      if (pid === cleanId || pid === `p${numId}` || (numId && pid.replace(/^p/, '') === numId)) return true;
+      if (fixedMap[pid] === cleanId || fixedMap[cleanId] === pid) return true;
+      return false;
     };
 
     const matchedStudent = allStudents.find((s) => s.parents?.some(isMatchingParent));
@@ -236,10 +248,31 @@ export default function ParentDetailsPage() {
 
   const refreshParent = useCallback(() => {
     const allStudents = getStoredStudents();
-    const matchedStudent = allStudents.find((s) => s.parents?.some((p) => p.id === parentId));
-    const matchedParent = matchedStudent?.parents.find((p) => p.id === parentId);
+    const cleanId = String(parentId || '').trim().toLowerCase();
+    const numId = cleanId.replace(/^p/, '');
 
-    const matchedStudents = allStudents.filter((s) => s.parents?.some((p) => p.id === parentId));
+    const fixedMap: Record<string, string> = {
+      'p1': 'a1111111-1111-4111-8111-111111111111',
+      'p2': 'a2222222-2222-4222-8222-222222222222',
+      'p3': 'a3333333-3333-4333-8333-333333333333',
+      'p4': 'a4444444-4444-4444-8444-444444444444',
+      'p5': 'a5555555-5555-4555-8555-555555555555',
+      'p6': 'a6666666-6666-4666-8666-666666666666',
+      'p7': 'a7777777-7777-4777-8777-777777777777',
+    };
+
+    const isMatchingParent = (p: any) => {
+      if (!p || !p.id) return false;
+      const pid = String(p.id).trim().toLowerCase();
+      if (pid === cleanId || pid === `p${numId}` || (numId && pid.replace(/^p/, '') === numId)) return true;
+      if (fixedMap[pid] === cleanId || fixedMap[cleanId] === pid) return true;
+      return false;
+    };
+
+    const matchedStudent = allStudents.find((s) => s.parents?.some(isMatchingParent));
+    const matchedParent = matchedStudent?.parents?.find(isMatchingParent);
+
+    const matchedStudents = allStudents.filter((s) => s.parents?.some(isMatchingParent));
     const uniqueStudents: typeof matchedStudents = [];
     const seenNames = new Set<string>();
 

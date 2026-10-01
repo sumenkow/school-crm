@@ -19,20 +19,19 @@ export function getStoredGroups(): FullGroupData[] {
     const stored: FullGroupData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_GROUPS;
 
-    const storedMap = new Map<string, FullGroupData>(stored.map((g) => [g.id, g]));
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
     const result: FullGroupData[] = [];
 
-    for (const init of INITIAL_GROUPS) {
-      if (storedMap.has(init.id)) {
-        result.push(storedMap.get(init.id)!);
-        storedMap.delete(init.id);
-      } else {
-        result.push(init);
-      }
-    }
+    for (const g of stored) {
+      if (!g || !g.id) continue;
+      const cleanName = (g.name || '').trim().toLowerCase();
+      if (seenIds.has(g.id)) continue;
+      if (cleanName && seenNames.has(cleanName)) continue;
 
-    for (const extra of storedMap.values()) {
-      result.unshift(extra);
+      seenIds.add(g.id);
+      if (cleanName) seenNames.add(cleanName);
+      result.push(g);
     }
 
     return result;

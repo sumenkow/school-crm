@@ -103,22 +103,20 @@ export function getStoredStudents(): FullStudentData[] {
     const stored: FullStudentData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_STUDENTS.map((s) => normalizeStudent(s));
 
-    const storedMap = new Map<string, FullStudentData>(stored.map((s) => [s.id, s]));
+    // Deduplicate stored by ID and by normalized full name
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
     const result: FullStudentData[] = [];
 
-    // Apply stored changes or fallback to INITIAL_STUDENTS
-    for (const init of INITIAL_STUDENTS) {
-      if (storedMap.has(init.id)) {
-        result.push(storedMap.get(init.id)!);
-        storedMap.delete(init.id);
-      } else {
-        result.push(init);
-      }
-    }
+    for (const st of stored) {
+      if (!st || !st.id) continue;
+      const cleanName = `${st.firstName || ''} ${st.lastName || ''}`.trim().toLowerCase();
+      if (seenIds.has(st.id)) continue;
+      if (cleanName && seenNames.has(cleanName)) continue;
 
-    // Any newly created students created during sessions
-    for (const extra of storedMap.values()) {
-      result.unshift(extra);
+      seenIds.add(st.id);
+      if (cleanName) seenNames.add(cleanName);
+      result.push(st);
     }
 
     // Hydrate all student groups to ensure bidirectional sync with groups and normalize

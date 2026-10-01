@@ -18,20 +18,14 @@ export function getStoredLessons(): FullLessonData[] {
     const stored: FullLessonData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_LESSONS;
 
-    const storedMap = new Map<string, FullLessonData>(stored.map((l) => [l.id, l]));
+    const seenIds = new Set<string>();
     const result: FullLessonData[] = [];
 
-    for (const init of INITIAL_LESSONS) {
-      if (storedMap.has(init.id)) {
-        result.push(storedMap.get(init.id)!);
-        storedMap.delete(init.id);
-      } else {
-        result.push(init);
-      }
-    }
-
-    for (const extra of storedMap.values()) {
-      result.unshift(extra);
+    for (const l of stored) {
+      if (!l || !l.id) continue;
+      if (seenIds.has(l.id)) continue;
+      seenIds.add(l.id);
+      result.push(l);
     }
 
     return result;

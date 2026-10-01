@@ -78,6 +78,8 @@ export function TelegramChatBox({
   const hasTelegram = Boolean(telegramHandle || telegramChatId);
   const cleanHandle = (telegramHandle || '').replace(/^@/, '');
 
+  const [botActivationWarning, setBotActivationWarning] = useState<string | null>(null);
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!messageText.trim()) return;
@@ -97,6 +99,7 @@ export function TelegramChatBox({
     }
 
     setIsSending(true);
+    setBotActivationWarning(null);
 
     try {
       const now = new Date();
@@ -122,6 +125,9 @@ export function TelegramChatBox({
       if (!res.ok || !data.success) {
         if (data.error && data.error.includes('Bot Token не настроен')) {
           setIsSettingsModalOpen(true);
+        }
+        if (data.error && (data.error.includes('требуется числовой Chat ID') || data.error.includes('chat not found'))) {
+          setBotActivationWarning(data.error);
         }
         throw new Error(data.error || 'Ошибка отправки через Telegram API');
       }
@@ -149,12 +155,27 @@ export function TelegramChatBox({
       onMessageSent?.(newInteraction);
 
       setMessageText('');
+      setBotActivationWarning(null);
       success('Сообщение успешно отправлено в Telegram клиента!');
     } catch (err: any) {
       error(err.message || 'Не удалось отправить сообщение');
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleOpenDirectTelegram = () => {
+    if (!cleanHandle) return;
+    const url = `https://t.me/${cleanHandle}?text=${encodeURIComponent(messageText.trim())}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyInviteLink = () => {
+    const storedBot = (typeof window !== 'undefined' ? localStorage.getItem('crm_tg_bot_username') : '') || 'SchoolCrmBot';
+    const typeCode = recipientType === 'student' ? 'st' : recipientType === 'lead' ? 'lead' : 'par';
+    const link = `https://t.me/${storedBot.replace('@', '')}?start=${typeCode}_${recipientId}`;
+    navigator.clipboard.writeText(link);
+    success('Ссылка на запуск бота скопирована в буфер обмена!');
   };
 
   return (
@@ -191,15 +212,15 @@ export function TelegramChatBox({
           )}
 
           {hasTelegram && cleanHandle && (
-            <a
-              href={`https://t.me/${cleanHandle}`}
-              target="_blank"
-              rel="noreferrer"
-              className="p-1 rounded-lg text-slate-400 hover:text-[#229ED9] hover:bg-slate-100 transition-colors"
-              title="Открыть диалог в Telegram"
+            <button
+              type="button"
+              onClick={handleOpenDirectTelegram}
+              className="inline-flex items-center gap-1 p-1 px-2 rounded-lg text-xs text-[#229ED9] hover:bg-blue-50 transition-colors cursor-pointer font-medium"
+              title="Открыть диалог в приложении Telegram"
             >
-              <ExternalLink size={14} />
-            </a>
+              <ExternalLink size={13} />
+              <span>Открыть в приложении</span>
+            </button>
           )}
         </div>
       </div>
@@ -221,6 +242,50 @@ export function TelegramChatBox({
             <Settings size={13} />
             Настроить токен →
           </button>
+        </div>
+      )}
+
+      {/* If Bot Activation Required Warning */}
+      {botActivationWarning && (
+        <div className="rounded-xl bg-sky-50 border border-sky-200 p-3.5 space-y-2.5 text-xs text-sky-950 animate-in fade-in duration-150">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={16} className="text-sky-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <span className="font-bold block">
+                Требуется активация бота пользователем {telegramHandle || recipientName}
+              </span>
+              <p className="text-[11px] text-sky-800 leading-relaxed">
+                По правилам Telegram Bot API бот не может первым написать пользователю по @username, пока тот не нажмет <strong>Start</strong> в боте.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-sky-200/60">
+            {cleanHandle && (
+              <button
+                type="button"
+                onClick={handleOpenDirectTelegram}
+                className="inline-flex items-center gap-1 bg-[#229ED9] text-white hover:bg-[#1c8ec4] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+              >
+                <ExternalLink size={13} />
+                <span>Открыть Telegram и отправить напрямую</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleCopyInviteLink}
+              className="inline-flex items-center gap-1 bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <LinkIcon size={13} />
+              <span>Скопировать ссылку на бота для клиента</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenConnectModal}
+              className="inline-flex items-center gap-1 text-sky-700 hover:underline px-2 py-1.5 text-xs font-semibold cursor-pointer"
+            >
+              Указать числовой ID
+            </button>
+          </div>
         </div>
       )}
 
@@ -276,24 +341,38 @@ export function TelegramChatBox({
             className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#229ED9]/20 focus:border-[#229ED9]"
           />
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-[11px] text-slate-400">
               Поддерживается форматирование Markdown (*жирный*, _курсив_)
             </span>
 
-            <button
-              type="submit"
-              disabled={isSending || !messageText.trim()}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer',
-                isSending || !messageText.trim()
-                  ? 'bg-slate-300 cursor-not-allowed text-slate-500'
-                  : 'bg-[#229ED9] hover:bg-[#1c8ec4]'
+            <div className="flex items-center gap-2">
+              {cleanHandle && (
+                <button
+                  type="button"
+                  onClick={handleOpenDirectTelegram}
+                  className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                  title="Открыть диалог в приложении Telegram с этим текстом"
+                >
+                  <ExternalLink size={13} />
+                  <span>Открыть в Telegram</span>
+                </button>
               )}
-            >
-              <Send size={14} className={cn(isSending && 'animate-spin')} />
-              {isSending ? 'Отправка...' : 'Отправить в Telegram'}
-            </button>
+
+              <button
+                type="submit"
+                disabled={isSending || !messageText.trim()}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer',
+                  isSending || !messageText.trim()
+                    ? 'bg-slate-300 cursor-not-allowed text-slate-500'
+                    : 'bg-[#229ED9] hover:bg-[#1c8ec4]'
+                )}
+              >
+                <Send size={14} className={cn(isSending && 'animate-spin')} />
+                {isSending ? 'Отправка...' : 'Отправить в Telegram'}
+              </button>
+            </div>
           </div>
         </form>
       )}

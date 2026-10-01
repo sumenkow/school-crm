@@ -195,15 +195,20 @@ export function TelegramConnectModal({
             </ol>
           </div>
 
-          {/* Method 2: Manual Username Entry */}
+          {/* Method 2: Manual Username or Chat ID Entry */}
           <form onSubmit={handleSaveManual} className="space-y-2.5 pt-2 border-t border-slate-100">
-            <label className="font-bold text-slate-700 text-xs block">
-              Или укажите логин Telegram вручную (@username):
-            </label>
+            <div>
+              <label className="font-bold text-slate-700 text-xs block">
+                Или укажите логин Telegram (@username) или числовой Chat ID:
+              </label>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                Если известен числовой Chat ID (например, 123456789), укажите его для мгновенной отправки через Bot API
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="@username клиента"
+                placeholder="@username или 123456789"
                 value={manualHandle}
                 onChange={(e) => setManualHandle(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"

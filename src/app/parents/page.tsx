@@ -250,23 +250,27 @@ function getMergedParents(): ParentRecord[] {
 
     if (existingKey) {
       const existing = parentMap.get(existingKey)!;
-      const existingChildrenMap = new Map(existing.children.map((c) => [c.id, c]));
 
       (rawParent.children || []).forEach((c) => {
-        if (!existingChildrenMap.has(c.id)) {
-          existingChildrenMap.set(c.id, c);
+        const normName = (c.name || '').toLowerCase().trim();
+        const existingChild = existing.children.find(
+          (ec) => ec.id === c.id || (normName && (ec.name || '').toLowerCase().trim() === normName)
+        );
+        if (!existingChild) {
+          existing.children.push(c);
         } else {
-          const prev = existingChildrenMap.get(c.id)!;
-          const g1 = prev.group.split(',').map((s) => s.trim()).filter(Boolean);
-          const g2 = c.group.split(',').map((s) => s.trim()).filter(Boolean);
+          const g1 = (existingChild.group || '').split(',').map((s) => s.trim()).filter(Boolean);
+          const g2 = (c.group || '').split(',').map((s) => s.trim()).filter(Boolean);
           const combined = Array.from(new Set([...g1, ...g2])).join(', ');
-          existingChildrenMap.set(c.id, { ...prev, group: combined });
+          existingChild.group = combined || existingChild.group;
+          if (c.id && c.id.includes('-')) {
+            existingChild.id = c.id;
+          }
         }
       });
 
       parentMap.set(existingKey, {
         ...existing,
-        children: Array.from(existingChildrenMap.values()),
         telegram: existing.telegram || rawParent.telegram,
         whatsapp: existing.whatsapp || rawParent.whatsapp,
         email: existing.email || rawParent.email,
@@ -274,7 +278,7 @@ function getMergedParents(): ParentRecord[] {
         notifyTelegram: rawParent.notifyTelegram !== undefined ? rawParent.notifyTelegram : existing.notifyTelegram,
         notifyEmail: rawParent.notifyEmail !== undefined ? rawParent.notifyEmail : existing.notifyEmail,
         relationshipType: existing.relationshipType || rawParent.relationshipType,
-        isNew: Boolean(existing.isNew || rawParent.isNew || Array.from(existingChildrenMap.values()).some((c) => c.isNew)),
+        isNew: Boolean(existing.isNew || rawParent.isNew || existing.children.some((c) => c.isNew)),
       });
     } else {
       const key = cleanP ? `phone_${cleanP}` : `id_${rawParent.id}`;
@@ -291,7 +295,7 @@ function getMergedParents(): ParentRecord[] {
         notifyTelegram: rawParent.notifyTelegram !== undefined ? rawParent.notifyTelegram : true,
         notifyEmail: rawParent.notifyEmail !== undefined ? rawParent.notifyEmail : true,
         relationshipType: rawParent.relationshipType || 'Родитель',
-        children: rawParent.children || [],
+        children: [...(rawParent.children || [])],
         totalPaid: '0 €',
         balanceStatus: 'paid',
         isNew: isNewParent,
@@ -301,12 +305,7 @@ function getMergedParents(): ParentRecord[] {
     }
   };
 
-  // 1. Seed from INITIAL_PARENTS
-  for (const init of INITIAL_PARENTS) {
-    addOrMergeParent({ ...init });
-  }
-
-  // 2. Aggregate from student storage
+  // 1. Seed from student storage first (real dataset with UUIDs)
   for (const st of allStudents) {
     if (st.parents && st.parents.length > 0) {
       for (const pr of st.parents) {
@@ -354,6 +353,13 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
+  // 2. Only fallback seed from INITIAL_PARENTS if storage was empty
+  if (parentMap.size === 0) {
+    for (const init of INITIAL_PARENTS) {
+      addOrMergeParent({ ...init });
+    }
+  }
+
   // 3. Financial calculations per family
   const result: ParentRecord[] = [];
   const deletedIds = typeof window !== 'undefined' ? getDeletedParentIds() : new Set<string>();
@@ -364,16 +370,24 @@ function getMergedParents(): ParentRecord[] {
     let totalPaidEUR = 0;
     let hasTrialChild = false;
 
-    // Deduplicate children by child ID strictly
+    // Deduplicate children by normalized name and ID strictly
     const uniqueChildrenMap = new Map<string, ChildDetails>();
     for (const c of parent.children) {
-      const studentObj = allStudents.find((s) => s.id === c.id);
-      uniqueChildrenMap.set(c.id, {
-        ...c,
-        studentType: studentObj?.studentType === 'adult_student' ? 'Студент' : 'Школьник',
-        nextLesson: studentObj?.groups?.[0]?.schedule || c.nextLesson || 'Ср 21 сен, 18:45',
-        teacherName: studentObj?.groups?.[0]?.teacherName || c.teacherName || 'Мария Иванова',
-      });
+      const normName = (c.name || '').toLowerCase().trim();
+      const studentObj = allStudents.find(
+        (s) => s.id === c.id || `${s.firstName} ${s.lastName}`.toLowerCase().trim() === normName
+      );
+      const key = normName || c.id;
+      if (!uniqueChildrenMap.has(key)) {
+        uniqueChildrenMap.set(key, {
+          ...c,
+          id: studentObj?.id || c.id,
+          name: studentObj ? `${studentObj.firstName} ${studentObj.lastName}` : c.name,
+          studentType: studentObj?.studentType === 'adult_student' ? 'Студент' : 'Школьник',
+          nextLesson: studentObj?.groups?.[0]?.schedule || c.nextLesson || 'Ср 21 сен, 18:45',
+          teacherName: studentObj?.groups?.[0]?.teacherName || c.teacherName || 'Мария Иванова',
+        });
+      }
     }
     const uniqueChildren = Array.from(uniqueChildrenMap.values());
     parent.children = uniqueChildren;

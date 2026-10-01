@@ -18,22 +18,14 @@ export function getStoredPayments(): FullPaymentData[] {
     const stored: FullPaymentData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_PAYMENTS;
 
-    const storedMap = new Map<string, FullPaymentData>(stored.map((p) => [p.id, p]));
+    const seenIds = new Set<string>();
     const result: FullPaymentData[] = [];
 
-    // Apply stored changes or fallback to INITIAL_PAYMENTS
-    for (const init of INITIAL_PAYMENTS) {
-      if (storedMap.has(init.id)) {
-        result.push(storedMap.get(init.id)!);
-        storedMap.delete(init.id);
-      } else {
-        result.push(init);
-      }
-    }
-
-    // Any newly created payments created during sessions
-    for (const extra of storedMap.values()) {
-      result.unshift(extra);
+    for (const p of stored) {
+      if (!p || !p.id) continue;
+      if (seenIds.has(p.id)) continue;
+      seenIds.add(p.id);
+      result.push(p);
     }
 
     return result;

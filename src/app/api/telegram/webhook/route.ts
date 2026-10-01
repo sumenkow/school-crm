@@ -59,15 +59,15 @@ export async function POST(request: NextRequest) {
 
           if (targetType === 'student' && targetId) {
             await supabase.from('students').update({
-              telegram: senderUsername || String(chatId),
+              telegram: String(chatId),
             }).eq('id', targetId);
           } else if (targetType === 'lead' && targetId) {
             await supabase.from('leads').update({
-              telegram: senderUsername || String(chatId),
+              telegram: String(chatId),
             }).eq('id', targetId);
           } else if (targetType === 'parent' && targetId) {
             await supabase.from('parents').update({
-              telegram: senderUsername || String(chatId),
+              telegram: String(chatId),
             }).eq('id', targetId);
           }
 
