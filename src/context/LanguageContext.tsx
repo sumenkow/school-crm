@@ -73,7 +73,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'topbar.language': 'Язык интерфейса',
 
     // Common Actions & Buttons
-    'action.scheduleLesson': 'Запланировать занятие',
+    'action.scheduleLesson': 'Добавить занятие',
     'action.editLesson': 'Изменить параметры урока',
     'action.addStudent': 'Новый ученик',
     'action.newContact': 'Новый контакт',
@@ -531,7 +531,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'help.subtitle': 'Руководство пользователя, видеоинструкции и регламенты работы',
 
     // Modals
-    'modal.scheduleLesson.title': 'Запланировать новое занятие',
+    'modal.scheduleLesson.title': 'Добавить занятие',
     'modal.editLesson.title': 'Редактировать параметры занятия',
     'modal.selectGroup': 'Учебная группа',
     'modal.selectTeacher': 'Преподаватель',

@@ -158,6 +158,9 @@ export default function CalendarPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>(() => getTodayDateStr());
+  const [selectedStartTimeForSchedule, setSelectedStartTimeForSchedule] = useState<string | undefined>();
+  const [selectedEndTimeForSchedule, setSelectedEndTimeForSchedule] = useState<string | undefined>();
+  const [selectedGroupIdForSchedule, setSelectedGroupIdForSchedule] = useState<string | undefined>();
   
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
@@ -331,8 +334,16 @@ export default function CalendarPage() {
     }
   };
 
-  const handleOpenScheduleForDate = (dateStr: string) => {
-    setSelectedDateForSchedule(dateStr);
+  const handleOpenScheduleForDate = (
+    dateStr?: string,
+    startTimeStr?: string,
+    endTimeStr?: string,
+    grpId?: string
+  ) => {
+    setSelectedDateForSchedule(dateStr || getTodayDateStr());
+    setSelectedStartTimeForSchedule(startTimeStr);
+    setSelectedEndTimeForSchedule(endTimeStr);
+    setSelectedGroupIdForSchedule(grpId);
     setIsScheduleModalOpen(true);
   };
 
@@ -340,8 +351,10 @@ export default function CalendarPage() {
     setLessons((prev) => {
       // Guard: don't add if already in local state (could arrive from Supabase realtime first)
       if (prev.some((l) => l.id === newLesson.id)) return prev;
-      return [...prev, newLesson];
+      return [newLesson, ...prev];
     });
+    // Immediately open the newly created lesson's drawer!
+    setSelectedLessonForDrawer(newLesson);
   };
 
   // Render-level dedup: guard against any remaining duplicates by ID
@@ -462,15 +475,15 @@ export default function CalendarPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
-              Создать группу
+              <span>Создать группу</span>
             </button>
             <button
               type="button"
-              onClick={() => setIsScheduleModalOpen(true)}
+              onClick={() => handleOpenScheduleForDate()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
-              {t('action.scheduleLesson', 'Запланировать занятие')}
+              <span>Добавить занятие</span>
             </button>
           </div>
         </div>
@@ -680,18 +693,23 @@ export default function CalendarPage() {
                       )}
                       style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT + 44}px` }}
                     >
-                      {/* Background Horizontal Guide Lines */}
+                      {/* Background Horizontal Guide Lines (interactive slot clicks) */}
                       <div
-                        className="absolute inset-x-0 top-0 pointer-events-none"
+                        className="absolute inset-x-0 top-0"
                         style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
                       >
-                        {CALENDAR_HOURS.map((hour) => (
-                          <div
-                            key={hour}
-                            style={{ height: `${HOUR_HEIGHT}px` }}
-                            className="border-b border-slate-100 w-full"
-                          />
-                        ))}
+                        {CALENDAR_HOURS.map((hour) => {
+                          const slotTime = `${String(hour).padStart(2, '0')}:00`;
+                          return (
+                            <div
+                              key={hour}
+                              style={{ height: `${HOUR_HEIGHT}px` }}
+                              onClick={() => handleOpenScheduleForDate(day.fullDate, slotTime)}
+                              title={`Добавить занятие на ${day.date}, ${slotTime}`}
+                              className="border-b border-slate-100 w-full hover:bg-blue-50/20 transition-colors cursor-pointer"
+                            />
+                          );
+                        })}
                       </div>
 
                       {/* 3. Current Time Indicator (Line & Dot & Badge) */}
@@ -1124,12 +1142,20 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Schedule Lesson Modal */}
+      {/* Add / Schedule Lesson Modal */}
       <ScheduleLessonModal
         isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
+        onClose={() => {
+          setIsScheduleModalOpen(false);
+          setSelectedStartTimeForSchedule(undefined);
+          setSelectedEndTimeForSchedule(undefined);
+          setSelectedGroupIdForSchedule(undefined);
+        }}
         onScheduled={handleLessonScheduled}
         initialDate={selectedDateForSchedule}
+        initialStartTime={selectedStartTimeForSchedule}
+        initialEndTime={selectedEndTimeForSchedule}
+        defaultGroupId={selectedGroupIdForSchedule}
       />
 
       {/* Create Group Modal */}

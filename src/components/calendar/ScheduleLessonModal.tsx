@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Check, AlertCircle } from 'lucide-react';
-import { FullLessonData, TimelineInteraction } from '@/lib/data/mockData';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Check, AlertCircle, Users, GraduationCap, Video, MapPin, Sparkles, Clock, Calendar } from 'lucide-react';
+import { FullLessonData, TimelineInteraction, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
@@ -11,13 +11,38 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { ResponsiveModal } from '@/components/ui/ResponsiveModal';
+import { cn } from '@/lib/utils';
 
-interface ScheduleLessonModalProps {
+export interface ScheduleLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
   onScheduled?: (newLesson: FullLessonData) => void;
   initialDate?: string;
+  initialStartTime?: string;
+  initialEndTime?: string;
   defaultGroupId?: string;
+}
+
+function getStudentWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `${count} учеников`;
+  if (mod10 === 1) return `${count} ученик`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} ученика`;
+  return `${count} учеников`;
+}
+
+function calculateEndTime(start: string, durationMinutes: number = 90): string {
+  try {
+    const [h, m] = start.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return '20:15';
+    const totalMinutes = h * 60 + m + durationMinutes;
+    const endH = Math.floor(totalMinutes / 60) % 24;
+    const endM = totalMinutes % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  } catch {
+    return '20:15';
+  }
 }
 
 export function ScheduleLessonModal({
@@ -25,6 +50,8 @@ export function ScheduleLessonModal({
   onClose,
   onScheduled,
   initialDate,
+  initialStartTime,
+  initialEndTime,
   defaultGroupId,
 }: ScheduleLessonModalProps) {
   const toast = useToast();
@@ -35,8 +62,8 @@ export function ScheduleLessonModal({
   const [groups, setGroups] = useState(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
   const [groupId, setGroupId] = useState(defaultGroupId || '1');
   const [date, setDate] = useState(initialDate || new Date().toISOString().slice(0, 10));
-  const [startTime, setStartTime] = useState('18:45');
-  const [endTime, setEndTime] = useState('20:15');
+  const [startTime, setStartTime] = useState(initialStartTime || '18:45');
+  const [endTime, setEndTime] = useState(initialEndTime || '20:15');
   const [room, setRoom] = useState('Онлайн (Zoom 1)');
   const [topic, setTopic] = useState('');
   const [homework, setHomework] = useState('');
@@ -46,18 +73,38 @@ export function ScheduleLessonModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
 
+  // Parse standard duration of a group in minutes
+  const getGroupDurationMinutes = (g?: { schedule?: string }) => {
+    if (!g?.schedule) return 90;
+    const timeMatch = g.schedule.match(/(\d{1,2}:\d{2})\s*[–\-]\s*(\d{1,2}:\d{2})/);
+    if (timeMatch) {
+      const [sH, sM] = timeMatch[1].split(':').map(Number);
+      const [eH, eM] = timeMatch[2].split(':').map(Number);
+      const diff = (eH * 60 + eM) - (sH * 60 + sM);
+      if (diff > 0) return diff;
+    }
+    return 90;
+  };
+
   // Helper to sync fields when group changes
-  const applyGroupDefaults = (grpId: string, currentGroups = groups) => {
+  const applyGroupDefaults = (grpId: string, currentGroups = groups, userStartTime?: string) => {
     const g = currentGroups.find((grp) => grp.id === grpId);
     if (!g) return;
 
     if (g.room) setRoom(g.room);
 
-    if (g.schedule) {
+    const durMin = getGroupDurationMinutes(g);
+
+    if (userStartTime) {
+      setStartTime(userStartTime);
+      setEndTime(calculateEndTime(userStartTime, durMin));
+    } else if (g.schedule) {
       const timeMatch = g.schedule.match(/(\d{1,2}:\d{2})\s*[–\-]\s*(\d{1,2}:\d{2})/);
       if (timeMatch) {
         setStartTime(timeMatch[1]);
         setEndTime(timeMatch[2]);
+      } else {
+        setEndTime(calculateEndTime(startTime, durMin));
       }
     }
 
@@ -74,7 +121,7 @@ export function ScheduleLessonModal({
       setOnlineUrl(`https://zoom.us/my/${encodeURIComponent(teacherName.toLowerCase().replace(/\s+/g, ''))}`);
     }
 
-    if (g.room && g.room.toLowerCase().includes('онлайн')) {
+    if (g.room && (g.room.toLowerCase().includes('онлайн') || g.room.toLowerCase().includes('zoom'))) {
       setIsOnline(true);
     }
   };
@@ -85,13 +132,34 @@ export function ScheduleLessonModal({
       setGroups(stored);
       const targetId = defaultGroupId || (stored.length > 0 ? stored[0].id : '1');
       setGroupId(targetId);
-      applyGroupDefaults(targetId, stored);
+      applyGroupDefaults(targetId, stored, initialStartTime);
 
       if (initialDate) {
         setDate(initialDate);
       }
+      if (initialStartTime) {
+        setStartTime(initialStartTime);
+        if (initialEndTime) {
+          setEndTime(initialEndTime);
+        } else {
+          setEndTime(calculateEndTime(initialStartTime));
+        }
+      }
     }
-  }, [isOpen, initialDate, defaultGroupId]);
+  }, [isOpen, initialDate, initialStartTime, initialEndTime, defaultGroupId]);
+
+  const selectedGroup = useMemo(() => {
+    return groups.find((g) => g.id === groupId) || groups[0] || {
+      id: '1',
+      name: 'English B1 Teens',
+      courseName: 'Английский язык',
+      teacherId: 't1',
+      teacherName: 'Мария Иванова',
+      students: [],
+      room: 'Онлайн (Zoom 1)',
+      schedule: 'Пн, Чт • 18:45–20:15',
+    };
+  }, [groups, groupId]);
 
   // Real-time conflict detection
   useEffect(() => {
@@ -100,34 +168,34 @@ export function ScheduleLessonModal({
       const existing = getStoredLessons();
       const conflict = existing.find((l) =>
         l.date === date &&
-        (l.groupId === groupId) &&
+        (l.groupId === groupId || (selectedGroup.teacherId && l.teacherId === selectedGroup.teacherId)) &&
         !(endTime <= l.startTime || startTime >= l.endTime)
       );
       if (conflict) {
-        setConflictWarning(`Внимание: В это время (${conflict.startTime}–${conflict.endTime}) у группы уже есть урок «${conflict.topic}»`);
+        if (conflict.groupId === groupId) {
+          setConflictWarning(`Внимание: В это время (${conflict.startTime}–${conflict.endTime}) у группы уже запланировано занятие «${conflict.topic}»`);
+        } else {
+          setConflictWarning(`Внимание: В это время (${conflict.startTime}–${conflict.endTime}) преподаватель ${selectedGroup.teacherName} уже ведет занятие в группе «${conflict.groupName}»`);
+        }
       } else {
         setConflictWarning(null);
       }
     } catch {
       setConflictWarning(null);
     }
-  }, [isOpen, date, startTime, endTime, groupId]);
+  }, [isOpen, date, startTime, endTime, groupId, selectedGroup]);
 
   if (!isOpen) return null;
-
-  const selectedGroup = groups.find((g) => g.id === groupId) || groups[0] || {
-    id: '1',
-    name: 'English B1 Teens',
-    courseName: 'Английский язык',
-    teacherId: 't1',
-    teacherName: 'Мария Иванова',
-    students: [],
-    room: 'Онлайн (Zoom 1)',
-  };
 
   const handleGroupChange = (newGroupId: string) => {
     setGroupId(newGroupId);
     applyGroupDefaults(newGroupId);
+  };
+
+  const handleStartTimeChange = (newStart: string) => {
+    setStartTime(newStart);
+    const durMin = getGroupDurationMinutes(selectedGroup);
+    setEndTime(calculateEndTime(newStart, durMin));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -205,7 +273,7 @@ export function ScheduleLessonModal({
           author: userName || newLesson.teacherName || 'Преподаватель',
           channel: 'other',
           type: 'organizational',
-          content: `📅 Запланировано занятие: «${newLesson.groupName}» на ${dateFormatted} в ${startTime}–${endTime}. Аудитория/ссылка: ${isOnline ? onlineUrl : room}.`,
+          content: `📅 Добавлено занятие: «${newLesson.groupName}» на ${dateFormatted} в ${startTime}–${endTime}. Аудитория/ссылка: ${isOnline ? onlineUrl : room}.`,
         };
 
         saveInteractionToStorage(interaction);
@@ -214,7 +282,7 @@ export function ScheduleLessonModal({
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: newLesson }));
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
 
-      toast.success(`Занятие «${newLesson.groupName}» (${dateFormatted}) успешно запланировано!`);
+      toast.success(`Занятие «${newLesson.groupName}» (${dateFormatted}) успешно добавлено!`);
 
       if (onScheduled) {
         onScheduled(newLesson);
@@ -228,9 +296,7 @@ export function ScheduleLessonModal({
     }
   };
 
-  const modalSubtitle = selectedGroup.teacherName
-    ? `Разовое занятие • Преподаватель: ${selectedGroup.teacherName}`
-    : 'Разовое занятие группы';
+  const studentCount = selectedGroup.students?.length || 0;
 
   const modalFooter = (
     <div className="flex items-center justify-end gap-3 w-full">
@@ -238,7 +304,7 @@ export function ScheduleLessonModal({
         type="button"
         onClick={onClose}
         disabled={isSubmitting}
-        className="w-1/3 md:w-auto px-4 py-2.5 text-xs md:text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+        className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
       >
         Отмена
       </button>
@@ -246,7 +312,7 @@ export function ScheduleLessonModal({
         type="submit"
         form="schedule-lesson-form"
         disabled={isSubmitting}
-        className="flex-1 md:flex-initial px-6 py-2.5 text-xs md:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
       >
         <Check className="h-4 w-4" />
         <span>{isSubmitting ? t('common.saving', 'Сохранение...') : 'Сохранить занятие'}</span>
@@ -258,120 +324,140 @@ export function ScheduleLessonModal({
     <ResponsiveModal
       isOpen={isOpen}
       onClose={onClose}
-      title={t('modal.scheduleLesson.title', 'Запланировать новое занятие')}
-      subtitle={modalSubtitle}
-      headerBg="bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+      title="Добавить занятие"
+      subtitle={`Отдельное занятие для группы «${selectedGroup.name}»`}
+      headerBg="bg-slate-900 text-white"
       footer={modalFooter}
     >
       <form id="schedule-lesson-form" onSubmit={handleSubmit} className="space-y-4">
         {/* Conflict Warning Banner */}
         {conflictWarning && (
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs animate-in fade-in">
             <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <span>{conflictWarning}</span>
+            <span className="leading-snug">{conflictWarning}</span>
           </div>
         )}
 
-        {/* GROUP SELECTOR */}
+        {/* 1. ВЫБОР ГРУППЫ */}
         <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">
-            {t('modal.selectGroup', 'Учебная группа')} *
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Учебная группа <span className="text-rose-500">*</span>
           </label>
           <select
             value={groupId}
             onChange={(e) => handleGroupChange(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
           >
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
-                {g.name} • {g.teacherName || 'Преподаватель'}
+                {g.name} • {g.teacherName || 'Преподаватель'} ({g.students?.length || 0} уч.)
               </option>
             ))}
           </select>
+
+          {/* Карточка-паспорт выбранной группы (наследуемые параметры) */}
+          <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
+            <div className="flex items-center gap-1.5">
+              <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
+              <span className="font-semibold text-slate-800">{selectedGroup.courseName || 'Основной курс'}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400">Преподаватель:</span>
+              <span className="font-medium text-slate-700">{selectedGroup.teacherName}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-slate-400" />
+              <span>{getStudentWord(studentCount)}</span>
+            </div>
+          </div>
         </div>
 
-        {/* DATE & TIME (GRID 3 COLUMNS ON DESKTOP) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* 2. ДАТА И ВРЕМЯ ЗАНЯТИЯ */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              {t('modal.lessonDate', 'Дата занятия')} *
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Дата занятия <span className="text-rose-500">*</span>
             </label>
             <input
               type="date"
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              {t('common.startTime', 'Начало')} *
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Начало <span className="text-rose-500">*</span>
             </label>
             <input
               type="time"
               required
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => handleStartTimeChange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              {t('common.endTime', 'Окончание')} *
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Окончание <span className="text-rose-500">*</span>
             </label>
             <input
               type="time"
               required
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-medium text-slate-800"
             />
           </div>
         </div>
 
-        {/* TOPIC & HOMEWORK */}
+        {/* 3. ТЕМА И ДОМАШНЕЕ ЗАДАНИЕ */}
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              {t('hero.topic', 'Тема занятия')}
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Тема занятия
             </label>
             <input
               type="text"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
-              placeholder="Например: Unit 3: Conditionals"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+              placeholder="Например: Введение в циклы for и while"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 text-slate-800 placeholder:text-slate-400"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              {t('hero.homework', 'Домашнее задание')}
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Домашнее задание
             </label>
             <input
               type="text"
               value={homework}
               onChange={(e) => setHomework(e.target.value)}
-              placeholder="Например: Прочитать стр. 45-48"
-              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500"
+              placeholder="Например: Задачи 1-5 на платформе"
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 text-slate-800 placeholder:text-slate-400"
             />
           </div>
         </div>
 
-        {/* ROOM & ONLINE ROOM & TRIAL */}
-        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="is_online"
-              checked={isOnline}
-              onChange={(e) => setIsOnline(e.target.checked)}
-              className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <label htmlFor="is_online" className="text-xs font-medium text-slate-700 cursor-pointer">
-              {t('lesson.onlineRoom', 'Онлайн-комната занятия (Zoom / Meet)')}
-            </label>
+        {/* 4. ФОРМАТ / ОНЛАЙН-КОМНАТА И ПРОБНОЕ ЗАНЯТИЕ */}
+        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_online"
+                checked={isOnline}
+                onChange={(e) => setIsOnline(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="is_online" className="text-xs font-semibold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5 text-blue-600" />
+                Онлайн-комната (Zoom / Meet)
+              </label>
+            </div>
+            <span className="text-[10px] text-slate-400">Унаследовано из группы</span>
           </div>
 
           {isOnline && (
@@ -379,8 +465,8 @@ export function ScheduleLessonModal({
               type="url"
               value={onlineUrl}
               onChange={(e) => setOnlineUrl(e.target.value)}
-              placeholder="https://zoom.us/j/teacher-maria-english"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500"
+              placeholder="https://zoom.us/j/teacher-room"
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 font-mono text-slate-700"
             />
           )}
 
@@ -392,8 +478,9 @@ export function ScheduleLessonModal({
               onChange={(e) => setIsTrial(e.target.checked)}
               className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
             />
-            <label htmlFor="has_trial" className="text-xs font-medium text-slate-700 cursor-pointer">
-              🎯 {t('status.trial', 'Присутствует пробный ученик')}
+            <label htmlFor="has_trial" className="text-xs font-medium text-slate-700 cursor-pointer flex items-center gap-1">
+              <span>🎯</span>
+              <span>Отметить как пробное занятие</span>
             </label>
           </div>
         </div>
@@ -401,3 +488,4 @@ export function ScheduleLessonModal({
     </ResponsiveModal>
   );
 }
+
