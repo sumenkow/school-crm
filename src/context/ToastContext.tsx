@@ -51,8 +51,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       {/* Floating Snackbars Container */}
       <div
-        className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none"
-        style={{ maxWidth: '420px', width: 'calc(100% - 40px)' }}
+        className="fixed bottom-5 left-6 sm:bottom-6 sm:left-6 z-[9999] flex flex-col gap-2.5 pointer-events-none"
+        style={{ maxWidth: '420px', width: 'calc(100% - 48px)' }}
       >
         {toasts.map((toast) => {
           const isSuccess = toast.type === 'success';

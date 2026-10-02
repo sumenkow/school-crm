@@ -19,7 +19,7 @@ import { normalizeStudent } from './studentStorage';
 import { deduplicateTimelineInteractions } from './timelineStorage';
 
 export async function persistEntityToCloud(
-  entity: 'student' | 'parent' | 'lead' | 'task' | 'payment' | 'interaction' | 'group' | 'lesson',
+  entity: 'student' | 'parent' | 'lead' | 'task' | 'payment' | 'interaction' | 'group' | 'lesson' | 'attendance',
   data: any,
   action: 'upsert' | 'delete' = 'upsert'
 ): Promise<boolean> {
@@ -63,7 +63,9 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       tasks,
       payments,
       interactions,
+      teachers,
       lessons,
+      attendance,
     } = json.data;
 
     // 1. Reconstruct Parents Map
@@ -448,23 +450,91 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
     }
 
-    // 8. Hydrate Lessons
-    const hydratedLessons: FullLessonData[] = (lessons || []).map((ls: any) => ({
-      id: ls.id,
-      groupId: ls.group_id,
-      teacherId: ls.teacher_id,
-      date: ls.date,
-      dateFormatted: ls.date ? new Date(ls.date).toLocaleDateString('ru-RU') : '',
-      startTime: ls.start_time || '18:45',
-      endTime: ls.end_time || '20:15',
-      room: ls.room || 'Онлайн (Zoom)',
-      status: (ls.status as any) || 'scheduled',
-      topic: ls.topic || ls.title || 'Тема урока',
-      homework: ls.homework,
-      onlineMeetingUrl: ls.online_meeting_url,
-      isTrial: Boolean(ls.is_trial),
-      students: [],
-    }));
+    // 8. Hydrate Lessons with rich Group, Teacher, and Attendance bindings
+    const hydratedLessons: FullLessonData[] = (lessons || []).map((ls: any) => {
+      const lessonDateStr = ls.lesson_date || ls.date || '';
+      let dateFormatted = '';
+      let dayOfWeek = 0;
+      if (lessonDateStr) {
+        const d = new Date(lessonDateStr);
+        if (!isNaN(d.getTime())) {
+          dateFormatted = d.toLocaleDateString('ru-RU');
+          const rawDow = d.getDay();
+          dayOfWeek = rawDow === 0 ? 6 : rawDow - 1;
+        }
+      }
+
+      // Find linked group
+      const grp = (groups || []).find((g: any) => g.id === ls.group_id);
+      // Find linked teacher
+      const tch = (teachers || []).find((t: any) => t.id === ls.teacher_id);
+      const teacherName = tch
+        ? `${tch.first_name || ''} ${tch.last_name || ''}`.trim()
+        : grp?.teacher_name || 'Мария Иванова';
+
+      // Find attendance records for this lesson
+      const lessonAtt = (attendance || []).filter((a: any) => a.lesson_id === ls.id);
+
+      // Resolve students list
+      let lessonStudents: Array<{
+        id: string;
+        name: string;
+        attendanceStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
+        notes?: string;
+        isTrial?: boolean;
+      }> = [];
+
+      if (lessonAtt.length > 0) {
+        lessonStudents = lessonAtt.map((a: any) => {
+          const st = (students || []).find((s: any) => s.id === a.student_id);
+          const stName = st ? `${st.first_name || ''} ${st.last_name || ''}`.trim() : 'Ученик';
+          return {
+            id: a.student_id,
+            name: stName || 'Ученик',
+            attendanceStatus: a.status || 'present',
+            notes: a.notes || undefined,
+          };
+        });
+      } else if (grp) {
+        const grpEnrollments = (enrollments || []).filter((en: any) => en.group_id === grp.id && en.status !== 'dropped');
+        lessonStudents = grpEnrollments.map((en: any) => {
+          const st = (students || []).find((s: any) => s.id === en.student_id);
+          const stName = st ? `${st.first_name || ''} ${st.last_name || ''}`.trim() : 'Ученик';
+          return {
+            id: en.student_id,
+            name: stName || 'Ученик',
+            attendanceStatus: 'not_marked' as const,
+          };
+        });
+      }
+
+      const startTimeFormatted = ls.start_time ? ls.start_time.slice(0, 5) : '18:45';
+      const endTimeFormatted = ls.end_time ? ls.end_time.slice(0, 5) : '20:15';
+
+      return {
+        id: ls.id,
+        groupId: ls.group_id || undefined,
+        groupName: grp?.name || 'English B1 Teens',
+        courseId: grp?.course_id || 'c1',
+        courseName: grp?.course_name || 'Английский язык',
+        teacherId: ls.teacher_id || 't1',
+        teacherName,
+        date: lessonDateStr,
+        dateFormatted,
+        dayOfWeek,
+        startTime: startTimeFormatted,
+        endTime: endTimeFormatted,
+        room: ls.room || grp?.room || 'Онлайн (Zoom)',
+        status: (ls.status as any) || 'scheduled',
+        topic: ls.topic || ls.title || 'Тема урока',
+        homework: ls.homework || undefined,
+        onlineMeetingUrl: ls.online_meeting_url || undefined,
+        notes: ls.notes || undefined,
+        generalLessonNote: ls.notes || undefined,
+        isTrial: Boolean(ls.is_trial),
+        students: lessonStudents,
+      };
+    });
 
     let localLessons: FullLessonData[] = [];
     try {

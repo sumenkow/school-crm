@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
       supabase.from('interactions').select('*').order('created_at', { ascending: false }),
       supabase.from('courses').select('*').order('created_at', { ascending: true }),
       supabase.from('teachers').select('*').order('created_at', { ascending: true }),
-      supabase.from('lessons').select('*').order('date', { ascending: false }),
+      supabase.from('lessons').select('*').order('lesson_date', { ascending: false }),
       supabase.from('attendance').select('*'),
     ]);
 
@@ -422,31 +422,94 @@ export async function POST(request: NextRequest) {
       case 'lesson': {
         const lessonId = toUUID(data.id);
         if (action === 'delete') {
-          await supabase.from('lessons').update({ status: 'cancelled', is_mock_data: false }).eq('id', lessonId);
+          await supabase.from('lessons').delete().eq('id', lessonId);
           return NextResponse.json({ success: true, action: 'deleted', id: lessonId });
         }
 
         const validStatuses = ['scheduled', 'completed', 'cancelled', 'rescheduled'];
+        const lessonDate = data.date
+          ? data.date.includes('.')
+            ? data.date.split('.').reverse().join('-')
+            : data.date.slice(0, 10)
+          : data.lesson_date || new Date().toISOString().slice(0, 10);
+
+        const teacherMap: Record<string, string> = {
+          t1: 'b076ca06-bfcd-49df-af03-d1fc8c165608',
+          t2: '391367d1-f8a8-490e-ba45-993d5b8b84fe',
+          t3: 'b076ca06-bfcd-49df-af03-d1fc8c165608',
+          t4: '391367d1-f8a8-490e-ba45-993d5b8b84fe',
+        };
+
+        const rawGroupId = data.groupId ? String(data.groupId) : null;
+        const mappedGroupId = rawGroupId
+          ? toUUID(rawGroupId.startsWith('grp_') ? rawGroupId : `grp_${rawGroupId}`)
+          : null;
+
+        const mappedTeacherId = teacherMap[data.teacherId] || (data.teacherId ? toUUID(data.teacherId) : null);
+
         const lessonRow = {
           id: lessonId,
-          group_id: data.groupId ? toUUID(data.groupId) : null,
-          teacher_id: data.teacherId ? toUUID(data.teacherId) : null,
-          date: data.date ? (data.date.includes('.') ? data.date.split('.').reverse().join('-') : data.date.slice(0, 10)) : new Date().toISOString().slice(0, 10),
-          start_time: data.startTime || '18:45',
-          end_time: data.endTime || '20:15',
-          room: data.room || 'Онлайн (Zoom)',
-          status: validStatuses.includes(data.status) ? data.status : 'scheduled',
+          group_id: mappedGroupId,
+          teacher_id: mappedTeacherId,
+          lesson_date: lessonDate,
+          start_time: data.startTime ? data.startTime.slice(0, 5) : '18:45',
+          end_time: data.endTime ? data.endTime.slice(0, 5) : '20:15',
           topic: data.topic || data.title || 'Тема урока',
-          homework: data.homework || null,
           online_meeting_url: data.onlineMeetingUrl || null,
-          is_trial: Boolean(data.isTrial),
-          is_mock_data: false,
+          status: validStatuses.includes(data.status) ? data.status : 'scheduled',
+          notes: data.notes || data.generalLessonNote || null,
         };
 
         const { error: lesErr } = await supabase.from('lessons').upsert(lessonRow, { onConflict: 'id' });
-        if (lesErr) throw lesErr;
+        if (lesErr) {
+          console.warn('[Sync API] Lessons upsert notice:', lesErr);
+        }
+
+        // Also upsert attendance records if provided with students
+        if (Array.isArray(data.students) && data.students.length > 0) {
+          for (const s of data.students) {
+            if (s.attendanceStatus && s.attendanceStatus !== 'not_marked') {
+              const studentId = toUUID(s.id);
+              await supabase.from('attendance').upsert({
+                lesson_id: lessonId,
+                student_id: studentId,
+                status: s.attendanceStatus,
+                notes: s.notes || null,
+                marked_at: new Date().toISOString(),
+              }, { onConflict: 'lesson_id,student_id' });
+            }
+          }
+        }
 
         return NextResponse.json({ success: true, id: lessonId });
+      }
+
+      case 'attendance': {
+        const lessonId = toUUID(data.lessonId);
+        if (Array.isArray(data.studentRecords)) {
+          for (const rec of data.studentRecords) {
+            if (rec.status && rec.status !== 'not_marked') {
+              const studentId = toUUID(rec.studentId);
+              await supabase.from('attendance').upsert({
+                lesson_id: lessonId,
+                student_id: studentId,
+                status: rec.status,
+                notes: rec.note || null,
+                marked_at: new Date().toISOString(),
+              }, { onConflict: 'lesson_id,student_id' });
+            }
+          }
+        } else if (data.studentId) {
+          const studentId = toUUID(data.studentId);
+          await supabase.from('attendance').upsert({
+            lesson_id: lessonId,
+            student_id: studentId,
+            status: data.status || 'present',
+            notes: data.note || data.notes || null,
+            marked_at: new Date().toISOString(),
+          }, { onConflict: 'lesson_id,student_id' });
+        }
+        return NextResponse.json({ success: true });
       }
 
       default:

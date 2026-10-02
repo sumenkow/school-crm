@@ -271,26 +271,32 @@ export function recordLessonAttendanceBatch(params: {
     }
   });
 
-    // Direct Supabase Cloud DB attendances write
-  if (typeof window !== 'undefined') {
-    import('@/lib/supabase/client').then(async ({ createClient }) => {
-      try {
-        const supabase = createClient();
-        for (const rec of params.studentRecords) {
-          if (rec.status !== 'not_marked') {
-            await supabase.from('attendances').upsert({
-              lesson_id: params.lessonId,
-              student_id: rec.studentId,
-              status: rec.status,
-              notes: rec.note || null,
-            });
+    // Direct Supabase Cloud DB attendance write
+    if (typeof window !== 'undefined') {
+      persistEntityToCloud('attendance', {
+        lessonId: params.lessonId,
+        studentRecords: params.studentRecords,
+      });
+
+      import('@/lib/supabase/client').then(async ({ createClient }) => {
+        try {
+          const supabase = createClient();
+          for (const rec of params.studentRecords) {
+            if (rec.status !== 'not_marked') {
+              await supabase.from('attendance').upsert({
+                lesson_id: params.lessonId,
+                student_id: rec.studentId,
+                status: rec.status,
+                notes: rec.note || null,
+                marked_at: new Date().toISOString(),
+              }, { onConflict: 'lesson_id,student_id' });
+            }
           }
+        } catch {
+          // ignore offline
         }
-      } catch (e) {
-        // ignore offline
-      }
-    }).catch(() => {});
-  }
+      }).catch(() => {});
+    }
 
   // Automatic lesson deduction for present students
   const presentStudentIds = params.studentRecords

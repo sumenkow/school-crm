@@ -246,7 +246,41 @@ export function LessonDetailsDrawer({
     if (onLessonUpdated) onLessonUpdated(updatedLesson);
     window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
     window.dispatchEvent(new CustomEvent('crm-students-changed'));
-    toast.success('Посещаемость обновлена');
+  };
+
+  // Handle Mark All Present
+  const handleMarkAllPresent = () => {
+    if (!students || students.length === 0) return;
+    const updatedStudents = students.map((s) => ({
+      ...s,
+      attendanceStatus: 'present' as const,
+    }));
+
+    const updatedLesson: FullLessonData = {
+      ...lesson,
+      students: updatedStudents,
+    };
+
+    saveLessonToStorage(updatedLesson);
+
+    recordLessonAttendanceBatch({
+      lessonId: lesson.id,
+      topic: lesson.topic,
+      homework: lesson.homework,
+      teacherName: lesson.teacherName,
+      status: lesson.status,
+      studentRecords: updatedStudents.map((s) => ({
+        studentId: s.id,
+        studentName: s.name,
+        status: 'present',
+        note: s.notes,
+      })),
+    });
+
+    if (onLessonUpdated) onLessonUpdated(updatedLesson);
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
+    toast.success('Все ученики отмечены как присутствующие');
   };
 
   // Handle Conduct lesson action
@@ -913,9 +947,21 @@ export function LessonDetailsDrawer({
         {/* ВКЛАДКА 2: ПОСЕЩАЕМОСТЬ */}
         {activeTab === 'attendance' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-              <span>Состав группы: {totalStudentsCount} уч.</span>
-              <span>Статус присутствия</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Состав группы: {totalStudentsCount} уч.
+              </span>
+              {students.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllPresent}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+                  title="Отметить всех учеников как присутствующих"
+                >
+                  <Check className="h-3 w-3 text-emerald-600" />
+                  <span>Отметить всех</span>
+                </button>
+              )}
             </div>
 
             {students.length === 0 ? (
