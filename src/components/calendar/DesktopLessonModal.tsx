@@ -107,6 +107,7 @@ function formatFullDateWithWeekday(dateStr: string): string {
 interface DesktopLessonModalProps {
   isOpen: boolean;
   lesson: FullLessonData | null;
+  initialTab?: LessonModalTab;
   onClose: () => void;
   onSave: (updatedLesson: FullLessonData) => void;
   onDelete?: (lessonId: string) => void;
@@ -115,6 +116,7 @@ interface DesktopLessonModalProps {
 export function DesktopLessonModal({
   isOpen,
   lesson,
+  initialTab,
   onClose,
   onSave,
   onDelete,
@@ -157,7 +159,7 @@ export function DesktopLessonModal({
   // Sync state with incoming lesson
   useEffect(() => {
     if (isOpen && lesson) {
-      setActiveTab('main');
+      setActiveTab(initialTab || 'main');
       setIsConfirmingDelete(false);
       setTopic(lesson.topic || '');
       setHomework(lesson.homework || '');

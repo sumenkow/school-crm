@@ -166,6 +166,7 @@ export default function CalendarPage() {
   });
   const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
+  const [desktopModalTab, setDesktopModalTab] = useState<'main' | 'attendance' | 'feedback' | 'history'>('main');
   const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
   const [selectedLessonForEdit, setSelectedLessonForEdit] = useState<FullLessonData | null>(null);
 
@@ -1051,7 +1052,8 @@ export default function CalendarPage() {
                 isOpen={!!selectedLessonForDrawer}
                 lesson={selectedLessonForDrawer}
                 onClose={() => setSelectedLessonForDrawer(null)}
-                onEdit={(l) => {
+                onEdit={(l, tab) => {
+                  setDesktopModalTab(tab || 'main');
                   setSelectedLessonForDesktop(l);
                 }}
                 onLessonUpdated={(updated) => {
@@ -1084,7 +1086,8 @@ export default function CalendarPage() {
             isOpen={!!selectedLessonForDrawer}
             lesson={selectedLessonForDrawer}
             onClose={() => setSelectedLessonForDrawer(null)}
-            onEdit={(l) => {
+            onEdit={(l, tab) => {
+              setDesktopModalTab(tab || 'main');
               setSelectedLessonForDesktop(l);
             }}
             onLessonUpdated={(updated) => {
@@ -1140,6 +1143,7 @@ export default function CalendarPage() {
       <DesktopLessonModal
         isOpen={!!selectedLessonForDesktop}
         lesson={selectedLessonForDesktop}
+        initialTab={desktopModalTab}
         onClose={() => setSelectedLessonForDesktop(null)}
         onSave={(updatedLesson) => {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));

@@ -23,6 +23,9 @@ import {
   Sparkles,
   ArrowRight,
   FileText,
+  RotateCcw,
+  History,
+  Check,
 } from 'lucide-react';
 import { FullLessonData, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { saveLessonToStorage } from '@/lib/data/lessonStorage';
@@ -34,7 +37,7 @@ export interface LessonPreviewDrawerProps {
   isOpen: boolean;
   lesson: FullLessonData | null;
   onClose: () => void;
-  onEdit: (lesson: FullLessonData) => void;
+  onEdit: (lesson: FullLessonData, initialTab?: 'main' | 'attendance' | 'feedback' | 'history') => void;
   onLessonUpdated?: (lesson: FullLessonData) => void;
   onDuplicate?: (lesson: FullLessonData) => void;
   isEmbedded?: boolean;
@@ -239,6 +242,30 @@ export function LessonPreviewDrawer({
     toast.success('Занятие отменено');
   };
 
+  // Handle Revert to scheduled
+  const handleRevertToScheduled = () => {
+    const updatedLesson: FullLessonData = {
+      ...lesson,
+      status: 'scheduled',
+    };
+    saveLessonToStorage(updatedLesson);
+    if (onLessonUpdated) onLessonUpdated(updatedLesson);
+    setIsMenuOpen(false);
+    toast.success('Занятие возвращено в статус "Запланировано"');
+  };
+
+  // Handle Restore lesson
+  const handleRestoreLesson = () => {
+    const updatedLesson: FullLessonData = {
+      ...lesson,
+      status: 'scheduled',
+    };
+    saveLessonToStorage(updatedLesson);
+    if (onLessonUpdated) onLessonUpdated(updatedLesson);
+    setIsMenuOpen(false);
+    toast.success('Занятие успешно восстановлено');
+  };
+
   // Handle Duplicate lesson action
   const handleDuplicateLesson = () => {
     if (onDuplicate) {
@@ -396,29 +423,135 @@ export function LessonPreviewDrawer({
           </button>
 
           {isMenuOpen && (
-            <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg z-30 space-y-1 text-xs animate-in fade-in zoom-in-95 duration-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  handleDuplicateLesson();
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
-              >
-                <Copy className="h-3.5 w-3.5 text-slate-400" />
-                <span>Дублировать</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  setShowCancelConfirm(true);
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors text-left cursor-pointer"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Отменить занятие</span>
-              </button>
+            <div className="absolute right-0 mt-1.5 w-56 rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg z-30 space-y-1 text-xs animate-in fade-in zoom-in-95 duration-100">
+              {lesson.status === 'completed' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'main');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Редактировать данные</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'attendance');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Открыть журнал посещаемости</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleDuplicateLesson();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Дублировать</span>
+                  </button>
+                  <div className="h-px bg-slate-100 my-1" />
+                  <button
+                    type="button"
+                    onClick={handleRevertToScheduled}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-amber-50 text-amber-700 transition-colors text-left cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Вернуть в статус Запланировано</span>
+                  </button>
+                </>
+              ) : lesson.status === 'cancelled' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'history');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <History className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Просмотр истории</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleDuplicateLesson();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Дублировать</span>
+                  </button>
+                  <div className="h-px bg-slate-100 my-1" />
+                  <button
+                    type="button"
+                    onClick={handleRestoreLesson}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-700 font-semibold transition-colors text-left cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Восстановить занятие</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'attendance');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Провести занятие</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'main');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Перенести занятие</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleDuplicateLesson();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Дублировать</span>
+                  </button>
+                  <div className="h-px bg-slate-100 my-1" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setShowCancelConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors text-left cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Отменить занятие</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
