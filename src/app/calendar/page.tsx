@@ -16,7 +16,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData } from '@/lib/data/mockData';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
@@ -260,6 +260,59 @@ export default function CalendarPage() {
   const daysInMonthCount = lastDayOfMonth.getDate();
   const startDayOfWeek = firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1;
 
+  // Lessons currently visible in the active range (week/day/month) for dynamic teacher badge counts
+  const currentRangeLessons = useMemo(() => {
+    if (viewMode === 'day') {
+      const selectedDay = daysOfWeek[selectedDayIndex] || daysOfWeek[0];
+      return sanitizedLessons.filter(
+        (l) => l.date === selectedDay.fullDate || (!l.date && l.dayOfWeek === selectedDay.dayIndex)
+      );
+    }
+    if (viewMode === 'month') {
+      return sanitizedLessons.filter((l) => {
+        if (!l.date) return true;
+        const d = new Date(l.date);
+        return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+      });
+    }
+    // Week mode
+    const weekDates = new Set(daysOfWeek.map((d) => d.fullDate));
+    return sanitizedLessons.filter(
+      (l) => weekDates.has(l.date) || (!l.date && l.dayOfWeek >= 0 && l.dayOfWeek <= 6)
+    );
+  }, [sanitizedLessons, viewMode, daysOfWeek, selectedDayIndex, viewYear, viewMonth]);
+
+  const teacherColorMap: Record<string, string> = {
+    t1: 'bg-rose-500',
+    t2: 'bg-amber-500',
+    t3: 'bg-emerald-500',
+    t4: 'bg-indigo-500',
+  };
+
+  const teachersList = useMemo(() => {
+    return INITIAL_TEACHERS.map((teacher, idx) => {
+      const initials = teacher.name
+        .trim()
+        .split(' ')
+        .slice(0, 2)
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase() || 'ПР';
+
+      const bg = teacherColorMap[teacher.id] || (idx % 4 === 0 ? 'bg-rose-500' : idx % 4 === 1 ? 'bg-amber-500' : idx % 4 === 2 ? 'bg-emerald-500' : 'bg-indigo-500');
+
+      const count = currentRangeLessons.filter((l) => l.teacherId === teacher.id).length;
+
+      return {
+        id: teacher.id,
+        name: teacher.name,
+        initials,
+        bg,
+        count,
+      };
+    });
+  }, [currentRangeLessons]);
+
   return (
     <>
       {/* MOBILE AGENDA CALENDAR (< 768px / md:hidden) */}
@@ -275,126 +328,149 @@ export default function CalendarPage() {
       </div>
 
       {/* DESKTOP CALENDAR (>= 768px / hidden md:block) */}
-      <div className="hidden md:block space-y-6">
-        {/* Header */}
+      <div className="hidden md:block space-y-4">
+        {/* 1. Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('calendar.title', 'Календарь школы')}</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              {t('calendar.title', 'Календарь школы')}
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5 font-medium">
               {t('calendar.subtitle', 'Расписание занятий всех групп и преподавателей')}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setIsCreateGroupModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               Создать группу
             </button>
             <button
+              type="button"
               onClick={() => setIsScheduleModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors cursor-pointer"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
               {t('action.scheduleLesson', 'Запланировать занятие')}
             </button>
           </div>
         </div>
 
-        {/* Navigation & Controls Bar */}
-        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
+        {/* 2. Navigation & Controls Bar (Toolbar) */}
+        <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={handlePrev}
                 title="Назад"
-                className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shadow-2xs"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-sm font-semibold text-slate-800 px-2 min-w-[210px] text-center">
-                {activeNavigationLabel}
-              </span>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white shadow-2xs text-xs font-semibold text-slate-800 select-none min-w-[200px] justify-center">
+                <CalendarIcon className="h-3.5 w-3.5 text-slate-500" />
+                <span>{activeNavigationLabel}</span>
+              </div>
               <button
+                type="button"
                 onClick={handleNext}
                 title="Вперед"
-                className="rounded-lg border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shadow-2xs"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
               <button
+                type="button"
                 onClick={handleGoToToday}
-                className="ml-2 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="ml-1 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
               >
                 {t('calendar.today', 'Сегодня')}
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* View Mode Toggle (Day / Week / Month) */}
-              <div className="flex rounded-lg bg-slate-100 p-1 text-xs font-medium">
-                <button
-                  onClick={() => setViewMode('day')}
-                  className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'day' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-                >
-                  {t('calendar.viewDay', 'День')}
-                </button>
-                <button
-                  onClick={() => setViewMode('week')}
-                  className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'week' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-                >
-                  {t('calendar.viewWeek', 'Неделя')}
-                </button>
-                <button
-                  onClick={() => setViewMode('month')}
-                  className={cn('rounded px-2.5 py-1 transition-all cursor-pointer', viewMode === 'month' ? 'bg-white shadow-xs font-semibold' : 'text-slate-600')}
-                >
-                  {t('calendar.viewMonth', 'Месяц')}
-                </button>
-              </div>
+            {/* View Mode Pill Group */}
+            <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('day')}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
+                  viewMode === 'day'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                {t('calendar.viewDay', 'День')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('week')}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
+                  viewMode === 'week'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                {t('calendar.viewWeek', 'Неделя')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('month')}
+                className={cn(
+                  'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
+                  viewMode === 'month'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                )}
+              >
+                {t('calendar.viewMonth', 'Месяц')}
+              </button>
             </div>
           </div>
 
-          {/* Quick Teacher Avatar Filters */}
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 overflow-x-auto">
-            <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Преподаватели:</span>
+          {/* 3. Horizontal Teacher Filter Bar */}
+          <div className="flex items-center gap-2 pt-2.5 border-t border-slate-100 overflow-x-auto no-scrollbar">
+            <span className="text-xs font-semibold text-slate-500 mr-1 shrink-0 whitespace-nowrap">
+              Преподаватели:
+            </span>
             <button
               type="button"
               onClick={() => setSelectedTeacher('all')}
               className={cn(
-                'px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                'px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0',
                 selectedTeacher === 'all'
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-blue-600 text-white shadow-xs font-semibold'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               )}
             >
               Все учителя
             </button>
-            {[
-              { id: 't1', name: 'Мария Иванова', role: 'English', initials: 'МИ', bg: 'bg-rose-500' },
-              { id: 't2', name: 'Денис Смирнов', role: 'Robotics', initials: 'ДС', bg: 'bg-amber-500' },
-              { id: 't3', name: 'Ольга Соколова', role: 'Math', initials: 'ОС', bg: 'bg-emerald-500' },
-              { id: 't4', name: 'Анна Кузнецова', role: 'German', initials: 'АК', bg: 'bg-indigo-500' },
-            ].map((teacher) => {
+            {teachersList.map((teacher) => {
               const isSelected = selectedTeacher === teacher.id;
+              const labelText = teacher.count > 0 ? `${teacher.name} · ${teacher.count}` : teacher.name;
+
               return (
                 <button
                   key={teacher.id}
                   type="button"
                   onClick={() => setSelectedTeacher(isSelected ? 'all' : teacher.id)}
                   className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap',
+                    'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap shrink-0',
                     isSelected
-                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold ring-2 ring-blue-200'
+                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold ring-2 ring-blue-100 shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  <span className={cn('flex h-4.5 w-4.5 items-center justify-center rounded-full text-[9px] font-bold text-white', teacher.bg)}>
+                  <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shrink-0 shadow-2xs', teacher.bg)}>
                     {teacher.initials}
                   </span>
-                  <span>{teacher.name}</span>
-                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">({teacher.role})</span>
+                  <span>{labelText}</span>
                 </button>
               );
             })}
