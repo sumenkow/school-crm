@@ -260,13 +260,15 @@ export function AttentionFeed({
                   </span>
                 </div>
 
-                <div className="flex items-baseline gap-2">
-                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                <div className="min-w-0 space-y-0.5">
+                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
                     {item.title}
                   </h4>
-                  <span className="text-[11px] text-slate-500 truncate hidden md:inline">
-                    {item.subtitle}
-                  </span>
+                  {item.subtitle && (
+                    <p className="text-[11px] text-slate-500 line-clamp-1">
+                      {item.subtitle}
+                    </p>
+                  )}
                 </div>
 
                 <p className={cn(

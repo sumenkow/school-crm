@@ -32,17 +32,28 @@ export function HeaderGreeting({
     year: 'numeric',
   });
 
+  const getCleanName = () => {
+    if (!userName) return role === 'owner' ? 'Руководитель' : 'Администратор';
+    const cleaned = userName
+      .replace(/\s*(Разработчик|Руководитель|Администратор|Владелец|Учитель|Педагог|Manager|Admin|Developer|Owner)\b/gi, '')
+      .trim();
+    return cleaned ? cleaned.split(' ')[0] : userName.split(' ')[0];
+  };
+
+  const displayName = getCleanName();
   const capitalizedDate = todayFormatted.charAt(0).toUpperCase() + todayFormatted.slice(1);
-  const displayName = userName || (role === 'owner' ? 'Руководитель' : 'Администратор');
 
   return (
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
       <div className="space-y-1">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          {getGreeting()}, {displayName}! Вот что происходит в вашей школе сегодня.
+          {getGreeting()}, {displayName}!
         </h1>
-        <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
-          <span className="flex items-center gap-1.5">
+        <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          Вот что происходит в вашей школе сегодня.
+        </p>
+        <div className="flex items-center gap-3 text-xs text-slate-400 font-medium pt-0.5">
+          <span className="flex items-center gap-1.5 text-slate-500">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             {capitalizedDate}
           </span>

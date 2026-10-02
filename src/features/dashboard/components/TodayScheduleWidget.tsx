@@ -42,11 +42,16 @@ export function TodayScheduleWidget({
     });
 
     // If no lessons strictly match exact date, fallback to next upcoming scheduled lessons
-    if (filtered.length === 0) {
-      return lessons.filter(l => l.status === 'scheduled').slice(0, 3);
-    }
+    const result = filtered.length > 0
+      ? filtered
+      : lessons.filter(l => l.status === 'scheduled').slice(0, 5);
 
-    return filtered;
+    // Sort strictly by ascending startTime (e.g. 15:00 -> 16:00 -> 18:45)
+    return [...result].sort((a, b) => {
+      const timeA = a.startTime || '00:00';
+      const timeB = b.startTime || '00:00';
+      return timeA.localeCompare(timeB);
+    });
   }, [lessons]);
 
   const trialCount = useMemo(() => {

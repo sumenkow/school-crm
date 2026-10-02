@@ -20,6 +20,24 @@ export interface TeachersListWidgetProps {
   isLoading?: boolean;
 }
 
+function formatGroupsCount(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const lastDigit = abs % 10;
+  if (abs > 10 && abs < 20) return `${count} групп`;
+  if (lastDigit === 1) return `${count} группа`;
+  if (lastDigit >= 2 && lastDigit <= 4) return `${count} группы`;
+  return `${count} групп`;
+}
+
+function formatTeachersCount(count: number): string {
+  const abs = Math.abs(count) % 100;
+  const lastDigit = abs % 10;
+  if (abs > 10 && abs < 20) return `${count} педагогов`;
+  if (lastDigit === 1) return `${count} педагог`;
+  if (lastDigit >= 2 && lastDigit <= 4) return `${count} педагога`;
+  return `${count} педагогов`;
+}
+
 export function TeachersListWidget({
   teachers,
   groups,
@@ -71,7 +89,7 @@ export function TeachersListWidget({
           <h3 className="text-sm font-bold text-slate-900">Команда преподавателей</h3>
         </div>
         <span className="text-[11px] font-semibold text-slate-500">
-          {teachersWithStats.length} {teachersWithStats.length === 1 ? 'педагог' : teachersWithStats.length < 5 ? 'педагога' : 'педагогов'}
+          {formatTeachersCount(teachersWithStats.length)}
         </span>
       </div>
 
@@ -105,7 +123,7 @@ export function TeachersListWidget({
 
             <div className="flex items-center gap-2 shrink-0 ml-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                {t.computedGroupsCount} {t.computedGroupsCount === 1 ? 'группа' : t.computedGroupsCount < 5 ? 'группы' : 'групп'}
+                {formatGroupsCount(t.computedGroupsCount)}
               </span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
             </div>

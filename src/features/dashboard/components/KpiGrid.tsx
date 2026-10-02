@@ -242,7 +242,7 @@ export function KpiGrid({
         icon={CreditCard}
         iconClass="text-blue-600"
         iconBgClass="bg-blue-50 border border-blue-100"
-        badgeText="Текущий месяц"
+        badgeText="За текущий месяц"
         badgeClass="bg-blue-50 text-blue-700 border-blue-200/60"
         hoverBorderClass="hover:border-blue-300"
         onClick={() => router.push('/finance')}
