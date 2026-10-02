@@ -1052,7 +1052,6 @@ export default function CalendarPage() {
                 lesson={selectedLessonForDrawer}
                 onClose={() => setSelectedLessonForDrawer(null)}
                 onEdit={(l) => {
-                  setSelectedLessonForDrawer(null);
                   setSelectedLessonForDesktop(l);
                 }}
                 onLessonUpdated={(updated) => {
@@ -1086,7 +1085,6 @@ export default function CalendarPage() {
             lesson={selectedLessonForDrawer}
             onClose={() => setSelectedLessonForDrawer(null)}
             onEdit={(l) => {
-              setSelectedLessonForDrawer(null);
               setSelectedLessonForDesktop(l);
             }}
             onLessonUpdated={(updated) => {
