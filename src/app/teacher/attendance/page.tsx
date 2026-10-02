@@ -19,7 +19,9 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_GROUPS, INITIAL_STUDENTS, TeacherComment } from '@/lib/data/mockData';
+import { INITIAL_GROUPS, INITIAL_STUDENTS, TeacherComment, TimelineInteraction, FullStudentData } from '@/lib/data/mockData';
+import { getStoredStudents, saveStudentToStorage } from '@/lib/data/studentStorage';
+import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -158,7 +160,8 @@ export default function TeacherAttendanceJournalPage() {
     if (!commentModalStudent || !commentContent.trim()) return;
 
     const now = new Date();
-    const dateFormatted = `${now.toLocaleDateString('ru-RU')}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const dateFormatted = `${now.toLocaleDateString('ru-RU')}, ${timeFormatted}`;
 
     const newComment: TeacherComment = {
       id: `tc_${Date.now()}`,
@@ -166,12 +169,48 @@ export default function TeacherAttendanceJournalPage() {
       author: userName || 'Мария Иванова (Преподаватель)',
       date: dateFormatted,
       groupName: group.name,
-      lessonTopic: commentTopic.trim() || `Урок ${lessonDates[activeLessonIdx].date}`,
+      lessonTopic: commentTopic.trim() || `Урок ${lessonDates[activeLessonIdx]?.date || ''}`,
       category: commentCategory,
       content: commentContent.trim(),
     };
 
-    // Find student in INITIAL_STUDENTS and append
+    const allStudents = getStoredStudents();
+    const student = allStudents.find((s) => s.id === commentModalStudent.id);
+    const primaryParent = student?.parents?.[0];
+    const parentName = primaryParent ? `${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.trim() : undefined;
+
+    const interaction: TimelineInteraction = {
+      id: `int_att_${Date.now()}_${commentModalStudent.id}`,
+      studentId: commentModalStudent.id,
+      studentName: commentModalStudent.name,
+      parentId: primaryParent?.id,
+      parentName,
+      targetType: primaryParent ? 'parent' : 'student',
+      targetName: parentName || commentModalStudent.name,
+      targetRole: primaryParent ? (primaryParent.relationshipType || 'Родитель') : 'Ученик',
+      occurredAt: `Сегодня, ${timeFormatted}`,
+      createdAt: now.toISOString(),
+      author: userName || 'Мария Иванова (Преподаватель)',
+      channel: 'other',
+      type: 'follow_up',
+      content: `💬 Комментарий преподавателя по группе «${group.name}»: «${commentContent.trim()}»`,
+    };
+
+    saveInteractionToStorage(interaction);
+
+    if (student) {
+      const updatedComments = [newComment, ...(student.teacherComments || [])];
+      const updatedInteractions = [interaction, ...(student.interactions || [])];
+      const updatedStudent: FullStudentData = {
+        ...student,
+        teacherComments: updatedComments,
+        interactions: updatedInteractions,
+      };
+      saveStudentToStorage(updatedStudent);
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    }
+
+    // Sync in-memory INITIAL_STUDENTS
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === commentModalStudent.id);
     if (idx !== -1) {
       INITIAL_STUDENTS[idx].teacherComments = [
@@ -180,7 +219,9 @@ export default function TeacherAttendanceJournalPage() {
       ];
     }
 
-    toast.success(`Комментарий сохранен в карточку ученика «${commentModalStudent.name}»!`);
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: interaction }));
+
+    toast.success(`Комментарий сохранен в карточку ученика «${commentModalStudent.name}» и опубликован в Timeline!`);
     setCommentModalStudent(null);
     setCommentContent('');
     setCommentTopic('');

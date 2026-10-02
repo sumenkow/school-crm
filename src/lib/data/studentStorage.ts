@@ -103,19 +103,14 @@ export function getStoredStudents(): FullStudentData[] {
     const stored: FullStudentData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_STUDENTS.map((s) => normalizeStudent(s));
 
-    // Deduplicate stored by ID and by normalized full name
+    // Deduplicate stored by ID
     const seenIds = new Set<string>();
-    const seenNames = new Set<string>();
     const result: FullStudentData[] = [];
 
     for (const st of stored) {
       if (!st || !st.id) continue;
-      const cleanName = `${st.firstName || ''} ${st.lastName || ''}`.trim().toLowerCase();
       if (seenIds.has(st.id)) continue;
-      if (cleanName && seenNames.has(cleanName)) continue;
-
       seenIds.add(st.id);
-      if (cleanName) seenNames.add(cleanName);
       result.push(st);
     }
 
