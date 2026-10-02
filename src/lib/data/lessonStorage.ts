@@ -349,6 +349,12 @@ export function recordLessonAttendanceBatch(params: {
 
     saveStudentToStorage(updatedStudent);
 
+    // Sync in-memory allStudents array so subsequent records don't overwrite with stale data
+    const allIdx = allStudents.findIndex((s) => s.id === student.id || eqSet.has(s.id));
+    if (allIdx !== -1) {
+      allStudents[allIdx] = updatedStudent;
+    }
+
     // Sync in-memory INITIAL_STUDENTS
     const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id || eqSet.has(s.id));
     if (idx !== -1) {

@@ -320,7 +320,15 @@ export function saveStudentToStorage(student: FullStudentData): void {
   if (typeof window !== 'undefined') {
     try {
       const currentStudents = getStoredStudents();
-      const sIdx = currentStudents.findIndex((s) => s.id === studentToSave.id);
+      let sIdx = currentStudents.findIndex((s) => s.id === studentToSave.id);
+      if (sIdx === -1) {
+        try {
+          const { getEquivalentIds } = require('./timelineStorage');
+          const eqSet = getEquivalentIds(studentToSave.id);
+          sIdx = currentStudents.findIndex((s) => eqSet.has(s.id));
+        } catch {}
+      }
+
       if (sIdx !== -1) {
         currentStudents[sIdx] = studentToSave;
       } else {
