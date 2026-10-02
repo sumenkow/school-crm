@@ -33,9 +33,16 @@ import {
   ChevronDown,
   User,
   LogOut,
-  MoreVertical
+  MoreVertical,
+  Search,
+  Bell
 } from 'lucide-react';
 import { UserProfileModal } from '@/components/profile/UserProfileModal';
+import { CommandPalette } from '@/components/common/CommandPalette';
+import { CountryFlag } from '@/components/common/CountryFlag';
+import { LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
+import { NotificationCenter } from '@/components/layout/NotificationCenter';
+import { cn } from '@/lib/utils';
 
 interface NavItem {
   key: string;
@@ -265,12 +272,15 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { role, userName, userEmail } = useRole();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -282,10 +292,26 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Hotkey listener for ⌘K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setUserDropdownOpen(false);
+      }
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setLangMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -309,31 +335,63 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
   const drawerContent = (
     <div className="flex flex-col h-full overflow-hidden transition-all duration-300 relative bg-slate-50 border-r border-slate-200" style={{ width: collapsed ? '76px' : '260px' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 flex-shrink-0 h-16">
+      {/* 1. Header (Logo & Collapse) */}
+      <div className="flex items-center justify-between p-3.5 flex-shrink-0 h-14 border-b border-slate-100">
         {!collapsed && (
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg bg-slate-900 text-white">
+            <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg bg-slate-900 text-white shadow-2xs">
               <School size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-[15px] truncate text-slate-800">
+              <p className="font-bold text-sm truncate text-slate-800">
                 YouEurope CRM
               </p>
             </div>
           </div>
         )}
         <button
+          type="button"
           onClick={handleToggleCollapsed}
-          className={"flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 shrink-0 " + (collapsed ? "w-full h-10" : "w-8 h-8")}
+          className={cn(
+            "flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 shrink-0",
+            collapsed ? "w-full h-8" : "w-7 h-7"
+          )}
           title={collapsed ? "Развернуть" : "Свернуть"}
         >
-          {collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
         </button>
       </div>
 
-      {/* Body / Nav List */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-3 pb-4">
+      {/* 2. Compact Search Input directly under logo */}
+      {!collapsed ? (
+        <div className="px-3 py-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 bg-white hover:bg-slate-100 border border-slate-200/80 rounded-xl transition-colors cursor-pointer shadow-2xs"
+          >
+            <span className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <span>Поиск...</span>
+            </span>
+            <kbd className="text-[10px] bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded text-slate-400 font-mono">⌘K</kbd>
+          </button>
+        </div>
+      ) : (
+        <div className="px-2 py-2 flex justify-center flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 border border-slate-200/80 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shadow-2xs"
+            title="Поиск (⌘K)"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* 3. Middle Body / Navigation List */}
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-1 space-y-0.5">
         {navSections.map((section) => (
           <NavAccordionGroup 
             key={section.id} 
@@ -345,6 +403,196 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           />
         ))}
       </div>
+
+      {/* 4. Footer (Pinned to bottom with Lang, Notifications, Avatar) */}
+      {!collapsed ? (
+        <div className="mt-auto border-t border-slate-200/80 p-3 flex items-center justify-between flex-shrink-0 bg-slate-50">
+          {/* 4.1 Language selector */}
+          <div ref={langMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              className="text-xs font-medium text-slate-600 hover:bg-slate-200/70 px-2 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 cursor-pointer transition-colors bg-white shadow-2xs"
+              title="Сменить язык"
+            >
+              <CountryFlag country={language} className="text-sm" />
+              <span className="text-[10px] text-slate-400">▾</span>
+            </button>
+
+            {langMenuOpen && (
+              <div className="absolute left-0 bottom-full mb-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+                {(['ru', 'en', 'es'] as SupportedLanguage[]).map((code) => {
+                  const meta = LANGUAGE_LABELS[code];
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(code);
+                        setLangMenuOpen(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                        language === code ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'
+                      )}
+                    >
+                      <CountryFlag country={code} className="text-sm" />
+                      <span>{meta.nativeName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 4.2 Notifications */}
+          <NotificationCenter panelPosition="sidebar" />
+
+          {/* 4.3 User Avatar */}
+          <div ref={userMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
+              title={displayName}
+            >
+              {avatarLetter}
+            </button>
+
+            {userDropdownOpen && (
+              <div className="absolute right-0 bottom-full mb-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
+                >
+                  <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                >
+                  <User size={14} className="text-slate-400" />
+                  <span>Профиль</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
+                >
+                  <LogOut size={14} className="text-rose-500" />
+                  <span>Выйти</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-auto border-t border-slate-200/80 p-2 flex flex-col items-center gap-2 flex-shrink-0 bg-slate-50">
+          {/* User Avatar */}
+          <div ref={userMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
+              title={displayName}
+            >
+              {avatarLetter}
+            </button>
+
+            {userDropdownOpen && (
+              <div className="absolute left-full bottom-0 ml-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
+                >
+                  <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                >
+                  <User size={14} className="text-slate-400" />
+                  <span>Профиль</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
+                >
+                  <LogOut size={14} className="text-rose-500" />
+                  <span>Выйти</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Notifications Center */}
+          <NotificationCenter panelPosition="sidebar" />
+
+          {/* Language selector */}
+          <div ref={langMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              className="text-xs font-medium text-slate-600 hover:bg-slate-200/70 p-1.5 rounded-lg border border-slate-200 flex items-center justify-center cursor-pointer transition-colors bg-white shadow-2xs"
+              title="Сменить язык"
+            >
+              <CountryFlag country={language} className="text-sm" />
+            </button>
+
+            {langMenuOpen && (
+              <div className="absolute left-full bottom-0 ml-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
+                {(['ru', 'en', 'es'] as SupportedLanguage[]).map((code) => {
+                  const meta = LANGUAGE_LABELS[code];
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(code);
+                        setLangMenuOpen(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                        language === code ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'
+                      )}
+                    >
+                      <CountryFlag country={code} className="text-sm" />
+                      <span>{meta.nativeName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Global Modals */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </div>
   );
 

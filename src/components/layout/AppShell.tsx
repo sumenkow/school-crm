@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
-import { NotificationCenter } from './NotificationCenter';
 import { createClient } from '@/lib/supabase/client';
 import { hydrateAllDataFromCloud } from '@/lib/data/cloudSync';
 
@@ -100,13 +99,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <div className="flex flex-col flex-1 h-full min-h-0 min-w-0 overflow-hidden print:h-auto print:overflow-visible">
-        <div className="flex-shrink-0 print:hidden">
+        {/* Mobile top header only */}
+        <div className="md:hidden flex-shrink-0 print:hidden">
           <TopBar onOpenMobile={() => setMobileOpen(true)} />
         </div>
         <main
-          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-4 md:px-6 md:py-3 w-full min-w-0 print:p-0 print:overflow-visible pb-[calc(84px+env(safe-area-inset-bottom,0px))] md:pb-3"
+          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-4 md:px-6 md:py-4 w-full min-w-0 print:p-0 print:overflow-visible pb-[calc(84px+env(safe-area-inset-bottom,0px))] md:pb-4"
         >
-          <div className="w-full min-w-0 print:max-w-none print:w-full" style={{ maxWidth: '1440px', margin: '0 auto' }}>
+          <div className="w-full min-w-0 print:max-w-none print:w-full" style={{ maxWidth: '1600px', margin: '0 auto' }}>
             {children}
           </div>
         </main>
@@ -116,9 +116,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="print:hidden">
         <MobileBottomNav />
       </div>
-
-      {/* Floating Notification Center in bottom right */}
-      <NotificationCenter />
 
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
