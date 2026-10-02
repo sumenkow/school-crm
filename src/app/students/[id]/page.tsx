@@ -6,7 +6,7 @@ import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { StudentProfileDesktop } from '@/features/students/components/StudentProfileDesktop';
 import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, INITIAL_LESSONS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
-import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo } from '@/lib/data/timelineStorage';
+import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo, getEquivalentIds } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent, normalizeStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
@@ -393,7 +393,10 @@ export default function StudentDetailsPage() {
     }
 
     const handleSync = (e: any) => {
-      const fresh = (e?.detail?.id === studentId ? e.detail : null) || getStudentById(studentId);
+      const eqSet = getEquivalentIds(studentId);
+      const detailId = e?.detail?.id ? String(e.detail.id) : '';
+      const isMatch = detailId && eqSet.has(detailId);
+      const fresh = (isMatch ? e.detail : null) || getStudentById(studentId);
       if (fresh) {
         const normalized = normalizeStudent(fresh);
         setStudent(normalized);

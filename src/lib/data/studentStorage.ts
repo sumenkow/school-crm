@@ -347,7 +347,7 @@ export function saveStudentToStorage(student: FullStudentData): void {
 }
 
 /**
- * Finds student by id from unified storage.
+ * Finds student by id from unified storage with alias/UUID equivalence matching.
  */
 export function getStudentById(id: string): FullStudentData | undefined {
   if (!id) return undefined;
@@ -355,7 +355,15 @@ export function getStudentById(id: string): FullStudentData | undefined {
   const match = list.find((s) => s.id === id);
   if (match) return normalizeStudent(match);
 
-  // Fallback: check raw localStorage if recently written before state sync
+  // Fallback 1: check with equivalence set (handles '1' vs 'b1111111-1111-4111-8111-111111111111')
+  try {
+    const { getEquivalentIds } = require('./timelineStorage');
+    const eqSet = getEquivalentIds(id);
+    const eqMatch = list.find((s) => eqSet.has(s.id));
+    if (eqMatch) return normalizeStudent(eqMatch);
+  } catch {}
+
+  // Fallback 2: check raw localStorage if recently written before state sync
   if (typeof window !== 'undefined') {
     try {
       const raw = localStorage.getItem(STUDENTS_STORAGE_KEY);

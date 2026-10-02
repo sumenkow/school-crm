@@ -24,6 +24,12 @@ const MOCK_UUID_PAIRS: [string, string][] = [
   ['st_3', 'b3333333-3333-4333-8333-333333333333'],
   ['st_4', 'b4444444-4444-4444-8444-444444444444'],
   ['st_5', 'b5555555-5555-4555-8555-555555555555'],
+  ['s1', 'b1111111-1111-4111-8111-111111111111'],
+  ['s2', 'b2222222-2222-4222-8222-222222222222'],
+  ['s3', 'b3333333-3333-4333-8333-333333333333'],
+  ['s4', 'b4444444-4444-4444-8444-444444444444'],
+  ['s5', 'b5555555-5555-4555-8555-555555555555'],
+  ['s6', 'b6666666-6666-4666-8666-666666666666'],
   ['p1', 'a1111111-1111-4111-8111-111111111111'],
   ['p2', 'a2222222-2222-4222-8222-222222222222'],
   ['p3', 'a3333333-3333-4333-8333-333333333333'],
@@ -36,9 +42,21 @@ const MOCK_UUID_PAIRS: [string, string][] = [
 ];
 
 export function getEquivalentIds(id: string): Set<string> {
-  const result = new Set<string>([id]);
+  if (!id) return new Set<string>();
+  const idStr = String(id).trim();
+  const result = new Set<string>([idStr]);
+
+  // Strip prefix s, st_, par_, p
+  const numericPart = idStr.replace(/^(?:st_|s|par_|p)/, '');
+  if (numericPart && numericPart !== idStr) {
+    result.add(numericPart);
+    result.add(`st_${numericPart}`);
+    result.add(`s${numericPart}`);
+    result.add(`p${numericPart}`);
+  }
+
   for (const [mock, uuid] of MOCK_UUID_PAIRS) {
-    if (id === mock || id === uuid) {
+    if (idStr === mock || idStr === uuid || result.has(mock) || result.has(uuid)) {
       result.add(mock);
       result.add(uuid);
     }
