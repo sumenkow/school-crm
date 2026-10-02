@@ -16,9 +16,10 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData, LessonTimelineEvent } from '@/lib/data/mockData';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/context/ToastContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
@@ -123,9 +124,11 @@ function layoutDayLessons(dayLessons: FullLessonData[]): PositionedLessonItem[] 
 export default function CalendarPage() {
   const router = useRouter();
   const { t } = useLanguage();
+  const toast = useToast();
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
   const [now, setNow] = useState<Date>(() => new Date());
+  const [draggedLessonId, setDraggedLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -251,6 +254,124 @@ export default function CalendarPage() {
 
   const handleLessonClick = (lesson: FullLessonData) => {
     setSelectedLessonForDrawer(lesson);
+  };
+
+  const handleDropLessonOnSlot = async (
+    e: React.DragEvent,
+    targetDateStr: string,
+    targetStartTime: string
+  ) => {
+    e.preventDefault();
+    const lessonId = e.dataTransfer.getData('text/plain') || draggedLessonId;
+    if (!lessonId) return;
+
+    const targetLesson = lessons.find((l) => l.id === lessonId);
+    if (!targetLesson) return;
+
+    // Terminal states cannot be rescheduled
+    if (targetLesson.status === 'completed' || targetLesson.status === 'cancelled') {
+      toast.error('Нельзя переносить завершенные или отмененные занятия');
+      setDraggedLessonId(null);
+      return;
+    }
+
+    // Calculate duration in minutes
+    const startMin = parseTimeToMinutes(targetLesson.startTime || '18:45');
+    const endMin = parseTimeToMinutes(targetLesson.endTime || '20:15');
+    const durationMin = Math.max(30, endMin - startMin || 90);
+
+    const [tH, tM] = targetStartTime.split(':').map(Number);
+    const targetStartMin = tH * 60 + tM;
+    const targetEndMin = targetStartMin + durationMin;
+    const endH = Math.floor(targetEndMin / 60) % 24;
+    const endM = targetEndMin % 60;
+    const targetEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+    // If dropped on the exact same date and time, do nothing
+    if (targetLesson.date === targetDateStr && targetLesson.startTime === targetStartTime) {
+      setDraggedLessonId(null);
+      return;
+    }
+
+    // Compute target day of week
+    const targetDateObj = new Date(targetDateStr);
+    const rawDow = targetDateObj.getDay();
+    const targetDayOfWeek = rawDow === 0 ? 6 : rawDow - 1;
+
+    // Check conflict (teacher or group occupied)
+    const hasConflict = lessons.some((other) => {
+      if (other.id === targetLesson.id) return false;
+      if (other.status === 'cancelled') return false;
+      const otherDate = other.date || '';
+      if (otherDate !== targetDateStr) return false;
+
+      const oStart = parseTimeToMinutes(other.startTime);
+      const oEnd = parseTimeToMinutes(other.endTime || '20:15');
+      const isOverlap = targetStartMin < oEnd && targetEndMin > oStart;
+      if (!isOverlap) return false;
+
+      return (
+        (other.teacherId && other.teacherId === targetLesson.teacherId) ||
+        (other.groupId && other.groupId === targetLesson.groupId)
+      );
+    });
+
+    const now = new Date();
+    const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+    const newTimelineEvents: LessonTimelineEvent[] = [
+      ...(targetLesson.timelineEvents || []),
+      {
+        id: `ev_${Date.now()}_resched_dnd`,
+        timestamp: timestampStr,
+        author: 'Администратор',
+        role: 'Администратор',
+        type: 'rescheduled',
+        comment: `Перенос занятия (Drag & Drop) на ${targetDateStr} (${targetStartTime}–${targetEndTime})${hasConflict ? ' [Внимание: пересечение расписания]' : ''}`,
+      },
+    ];
+
+    const updatedLesson: FullLessonData = {
+      ...targetLesson,
+      date: targetDateStr,
+      dayOfWeek: targetDayOfWeek,
+      startTime: targetStartTime,
+      endTime: targetEndTime,
+      status: 'scheduled',
+      timelineEvents: newTimelineEvents,
+    };
+
+    saveLessonToStorage(updatedLesson);
+
+    setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+    if (selectedLessonForDrawer?.id === updatedLesson.id) {
+      setSelectedLessonForDrawer(updatedLesson);
+    }
+
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('lessons')
+        .update({
+          date: targetDateStr,
+          day_of_week: targetDayOfWeek,
+          start_time: targetStartTime,
+          end_time: targetEndTime,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', updatedLesson.id);
+    } catch (err) {
+      console.warn('Supabase realtime drag update notice:', err);
+    }
+
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    setDraggedLessonId(null);
+
+    if (hasConflict) {
+      toast.info(`Занятие перенесено на ${targetDateStr} ${targetStartTime}, но обнаружено пересечение по времени`);
+    } else {
+      toast.success(`Занятие «${targetLesson.groupName.split('(')[0].trim()}» перенесено на ${targetDateStr}, ${targetStartTime}–${targetEndTime}`);
+    }
   };
 
   const todayStr = getTodayDateStr();
@@ -530,7 +651,7 @@ export default function CalendarPage() {
                 className={cn(
                   'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
                   viewMode === 'day'
-                    ? 'bg-slate-900 text-white shadow-2xs'
+                    ? 'bg-blue-600 text-white shadow-2xs font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
                 )}
               >
@@ -542,7 +663,7 @@ export default function CalendarPage() {
                 className={cn(
                   'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
                   viewMode === 'week'
-                    ? 'bg-slate-900 text-white shadow-2xs'
+                    ? 'bg-blue-600 text-white shadow-2xs font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
                 )}
               >
@@ -554,7 +675,7 @@ export default function CalendarPage() {
                 className={cn(
                   'rounded-md px-3 py-1.5 text-xs transition-all cursor-pointer font-medium',
                   viewMode === 'month'
-                    ? 'bg-slate-900 text-white shadow-2xs'
+                    ? 'bg-blue-600 text-white shadow-2xs font-semibold'
                     : 'text-slate-600 hover:text-slate-900'
                 )}
               >
@@ -660,14 +781,14 @@ export default function CalendarPage() {
             </div>
 
             {/* 2. Scrollable Timetable Canvas (09:00 - 21:00) */}
-            <div className="relative flex max-h-[720px] overflow-y-auto no-scrollbar">
+            <div className="relative flex max-h-[720px] overflow-y-auto overflow-x-auto no-scrollbar">
               {/* Vertical Time Axis */}
-              <div className="w-14 shrink-0 select-none border-r border-slate-200 bg-slate-50/30">
+              <div className="w-14 shrink-0 select-none border-r border-slate-200 bg-slate-50/30 sticky left-0 z-20">
                 {CALENDAR_HOURS.map((hour) => (
                   <div
                     key={hour}
                     style={{ height: `${HOUR_HEIGHT}px` }}
-                    className="relative border-b border-slate-100 pr-2 pt-1 text-right"
+                    className="relative border-b border-slate-100 pr-2 pt-1 text-right bg-slate-50/90"
                   >
                     <span className="text-[10px] font-medium text-slate-400">
                       {String(hour).padStart(2, '0')}:00
@@ -677,7 +798,7 @@ export default function CalendarPage() {
               </div>
 
               {/* 7 Days Canvas Grid */}
-              <div className="relative grid flex-1 grid-cols-7 divide-x divide-slate-200 bg-white min-w-0">
+              <div className="relative grid flex-1 grid-cols-7 divide-x divide-slate-200 bg-white min-w-[650px] lg:min-w-0">
                 {daysOfWeek.map((day) => {
                   const dayLessons = filteredLessons.filter(
                     (l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex)
@@ -693,7 +814,7 @@ export default function CalendarPage() {
                       )}
                       style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT + 44}px` }}
                     >
-                      {/* Background Horizontal Guide Lines (interactive slot clicks) */}
+                      {/* Background Horizontal Guide Lines (interactive slot clicks & DND targets) */}
                       <div
                         className="absolute inset-x-0 top-0"
                         style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
@@ -705,7 +826,12 @@ export default function CalendarPage() {
                               key={hour}
                               style={{ height: `${HOUR_HEIGHT}px` }}
                               onClick={() => handleOpenScheduleForDate(day.fullDate, slotTime)}
-                              title={`Добавить занятие на ${day.date}, ${slotTime}`}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                              }}
+                              onDrop={(e) => handleDropLessonOnSlot(e, day.fullDate, slotTime)}
+                              title={`Добавить занятие на ${day.date}, ${slotTime} (или перетащите сюда запланированное занятие)`}
                               className="border-b border-slate-100 w-full hover:bg-blue-50/20 transition-colors cursor-pointer"
                             />
                           );
@@ -742,6 +868,9 @@ export default function CalendarPage() {
                             (lesson.isTrial ? lesson.students?.length : 0) ||
                             0;
                           const isTrial = lesson.isTrial || trialCount > 0;
+                          const isSelected = selectedLessonForDrawer?.id === lesson.id;
+                          const isDraggable = lesson.status === 'scheduled';
+                          const isDraggingThis = draggedLessonId === lesson.id;
 
                           let cardClasses =
                             'bg-blue-50/80 border-l-4 border-l-blue-500 border-blue-100 text-blue-900 hover:border-blue-300';
@@ -759,6 +888,14 @@ export default function CalendarPage() {
                           return (
                             <div
                               key={lesson.id}
+                              draggable={isDraggable}
+                              onDragStart={(e) => {
+                                if (!isDraggable) return;
+                                e.dataTransfer.setData('text/plain', lesson.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                                setDraggedLessonId(lesson.id);
+                              }}
+                              onDragEnd={() => setDraggedLessonId(null)}
                               onClick={() => handleLessonClick(lesson)}
                               style={{
                                 top: `${item.top}px`,
@@ -768,6 +905,9 @@ export default function CalendarPage() {
                               }}
                               className={cn(
                                 'absolute p-2 rounded-lg border flex flex-col justify-between transition-all hover:shadow-md cursor-pointer select-none overflow-hidden z-10',
+                                isDraggable && 'cursor-grab active:cursor-grabbing',
+                                isDraggingThis && 'opacity-40 scale-95 border-dashed border-blue-400',
+                                isSelected && 'ring-2 ring-blue-500 shadow-md ring-offset-1 z-30 scale-[1.01]',
                                 cardClasses
                               )}
                             >
@@ -919,12 +1059,19 @@ export default function CalendarPage() {
                     </button>
                   </div>
                 ) : (
-                  dayLessons.map((lesson) => (
-                    <div
-                      key={lesson.id}
-                      onClick={() => handleLessonClick(lesson)}
-                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 hover:bg-slate-100/70 transition-all cursor-pointer flex items-center justify-between"
-                    >
+                  dayLessons.map((lesson) => {
+                    const isSelected = selectedLessonForDrawer?.id === lesson.id;
+                    return (
+                      <div
+                        key={lesson.id}
+                        onClick={() => handleLessonClick(lesson)}
+                        className={cn(
+                          'rounded-xl border p-4 transition-all cursor-pointer flex items-center justify-between',
+                          isSelected
+                            ? 'ring-2 ring-blue-500 bg-blue-50/50 border-blue-300 shadow-xs'
+                            : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                        )}
+                      >
                       <div className="flex items-center gap-4">
                         <div className="flex h-12 w-16 flex-col items-center justify-center rounded-xl bg-blue-100 text-blue-800 font-bold text-xs">
                           <span>{lesson.startTime}</span>
@@ -991,7 +1138,8 @@ export default function CalendarPage() {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
             </div>

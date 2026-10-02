@@ -326,7 +326,7 @@ export function ScheduleLessonModal({
       onClose={onClose}
       title="Добавить занятие"
       subtitle={`Отдельное занятие для группы «${selectedGroup.name}»`}
-      headerBg="bg-slate-900 text-white"
+      headerBg="bg-white text-slate-900 border-b border-slate-100"
       footer={modalFooter}
     >
       <form id="schedule-lesson-form" onSubmit={handleSubmit} className="space-y-4">

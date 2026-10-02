@@ -591,15 +591,10 @@ export function LessonDetailsDrawer({
             <ExternalLink className="h-3 w-3 opacity-70 ml-0.5" />
           </a>
         ) : (
-          <button
-            type="button"
-            disabled
-            title="Zoom ссылка не указана для этого занятия"
-            className="flex-1 py-2 px-4 bg-slate-100 text-slate-400 font-medium text-xs rounded-xl flex items-center justify-center gap-1.5 border border-slate-200 cursor-not-allowed opacity-60"
-          >
-            <Video className="h-3.5 w-3.5" />
-            <span>Zoom не указан</span>
-          </button>
+          <div className="flex-1 py-2 px-3 bg-slate-50 text-slate-400 font-medium text-xs rounded-xl flex items-center justify-center gap-1.5 border border-slate-100">
+            <Video className="h-3.5 w-3.5 text-slate-300" />
+            <span className="text-[11px]">Онлайн · ссылка не указана</span>
+          </div>
         )}
 
         <button
