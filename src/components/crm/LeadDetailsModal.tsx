@@ -253,6 +253,20 @@ export function LeadDetailsModal({
     };
   }, [parentName, contactPhone, studentName, computedAge, studentGrade, course, level, goal, selectedGroup, trialDateTime, offerAmount, source, generalComment]);
 
+  // Filtered groups for chosen course (must be before any return)
+  const matchingGroups = useMemo(() => {
+    if (!Array.isArray(groups)) return [];
+    if (!course?.trim()) return groups;
+    const cLower = course.trim().toLowerCase();
+    return groups.filter(g => {
+      const gCourse = (g?.courseName || '').toLowerCase();
+      return (gCourse && (gCourse.includes(cLower) || cLower.includes(gCourse)));
+    });
+  }, [groups, course]);
+
+  const displayedGroups = matchingGroups.length > 0 ? matchingGroups : (Array.isArray(groups) ? groups : []);
+  const currentSelectedGroupObj = Array.isArray(groups) ? groups.find(g => g.id === selectedGroup) : undefined;
+
   if (!isOpen || !lead) return null;
 
   const phoneClean = normalizePhone(contactPhone || lead.contact);
@@ -293,20 +307,6 @@ export function LeadDetailsModal({
     }
     return lead?.createdAt || 'Недавно';
   })();
-
-  // Filtered groups for chosen course
-  const matchingGroups = useMemo(() => {
-    if (!Array.isArray(groups)) return [];
-    if (!course?.trim()) return groups;
-    const cLower = course.trim().toLowerCase();
-    return groups.filter(g => {
-      const gCourse = (g?.courseName || '').toLowerCase();
-      return (gCourse && (gCourse.includes(cLower) || cLower.includes(gCourse)));
-    });
-  }, [groups, course]);
-
-  const displayedGroups = matchingGroups.length > 0 ? matchingGroups : (Array.isArray(groups) ? groups : []);
-  const currentSelectedGroupObj = Array.isArray(groups) ? groups.find(g => g.id === selectedGroup) : undefined;
 
   // Actions
   const handleSaveAll = () => {
