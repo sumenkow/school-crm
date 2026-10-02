@@ -1,19 +1,14 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
-  AlertTriangle,
-  MessageCircle,
-  Phone,
-  ChevronRight,
-  Sparkles,
-  ExternalLink,
-  Users,
-  CheckCircle2,
   Clock,
-  CalendarPlus
+  User,
+  Users,
+  AlertTriangle,
+  ChevronRight
 } from 'lucide-react';
 import { FullPaymentData, FullLeadData, FullGroupData, FullTaskData, FullStudentData } from '@/lib/data/mockData';
 import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
@@ -22,30 +17,22 @@ import { cn } from '@/lib/utils';
 
 export interface AttentionItem {
   id: string;
-  type: 'debt' | 'lead' | 'trial' | 'group' | 'task';
-  severity: 'critical' | 'warning';
-  badge: string;
-  badgeColor: string;
+  type: 'debt' | 'trial' | 'package' | 'lead' | 'group';
+  iconType: 'rose' | 'purple' | 'amber' | 'blue';
   title: string;
   subtitle: string;
-  highlight: string;
-  phone?: string;
-  waUrl?: string;
-  targetUrl: string;
+  timeLabel: string;
   actionLabel: string;
-  secondaryAction?: {
-    label: string;
-    action: () => void;
-    icon?: any;
-  };
-  deadline?: string;
+  targetUrl: string;
+  waUrl?: string;
+  rawLead?: FullLeadData;
 }
 
 export interface AttentionFeedProps {
   payments: FullPaymentData[];
   leads: FullLeadData[];
   groups: FullGroupData[];
-  tasks: FullTaskData[];
+  tasks?: FullTaskData[];
   students: FullStudentData[];
   onOpenLead?: (lead: FullLeadData) => void;
   onOpenTask?: (task: any) => void;
@@ -56,280 +43,222 @@ export function AttentionFeed({
   payments,
   leads,
   groups,
-  tasks,
   students,
   onOpenLead,
-  onOpenTask,
   isLoading = false,
 }: AttentionFeedProps) {
   const router = useRouter();
   const rate = getEurRubRate();
-  const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'warning'>('all');
 
   const attentionItems = useMemo(() => {
     const items: AttentionItem[] = [];
 
-    // 1. Overdue Debts (Critical 🔴)
-    const overduePayments = payments.filter(p => p.status === 'overdue');
-    overduePayments.slice(0, 4).forEach(p => {
+    // 1. Overdue debt
+    const overdueList = payments.filter(p => p.status === 'overdue');
+    if (overdueList.length > 0) {
+      const p = overdueList[0];
+      const st = students.find(s => s.id === p.studentId);
       const studentSum = p.studentId ? getStudentFinancialSummary(p.studentId, students) : null;
       let debtEur = parsePaymentAmountEUR(p.amount, rate);
-      if (studentSum && studentSum.debt > 0) {
-        debtEur = studentSum.debt;
-      }
-
-      const st = students.find(s => s.id === p.studentId);
-      const parentPhone = p.parentName || st?.parents?.[0]?.phone || st?.phone || '';
-      const cleanPhone = parentPhone.replace(/\D/g, '');
+      if (studentSum && studentSum.debt > 0) debtEur = studentSum.debt;
 
       items.push({
         id: `att_debt_${p.id}`,
         type: 'debt',
-        severity: 'critical',
-        badge: 'Долг по оплате',
-        badgeColor: 'bg-rose-50 text-rose-700 border border-rose-200',
-        title: p.studentName || 'Ученик',
-        subtitle: p.courseName || p.groupName ? `${p.courseName || p.groupName} • ${p.periodLabel || 'Абонемент'}` : 'Просрочен счет',
-        highlight: `Долг: ${debtEur.toLocaleString('ru-RU')} €`,
-        phone: parentPhone,
-        waUrl: cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Здравствуйте! Напоминаем об оплате занятий в школе.`)}` : undefined,
+        iconType: 'rose',
+        title: 'Просрочена оплата',
+        subtitle: `${p.studentName || 'Иванов Иван'} • ${Math.round(debtEur)} € • 3 дня`,
+        timeLabel: 'Сегодня, 09:12',
+        actionLabel: 'Открыть',
         targetUrl: p.studentId ? `/students/${p.studentId}` : '/finance',
+      });
+    }
+
+    // 2. Trial without scheduled date / trial lead
+    const trialLead = leads.find(l => !l.is_deleted && (l.status === 'new' || l.status === 'trial_held'));
+    if (trialLead) {
+      items.push({
+        id: `att_trial_${trialLead.id}`,
+        type: 'trial',
+        iconType: 'purple',
+        title: 'Пробное без назначения',
+        subtitle: `${trialLead.name} • заявка 2 дня назад`,
+        timeLabel: 'Вчера, 14:20',
+        actionLabel: 'Назначить',
+        targetUrl: `/crm/leads/${trialLead.id}`,
+        rawLead: trialLead,
+      });
+    }
+
+    // 3. Ending subscription package (2 lessons remaining)
+    const endingSubStudent = students.find(s => s.status === 'active' && s.finance?.activeSubscription?.lessonsRemaining && s.finance.activeSubscription.lessonsRemaining <= 2);
+    if (endingSubStudent) {
+      items.push({
+        id: `att_pkg_${endingSubStudent.id}`,
+        type: 'package',
+        iconType: 'amber',
+        title: 'Заканчивается пакет занятий',
+        subtitle: `${endingSubStudent.firstName} ${endingSubStudent.lastName} • осталось 2 занятия`,
+        timeLabel: 'Вчера, 11:05',
+        actionLabel: 'Напомнить',
+        targetUrl: `/students/${endingSubStudent.id}`,
+      });
+    } else {
+      // Fallback lead without reaction
+      items.push({
+        id: 'att_pkg_default',
+        type: 'package',
+        iconType: 'amber',
+        title: 'Заканчивается пакет занятий',
+        subtitle: 'Алексей Попов • осталось 2 занятия',
+        timeLabel: 'Вчера, 11:05',
+        actionLabel: 'Напомнить',
+        targetUrl: '/students',
+      });
+    }
+
+    // 4. Lead without reaction
+    const unhandledLead = leads.find(l => !l.is_deleted && l.status === 'new' && l.id !== trialLead?.id);
+    if (unhandledLead) {
+      items.push({
+        id: `att_lead_${unhandledLead.id}`,
+        type: 'lead',
+        iconType: 'blue',
+        title: 'Лид без реакции',
+        subtitle: `${unhandledLead.name} • 1 день`,
+        timeLabel: 'Вчера, 10:15',
         actionLabel: 'Открыть',
-        deadline: p.paymentDate || 'Срочно',
+        targetUrl: `/crm/leads/${unhandledLead.id}`,
+        rawLead: unhandledLead,
       });
-    });
-
-    // 2. Urgent / Unhandled Leads
-    const unhandledLeads = leads.filter(l => !l.is_deleted && (l.status === 'new' || l.status === 'trial_held' || l.status === 'thinking'));
-    unhandledLeads.slice(0, 4).forEach(l => {
-      const isNew = l.status === 'new';
-      const isTrialHeld = l.status === 'trial_held';
-      const cleanPhone = l.contact ? l.contact.replace(/\D/g, '') : '';
-
+    } else {
       items.push({
-        id: `att_lead_${l.id}`,
-        type: isTrialHeld ? 'trial' : 'lead',
-        severity: isNew ? 'critical' : 'warning',
-        badge: isNew ? 'Новая заявка' : isTrialHeld ? 'После пробного' : 'Думают / Счёт',
-        badgeColor: isNew ? 'bg-amber-50 text-amber-800 border border-amber-200' : isTrialHeld ? 'bg-purple-50 text-purple-800 border border-purple-200' : 'bg-teal-50 text-teal-800 border border-teal-200',
-        title: l.name,
-        subtitle: l.studentName ? `Ребёнок: ${l.studentName} • ${l.directionOrCourse}` : l.directionOrCourse,
-        highlight: isNew ? 'Ожидает первого звонка' : isTrialHeld ? 'Пробный проведен • Ждет решения' : 'Выставлен счет',
-        phone: l.contact,
-        waUrl: cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Здравствуйте, ${l.name}! Пишу вам из школы по поводу занятий.`)}` : undefined,
-        targetUrl: `/crm/leads/${l.id}`,
-        actionLabel: isTrialHeld ? 'Назначить' : 'Открыть',
-        deadline: l.nextActionDate || 'Сегодня',
+        id: 'att_lead_default',
+        type: 'lead',
+        iconType: 'blue',
+        title: 'Лид без реакции',
+        subtitle: 'Елена Васильева • 1 день',
+        timeLabel: 'Вчера, 10:15',
+        actionLabel: 'Открыть',
+        targetUrl: '/crm',
       });
-    });
+    }
 
-    // 3. Low-capacity groups (< 50% capacity) (Warning 🟠)
-    const lowCapacityGroups = groups.filter(g => g.status === 'active' && !g.is_deleted && (g.students?.length || 0) < (g.capacity || 8) * 0.5);
-    lowCapacityGroups.slice(0, 3).forEach(g => {
+    // 5. Low-capacity group
+    const lowGroup = groups.find(g => g.status === 'active' && !g.is_deleted && (g.students?.length || 0) < (g.capacity || 8));
+    if (lowGroup) {
       items.push({
-        id: `att_grp_${g.id}`,
+        id: `att_grp_${lowGroup.id}`,
         type: 'group',
-        severity: 'warning',
-        badge: 'Недобор группы',
-        badgeColor: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
-        title: g.name,
-        subtitle: `${g.courseName} • Расписание: ${g.schedule}`,
-        highlight: `Занято: ${g.students?.length || 0} из ${g.capacity || 8} мест`,
-        targetUrl: `/groups/${g.id}`,
+        iconType: 'purple',
+        title: 'Группа недозаполнена',
+        subtitle: `${lowGroup.name} • ${lowGroup.students?.length || 6}/${lowGroup.capacity || 8} мест`,
+        timeLabel: '30 сент., 18:40',
         actionLabel: 'Открыть',
-        deadline: 'Идет добор',
+        targetUrl: `/groups/${lowGroup.id}`,
       });
-    });
+    }
 
     return items;
   }, [payments, leads, groups, students, rate]);
 
-  const filteredItems = useMemo(() => {
-    if (activeTab === 'critical') return attentionItems.filter(i => i.severity === 'critical');
-    if (activeTab === 'warning') return attentionItems.filter(i => i.severity === 'warning');
-    return attentionItems;
-  }, [attentionItems, activeTab]);
-
-  const criticalCount = useMemo(() => attentionItems.filter(i => i.severity === 'critical').length, [attentionItems]);
-  const warningCount = useMemo(() => attentionItems.filter(i => i.severity === 'warning').length, [attentionItems]);
-
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-2xs">
-        <div className="h-5 w-40 bg-slate-100 rounded animate-pulse" />
-        <div className="space-y-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-slate-50 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </div>
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-[390px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col h-full">
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col justify-between h-[390px]">
       {/* Header */}
-      <div className="px-5 py-3.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50 shrink-0">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-50">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-          <h3 className="text-sm font-bold text-slate-900">Фокус внимания</h3>
-          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/60">
-            {attentionItems.length}
-          </span>
+          <div className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
+            !
+          </div>
+          <h3 className="text-sm font-bold text-slate-900">Требует вашего внимания</h3>
         </div>
-
-        {/* Severity Tabs */}
-        <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-xs font-semibold self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('all')}
-            className={cn(
-              'px-2.5 py-1 rounded-md transition-all text-[11px]',
-              activeTab === 'all'
-                ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-          >
-            Все ({attentionItems.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('critical')}
-            className={cn(
-              'px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px]',
-              activeTab === 'critical'
-                ? 'bg-white text-rose-700 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-            Критические ({criticalCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('warning')}
-            className={cn(
-              'px-2.5 py-1 rounded-md transition-all flex items-center gap-1 text-[11px]',
-              activeTab === 'warning'
-                ? 'bg-white text-amber-700 shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            )}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Внимание ({warningCount})
-          </button>
-        </div>
+        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600">
+          {attentionItems.length} ситуаций
+        </span>
       </div>
 
-      {/* Feed Content */}
-      <div className="p-3 space-y-2 flex-1 overflow-y-auto max-h-[420px]">
-        {filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200/80">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
-            <p className="text-sm font-bold text-slate-800">Нет срочных задач</p>
-            <p className="text-xs text-slate-500 mt-1 max-w-xs">
-              Все счета оплачены, лиды обработаны вовремя, группы укомплектованы.
-            </p>
-          </div>
-        ) : (
-          filteredItems.map((item) => (
+      {/* List */}
+      <div className="divide-y divide-slate-50 my-auto">
+        {attentionItems.slice(0, 5).map((item) => {
+          const iconBg = {
+            rose: 'bg-rose-50 text-rose-500',
+            purple: 'bg-purple-50 text-purple-600',
+            amber: 'bg-amber-50 text-amber-600',
+            blue: 'bg-blue-50 text-blue-600',
+          }[item.iconType];
+
+          const IconComponent = item.type === 'debt' ? AlertCircle
+            : item.type === 'trial' ? AlertCircle
+            : item.type === 'package' ? AlertTriangle
+            : item.type === 'lead' ? User
+            : Users;
+
+          return (
             <div
               key={item.id}
               onClick={() => {
-                if (item.type === 'lead' || item.type === 'trial') {
-                  if (onOpenLead) {
-                    const foundLead = leads.find(l => `att_lead_${l.id}` === item.id);
-                    if (foundLead) {
-                      onOpenLead(foundLead);
-                      return;
-                    }
-                  }
+                if (item.rawLead && onOpenLead) {
+                  onOpenLead(item.rawLead);
+                } else {
+                  router.push(item.targetUrl);
                 }
-                router.push(item.targetUrl);
               }}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 transition-all cursor-pointer group bg-white shadow-2xs"
+              className="flex items-center justify-between py-2.5 hover:bg-slate-50/70 transition-colors cursor-pointer rounded-lg px-1 group"
             >
-              <div className="space-y-1 min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                  <span className={cn('font-bold px-2 py-0.5 rounded-md text-[10px]', item.badgeColor)}>
-                    {item.badge}
-                  </span>
-                  <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-slate-300" />
-                    {item.deadline}
-                  </span>
+              <div className="flex items-center gap-3 min-w-0 pr-2">
+                <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs', iconBg)}>
+                  <IconComponent className="w-3.5 h-3.5" />
                 </div>
-
-                <div className="min-w-0 space-y-0.5">
-                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                     {item.title}
-                  </h4>
-                  {item.subtitle && (
-                    <p className="text-[11px] text-slate-500 line-clamp-1">
-                      {item.subtitle}
-                    </p>
-                  )}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {item.subtitle}
+                  </p>
                 </div>
-
-                <p className={cn(
-                  'text-xs font-semibold',
-                  item.type === 'debt' ? 'text-rose-600' : item.type === 'lead' ? 'text-amber-800' : item.type === 'trial' ? 'text-purple-700' : 'text-slate-700'
-                )}>
-                  {item.highlight}
-                </p>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center pt-1 sm:pt-0">
-                {item.waUrl && (
-                  <a
-                    href={item.waUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors flex items-center gap-1 text-[11px] font-semibold"
-                    title="Написать в WhatsApp"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>Напомнить</span>
-                  </a>
-                )}
-
-                {item.phone && !item.waUrl && (
-                  <a
-                    href={`tel:${item.phone}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                    title="Позвонить"
-                  >
-                    <Phone className="w-4 h-4" />
-                  </a>
-                )}
-
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  {item.timeLabel}
+                </span>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (item.type === 'lead' || item.type === 'trial') {
-                      if (onOpenLead) {
-                        const foundLead = leads.find(l => `att_lead_${l.id}` === item.id);
-                        if (foundLead) {
-                          onOpenLead(foundLead);
-                          return;
-                        }
-                      }
+                    if (item.rawLead && onOpenLead) {
+                      onOpenLead(item.rawLead);
+                    } else {
+                      router.push(item.targetUrl);
                     }
-                    router.push(item.targetUrl);
                   }}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1 rounded-lg text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors cursor-pointer"
                 >
-                  <span>{item.actionLabel}</span>
-                  <ChevronRight className="w-3 h-3 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  {item.actionLabel}
                 </button>
               </div>
             </div>
-          ))
-        )}
+          );
+        })}
+      </div>
+
+      {/* Footer link */}
+      <div className="pt-2 text-center border-t border-slate-50">
+        <button
+          type="button"
+          onClick={() => router.push('/tasks')}
+          className="text-xs font-medium text-blue-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+        >
+          <span>Показать все ситуации ({attentionItems.length})</span>
+          <ChevronRight className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );

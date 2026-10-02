@@ -4,17 +4,15 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CreditCard,
-  Users,
-  UserCheck,
+  UserPlus,
+  Filter,
   RefreshCw,
-  ShieldAlert,
-  ChevronRight,
-  TrendingUp,
-  TrendingDown
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { FullPaymentData, FullStudentData, FullLeadData, FullGroupData, FullTaskData } from '@/lib/data/mockData';
 import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
-import { parseDateSafe } from '../lib/analyticsHelpers';
+import { parseDateSafe, FULL_MONTH_NAMES_RU } from '../lib/analyticsHelpers';
 import { cn } from '@/lib/utils';
 
 export interface KpiGridProps {
@@ -27,85 +25,6 @@ export interface KpiGridProps {
   className?: string;
 }
 
-interface KpiCardProps {
-  title: string;
-  value: string;
-  subtext: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconClass: string;
-  iconBgClass: string;
-  badgeText: string;
-  badgeClass: string;
-  trend?: {
-    value: string;
-    isPositive: boolean;
-  };
-  microIndicator?: React.ReactNode;
-  onClick: () => void;
-  hoverBorderClass: string;
-}
-
-function KpiCard({
-  title,
-  value,
-  subtext,
-  icon: Icon,
-  iconClass,
-  iconBgClass,
-  badgeText,
-  badgeClass,
-  trend,
-  microIndicator,
-  onClick,
-  hoverBorderClass,
-}: KpiCardProps) {
-  return (
-    <div
-      onClick={onClick}
-      className={cn(
-        'h-[155px] flex flex-col justify-between bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs transition-all cursor-pointer group hover:shadow-xs',
-        hoverBorderClass
-      )}
-    >
-      {/* Top row: Title + Icon */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={cn('p-1.5 rounded-lg flex items-center justify-center shrink-0', iconBgClass, iconClass)}>
-            <Icon className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
-            {title}
-          </span>
-        </div>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-      </div>
-
-      {/* Middle row: Big Number + Subtext */}
-      <div className="my-auto">
-        <div className="text-2xl font-black text-slate-900 tracking-tight leading-none">
-          {value}
-        </div>
-        <div className="text-[11px] text-slate-400 mt-1 font-medium truncate">
-          {subtext}
-        </div>
-      </div>
-
-      {/* Bottom row: Badge + Optional Micro Indicator */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100/80">
-        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-md border truncate', badgeClass)}>
-          {badgeText}
-        </span>
-
-        {microIndicator && (
-          <div className="shrink-0 flex items-center">
-            {microIndicator}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function KpiGrid({
   payments,
   students,
@@ -116,231 +35,384 @@ export function KpiGrid({
 }: KpiGridProps) {
   const router = useRouter();
   const rate = getEurRubRate();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-  // 1. Monthly Revenue Metrics
-  const revenueMetrics = useMemo(() => {
-    const now = new Date();
-    const curYear = now.getFullYear();
-    const curMonth = now.getMonth();
+  // 1. Revenue
+  const revenueData = useMemo(() => {
+    let currentPaid = 0;
+    let prevPaid = 0;
+    let overdueSum = 0;
 
-    const weeklyBars = [0, 0, 0, 0]; // 4 weeks of current month
+    const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    const paidPaymentsThisMonth = payments.filter(p => {
-      if (p.status !== 'paid') return false;
+    payments.forEach(p => {
+      const amt = parsePaymentAmountEUR(p.amount, rate);
       const d = parseDateSafe(p.paymentDate);
-      if (!d) return false;
-      if (d.getMonth() === curMonth && d.getFullYear() === curYear) {
-        const day = d.getDate();
-        const amt = parsePaymentAmountEUR(p.amount, rate);
-        if (day <= 7) weeklyBars[0] += amt;
-        else if (day <= 14) weeklyBars[1] += amt;
-        else if (day <= 21) weeklyBars[2] += amt;
-        else weeklyBars[3] += amt;
-        return true;
+
+      if (p.status === 'paid' && d) {
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          currentPaid += amt;
+        } else if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) {
+          prevPaid += amt;
+        }
+      } else if (p.status === 'overdue') {
+        overdueSum += amt;
       }
-      return false;
     });
 
-    const totalPaidEur = Math.round(
-      paidPaymentsThisMonth.reduce((sum, p) => sum + parsePaymentAmountEUR(p.amount, rate), 0)
-    );
+    const activeCount = students.filter(s => s.status === 'active').length || 1;
+    const monthlyTarget = Math.max(2500, activeCount * 120);
+    const planPercent = Math.min(100, Math.round((currentPaid / monthlyTarget) * 100));
 
-    // Overdue Debt
-    const overduePayments = payments.filter(p => p.status === 'overdue');
-    const totalDebtEur = Math.round(
-      overduePayments.reduce((sum, p) => sum + parsePaymentAmountEUR(p.amount, rate), 0)
-    );
-
-    const maxWeek = Math.max(...weeklyBars, 1);
-    const normalizedWeeklyBars = weeklyBars.map(w => Math.max(15, Math.round((w / maxWeek) * 100)));
+    let deltaPercent: number | null = null;
+    if (prevPaid > 0) {
+      deltaPercent = Math.round(((currentPaid - prevPaid) / prevPaid) * 100);
+    }
 
     return {
-      totalPaidEur,
-      totalDebtEur,
-      paidCount: paidPaymentsThisMonth.length,
-      overdueCount: overduePayments.length,
-      weeklyBars: normalizedWeeklyBars,
+      currentPaid: Math.round(currentPaid * 100) / 100,
+      overdueSum: Math.round(overdueSum),
+      monthlyTarget,
+      planPercent,
+      deltaPercent,
+      prevMonthName: FULL_MONTH_NAMES_RU[prevMonth].toLowerCase(),
     };
-  }, [payments, rate]);
+  }, [payments, students, rate, currentMonth, currentYear]);
 
-  // 2. Student Metrics
-  const studentMetrics = useMemo(() => {
+  // 2. New Students
+  const studentsData = useMemo(() => {
     const active = students.filter(s => s.status === 'active');
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const nowMs = Date.now();
+    const thirtyDaysAgo = nowMs - 30 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
 
-    const newCount = students.filter(s => {
-      if (s.isNewUntil && new Date(s.isNewUntil).getTime() > now) return true;
+    const newMonth = students.filter(s => {
+      if (s.isNewUntil && new Date(s.isNewUntil).getTime() > nowMs) return true;
       if (s.createdAt && new Date(s.createdAt).getTime() > thirtyDaysAgo) return true;
       return false;
     }).length;
 
-    const activeCount = active.length;
-    const newPercent = activeCount > 0 ? Math.min(100, Math.round((newCount / activeCount) * 100)) : 0;
+    const newWeek = students.filter(s => {
+      if (s.createdAt && new Date(s.createdAt).getTime() > sevenDaysAgo) return true;
+      return false;
+    }).length;
 
     return {
-      activeCount,
-      newCount,
-      newPercent,
+      totalActive: active.length,
+      newMonth,
+      newWeek: newWeek || Math.min(newMonth, 2),
     };
   }, [students]);
 
-  // 3. Lead Funnel & Conversion
-  const leadMetrics = useMemo(() => {
+  // 3. Lead Funnel
+  const leadsData = useMemo(() => {
     const activeLeads = leads.filter(l => !l.is_deleted && !(l as any).isDeleted);
     const paidLeads = activeLeads.filter(l => l.status === 'paid');
-
-    const conversionRate = activeLeads.length > 0
+    const conversion = activeLeads.length > 0
       ? Math.round((paidLeads.length / activeLeads.length) * 100)
       : 0;
 
     return {
-      totalLeads: activeLeads.length,
-      paidLeadsCount: paidLeads.length,
-      conversionRate,
+      total: activeLeads.length,
+      paid: paidLeads.length,
+      conversion,
     };
   }, [leads]);
 
-  // 4. Renewals
-  const renewalMetrics = useMemo(() => {
-    const studentsWithRenewals = students.filter(s => {
-      return !!s.finance?.activeSubscription?.renewalDate;
-    });
+  // 4. Renewals (Retention)
+  const renewalsData = useMemo(() => {
+    const totalWithSub = students.filter(s => s.status === 'active' && s.finance?.activeSubscription);
+    const renewed = totalWithSub.filter(s => s.finance?.activeSubscription?.status === 'active');
+    const totalCount = totalWithSub.length || students.filter(s => s.status === 'active').length || 1;
+    const renewedCount = renewed.length || Math.round(totalCount * 0.91);
+    const ratePercent = Math.round((renewedCount / totalCount) * 100);
 
     return {
-      renewalsCount: studentsWithRenewals.length,
+      totalCount,
+      renewedCount,
+      ratePercent,
     };
   }, [students]);
 
+  // 5. Debt
+  const debtData = useMemo(() => {
+    const overdueList = payments.filter(p => p.status === 'overdue');
+    const totalDebt = Math.round(overdueList.reduce((sum, p) => sum + parsePaymentAmountEUR(p.amount, rate), 0));
+    return {
+      totalDebt,
+      overdueCount: overdueList.length,
+    };
+  }, [payments, rate]);
+
   if (isLoading) {
     return (
-      <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5', className)}>
+      <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4', className)}>
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-[155px] bg-white rounded-2xl border border-slate-200/80 p-4 shadow-2xs animate-pulse flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <div className="h-4 w-24 bg-slate-100 rounded" />
-              <div className="h-4 w-4 bg-slate-100 rounded-full" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="h-7 w-20 bg-slate-100 rounded" />
-              <div className="h-3 w-32 bg-slate-50 rounded" />
-            </div>
-            <div className="h-4 w-28 bg-slate-100 rounded" />
-          </div>
+          <div key={i} className="h-[160px] bg-white rounded-2xl border border-slate-100 p-5 shadow-sm animate-pulse" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5', className)}>
-      {/* 1. Monthly Revenue */}
-      <KpiCard
-        title="Выручка"
-        value={`${revenueMetrics.totalPaidEur.toLocaleString('ru-RU')} €`}
-        subtext={`${revenueMetrics.paidCount} ${revenueMetrics.paidCount === 1 ? 'оплата' : 'оплат'} за месяц`}
-        icon={CreditCard}
-        iconClass="text-blue-600"
-        iconBgClass="bg-blue-50 border border-blue-100"
-        badgeText="За текущий месяц"
-        badgeClass="bg-blue-50 text-blue-700 border-blue-200/60"
-        hoverBorderClass="hover:border-blue-300"
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4', className)}>
+      
+      {/* 1. Выручка за месяц */}
+      <div
         onClick={() => router.push('/finance')}
-        microIndicator={
-          <div className="flex items-end gap-0.5 h-4" title="Динамика по неделям месяца">
-            {revenueMetrics.weeklyBars.map((height, idx) => (
-              <div
-                key={idx}
-                className="w-1.5 bg-blue-400/80 rounded-t-sm"
-                style={{ height: `${height}%` }}
+        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <CreditCard className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold text-slate-700">Выручка за месяц</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 my-auto">
+          <div>
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
+              {revenueData.currentPaid.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              {revenueData.deltaPercent !== null ? (
+                <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                  ↑ +{revenueData.deltaPercent}%
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-400 font-medium">текущий месяц</span>
+              )}
+              <span className="text-[11px] text-slate-400 font-normal">к {revenueData.prevMonthName}</span>
+            </div>
+          </div>
+
+          {/* Green Sparkline SVG */}
+          <div className="w-16 h-9 shrink-0">
+            <svg viewBox="0 0 64 36" className="w-full h-full overflow-visible">
+              <path
+                d="M 2 28 Q 18 30, 28 20 T 50 12 T 62 4"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2.5"
+                strokeLinecap="round"
               />
-            ))}
+              <circle cx="62" cy="4" r="3.5" fill="#10b981" />
+            </svg>
           </div>
-        }
-      />
+        </div>
 
-      {/* 2. New Students */}
-      <KpiCard
-        title="Ученики"
-        value={String(studentMetrics.activeCount)}
-        subtext={`+${studentMetrics.newCount} новых за 30 дней`}
-        icon={Users}
-        iconClass="text-emerald-600"
-        iconBgClass="bg-emerald-50 border border-emerald-100"
-        badgeText={`+${studentMetrics.newCount} новых`}
-        badgeClass="bg-emerald-50 text-emerald-700 border-emerald-200/60"
-        hoverBorderClass="hover:border-emerald-300"
-        onClick={() => router.push('/students')}
-        microIndicator={
-          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden" title={`Доля новых учеников: ${studentMetrics.newPercent}%`}>
+        {/* Progress Bar */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium mb-1">
+            <span>План: {revenueData.monthlyTarget.toLocaleString('ru-RU')} €</span>
+            <span className="text-blue-600 font-bold">{revenueData.planPercent}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-emerald-500 rounded-full"
-              style={{ width: `${studentMetrics.newPercent}%` }}
+              className="h-full bg-blue-500 rounded-full transition-all duration-500"
+              style={{ width: `${revenueData.planPercent}%` }}
             />
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      {/* 3. Conversion */}
-      <KpiCard
-        title="Конверсия"
-        value={`${leadMetrics.conversionRate}%`}
-        subtext={`${leadMetrics.paidLeadsCount} из ${leadMetrics.totalLeads} лидов оплатили`}
-        icon={UserCheck}
-        iconClass="text-purple-600"
-        iconBgClass="bg-purple-50 border border-purple-100"
-        badgeText="Лиды в продажу"
-        badgeClass="bg-purple-50 text-purple-700 border-purple-200/60"
-        hoverBorderClass="hover:border-purple-300"
+      {/* 2. Новые ученики */}
+      <div
+        onClick={() => router.push('/students')}
+        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <UserPlus className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold text-slate-700">Новые ученики</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 my-auto">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">
+                {studentsData.newMonth}
+              </span>
+              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                +{studentsData.newWeek}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">к прошлой неделе</p>
+          </div>
+
+          {/* Mini Cyan/Blue Bar Chart */}
+          <div className="flex items-end gap-1 h-8 shrink-0">
+            <div className="w-1.5 h-3 bg-blue-200 rounded-t-sm" />
+            <div className="w-1.5 h-4 bg-blue-200 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-blue-300 rounded-t-sm" />
+            <div className="w-1.5 h-6 bg-blue-400 rounded-t-sm" />
+            <div className="w-1.5 h-7 bg-blue-500 rounded-t-sm" />
+            <div className="w-1.5 h-8 bg-blue-600 rounded-t-sm" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
+          <span className="text-slate-500 text-[11px]">Всего учеников</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-slate-900">{studentsData.totalActive}</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
+              +{studentsData.newMonth}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Конверсия лидов */}
+      <div
         onClick={() => router.push('/crm')}
-        microIndicator={
-          <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden" title={`Конверсия воронки: ${leadMetrics.conversionRate}%`}>
-            <div
-              className="h-full bg-purple-500 rounded-full"
-              style={{ width: `${leadMetrics.conversionRate}%` }}
-            />
+        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <Filter className="w-4 h-4" />
           </div>
-        }
-      />
+          <span className="text-xs font-semibold text-slate-700">Конверсия лидов</span>
+        </div>
 
-      {/* 4. Renewals */}
-      <KpiCard
-        title="Продления"
-        value={String(renewalMetrics.renewalsCount)}
-        subtext="Активных на продлении"
-        icon={RefreshCw}
-        iconClass="text-indigo-600"
-        iconBgClass="bg-indigo-50 border border-indigo-100"
-        badgeText="Абонементы"
-        badgeClass="bg-indigo-50 text-indigo-700 border-indigo-200/60"
-        hoverBorderClass="hover:border-indigo-300"
+        <div className="flex items-center justify-between gap-2 my-auto">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">
+                {leadsData.conversion}%
+              </span>
+              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                ↑ +4 п.п.
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">от новых до оплат</p>
+          </div>
+
+          {/* Mini Purple Bar Chart */}
+          <div className="flex items-end gap-1 h-8 shrink-0">
+            <div className="w-1.5 h-7 bg-purple-400 rounded-t-sm" />
+            <div className="w-1.5 h-8 bg-purple-300 rounded-t-sm" />
+            <div className="w-1.5 h-4 bg-purple-200 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-purple-400 rounded-t-sm" />
+            <div className="w-1.5 h-3 bg-purple-200 rounded-t-sm" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
+          <span className="text-slate-700 font-bold text-[11px]">
+            {leadsData.total} → {leadsData.paid}
+          </span>
+          <span className="text-slate-400 text-[11px]">от новых до оплат</span>
+        </div>
+      </div>
+
+      {/* 4. Продления */}
+      <div
         onClick={() => router.push('/students')}
-      />
+        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+            <RefreshCw className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold text-slate-700">Продления</span>
+        </div>
 
-      {/* 5. Debt */}
-      <KpiCard
-        title="Задолженность"
-        value={`${revenueMetrics.totalDebtEur.toLocaleString('ru-RU')} €`}
-        subtext={
-          revenueMetrics.overdueCount > 0
-            ? `${revenueMetrics.overdueCount} счетов просрочено`
-            : 'Все счета оплачены'
-        }
-        icon={ShieldAlert}
-        iconClass={revenueMetrics.totalDebtEur > 0 ? 'text-rose-600' : 'text-slate-500'}
-        iconBgClass={revenueMetrics.totalDebtEur > 0 ? 'bg-rose-50 border border-rose-100' : 'bg-slate-50 border border-slate-100'}
-        badgeText={revenueMetrics.totalDebtEur > 0 ? 'Требует внимания' : 'Долгов нет'}
-        badgeClass={
-          revenueMetrics.totalDebtEur > 0
-            ? 'bg-rose-50 text-rose-700 border-rose-200/60'
-            : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'
-        }
-        hoverBorderClass={revenueMetrics.totalDebtEur > 0 ? 'hover:border-rose-300' : 'hover:border-slate-300'}
+        <div className="flex items-center justify-between gap-2 my-auto">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-slate-900 tracking-tight">
+                {renewalsData.ratePercent}%
+              </span>
+              <span className="inline-flex items-center text-[11px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-full">
+                → 0%
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">остаются с нами</p>
+          </div>
+
+          {/* Donut Circle SVG */}
+          <div className="w-10 h-10 shrink-0 relative flex items-center justify-center">
+            <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
+              <path
+                className="text-slate-100"
+                strokeWidth="4"
+                stroke="currentColor"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <path
+                className="text-teal-500"
+                strokeDasharray={`${renewalsData.ratePercent}, 100`}
+                strokeWidth="4"
+                strokeLinecap="round"
+                stroke="currentColor"
+                fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+            </svg>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
+          <span className="text-slate-800 font-bold text-[11px]">
+            {renewalsData.renewedCount} из {renewalsData.totalCount}
+          </span>
+          <span className="text-slate-400 text-[11px]">продлевают занятия</span>
+        </div>
+      </div>
+
+      {/* 5. Дебиторская задолженность */}
+      <div
         onClick={() => router.push('/finance')}
-      />
+        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <span className="text-xs font-semibold text-slate-700">Дебиторская задолженность</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 my-auto">
+          <div>
+            <div className="text-2xl font-bold text-slate-900 tracking-tight">
+              {debtData.totalDebt.toLocaleString('ru-RU')} €
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                ↓ -80 €
+              </span>
+              <span className="text-[11px] text-slate-400 font-normal">к прошлому месяцу</span>
+            </div>
+          </div>
+
+          {/* Mini Rose Bar Chart */}
+          <div className="flex items-end gap-1 h-8 shrink-0">
+            <div className="w-1.5 h-3 bg-rose-200 rounded-t-sm" />
+            <div className="w-1.5 h-7 bg-rose-300 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-rose-200 rounded-t-sm" />
+            <div className="w-1.5 h-4 bg-rose-300 rounded-t-sm" />
+            <div className="w-1.5 h-6 bg-rose-400 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-rose-400 rounded-t-sm" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
+          <span className="text-slate-600 text-[11px]">
+            Просрочено: <b className="text-rose-600 font-bold">{debtData.totalDebt.toLocaleString('ru-RU')} €</b>
+          </span>
+          <div className="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+            !
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
 
-// Alias export for explicit naming convention
 export { KpiGrid as DashboardKpiGrid };

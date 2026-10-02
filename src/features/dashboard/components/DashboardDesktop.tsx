@@ -33,15 +33,16 @@ export function DashboardDesktop({
   const router = useRouter();
 
   return (
-    <div className="hidden md:block space-y-4 lg:space-y-5 w-full p-4 lg:p-6 max-w-[1600px] mx-auto overflow-x-hidden">
-      {/* 1. Header Greeting & Top Actions (~80-100px) */}
+    <div className="hidden md:block space-y-4 lg:space-y-5 w-full p-4 lg:p-6 max-w-[1600px] mx-auto overflow-x-hidden bg-[#f8fafc] min-h-screen">
+      
+      {/* 1. Header Greeting & Top Month Switcher */}
       <HeaderGreeting
         onOpenReport={onOpenReport}
         onOpenExecutiveReport={onOpenExecutiveReport}
         onOpenCreateLead={actions.openCreateLead}
       />
 
-      {/* 2. Real Data-Backed KPI Metrics (5 Compact Cards) */}
+      {/* 2. Top Row (5 KPI Cards, 165px) */}
       <WidgetErrorBoundary widgetName="Метрики KPI" onRetry={actions.refreshAll}>
         <KpiGrid
           payments={data.payments}
@@ -53,7 +54,7 @@ export function DashboardDesktop({
         />
       </WidgetErrorBoundary>
 
-      {/* 3. Operations Row (3 Columns: Фокус внимания | Сегодня | Воронка) */}
+      {/* 3. Operations Row (3 Equal Columns: Требует вашего внимания | Сегодня | Воронка лидов) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 items-stretch">
         <WidgetErrorBoundary widgetName="Фокус внимания" onRetry={actions.refreshAll}>
           <AttentionFeed
@@ -83,7 +84,7 @@ export function DashboardDesktop({
         </WidgetErrorBoundary>
       </div>
 
-      {/* 4. Management Row (3 Columns: Финансы | Группы | Преподаватели) */}
+      {/* 4. Management Row (3 Equal Columns: Финансы | Группы | Команда преподавателей) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 items-stretch">
         <WidgetErrorBoundary widgetName="Финансовый обзор" onRetry={actions.refreshAll}>
           <QuickFinanceWidget
@@ -109,7 +110,7 @@ export function DashboardDesktop({
         </WidgetErrorBoundary>
       </div>
 
-      {/* 5. Weekly Summary Strip */}
+      {/* 5. Bottom Weekly Summary Strip (С этой недели) */}
       <WeeklySummaryStrip
         lessons={data.lessons}
         students={data.students}
