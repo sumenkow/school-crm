@@ -95,29 +95,35 @@ export function DashboardDesktop({
 
       {/* 4. Management Row (3 Equal Columns: Финансы | Группы | Команда преподавателей) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-        <WidgetErrorBoundary widgetName="Финансовый обзор" onRetry={actions.refreshAll}>
-          <QuickFinanceWidget
-            payments={data.payments}
-            students={data.students}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+        <div className="flex flex-col h-full">
+          <WidgetErrorBoundary widgetName="Финансовый обзор" onRetry={actions.refreshAll}>
+            <QuickFinanceWidget
+              payments={data.payments}
+              students={data.students}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
 
-        <WidgetErrorBoundary widgetName="Заполняемость групп" onRetry={actions.refreshAll}>
-          <GroupOccupancyWidget
-            groups={data.groups}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+        <div className="flex flex-col h-full">
+          <WidgetErrorBoundary widgetName="Заполняемость групп" onRetry={actions.refreshAll}>
+            <GroupOccupancyWidget
+              groups={data.groups}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
 
-        <WidgetErrorBoundary widgetName="Команда преподавателей" onRetry={actions.refreshAll}>
-          <TeachersListWidget
-            teachers={data.teachers}
-            groups={data.groups}
-            onSelectTeacher={(t) => actions.openTeacher(t)}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+        <div className="flex flex-col h-full">
+          <WidgetErrorBoundary widgetName="Команда преподавателей" onRetry={actions.refreshAll}>
+            <TeachersListWidget
+              teachers={data.teachers}
+              groups={data.groups}
+              onSelectTeacher={(t) => actions.openTeacher(t)}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
       </div>
 
       {/* 5. Bottom Weekly Summary Strip (С этой недели) */}
