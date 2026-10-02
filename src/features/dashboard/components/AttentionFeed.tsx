@@ -68,7 +68,7 @@ export function AttentionFeed({
         iconType: 'rose',
         title: 'Просрочена оплата',
         subtitle: `${p.studentName || 'Иван Смирнов'} · ${Math.round(debtEur)} € долг`,
-        timeLabel: 'Сегодня',
+        timeLabel: 'Сегодня, 09:12',
         actionLabel: 'Открыть',
         targetUrl: p.studentId ? `/students/${p.studentId}` : '/finance',
       });
@@ -83,7 +83,7 @@ export function AttentionFeed({
         iconType: 'purple',
         title: 'Пробное без назначения',
         subtitle: `${trialLead.name} · без даты пробного`,
-        timeLabel: 'Вчера',
+        timeLabel: 'Вчера, 14:20',
         actionLabel: 'Назначить',
         targetUrl: `/crm/leads/${trialLead.id}`,
         rawLead: trialLead,
@@ -100,7 +100,7 @@ export function AttentionFeed({
         iconType: 'amber',
         title: 'Заканчивается пакет занятий',
         subtitle: `${endingSubStudent.firstName} ${endingSubStudent.lastName} · ост. ${rem} ${rem === 1 ? 'занятие' : 'занятия'}`,
-        timeLabel: 'Вчера',
+        timeLabel: 'Вчера, 18:05',
         actionLabel: 'Напомнить',
         targetUrl: `/students/${endingSubStudent.id}`,
       });
@@ -112,7 +112,7 @@ export function AttentionFeed({
         iconType: 'amber',
         title: 'Заканчивается пакет занятий',
         subtitle: 'Алексей Попов · ост. 2 занятия',
-        timeLabel: 'Вчера',
+        timeLabel: 'Вчера, 18:05',
         actionLabel: 'Напомнить',
         targetUrl: '/students',
       });
@@ -127,7 +127,7 @@ export function AttentionFeed({
         iconType: 'blue',
         title: 'Лид без реакции',
         subtitle: `${unhandledLead.name} · 1 день без ответа`,
-        timeLabel: 'Вчера',
+        timeLabel: 'Вчера, 11:30',
         actionLabel: 'Открыть',
         targetUrl: `/crm/leads/${unhandledLead.id}`,
         rawLead: unhandledLead,
@@ -139,7 +139,7 @@ export function AttentionFeed({
         iconType: 'blue',
         title: 'Лид без реакции',
         subtitle: 'Елена Васильева · 1 день без ответа',
-        timeLabel: 'Вчера',
+        timeLabel: 'Вчера, 11:30',
         actionLabel: 'Открыть',
         targetUrl: '/crm',
       });
@@ -187,10 +187,10 @@ export function AttentionFeed({
         <div className="divide-y divide-slate-50 py-0.5">
           {attentionItems.slice(0, 3).map((item) => {
             const iconBg = {
-              rose: 'bg-rose-50 text-rose-500',
-              purple: 'bg-purple-50 text-purple-600',
-              amber: 'bg-amber-50 text-amber-600',
-              blue: 'bg-blue-50 text-blue-600',
+              rose: 'bg-rose-100 text-rose-600',
+              purple: 'bg-purple-100 text-purple-600',
+              amber: 'bg-amber-100 text-amber-600',
+              blue: 'bg-blue-100 text-blue-600',
             }[item.iconType];
 
             const IconComponent = item.type === 'debt' ? AlertCircle
@@ -219,11 +219,14 @@ export function AttentionFeed({
                     <p className="text-[11px] text-slate-400 truncate leading-tight">{item.subtitle}</p>
                   </div>
                 </div>
-                <div className="flex items-center shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[11px] text-slate-400 whitespace-nowrap hidden sm:inline-block">
+                    {item.timeLabel}
+                  </span>
                   <button
                     type="button"
                     onClick={handleAction}
-                    className="text-xs font-semibold text-blue-600 bg-blue-50/60 hover:bg-blue-100 border border-blue-200/80 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    className="text-xs font-semibold text-blue-600 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/80 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer"
                   >
                     {item.actionLabel}
                   </button>

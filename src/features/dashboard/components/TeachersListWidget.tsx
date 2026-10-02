@@ -186,8 +186,8 @@ export function TeachersListWidget({
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-xs font-bold text-slate-700">{teacher.workload}%</span>
-                  <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', teacher.workloadStatusClass)}>
+                  <span className="text-xs font-bold text-slate-700 w-9 text-right">{teacher.workload}%</span>
+                  <span className={cn('text-[9px] font-semibold px-2 py-0.5 rounded-full text-center w-28 shrink-0 truncate', teacher.workloadStatusClass)}>
                     {teacher.workloadStatus}
                   </span>
                 </div>

@@ -81,7 +81,7 @@ export function FunnelWidget({
           </button>
         </div>
 
-        <div className="space-y-1.5 my-1.5">
+        <div className="space-y-1 my-1">
           {stagesData.stages.map((stage) => {
             const widthPercent = Math.max(8, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
 
@@ -108,6 +108,15 @@ export function FunnelWidget({
             );
           })}
         </div>
+
+        {/* Conversion Row */}
+        <div className="flex items-center justify-between px-1 py-1 border-t border-slate-50 mt-1">
+          <span className="text-[11px] text-slate-500">Конверсия</span>
+          <div className="flex items-baseline gap-1">
+            <span className="font-bold text-slate-900 text-xs">{stagesData.conversionRate}%</span>
+            <span className="text-[10px] text-slate-400">от новых до оплат</span>
+          </div>
+        </div>
       </div>
 
       {/* Компактный нижний алерт (28px) */}
@@ -118,7 +127,19 @@ export function FunnelWidget({
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
           <span className="font-medium text-[10px] truncate">
-            {stagesData.waitingCount > 0 ? `${stagesData.waitingCount} лида ждут реакции > 24ч` : 'Все лиды обработаны'}
+            {(() => {
+              const count = stagesData.waitingCount;
+              if (count === 0) return 'Все лиды обработаны';
+              const mod10 = count % 10;
+              const mod100 = count % 100;
+              if (mod10 === 1 && mod100 !== 11) {
+                return `${count} лид ждет реакции более 24 часов`;
+              }
+              if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+                return `${count} лида ждут реакции более 24 часов`;
+              }
+              return `${count} лидов ждут реакции более 24 часов`;
+            })()}
           </span>
         </div>
         <span className="shrink-0 text-xs font-bold leading-none">→</span>
