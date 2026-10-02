@@ -140,6 +140,7 @@ export function DesktopLessonModal({
   const [teacherId, setTeacherId] = useState('');
   const [teacherName, setTeacherName] = useState('');
   const [attendance, setAttendance] = useState<StudentAttendanceItem[]>([]);
+  const [editingCommentStudentId, setEditingCommentStudentId] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -855,118 +856,221 @@ export function DesktopLessonModal({
 
           {/* ================= TAB 2: ПОСЕЩАЕМОСТЬ ================= */}
           {activeTab === 'attendance' && (
-            <div className="space-y-4 animate-in fade-in duration-100">
-              {/* Header Bar */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-800">
-                    Присутствуют: <span className="text-emerald-700">{presentCount}</span> из {totalStudents}
-                  </span>
-                  <span className="text-[11px] text-slate-400 hidden sm:inline">
-                    · синхронизируется с балансом учеников
-                  </span>
-                </div>
-
+            <div className="space-y-3.5 animate-in fade-in duration-100">
+              {/* 1. ВЕРХНЯЯ ПАНЕЛЬ ДЕЙСТВИЙ */}
+              <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={handleMarkAllPresent}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                  className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                 >
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Отметить всех присутствующими</span>
+                  <span>+ Отметить всех присутствующими</span>
                 </button>
+
+                <div className="text-xs font-semibold text-slate-500">
+                  Присутствуют: <span className="text-emerald-700 font-bold">{presentCount}</span> из {totalStudents}
+                </div>
               </div>
 
-              {/* Attendance List */}
-              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white overflow-hidden shadow-2xs">
-                {attendance.length === 0 ? (
-                  <div className="p-6 text-center text-xs text-slate-400">
-                    В группе нет прикрепленных учеников
+              {/* 2. ТАБЛИЦА / СПИСОК УЧЕНИКОВ */}
+              <div className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-2xs">
+                {/* Заголовок колонок */}
+                <div className="grid grid-cols-12 gap-2 px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <div className="col-span-4 flex items-center gap-1">
+                    <span>Ученик ({attendance.length})</span>
                   </div>
-                ) : (
-                  attendance.map((st) => {
-                    const payStatus = getStudentLessonPaymentStatus(st.studentId);
-                    return (
-                      <div
-                        key={st.studentId}
-                        className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
-                      >
-                        {/* Student info + balance chip */}
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-8 w-8 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-xs shrink-0 border border-slate-200">
-                            {st.name.split(' ').map((n) => n[0]).join('')}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-slate-900 truncate">
-                                {st.name}
-                              </span>
+                  <div className="col-span-2 text-center">
+                    <span>Оплата</span>
+                  </div>
+                  <div className="col-span-4 text-center">
+                    <span>Статус посещения</span>
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <span>Комментарий</span>
+                  </div>
+                </div>
+
+                {/* Список строк учеников */}
+                <div className="divide-y divide-slate-100">
+                  {attendance.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400">
+                      В группе нет прикрепленных учеников
+                    </div>
+                  ) : (
+                    attendance.map((st) => {
+                      const payStatus = getStudentLessonPaymentStatus(st.studentId);
+                      const isEditingComment = editingCommentStudentId === st.studentId;
+                      const hasComment = Boolean(st.feedback && st.feedback.trim().length > 0);
+
+                      return (
+                        <div
+                          key={st.studentId}
+                          className="px-3.5 py-2 hover:bg-slate-50/70 transition-colors"
+                        >
+                          <div className="grid grid-cols-12 gap-2 items-center min-h-[44px]">
+                            {/* 1. Ученик: круглый аватар с инициалами + ФИО */}
+                            <div className="col-span-4 flex items-center gap-2.5 min-w-0">
+                              <div className="h-7 w-7 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
+                                {st.name.split(' ').map((n) => n[0]).join('')}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs font-semibold text-slate-800 truncate block">
+                                  {st.name}
+                                </span>
+                                {st.status === 'absent' && (
+                                  <label className="mt-0.5 flex items-center gap-1 text-[10px] text-rose-700 cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      checked={st.chargeBalance}
+                                      onChange={() => handleToggleChargeBalance(st.studentId)}
+                                      className="rounded text-rose-600 focus:ring-rose-500 h-3 w-3 border-rose-300"
+                                    />
+                                    <span>Списать с баланса</span>
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 2. Оплата: аккуратный бейдж */}
+                            <div className="col-span-2 flex justify-center">
                               <span
                                 className={cn(
-                                  'rounded-full px-2 py-0.5 text-[10px] font-bold border',
+                                  'rounded-full px-2 py-0.5 text-[10px] font-bold border text-center shadow-2xs',
                                   payStatus.badgeClass
                                 )}
                               >
                                 {payStatus.label}
                               </span>
                             </div>
-                            {st.status === 'absent' && (
-                              <label className="mt-1 flex items-center gap-1.5 text-xs text-rose-700 cursor-pointer select-none">
-                                <input
-                                  type="checkbox"
-                                  checked={st.chargeBalance}
-                                  onChange={() => handleToggleChargeBalance(st.studentId)}
-                                  className="rounded text-rose-600 focus:ring-rose-500 h-3.5 w-3.5 border-rose-300"
-                                />
-                                <span>Списать занятие с баланса</span>
-                              </label>
-                            )}
-                          </div>
-                        </div>
 
-                        {/* Segmented status buttons */}
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(st.studentId, 'present')}
-                            className={cn(
-                              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                              st.status === 'present'
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs font-bold'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                            )}
-                          >
-                            🟢 Был
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(st.studentId, 'absent')}
-                            className={cn(
-                              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                              st.status === 'absent'
-                                ? 'bg-rose-600 text-white border-rose-600 shadow-2xs font-bold'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                            )}
-                          >
-                            🔴 Пропуск
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(st.studentId, 'excused')}
-                            className={cn(
-                              'px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer border',
-                              st.status === 'excused'
-                                ? 'bg-amber-500 text-white border-amber-500 shadow-2xs font-bold'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                            )}
-                          >
-                            🟡 Болезнь
-                          </button>
+                            {/* 3. Статус посещения: интерактивная группа кнопок-переключателей */}
+                            <div className="col-span-4 flex items-center justify-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(st.studentId, 'present')}
+                                className={cn(
+                                  'px-2 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border flex items-center gap-1',
+                                  st.status === 'present'
+                                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-2xs font-bold'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                )}
+                                title="Отметить: был(а) на уроке"
+                              >
+                                <span className="text-[9px]">●</span>
+                                <span>Был</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(st.studentId, 'absent')}
+                                className={cn(
+                                  'px-2 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border flex items-center gap-1',
+                                  st.status === 'absent'
+                                    ? 'bg-rose-500 text-white border-rose-500 shadow-2xs font-bold'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                )}
+                                title="Отметить: пропуск занятия"
+                              >
+                                <span className="text-[9px]">●</span>
+                                <span>Пропуск</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(st.studentId, 'excused')}
+                                className={cn(
+                                  'px-2 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer border flex items-center gap-1',
+                                  st.status === 'excused'
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-2xs font-bold'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                )}
+                                title="Отметить: пропуск по уважительной причине (болезнь)"
+                              >
+                                <span className="text-[9px]">●</span>
+                                <span>Болезнь</span>
+                              </button>
+                            </div>
+
+                            {/* 4. Комментарий преподавателя: иконка 💬 + текст */}
+                            <div className="col-span-2 flex items-center justify-end gap-1.5 min-w-0">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingCommentStudentId(
+                                    isEditingComment ? null : st.studentId
+                                  )
+                                }
+                                className={cn(
+                                  'p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0',
+                                  hasComment || isEditingComment
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                    : 'bg-slate-50 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-100'
+                                )}
+                                title={hasComment ? 'Изменить комментарий' : 'Добавить комментарий'}
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </button>
+                              <span
+                                onClick={() =>
+                                  setEditingCommentStudentId(
+                                    isEditingComment ? null : st.studentId
+                                  )
+                                }
+                                className={cn(
+                                  'text-xs truncate max-w-[90px] cursor-pointer block',
+                                  hasComment
+                                    ? 'text-slate-600 font-medium hover:text-blue-600'
+                                    : 'text-slate-400 italic hover:text-slate-600'
+                                )}
+                                title={st.feedback || 'Добавить заметку'}
+                              >
+                                {st.feedback ? st.feedback : 'Заметка'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Inline Comment Editor (Expandable on click) */}
+                          {isEditingComment && (
+                            <div className="mt-2 pt-2 border-t border-slate-100 space-y-2 animate-in fade-in duration-150">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  value={st.feedback || ''}
+                                  onChange={(e) => handleFeedbackChange(st.studentId, e.target.value)}
+                                  placeholder="Заметка к уроку (успехи, активность, ДЗ)..."
+                                  className="flex-1 text-xs bg-slate-50 focus:bg-white border border-slate-200 focus:border-blue-500 rounded-lg px-2.5 py-1.5 text-slate-800 placeholder:text-slate-400 focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCommentStudentId(null)}
+                                  className="px-2.5 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer"
+                                >
+                                  Готово
+                                </button>
+                              </div>
+
+                              {/* Quick tags */}
+                              <div className="flex flex-wrap items-center gap-1">
+                                {QUICK_FEEDBACK_TAGS.slice(0, 4).map((chip) => (
+                                  <button
+                                    key={chip}
+                                    type="button"
+                                    onClick={() => handleAppendChipToFeedback(st.studentId, chip)}
+                                    className="text-[10px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/80 transition-colors cursor-pointer"
+                                  >
+                                    + {chip}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           )}
