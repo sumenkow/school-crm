@@ -40,34 +40,34 @@ export function HeaderGreeting({
   const currentYear = now.getFullYear();
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+    <div className="flex items-center justify-between gap-3 h-9 sm:h-10">
       <div>
-        <h1 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+        <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">
           {getGreeting()}, {displayName}!
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5 font-medium">
+        <p className="text-xs text-slate-400 mt-0.5 leading-none font-medium">
           Вот что происходит в вашей школе сегодня.
         </p>
       </div>
 
-      {/* Month Switcher from Reference */}
-      <div className="flex items-center gap-1.5 self-start sm:self-auto bg-white border border-slate-200/90 rounded-xl px-2.5 py-1.5 shadow-2xs">
+      {/* Compact Month Switcher */}
+      <div className="flex items-center gap-1 bg-white border border-slate-200/90 rounded-lg px-2 py-0.5 shadow-2xs">
         <button
           type="button"
-          className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+          className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
           title="Предыдущий месяц"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
         <span className="text-xs font-bold text-slate-800 px-1 select-none">
           {currentMonthName} {currentYear}
         </span>
         <button
           type="button"
-          className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+          className="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
           title="Следующий месяц"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

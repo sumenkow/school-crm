@@ -90,206 +90,85 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   return (
     <header
-      className="hidden md:flex sticky top-0 z-20 items-center h-14 sm:h-16 px-2.5 sm:px-4 gap-1.5 sm:gap-2.5 transition-all duration-200"
-      style={{
-        backgroundColor: 'var(--md-surface-container)',
-        boxShadow: scrolled ? 'var(--md-elevation-2)' : 'none',
-      }}
+      className="hidden md:flex sticky top-0 z-20 items-center h-12 px-4 gap-2.5 transition-all duration-200 border-b border-slate-200/80 bg-white"
     >
-
-
-      {/* Desktop & Tablet Search Bar */}
-      <div
-        className="flex-1 max-w-sm hidden sm:flex items-center cursor-text transition-all"
+      {/* Search button with Cmd+K */}
+      <button
+        type="button"
         onClick={() => setPaletteOpen(true)}
+        className="p-1.5 px-2.5 rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2 cursor-pointer text-xs font-medium"
+        title="Быстрый поиск (Cmd+K)"
       >
-        <div className="relative w-full">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <div className="w-full h-9 rounded-full bg-slate-100 flex items-center pl-9 pr-3 hover:bg-slate-200/70 transition-colors border border-transparent">
-            <span className="text-[13px] text-slate-500 font-medium">{t('topbar.searchPlaceholder', 'Быстрый поиск... (Cmd+K)')}</span>
-          </div>
-        </div>
-      </div>
+        <Search size={14} className="text-slate-400" />
+        <span className="text-slate-400 font-normal">Поиск...</span>
+        <kbd className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1 py-0.5 rounded border border-slate-200 leading-none">⌘K</kbd>
+      </button>
+
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Multi-Language Switcher (Desktop: segmented 3-button, Mobile: compact dropdown) */}
-      <div className="relative shrink-0">
-        {/* Desktop segmented bar */}
-        <div
-          className="hidden sm:flex items-center rounded-full p-1 border shadow-2xs"
-          style={{
-            backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
-            borderColor: 'var(--md-outline-variant, #C1C7CE)',
-          }}
+      {/* Compact Language Picker (Flag + Arrow) */}
+      <div ref={langMenuRef} className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => setLangMenuOpen(!langMenuOpen)}
+          className="px-2 py-1 rounded-lg border border-slate-200 text-xs flex items-center gap-1.5 hover:bg-slate-50 transition-colors cursor-pointer"
           title={t('topbar.language', 'Язык интерфейса')}
         >
-          {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
-            const isSelected = language === langKey;
-            const meta = LANGUAGE_LABELS[langKey];
-            return (
-              <button
-                key={langKey}
-                onClick={() => {
-                  if (language !== langKey) {
-                    setLanguage(langKey);
-                    toast.success(`${meta.flag} ${meta.nativeName}`);
-                  }
-                }}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-white shadow-xs scale-105 border border-slate-200/90 font-extrabold text-blue-700'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'
-                }`}
-                style={{
-                  color: isSelected ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
-                  backgroundColor: isSelected ? 'var(--md-surface, #FFFFFF)' : 'transparent',
-                }}
-                title={meta.label}
-              >
-                <CountryFlag country={langKey} size={15} />
-                <span className="text-[11px] font-extrabold tracking-tight">{meta.short}</span>
-              </button>
-            );
-          })}
-        </div>
+          <CountryFlag country={language} size={15} />
+          <span className="text-[11px] font-bold uppercase text-slate-700">{LANGUAGE_LABELS[language].short}</span>
+          <ChevronDown size={12} className="text-slate-400" />
+        </button>
 
-        {/* Mobile compact language picker */}
-        <div ref={langMenuRef} className="sm:hidden relative">
-          <button
-            type="button"
-            onClick={() => setLangMenuOpen(!langMenuOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border shadow-2xs active:scale-95 transition-all text-xs font-bold"
-            style={{
-              backgroundColor: 'var(--md-surface-container-highest, #E6E8EE)',
-              borderColor: 'var(--md-outline-variant, #C1C7CE)',
-              color: 'var(--md-on-surface)',
-            }}
-            aria-label={t('topbar.language', 'Язык')}
+        {langMenuOpen && (
+          <div
+            className="absolute right-0 top-9 rounded-xl shadow-lg border border-slate-200 bg-white p-1 z-50 min-w-[130px] flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
           >
-            <CountryFlag country={language} size={15} />
-            <span className="text-[11px] font-extrabold uppercase">{LANGUAGE_LABELS[language].short}</span>
-            <ChevronDown size={13} style={{ color: 'var(--md-on-surface-variant)' }} />
-          </button>
-
-          {langMenuOpen && (
-            <div
-              className="absolute right-0 top-10 rounded-2xl shadow-xl border p-1.5 z-50 min-w-[130px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150"
-              style={{
-                backgroundColor: 'var(--md-surface-container-lowest, #FFFFFF)',
-                borderColor: 'var(--md-outline-variant, #C1C7CE)',
-              }}
-            >
-              {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
-                const isSelected = language === langKey;
-                const meta = LANGUAGE_LABELS[langKey];
-                return (
-                  <button
-                    key={langKey}
-                    onClick={() => {
-                      setLanguage(langKey);
-                      setLangMenuOpen(false);
-                      toast.success(`${meta.nativeName}`);
-                    }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
-                      isSelected
-                        ? 'bg-blue-50 text-blue-700 font-extrabold'
-                        : 'text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <CountryFlag country={langKey} size={15} />
-                    <span>{meta.nativeName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {(['ru', 'en', 'de'] as SupportedLanguage[]).map((langKey) => {
+              const isSelected = language === langKey;
+              const meta = LANGUAGE_LABELS[langKey];
+              return (
+                <button
+                  key={langKey}
+                  onClick={() => {
+                    setLanguage(langKey);
+                    setLangMenuOpen(false);
+                    toast.success(`${meta.nativeName}`);
+                  }}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all text-left cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-50 text-blue-700 font-bold'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <CountryFlag country={langKey} size={15} />
+                  <span>{meta.nativeName}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Today's highlighted date (Desktop only) */}
-      {currentDate && (
-        <div
-          className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all select-none shrink-0"
-          style={{
-            backgroundColor: 'var(--md-secondary-container, #D7E3F7)',
-            color: 'var(--md-on-secondary-container, #101C2B)',
-            border: '1px solid rgba(21, 101, 192, 0.22)',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-          }}
-          title={t('nav.calendar', 'Календарь')}
-        >
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-          <Calendar size={13} style={{ color: 'var(--md-primary, #1565C0)' }} />
-          <span className="tracking-tight text-xs">{currentDate}</span>
-        </div>
-      )}
-
-      {/* Manager Notification Center Bell 🔔 */}
+      {/* Notification Bell */}
       <NotificationCenter />
 
       {/* User avatar + dropdown */}
-      <div ref={menuRef} style={{ position: 'relative' }}>
+      <div ref={menuRef} className="relative shrink-0">
         <button
+          type="button"
           onClick={() => setUserMenuOpen(!userMenuOpen)}
-          className="touch-target-44 sm:h-10 rounded-full border transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2 px-1 sm:px-3"
-          style={{
-            borderColor: 'var(--md-outline-variant)',
-            backgroundColor: 'transparent',
-            cursor: 'pointer',
-          }}
+          className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer shadow-xs transition-transform active:scale-95"
           aria-label={t('topbar.profile', 'Профиль пользователя')}
+          title={displayName}
         >
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            backgroundColor: 'var(--md-primary)', color: 'var(--md-on-primary)',
-            fontWeight: 700, fontSize: '13px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            {avatarLetter}
-          </div>
-          <span
-            className="md-label-large hidden sm:block"
-            style={{ color: 'var(--md-on-surface)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          >
-            {displayName.split(' ')[0]}
-          </span>
-          <span
-            className="hidden sm:inline-flex items-center md-label-small"
-            style={{
-              padding: '2px 8px',
-              borderRadius: '9999px',
-              backgroundColor:
-                (role === 'owner' || role === 'developer') ? 'var(--md-tertiary-container, #EEDCFF)' :
-                role === 'admin' ? 'var(--md-secondary-container)' :
-                'var(--md-primary-container)',
-              color:
-                (role === 'owner' || role === 'developer') ? 'var(--md-on-tertiary-container, #28123C)' :
-                role === 'admin' ? 'var(--md-on-secondary-container)' :
-                'var(--md-on-primary-container)',
-              fontWeight: 600,
-              fontSize: '11px',
-              lineHeight: '16px',
-            }}
-          >
-            {t(`role.${role}`, role)}
-          </span>
-          <ChevronDown size={14} style={{ color: 'var(--md-on-surface-variant)', flexShrink: 0 }} />
+          {avatarLetter}
         </button>
 
         {/* Dropdown menu */}
         {userMenuOpen && (
           <div
-            style={{
-              position: 'absolute', right: 0, top: '48px',
-              backgroundColor: 'var(--md-surface-container-lowest)',
-              borderRadius: '16px',
-              boxShadow: 'var(--md-elevation-3)',
-              minWidth: '240px',
-              padding: '8px',
-              zIndex: 100,
-            }}
+            className="absolute right-0 top-10 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[240px] p-2 z-50 animate-in fade-in zoom-in-95 duration-100"
           >
             {/* User info */}
             <div

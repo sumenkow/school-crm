@@ -64,12 +64,12 @@ export function WeeklySummaryStrip({
 
   if (isLoading) {
     return (
-      <div className="h-12 bg-white rounded-2xl border border-slate-100 animate-pulse shadow-sm" />
+      <div className="h-9 bg-white rounded-xl border border-slate-100 animate-pulse shadow-xs" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl px-4 py-3 border border-slate-100 shadow-sm flex items-center justify-between text-xs">
+    <div className="bg-white rounded-xl px-4 py-1.5 border border-slate-100 shadow-xs flex items-center justify-between text-xs min-h-[36px]">
       <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
         <span className="font-bold text-slate-800 shrink-0">С этой недели</span>
         <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
@@ -99,7 +99,7 @@ export function WeeklySummaryStrip({
       <button
         type="button"
         onClick={onOpenReport ? onOpenReport : () => router.push('/analytics')}
-        className="text-blue-600 font-semibold hover:underline cursor-pointer shrink-0 ml-2"
+        className="text-blue-600 font-semibold hover:underline cursor-pointer shrink-0 ml-2 text-xs"
       >
         Полный отчёт ↗
       </button>

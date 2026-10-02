@@ -103,12 +103,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <TopBar onOpenMobile={() => setMobileOpen(true)} />
         </div>
         <main
-          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-5 md:p-6 w-full min-w-0 print:p-0 print:overflow-visible"
-          style={{
-            paddingBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
-          }}
+          className="flex-1 overflow-y-auto min-h-0 relative mobile-touch-scroll p-3 sm:p-4 md:px-6 md:py-3 w-full min-w-0 print:p-0 print:overflow-visible pb-[calc(84px+env(safe-area-inset-bottom,0px))] md:pb-3"
         >
-          <div className="w-full min-w-0 print:max-w-none print:w-full" style={{ maxWidth: '1280px', margin: '0 auto' }}>
+          <div className="w-full min-w-0 print:max-w-none print:w-full" style={{ maxWidth: '1440px', margin: '0 auto' }}>
             {children}
           </div>
         </main>

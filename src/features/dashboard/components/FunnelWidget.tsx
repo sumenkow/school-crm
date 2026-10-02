@@ -63,63 +63,65 @@ export function FunnelWidget({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-[280px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm space-y-3 animate-pulse h-[260px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between pb-2.5 border-b border-slate-50">
-        <h3 className="font-bold text-slate-900 text-sm">Воронка лидов</h3>
-        <button
-          type="button"
-          onClick={() => router.push('/crm')}
-          className="text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
-        >
-          Подробнее →
-        </button>
-      </div>
+    <div className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[260px]">
+      <div>
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-50">
+          <h3 className="font-bold text-slate-900 text-sm">Воронка лидов</h3>
+          <button
+            type="button"
+            onClick={() => router.push('/crm')}
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+          >
+            Подробнее →
+          </button>
+        </div>
 
-      <div className="space-y-2 my-2">
-        {stagesData.stages.map((stage) => {
-          const widthPercent = Math.max(8, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
+        <div className="space-y-1.5 my-1.5">
+          {stagesData.stages.map((stage) => {
+            const widthPercent = Math.max(8, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
 
-          return (
-            <div
-              key={stage.id}
-              onClick={() => router.push(`/crm?stage=${stage.id}`)}
-              className="flex items-center gap-2.5 text-xs cursor-pointer group py-0.5"
-            >
-              <span className={cn('w-2 h-2 rounded-full shrink-0', stage.dotColor || 'bg-blue-500')}></span>
-              <span className="text-slate-600 font-medium text-[11px] w-28 shrink-0 truncate group-hover:text-blue-600 transition-colors">
-                {stage.label}
-              </span>
-              <span className="font-bold text-slate-900 w-5 text-right shrink-0 text-xs">
-                {stage.count}
-              </span>
-              <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-blue-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${widthPercent}%` }}
-                ></div>
+            return (
+              <div
+                key={stage.id}
+                onClick={() => router.push(`/crm?stage=${stage.id}`)}
+                className="flex items-center gap-2 text-xs cursor-pointer group py-0.5"
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', stage.dotColor || 'bg-blue-500')}></span>
+                <span className="text-slate-600 font-medium text-[11px] w-28 shrink-0 truncate group-hover:text-blue-600 transition-colors">
+                  {stage.label}
+                </span>
+                <span className="font-bold text-slate-900 w-4 text-right shrink-0 text-xs">
+                  {stage.count}
+                </span>
+                <div className="flex-1 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${widthPercent}%` }}
+                  ></div>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Нижняя плашка алерта */}
+      {/* Компактный нижний алерт (28px) */}
       <div
         onClick={() => router.push('/crm')}
-        className="mt-2 p-2.5 rounded-xl bg-rose-50/80 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100 transition-colors"
+        className="h-7 px-2.5 rounded-lg bg-rose-50/90 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100 transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
-          <span className="font-medium text-[11px] truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+          <span className="font-medium text-[10px] truncate">
             {stagesData.waitingCount > 0 ? `${stagesData.waitingCount} лида ждут реакции > 24ч` : 'Все лиды обработаны'}
           </span>
         </div>
-        <span className="shrink-0 text-xs font-bold">→</span>
+        <span className="shrink-0 text-xs font-bold leading-none">→</span>
       </div>
     </div>
   );

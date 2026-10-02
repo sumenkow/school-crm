@@ -138,14 +138,14 @@ export function TeachersListWidget({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-[220px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm space-y-2 animate-pulse h-[190px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+    <div className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[190px]">
       <div>
-        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-50">
+        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-50">
           <h3 className="font-bold text-slate-900 text-sm">Команда преподавателей</h3>
           <button
             type="button"
@@ -157,12 +157,12 @@ export function TeachersListWidget({
         </div>
 
         {teachers.length === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-400">
+          <div className="py-4 text-center text-xs text-slate-400">
             Нет активных преподавателей
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
-            {teachers.map((teacher) => (
+            {teachers.slice(0, 3).map((teacher) => (
               <div
                 key={teacher.id}
                 onClick={() => {
@@ -172,22 +172,22 @@ export function TeachersListWidget({
                     router.push('/teachers');
                   }
                 }}
-                className="py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 rounded-lg px-1 transition-colors gap-2"
+                className="py-1 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 rounded-lg px-1 transition-colors gap-2"
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center justify-center shrink-0">
                     {teacher.initials}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-900 truncate">{teacher.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">
+                    <p className="text-[10px] text-slate-400 truncate">
                       {teacher.subject} · {teacher.groupsStr} · {teacher.studentsStr}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-xs font-bold text-slate-700">{teacher.workload}%</span>
-                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', teacher.workloadStatusClass)}>
+                  <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full', teacher.workloadStatusClass)}>
                     {teacher.workloadStatus}
                   </span>
                 </div>

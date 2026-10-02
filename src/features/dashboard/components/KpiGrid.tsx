@@ -145,38 +145,38 @@ export function KpiGrid({
 
   if (isLoading) {
     return (
-      <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5', className)}>
+      <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3', className)}>
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-[148px] bg-white rounded-2xl border border-slate-100 p-4 shadow-sm animate-pulse" />
+          <div key={i} className="h-[115px] bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm animate-pulse" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5', className)}>
+    <div className={cn('grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3', className)}>
       
       {/* 1. Выручка за месяц */}
       <div
         onClick={() => router.push('/finance')}
-        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-[150px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <CreditCard className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CreditCard className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">Выручка за месяц</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Выручка за месяц</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">
+          <span className="text-xl font-bold text-slate-900 tracking-tight">
             {financeData.paidEur.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </span>
           {/* Real Sparkline SVG */}
-          <div className="w-16 h-7 shrink-0">
+          <div className="w-14 h-6 shrink-0">
             <svg viewBox="0 0 64 30" className="w-full h-full overflow-visible">
               <path
                 d={sparkline.path}
@@ -192,20 +192,20 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
           {financeData.deltaPercent !== null ? (
             <span className={cn(
-              'inline-flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded-full',
+              'inline-flex items-center gap-0.5 text-[11px] font-medium px-2 py-0.5 rounded-full',
               financeData.deltaPercent > 0 ? 'text-emerald-600 bg-emerald-50' : financeData.deltaPercent < 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-600 bg-slate-100'
             )}>
               {financeData.deltaPercent > 0 ? `↑ +${financeData.deltaPercent}%` : financeData.deltaPercent < 0 ? `↓ ${Math.abs(financeData.deltaPercent)}%` : '0%'}
             </span>
           ) : (
-            <span className="inline-flex items-center text-xs font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
               текущий месяц
             </span>
           )}
-          <span className="text-xs text-slate-400 truncate">
+          <span className="text-[11px] text-slate-400 truncate">
             {financeData.deltaPercent !== null ? `к ${financeData.prevMonthName}` : `цель: ${financeData.monthlyTarget} €`}
           </span>
         </div>
@@ -214,24 +214,24 @@ export function KpiGrid({
       {/* 2. Новые ученики */}
       <div
         onClick={() => router.push('/students')}
-        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-[150px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-              <UserPlus className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <UserPlus className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">Новые ученики</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Новые ученики</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-2xl font-bold text-slate-900">{studentsData.newMonth}</span>
+          <span className="text-xl font-bold text-slate-900">{studentsData.newMonth}</span>
           {/* Real weekly bar chart */}
-          <div className="flex items-end gap-1 h-6 shrink-0">
+          <div className="flex items-end gap-1 h-5 shrink-0">
             {studentsData.weekBars.map((val, idx) => {
-              const barHeight = Math.max(3, Math.round((val / studentsData.maxBar) * 20));
+              const barHeight = Math.max(3, Math.round((val / studentsData.maxBar) * 18));
               return (
                 <div
                   key={idx}
@@ -246,35 +246,35 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
             +{studentsData.newWeek} за нед.
           </span>
-          <span className="text-xs text-slate-400">{studentsData.totalActive} в базе</span>
+          <span className="text-[11px] text-slate-400">{studentsData.totalActive} в базе</span>
         </div>
       </div>
 
       {/* 3. Конверсия лидов */}
       <div
         onClick={() => router.push('/crm')}
-        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-[150px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-              <Filter className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Filter className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">Конверсия лидов</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Конверсия лидов</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-2xl font-bold text-slate-900">{leadsData.conversion}%</span>
+          <span className="text-xl font-bold text-slate-900">{leadsData.conversion}%</span>
           {/* Real Stage Distribution Bars */}
-          <div className="flex items-end gap-1 h-6 shrink-0">
+          <div className="flex items-end gap-1 h-5 shrink-0">
             {leadsData.stageBars.map((val, idx) => {
-              const barHeight = Math.max(3, Math.round((val / leadsData.maxStage) * 20));
+              const barHeight = Math.max(3, Math.round((val / leadsData.maxStage) * 18));
               return (
                 <div
                   key={idx}
@@ -289,8 +289,8 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50 gap-1">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50 gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
             {leadsData.total} → {leadsData.paid}
           </span>
           <span className="text-[11px] text-slate-400 truncate">от новых к оплате</span>
@@ -300,22 +300,22 @@ export function KpiGrid({
       {/* 4. Продления */}
       <div
         onClick={() => router.push('/students')}
-        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-[150px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-              <RefreshCw className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+              <RefreshCw className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">Продления</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Продления</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-2xl font-bold text-slate-900">{renewalsData.ratePercent}%</span>
+          <span className="text-xl font-bold text-slate-900">{renewalsData.ratePercent}%</span>
           {/* Donut Mini SVG */}
-          <div className="w-7 h-7 shrink-0 relative flex items-center justify-center">
+          <div className="w-6 h-6 shrink-0 relative flex items-center justify-center">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
               <path
                 className="text-slate-100"
@@ -337,44 +337,44 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
             {renewalsData.ratePercent}%
           </span>
-          <span className="text-xs text-slate-400">{renewalsData.renewedCount} из {renewalsData.totalCount} активных</span>
+          <span className="text-[11px] text-slate-400">{renewalsData.renewedCount} из {renewalsData.totalCount}</span>
         </div>
       </div>
 
       {/* 5. Дебиторская задолженность */}
       <div
         onClick={() => router.push('/finance')}
-        className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-[150px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <Calendar className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 truncate">Задолженность</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Задолженность</span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-2xl font-bold text-slate-900">
+          <span className="text-xl font-bold text-slate-900">
             {debtData.totalDebt.toLocaleString('ru-RU')} €
           </span>
           {/* Mini Status Indicator */}
-          <div className="w-7 h-7 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-            <AlertCircle className="w-4 h-4 text-rose-500" />
+          <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-            {debtData.overdueCount > 0 ? `! ${debtData.overdueCount} счетов` : 'Нет долгов'}
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+            {debtData.overdueCount > 0 ? `! ${debtData.overdueCount} счетов` : '0 долгов'}
           </span>
-          <span className="text-xs text-slate-400">просрочено</span>
+          <span className="text-[11px] text-slate-400">просрочено</span>
         </div>
       </div>
 
