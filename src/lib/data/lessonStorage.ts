@@ -2,7 +2,7 @@
 
 import { FullLessonData, INITIAL_LESSONS, INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from './mockData';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
-import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timelineStorage';
+import { saveInteractionToStorage, sortTimelineChronologicalDesc, getEquivalentIds } from './timelineStorage';
 import { persistEntityToCloud } from './cloudSync';
 
 const LESSONS_STORAGE_KEY = 'crm_lessons_master_v2';
@@ -200,7 +200,18 @@ export function recordLessonAttendanceBatch(params: {
   params.studentRecords.forEach((rec) => {
     if (rec.status === 'not_marked') return;
 
-    const student = allStudents.find((s) => s.id === rec.studentId);
+    const eqSet = getEquivalentIds(rec.studentId);
+    const recNameClean = (rec.studentName || '').trim().toLowerCase();
+    const student = allStudents.find((s) => {
+      if (s.id === rec.studentId) return true;
+      if (eqSet.has(s.id)) return true;
+      if (recNameClean) {
+        const directName = `${s.firstName || ''} ${s.lastName || ''}`.trim().toLowerCase();
+        const reversedName = `${s.lastName || ''} ${s.firstName || ''}`.trim().toLowerCase();
+        if (directName === recNameClean || reversedName === recNameClean) return true;
+      }
+      return false;
+    });
     if (!student) return;
 
     const existingHistory = student.attendanceStats?.history || [];
@@ -228,7 +239,7 @@ export function recordLessonAttendanceBatch(params: {
       topic: params.topic || currentLesson.topic,
       notes: cleanNote,
       reason: !isPresent ? cleanNote : undefined,
-      feedback: isPresent ? cleanNote : undefined,
+      feedback: cleanNote,
       teacherName: params.teacherName || currentLesson.teacherName,
       time: currentLesson.endTime || currentLesson.startTime,
     };
@@ -240,8 +251,61 @@ export function recordLessonAttendanceBatch(params: {
     const rescheduled = newHistory.filter((h) => h.status === 'rescheduled').length;
     const rate = total > 0 ? `${Math.round((present / total) * 100)}%` : '100%';
 
+    let updatedComments = [...(student.teacherComments || [])];
+    let updatedInteractions = [...(student.interactions || [])];
+
+    if (cleanNote) {
+      const teacherAuthor = params.teacherName || currentLesson.teacherName || 'Преподаватель';
+      const commentTime = currentLesson.endTime || currentLesson.startTime || new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      const commentDateFormatted = `${dateFormatted}, ${commentTime}`.trim();
+
+      // 1. Add to student.teacherComments
+      const teacherCommentId = `tc_att_${Date.now()}_${student.id}`;
+      updatedComments = updatedComments.filter(
+        (c) => !(c.groupName === currentLesson.groupName && c.date?.includes(dateFormatted))
+      );
+      updatedComments.unshift({
+        id: teacherCommentId,
+        studentId: student.id,
+        author: teacherAuthor.includes('(') ? teacherAuthor : `${teacherAuthor} (Преподаватель)`,
+        date: commentDateFormatted,
+        groupName: currentLesson.groupName,
+        lessonTopic: params.topic || currentLesson.topic,
+        category: 'progress',
+        content: cleanNote,
+      });
+
+      // 2. Add to timeline interaction
+      const now = new Date();
+      const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      const primaryParent = student.parents?.[0];
+      const parentName = primaryParent ? `${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.trim() : undefined;
+
+      const interaction: TimelineInteraction = {
+        id: `int_att_${Date.now()}_${student.id}`,
+        studentId: student.id,
+        studentName: `${student.firstName || ''} ${student.lastName || ''}`.trim() || rec.studentName,
+        parentId: primaryParent?.id,
+        parentName,
+        targetType: primaryParent ? 'parent' : 'student',
+        targetName: parentName || rec.studentName,
+        targetRole: primaryParent ? (primaryParent.relationshipType || 'Родитель') : 'Ученик',
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        createdAt: now.toISOString(),
+        author: teacherAuthor,
+        channel: 'other',
+        type: 'follow_up',
+        content: `💬 Комментарий преподавателя по уроку «${currentLesson.groupName}» (${rec.status === 'present' ? 'Был на уроке' : rec.status === 'absent' ? 'Пропуск' : 'Перенос'}): «${cleanNote}»`,
+      };
+
+      saveInteractionToStorage(interaction);
+      updatedInteractions = [interaction, ...updatedInteractions];
+    }
+
     const updatedStudent: FullStudentData = {
       ...student,
+      teacherComments: updatedComments,
+      interactions: updatedInteractions,
       attendanceStats: {
         totalLessons: total,
         presentCount: present,
@@ -254,30 +318,10 @@ export function recordLessonAttendanceBatch(params: {
 
     saveStudentToStorage(updatedStudent);
 
-    // If teacher provided a note / comment, record it directly in the student's and parent's timeline
-    if (rec.note && rec.note.trim()) {
-      const now = new Date();
-      const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      const primaryParent = student.parents?.[0];
-      const parentName = primaryParent ? `${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.trim() : undefined;
-
-      const interaction: TimelineInteraction = {
-        id: `int_att_${Date.now()}_${rec.studentId}`,
-        studentId: rec.studentId,
-        studentName: `${student.firstName || ''} ${student.lastName || ''}`.trim() || rec.studentName,
-        parentId: primaryParent?.id,
-        parentName,
-        targetType: primaryParent ? 'parent' : 'student',
-        targetName: parentName || rec.studentName,
-        targetRole: primaryParent ? (primaryParent.relationshipType || 'Родитель') : 'Ученик',
-        occurredAt: `Сегодня, ${timeFormatted}`,
-        createdAt: now.toISOString(),
-        author: params.teacherName || 'Преподаватель',
-        channel: 'other',
-        type: 'follow_up',
-        content: `💬 Комментарий преподавателя по уроку «${currentLesson.groupName}» (${rec.status === 'present' ? 'Был на уроке' : rec.status === 'absent' ? 'Пропуск' : 'Перенос'}): «${rec.note.trim()}»`,
-      };
-      saveInteractionToStorage(interaction);
+    // Sync in-memory INITIAL_STUDENTS
+    const idx = INITIAL_STUDENTS.findIndex((s) => s.id === student.id || eqSet.has(s.id));
+    if (idx !== -1) {
+      INITIAL_STUDENTS[idx] = updatedStudent;
     }
   });
 

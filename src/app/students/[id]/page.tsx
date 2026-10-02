@@ -399,8 +399,14 @@ export default function StudentDetailsPage() {
       const fresh = (isMatch ? e.detail : null) || getStudentById(studentId);
       if (fresh) {
         const normalized = normalizeStudent(fresh);
-        setStudent(normalized);
-        latestStudentRef.current = normalized;
+        const parentIds = (normalized.parents || []).map((p) => p.id);
+        const combined = getCombinedStudentTimeline(studentId, normalized.interactions, parentIds);
+        const updated = {
+          ...normalized,
+          interactions: combined,
+        };
+        setStudent(updated);
+        latestStudentRef.current = updated;
       }
     };
 

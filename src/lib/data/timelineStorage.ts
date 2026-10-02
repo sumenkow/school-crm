@@ -396,6 +396,14 @@ export function getCombinedStudentTimeline(
     for (const eq of getEquivalentIds(pid)) parentIdSets.add(eq);
   }
 
+  const allKnownStudents = typeof window !== 'undefined'
+    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
+    : INITIAL_STUDENTS;
+
+  const currentStudent = allKnownStudents.find((s) => s.id === studentId || studentIdSet.has(s.id));
+  const studentFullName = currentStudent ? `${currentStudent.firstName || ''} ${currentStudent.lastName || ''}`.trim().toLowerCase() : '';
+  const studentReversedName = currentStudent ? `${currentStudent.lastName || ''} ${currentStudent.firstName || ''}`.trim().toLowerCase() : '';
+
   // Base student interactions
   baseInteractions.forEach((i) => {
     if (!isRoutineTimelineNoise(i)) {
@@ -405,26 +413,29 @@ export function getCombinedStudentTimeline(
 
   // Stored interactions matching student, lead, or parents
   stored.forEach((i) => {
-    const isStudentMatch = i.studentId && studentIdSet.has(String(i.studentId));
+    const isStudentIdMatch = i.studentId && studentIdSet.has(String(i.studentId));
+    const isStudentNameMatch = Boolean(
+      studentFullName && i.studentName &&
+      (i.studentName.trim().toLowerCase() === studentFullName || i.studentName.trim().toLowerCase() === studentReversedName)
+    );
     const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
     const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId && studentIdSet.has(String((i as any).convertedStudentId));
 
-    if ((isStudentMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
+    if ((isStudentIdMatch || isStudentNameMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
       list.push(i);
     }
   });
 
-  // Check all known students
-  const allKnownStudents = typeof window !== 'undefined'
-    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
-    : INITIAL_STUDENTS;
-
   allKnownStudents.forEach((st) => {
     if (st.parents?.some((p) => parentIdSets.has(String(p.id))) || studentIdSet.has(String(st.id))) {
       (st.interactions || []).forEach((i) => {
-        const isStudentMatch = i.studentId && studentIdSet.has(String(i.studentId));
+        const isStudentIdMatch = i.studentId && studentIdSet.has(String(i.studentId));
+        const isStudentNameMatch = Boolean(
+          studentFullName && i.studentName &&
+          (i.studentName.trim().toLowerCase() === studentFullName || i.studentName.trim().toLowerCase() === studentReversedName)
+        );
         const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
-        if ((isStudentMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
+        if ((isStudentIdMatch || isStudentNameMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
           list.push(i);
         }
       });
@@ -452,6 +463,10 @@ export function getCombinedParentTimeline(
     for (const eq of getEquivalentIds(cid)) childIdSets.add(eq);
   }
 
+  const allKnownStudents = typeof window !== 'undefined'
+    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
+    : INITIAL_STUDENTS;
+
   stored.forEach((i) => {
     if (
       (i.parentId && parentIdSet.has(String(i.parentId))) ||
@@ -460,10 +475,6 @@ export function getCombinedParentTimeline(
       list.push(i);
     }
   });
-
-  const allKnownStudents = typeof window !== 'undefined'
-    ? [...INITIAL_STUDENTS, ...getStoredStudents()]
-    : INITIAL_STUDENTS;
 
   allKnownStudents.forEach((st) => {
     if (childIdSets.has(st.id) || st.parents?.some((p) => parentIdSet.has(p.id))) {
