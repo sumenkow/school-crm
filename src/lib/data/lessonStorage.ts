@@ -205,11 +205,12 @@ export function recordLessonAttendanceBatch(params: {
 
     console.log('[CRM-DEBUG] recordLessonAttendanceBatch: processing rec', { recStudentId: rec.studentId, recStudentName: rec.studentName, hasNote: !!rec.note?.trim(), allStudentsCount: allStudents.length });
     
-    // Priority 1: Exact ID or equivalence match
-    let student = allStudents.find((s) => s.id === rec.studentId || eqSet.has(s.id));
-    
-    // Priority 2: If ID didn't match, match by name with group disambiguation
-    if (!student && recNameClean) {
+    // Priority 1: name-based search (most reliable — IDs in lessons can be stale/wrong)
+    // This handles the case where lesson.students[].id="1" but in storage id="1"
+    // maps to a different renamed student (e.g. "Иван Смирнов") while "Вася Пупкин"
+    // lives at id="b6666666-..."
+    let student: (typeof allStudents)[0] | undefined;
+    if (recNameClean) {
       const matchingByName = allStudents.filter((s) => {
         const directName = `${s.firstName || ''} ${s.lastName || ''}`.trim().toLowerCase();
         const reversedName = `${s.lastName || ''} ${s.firstName || ''}`.trim().toLowerCase();
@@ -219,17 +220,24 @@ export function recordLessonAttendanceBatch(params: {
       if (matchingByName.length === 1) {
         student = matchingByName[0];
       } else if (matchingByName.length > 1) {
-        // Disambiguate by checking which student is enrolled in this lesson's group
-        const groupMatch = matchingByName.find((s) =>
+        // Disambiguate: prefer the one matching by ID, then by group
+        const idMatch = matchingByName.find((s) => s.id === rec.studentId || eqSet.has(s.id));
+        const groupMatch = !idMatch && matchingByName.find((s) =>
           (s.groups || []).some(
             (g) =>
               (currentLesson.groupId && g.id === currentLesson.groupId) ||
               (currentLesson.groupName && g.name?.toLowerCase() === currentLesson.groupName.toLowerCase())
           )
         );
-        student = groupMatch || matchingByName[0];
+        student = idMatch || groupMatch || matchingByName[0];
       }
     }
+
+    // Priority 2: Fallback to ID / equivalence match (if no name or name gave no result)
+    if (!student) {
+      student = allStudents.find((s) => s.id === rec.studentId || eqSet.has(s.id));
+    }
+
     if (!student) {
       console.warn('[CRM-DEBUG] recordLessonAttendanceBatch: student NOT FOUND for', { recStudentId: rec.studentId, recStudentName: rec.studentName, allStudentIds: allStudents.map(s => s.id) });
       return;
@@ -348,37 +356,53 @@ export function recordLessonAttendanceBatch(params: {
     }
   });
 
-    // Direct Supabase Cloud DB attendance write
-    if (typeof window !== 'undefined') {
-      persistEntityToCloud('attendance', {
-        lessonId: params.lessonId,
-        studentRecords: params.studentRecords,
-      });
+  // Direct Supabase Cloud DB attendance write
+  if (typeof window !== 'undefined') {
+    persistEntityToCloud('attendance', {
+      lessonId: params.lessonId,
+      studentRecords: params.studentRecords,
+    });
 
-      import('@/lib/supabase/client').then(async ({ createClient }) => {
-        try {
-          const supabase = createClient();
-          for (const rec of params.studentRecords) {
-            if (rec.status !== 'not_marked') {
-              await supabase.from('attendance').upsert({
-                lesson_id: params.lessonId,
-                student_id: rec.studentId,
-                status: rec.status,
-                notes: rec.note || null,
-                marked_at: new Date().toISOString(),
-              }, { onConflict: 'lesson_id,student_id' });
-            }
+    import('@/lib/supabase/client').then(async ({ createClient }) => {
+      try {
+        const supabase = createClient();
+        for (const rec of params.studentRecords) {
+          if (rec.status !== 'not_marked') {
+            const recNameClean = (rec.studentName || '').trim().toLowerCase();
+            const matchedStudent = allStudents.find((s) => {
+              const directName = `${s.firstName || ''} ${s.lastName || ''}`.trim().toLowerCase();
+              const reversedName = `${s.lastName || ''} ${s.firstName || ''}`.trim().toLowerCase();
+              return (recNameClean && (directName === recNameClean || reversedName === recNameClean)) || s.id === rec.studentId;
+            });
+            const finalStudentId = matchedStudent?.id || rec.studentId;
+
+            await supabase.from('attendance').upsert({
+              lesson_id: params.lessonId,
+              student_id: finalStudentId,
+              status: rec.status,
+              notes: rec.note || null,
+              marked_at: new Date().toISOString(),
+            }, { onConflict: 'lesson_id,student_id' });
           }
-        } catch {
-          // ignore offline
         }
-      }).catch(() => {});
-    }
+      } catch {
+        // ignore offline
+      }
+    }).catch(() => {});
+  }
 
-  // Automatic lesson deduction for present students
+  // Automatic lesson deduction for present students using resolved student IDs
   const presentStudentIds = params.studentRecords
     .filter((r) => r.status === 'present')
-    .map((r) => r.studentId);
+    .map((r) => {
+      const recNameClean = (r.studentName || '').trim().toLowerCase();
+      const matched = allStudents.find((s) => {
+        const directName = `${s.firstName || ''} ${s.lastName || ''}`.trim().toLowerCase();
+        const reversedName = `${s.lastName || ''} ${s.firstName || ''}`.trim().toLowerCase();
+        return (recNameClean && (directName === recNameClean || reversedName === recNameClean)) || s.id === r.studentId;
+      });
+      return matched?.id || r.studentId;
+    });
 
   if (presentStudentIds.length > 0) {
     processAutomaticLessonBilling({
