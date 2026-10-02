@@ -18,17 +18,17 @@ export function FunnelWidget({
   const router = useRouter();
 
   const stagesData = useMemo(() => {
-    const activeLeads = leads.filter(l => !l.is_deleted && !(l as any).isDeleted);
-    const totalCount = activeLeads.length || 18;
+    const activeLeads = (leads || []).filter(l => !l.is_deleted && !(l as any).isDeleted);
+    const totalCount = activeLeads.length;
 
-    const countNew = activeLeads.filter(l => l.status === 'new').length || 18;
-    const countContacted = activeLeads.filter(l => l.status === 'contacted').length || 9;
-    const countTrialScheduled = activeLeads.filter(l => l.status === 'trial_scheduled' || !!l.trialDate).length || 5;
-    const countTrialHeld = activeLeads.filter(l => l.status === 'trial_held').length || 3;
-    const countThinking = activeLeads.filter(l => l.status === 'thinking').length || 3;
-    const countPaid = activeLeads.filter(l => l.status === 'paid').length || 2;
+    const countNew = activeLeads.filter(l => (l.status as string) === 'new').length;
+    const countContacted = activeLeads.filter(l => (l.status as string) === 'contacted' || (l.status as string) === 'in_progress').length;
+    const countTrialScheduled = activeLeads.filter(l => (l.status as string) === 'trial_scheduled' || !!l.trialDate).length;
+    const countTrialHeld = activeLeads.filter(l => (l.status as string) === 'trial_held' || (l.status as string) === 'trial_completed').length;
+    const countThinking = activeLeads.filter(l => (l.status as string) === 'thinking' || (l.status as string) === 'decision').length;
+    const countPaid = activeLeads.filter(l => (l.status as string) === 'paid' || (l.status as string) === 'enrolled' || (l.status as string) === 'converted').length;
 
-    const maxCount = Math.max(countNew, 18);
+    const maxCount = Math.max(countNew, countContacted, countTrialScheduled, countTrialHeld, countThinking, countPaid, 1);
 
     const stages = [
       { id: 'new', label: 'Новые', count: countNew, color: 'bg-blue-600', dotColor: 'bg-blue-600' },
@@ -39,25 +39,37 @@ export function FunnelWidget({
       { id: 'paid', label: 'Оплачено', count: countPaid, color: 'bg-emerald-500', dotColor: 'bg-emerald-500' },
     ];
 
-    const conversionRate = Math.round((countPaid / maxCount) * 100) || 38;
+    const conversionRate = totalCount > 0 ? Math.round((countPaid / totalCount) * 100) : 0;
+
+    // Calculate leads waiting > 24 hours
+    const now = new Date().getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const waitingCount = activeLeads.filter(l => {
+      const st = l.status as string;
+      if (st !== 'new' && st !== 'contacted') return false;
+      const createdTime = (l as any).created_at || l.createdAt;
+      if (!createdTime) return false;
+      const leadTime = new Date(createdTime).getTime();
+      return !isNaN(leadTime) && (now - leadTime) > dayMs;
+    }).length;
 
     return {
       stages,
       maxCount,
       conversionRate,
-      waitingCount: Math.min(countNew, 4) || 4,
+      waitingCount,
     };
   }, [leads]);
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-[390px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-[280px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between pb-3">
+    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-50">
         <h3 className="font-bold text-slate-900 text-sm">Воронка лидов</h3>
         <button
           type="button"
@@ -68,20 +80,24 @@ export function FunnelWidget({
         </button>
       </div>
 
-      <div className="space-y-2.5 my-auto">
+      <div className="space-y-2 my-2">
         {stagesData.stages.map((stage) => {
-          const widthPercent = Math.max(12, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
+          const widthPercent = Math.max(8, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
 
           return (
             <div
               key={stage.id}
               onClick={() => router.push(`/crm?stage=${stage.id}`)}
-              className="flex items-center gap-3 text-xs cursor-pointer group"
+              className="flex items-center gap-2.5 text-xs cursor-pointer group py-0.5"
             >
               <span className={cn('w-2 h-2 rounded-full shrink-0', stage.dotColor || 'bg-blue-500')}></span>
-              <span className="text-slate-600 w-32 truncate group-hover:text-blue-600 transition-colors">{stage.label}</span>
-              <span className="font-bold text-slate-900 w-6 text-right shrink-0">{stage.count}</span>
-              <div className="flex-1 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <span className="text-slate-600 font-medium text-[11px] w-28 shrink-0 truncate group-hover:text-blue-600 transition-colors">
+                {stage.label}
+              </span>
+              <span className="font-bold text-slate-900 w-5 text-right shrink-0 text-xs">
+                {stage.count}
+              </span>
+              <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-blue-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${widthPercent}%` }}
@@ -95,13 +111,15 @@ export function FunnelWidget({
       {/* Нижняя плашка алерта */}
       <div
         onClick={() => router.push('/crm')}
-        className="mt-4 p-3 rounded-xl bg-rose-50/70 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100/70 transition-colors"
+        className="mt-2 p-2.5 rounded-xl bg-rose-50/80 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100 transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-          <span className="font-medium">{stagesData.waitingCount} лида ждут реакции более 24 часов</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+          <span className="font-medium text-[11px] truncate">
+            {stagesData.waitingCount > 0 ? `${stagesData.waitingCount} лида ждут реакции > 24ч` : 'Все лиды обработаны'}
+          </span>
         </div>
-        <span>→</span>
+        <span className="shrink-0 text-xs font-bold">→</span>
       </div>
     </div>
   );

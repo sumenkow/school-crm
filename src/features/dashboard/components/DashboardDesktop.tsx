@@ -89,6 +89,7 @@ export function DashboardDesktop({
         <WidgetErrorBoundary widgetName="Финансовый обзор" onRetry={actions.refreshAll}>
           <QuickFinanceWidget
             payments={data.payments}
+            students={data.students}
             isLoading={data.isLoading}
           />
         </WidgetErrorBoundary>
@@ -115,6 +116,7 @@ export function DashboardDesktop({
         lessons={data.lessons}
         students={data.students}
         groups={data.groups}
+        payments={data.payments}
         onOpenReport={onOpenReport}
         isLoading={data.isLoading}
       />

@@ -2,71 +2,35 @@
 
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { CreditCard, ArrowRight } from 'lucide-react';
-import { FullPaymentData } from '@/lib/data/mockData';
-import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
-import { parseDateSafe, FULL_MONTH_NAMES_RU } from '../lib/analyticsHelpers';
+import { FullPaymentData, FullStudentData } from '@/lib/data/mockData';
+import { getDashboardFinanceMetrics } from '../lib/analyticsHelpers';
 
 export interface QuickFinanceWidgetProps {
   payments: FullPaymentData[];
+  students?: FullStudentData[];
   isLoading?: boolean;
 }
 
 export function QuickFinanceWidget({
   payments,
+  students = [],
   isLoading = false,
 }: QuickFinanceWidgetProps) {
   const router = useRouter();
-  const rate = getEurRubRate();
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const currentMonthName = FULL_MONTH_NAMES_RU[currentMonth].toLowerCase();
 
   const financeSummary = useMemo(() => {
-    let paidEur = 0;
-    let expectedEur = 0;
-    let overdueEur = 0;
-
-    payments.forEach(p => {
-      const amtEur = parsePaymentAmountEUR(p.amount, rate);
-      const d = parseDateSafe(p.paymentDate);
-
-      if (p.status === 'paid') {
-        if (d && d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
-          paidEur += amtEur;
-        }
-      } else if (p.status === 'expected') {
-        expectedEur += amtEur;
-      } else if (p.status === 'overdue') {
-        overdueEur += amtEur;
-      }
-    });
-
-    const target = 2500;
-    const forecast = Math.round(paidEur + expectedEur * 0.8) || 2180;
-    const goalPercent = Math.min(100, Math.round((forecast / target) * 100)) || 87;
-
-    return {
-      paidEur: Math.round(paidEur * 100) / 100 || 1497.44,
-      paidConfirmed: Math.round((paidEur || 1327.44) * 100) / 100,
-      expectedEur: Math.round(expectedEur) || 320,
-      overdueEur: Math.round(overdueEur) || 150,
-      forecast,
-      target,
-      goalPercent,
-    };
-  }, [payments, rate, currentMonth, currentYear]);
+    return getDashboardFinanceMetrics(payments, students);
+  }, [payments, students]);
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-[260px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-[220px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-50">
+    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-50">
         <h3 className="font-bold text-slate-900 text-sm">Финансы</h3>
         <button
           type="button"
@@ -76,10 +40,11 @@ export function QuickFinanceWidget({
           Открыть финансы →
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+
+      <div className="grid grid-cols-2 gap-3.5 my-2">
         <div className="space-y-2">
           <div>
-            <span className="text-[11px] text-slate-400 block">Выручка за {currentMonthName}</span>
+            <span className="text-[11px] text-slate-400 block capitalize">Выручка за {financeSummary.currentMonthName}</span>
             <span className="text-lg font-bold text-slate-900">
               {financeSummary.paidEur.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
             </span>
@@ -105,6 +70,7 @@ export function QuickFinanceWidget({
             </div>
           </div>
         </div>
+
         <div className="bg-slate-50/70 p-3 rounded-xl flex flex-col justify-between">
           <div>
             <span className="text-[11px] text-slate-400 block">Прогноз месяца</span>
@@ -114,11 +80,11 @@ export function QuickFinanceWidget({
           </div>
           <div>
             <div className="flex justify-between text-[11px] text-slate-500 mb-1">
-              <span>Цель: {financeSummary.target.toLocaleString('ru-RU')} €</span>
+              <span>Цель: {financeSummary.monthlyTarget.toLocaleString('ru-RU')} €</span>
               <span className="font-bold">{financeSummary.goalPercent}%</span>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div className="bg-purple-600 h-full rounded-full" style={{ width: `${financeSummary.goalPercent}%` }}></div>
+              <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${financeSummary.goalPercent}%` }}></div>
             </div>
           </div>
         </div>
@@ -126,3 +92,4 @@ export function QuickFinanceWidget({
     </div>
   );
 }
+

@@ -278,3 +278,152 @@ export function getTopOccupiedGroups(groups: FullGroupData[], limit = 5): GroupO
 
   return items.slice(0, limit);
 }
+
+// ==========================================
+// UNIFIED DASHBOARD METRICS (Single Source of Truth)
+// ==========================================
+
+export interface DashboardFinanceSummary {
+  paidEur: number;
+  paidConfirmed: number;
+  expectedEur: number;
+  overdueEur: number;
+  prevMonthPaidEur: number;
+  deltaPercent: number | null;
+  prevMonthName: string;
+  currentMonthName: string;
+  monthlyTarget: number;
+  forecast: number;
+  goalPercent: number;
+  sparklinePoints: number[];
+}
+
+export function getDashboardFinanceMetrics(
+  payments: FullPaymentData[],
+  students: FullStudentData[],
+  refDate = new Date()
+): DashboardFinanceSummary {
+  const rate = getEurRubRate();
+  const currentMonth = refDate.getMonth();
+  const currentYear = refDate.getFullYear();
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+  let paidEur = 0;
+  let prevMonthPaidEur = 0;
+  let expectedEur = 0;
+  let overdueEur = 0;
+
+  // Monthly buckets for last 6 months sparkline
+  const monthBuckets: { year: number; month: number; sum: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(currentYear, currentMonth - i, 1);
+    monthBuckets.push({ year: d.getFullYear(), month: d.getMonth(), sum: 0 });
+  }
+
+  payments.forEach(p => {
+    const amt = parsePaymentAmountEUR(p.amount, rate);
+    const d = parseDateSafe(p.paymentDate);
+
+    if (p.status === 'paid') {
+      if (d) {
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          paidEur += amt;
+        } else if (d.getMonth() === prevMonth && d.getFullYear() === prevYear) {
+          prevMonthPaidEur += amt;
+        }
+
+        // Add to sparkline buckets
+        monthBuckets.forEach(b => {
+          if (b.month === d.getMonth() && b.year === d.getFullYear()) {
+            b.sum += amt;
+          }
+        });
+      } else {
+        paidEur += amt;
+      }
+    } else if (p.status === 'expected' || (p as any).status === 'pending') {
+      expectedEur += amt;
+    } else if (p.status === 'overdue') {
+      overdueEur += amt;
+    }
+  });
+
+  // Calculate target based on active students
+  const activeCount = students.filter(s => s.status === 'active').length || 1;
+  const monthlyTarget = Math.max(2500, activeCount * 120);
+  const forecast = Math.round(paidEur + expectedEur * 0.8);
+  const goalPercent = monthlyTarget > 0 ? Math.min(100, Math.round((forecast / monthlyTarget) * 100)) : 0;
+
+  // Delta calculation: only if prevMonthPaidEur > 0
+  let deltaPercent: number | null = null;
+  if (prevMonthPaidEur > 0) {
+    deltaPercent = Math.round(((paidEur - prevMonthPaidEur) / prevMonthPaidEur) * 100);
+  }
+
+  const sparklinePoints = monthBuckets.map(b => Math.round(b.sum * 100) / 100);
+
+  return {
+    paidEur: Math.round(paidEur * 100) / 100,
+    paidConfirmed: Math.round(paidEur * 100) / 100,
+    expectedEur: Math.round(expectedEur * 100) / 100,
+    overdueEur: Math.round(overdueEur * 100) / 100,
+    prevMonthPaidEur: Math.round(prevMonthPaidEur * 100) / 100,
+    deltaPercent,
+    prevMonthName: FULL_MONTH_NAMES_RU[prevMonth]?.toLowerCase() || 'предыдущему месяцу',
+    currentMonthName: FULL_MONTH_NAMES_RU[currentMonth]?.toLowerCase() || 'текущий месяц',
+    monthlyTarget,
+    forecast,
+    goalPercent,
+    sparklinePoints,
+  };
+}
+
+export function generateSparklinePath(
+  data: number[],
+  width = 64,
+  height = 32,
+  padding = 4
+): { path: string; lastPoint: { x: number; y: number } | null; hasData: boolean } {
+  if (!data || data.length < 2) {
+    return {
+      path: `M ${padding} ${height - padding} L ${width - padding} ${height - padding}`,
+      lastPoint: null,
+      hasData: false,
+    };
+  }
+
+  const maxVal = Math.max(...data);
+  const minVal = Math.min(...data);
+
+  if (maxVal === 0 && minVal === 0) {
+    return {
+      path: `M ${padding} ${height - padding} L ${width - padding} ${height - padding}`,
+      lastPoint: null,
+      hasData: false,
+    };
+  }
+
+  const range = maxVal - minVal || 1;
+  const stepX = (width - padding * 2) / (data.length - 1);
+
+  const points = data.map((val, idx) => {
+    const x = Math.round((padding + idx * stepX) * 10) / 10;
+    const normalizedY = (val - minVal) / range;
+    const y = Math.round((height - padding - normalizedY * (height - padding * 2)) * 10) / 10;
+    return { x, y };
+  });
+
+  const lastPoint = points[points.length - 1];
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    const midX = (prev.x + curr.x) / 2;
+    path += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
+  }
+
+  return { path, lastPoint, hasData: true };
+}
+
