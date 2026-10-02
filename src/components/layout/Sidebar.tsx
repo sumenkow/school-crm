@@ -334,7 +334,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const drawerContent = (
-    <div className="flex flex-col h-full overflow-hidden transition-all duration-300 relative bg-slate-50 border-r border-slate-200" style={{ width: collapsed ? '76px' : '260px' }}>
+    <div className="flex flex-col h-full transition-all duration-300 relative bg-slate-50 border-r border-slate-200" style={{ width: collapsed ? '76px' : '260px' }}>
       {/* 1. Header (Logo & Collapse) */}
       <div className="flex items-center justify-between p-3.5 flex-shrink-0 h-14 border-b border-slate-100">
         {!collapsed && (
@@ -391,7 +391,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       )}
 
       {/* 3. Middle Body / Navigation List */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-1 space-y-0.5">
+      <div className="flex-1 overflow-y-auto no-scrollbar px-3 py-1 space-y-0.5 min-h-0">
         {navSections.map((section) => (
           <NavAccordionGroup 
             key={section.id} 
@@ -404,10 +404,59 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         ))}
       </div>
 
-      {/* 4. Footer (Pinned to bottom with Lang, Notifications, Avatar) */}
+      {/* 4. Footer (Pinned to bottom with Avatar -> Notifications -> Language) */}
       {!collapsed ? (
-        <div className="mt-auto border-t border-slate-200/80 p-3 flex items-center justify-between flex-shrink-0 bg-slate-50">
-          {/* 4.1 Language selector */}
+        <div className="mt-auto border-t border-slate-200/80 p-3 flex items-center justify-between flex-shrink-0 bg-slate-50 relative z-50">
+          {/* 4.1 User Avatar (Left) */}
+          <div ref={userMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
+              title={displayName}
+            >
+              {avatarLetter}
+            </button>
+
+            {userDropdownOpen && (
+              <div className="absolute left-0 bottom-full mb-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
+                <div
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
+                >
+                  <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    setProfileModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                >
+                  <User size={14} className="text-slate-400" />
+                  <span>Профиль</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
+                >
+                  <LogOut size={14} className="text-rose-500" />
+                  <span>Выйти</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 4.2 Notifications Center (Center) */}
+          <NotificationCenter panelPosition="sidebar" />
+
+          {/* 4.3 Language selector (Right) */}
           <div ref={langMenuRef} className="relative">
             <button
               type="button"
@@ -420,8 +469,8 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </button>
 
             {langMenuOpen && (
-              <div className="absolute left-0 bottom-full mb-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-                {(['ru', 'en', 'es'] as SupportedLanguage[]).map((code) => {
+              <div className="absolute right-0 bottom-full mb-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-[110] animate-in fade-in zoom-in-95 duration-100">
+                {(['ru', 'en', 'de'] as SupportedLanguage[]).map((code) => {
                   const meta = LANGUAGE_LABELS[code];
                   return (
                     <button
@@ -437,66 +486,17 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                       )}
                     >
                       <CountryFlag country={code} className="text-sm" />
-                      <span>{meta.nativeName}</span>
+                      <span>{meta?.nativeName || code.toUpperCase()}</span>
                     </button>
                   );
                 })}
               </div>
             )}
           </div>
-
-          {/* 4.2 Notifications */}
-          <NotificationCenter panelPosition="sidebar" />
-
-          {/* 4.3 User Avatar */}
-          <div ref={userMenuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
-              title={displayName}
-            >
-              {avatarLetter}
-            </button>
-
-            {userDropdownOpen && (
-              <div className="absolute right-0 bottom-full mb-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div
-                  onClick={() => {
-                    setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
-                  }}
-                  className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
-                >
-                  <p className="text-xs font-bold text-slate-900 truncate">{displayName}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{userEmail}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
-                >
-                  <User size={14} className="text-slate-400" />
-                  <span>Профиль</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
-                >
-                  <LogOut size={14} className="text-rose-500" />
-                  <span>Выйти</span>
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       ) : (
-        <div className="mt-auto border-t border-slate-200/80 p-2 flex flex-col items-center gap-2 flex-shrink-0 bg-slate-50">
-          {/* User Avatar */}
+        <div className="mt-auto border-t border-slate-200/80 p-2 flex flex-col items-center gap-2 flex-shrink-0 bg-slate-50 relative z-50">
+          {/* 1. User Avatar */}
           <div ref={userMenuRef} className="relative">
             <button
               type="button"
@@ -508,7 +508,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </button>
 
             {userDropdownOpen && (
-              <div className="absolute left-full bottom-0 ml-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-full bottom-0 ml-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
                 <div
                   onClick={() => {
                     setUserDropdownOpen(false);
@@ -542,10 +542,10 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             )}
           </div>
 
-          {/* Notifications Center */}
+          {/* 2. Notifications Center */}
           <NotificationCenter panelPosition="sidebar" />
 
-          {/* Language selector */}
+          {/* 3. Language selector */}
           <div ref={langMenuRef} className="relative">
             <button
               type="button"
@@ -557,8 +557,8 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             </button>
 
             {langMenuOpen && (
-              <div className="absolute left-full bottom-0 ml-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-                {(['ru', 'en', 'es'] as SupportedLanguage[]).map((code) => {
+              <div className="absolute left-full bottom-0 ml-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-[110] animate-in fade-in zoom-in-95 duration-100">
+                {(['ru', 'en', 'de'] as SupportedLanguage[]).map((code) => {
                   const meta = LANGUAGE_LABELS[code];
                   return (
                     <button
@@ -574,7 +574,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                       )}
                     >
                       <CountryFlag country={code} className="text-sm" />
-                      <span>{meta.nativeName}</span>
+                      <span>{meta?.nativeName || code.toUpperCase()}</span>
                     </button>
                   );
                 })}
@@ -599,7 +599,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   return (
     <>
       {/* Desktop */}
-      <div className="hidden md:block flex-shrink-0 h-full overflow-hidden transition-all duration-300 relative z-30" style={{ width: collapsed ? '76px' : '260px' }}>
+      <div className="hidden md:block flex-shrink-0 h-full transition-all duration-300 relative z-40" style={{ width: collapsed ? '76px' : '260px' }}>
         {drawerContent}
       </div>
 

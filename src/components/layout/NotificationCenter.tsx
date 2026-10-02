@@ -233,8 +233,8 @@ export function NotificationCenter({
       {/* Dropdown Panel (~390px) */}
       {isOpen && (
         <div className={cn(
-          "z-[100] w-80 sm:w-[390px] rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden",
-          isFloating ? "absolute right-0 bottom-10" : "absolute left-0 bottom-full mb-2"
+          "z-[120] w-80 sm:w-[390px] rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden",
+          isFloating ? "absolute right-0 bottom-10" : "absolute left-[-50px] sm:left-[-70px] bottom-full mb-2"
         )}>
           {/* Panel Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 bg-slate-50/90">
