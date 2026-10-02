@@ -170,37 +170,39 @@ export function GroupOccupancyWidget({
               <div
                 key={group.id}
                 onClick={() => onFillGroup(group.id)}
-                className="flex items-center justify-between gap-2 text-xs py-0.5 px-1 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group"
+                className="flex items-center justify-between gap-2 text-xs py-1 hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors cursor-pointer group"
               >
-                {/* Иконка и название */}
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                {/* 1. Компактная иконка + Название на всю свободную ширину */}
+                <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <Users className="w-3.5 h-3.5" />
                   </div>
-                  <span className="font-semibold text-slate-800 truncate text-[11px] group-hover:text-blue-600 transition-colors">{group.name}</span>
+                  <span className="font-semibold text-slate-800 truncate text-xs group-hover:text-blue-600 transition-colors" title={group.name}>
+                    {group.name}
+                  </span>
                 </div>
 
-                {/* Дробь мест */}
-                <span className="font-semibold text-slate-700 shrink-0 text-xs w-8 text-right">
+                {/* 2. Количество мест (1/8) */}
+                <span className="font-semibold text-slate-600 shrink-0 text-xs w-7 text-right">
                   {group.enrolled}/{group.capacity}
                 </span>
 
-                {/* Плотная шкала прогресса без бегунков */}
-                <div className="w-16 sm:w-24 bg-slate-100 h-2 sm:h-2.5 rounded-full overflow-hidden shrink-0">
+                {/* 3. Компактный монолитный прогресс-бар без точек (w-14 = 56px) */}
+                <div className="w-14 bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
                   <div
                     className="bg-blue-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(percentage, 100)}%` }}
                   />
                 </div>
 
-                {/* Кнопка действия */}
+                {/* 4. Кнопка действия */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onFillGroup(group.id);
                   }}
-                  className="text-xs font-medium text-blue-600 bg-blue-50/70 hover:bg-blue-100/70 border border-blue-200/60 px-2.5 py-0.5 rounded-lg shrink-0 transition-colors cursor-pointer"
+                  className="text-[11px] font-medium text-blue-600 bg-blue-50/70 hover:bg-blue-100 border border-blue-200/60 px-2 py-0.5 rounded-lg shrink-0 transition-colors cursor-pointer"
                 >
                   Заполнить
                 </button>
