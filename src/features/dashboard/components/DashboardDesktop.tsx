@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { DashboardStateReturn } from '../hooks/useDashboardState';
 import { HeaderGreeting } from './HeaderGreeting';
 import { KpiGrid } from './KpiGrid';
+import { AnalyticsSection } from './AnalyticsSection';
 import { AttentionFeed } from './AttentionFeed';
 import { TodayScheduleWidget } from './TodayScheduleWidget';
 import { FunnelWidget } from './FunnelWidget';
@@ -50,7 +51,16 @@ export function DashboardDesktop({
         />
       </WidgetErrorBoundary>
 
-      {/* 3. Main Dashboard Grid (2 Columns: 7/12 Focus & Schedule vs 5/12 Funnel & Teachers) */}
+      {/* 3. Analytics Layer (Revenue Chart, Leads Chart, Group Occupancy with Shared Period Controller) */}
+      <AnalyticsSection
+        payments={data.payments}
+        leads={data.leads}
+        groups={data.groups}
+        isLoading={data.isLoading}
+        onRetry={actions.refreshAll}
+      />
+
+      {/* 4. Operational Dashboard Grid (2 Columns: 7/12 Focus & Schedule vs 5/12 Funnel & Teachers) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column (7 cols): Attention Focus & Today's Schedule */}
