@@ -817,6 +817,22 @@ export const INITIAL_COURSES = [
   { id: 'c3', name: 'Олимпиадная математика', description: 'Логика, нестандартные задачи', subject: 'Точные науки', isActive: true },
 ];
 
+export interface FullAdminData {
+  id: string;
+  name: string;
+  role: string;
+  phone?: string;
+  email?: string;
+}
+
+export const ADMIN_MANAGERS: FullAdminData[] = [
+  { id: 'admin1', name: 'Анна Смирнова', role: 'Руководитель отдела продаж' },
+  { id: 'admin2', name: 'Елена Менеджер', role: 'Менеджер по работе с клиентами' },
+  { id: 'admin3', name: 'Анна Администратор', role: 'Старший администратор' },
+  { id: 'admin4', name: 'Ольга Куратор', role: 'Администратор смены' },
+  { id: 'admin5', name: 'Александр Руководитель', role: 'Управляющий филиалом' },
+];
+
 export const INITIAL_TEACHERS: FullTeacherData[] = [
   {
     id: 't1',

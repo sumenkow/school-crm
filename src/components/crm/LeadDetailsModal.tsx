@@ -35,7 +35,8 @@ import {
   Users,
   CheckCircle
 } from 'lucide-react';
-import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData, INITIAL_COURSES, INITIAL_TEACHERS } from '@/lib/data/mockData';
+import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData, INITIAL_COURSES, ADMIN_MANAGERS, FullAdminData } from '@/lib/data/mockData';
+import { TrialBookingCalendar, TrialBookingResult } from './TrialBookingCalendar';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
@@ -1540,86 +1541,25 @@ export function LeadDetailsModal({
                   </div>
                 )}
 
-                {/* 4. Группа и пробный урок */}
+                {/* 4. Группа и пробный урок с интерактивным календарем */}
                 {activeEditSection === 'group_trial' && (
                   <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-2xs animate-in fade-in duration-100">
-                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <Users className="w-4 h-4 text-purple-600" />
-                      4. Выбор подходящей группы и запись на пробный урок
-                    </h4>
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                        Группа для зачисления / пробного урока
-                      </label>
-                      <select
-                        value={selectedGroup}
-                        onChange={(e) => setSelectedGroup(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer font-medium"
-                      >
-                        {displayedGroups.map(g => (
-                          <option key={g.id} value={g.id}>
-                            {g.name} ({g.courseName}) • {g.schedule} • Преподаватель: {g.teacherName} (Мест: {g.students?.length || 0}/{g.capacity || 8})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {currentSelectedGroupObj && (
-                      <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="font-bold text-purple-950">{currentSelectedGroupObj.name}</span>
-                          <span className="text-slate-500 ml-2">Расписание: {currentSelectedGroupObj.schedule}</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[11px]">
-                          {currentSelectedGroupObj.students?.length || 0} / {currentSelectedGroupObj.capacity || 8} уч.
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                          Дата и время пробного занятия
-                        </label>
-                        <input
-                          type="text"
-                          value={trialDateTime}
-                          onChange={(e) => setTrialDateTime(e.target.value)}
-                          placeholder="Чт 18 сен, 16:30"
-                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                          Быстрый слот (на основе расписания)
-                        </label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setTrialDateTime('Ближайший вторник, 18:00')}
-                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
-                          >
-                            Вт 18:00
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setTrialDateTime('Ближайший четверг, 18:45')}
-                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
-                          >
-                            Чт 18:45
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setTrialDateTime('Суббота, 11:00')}
-                            className="px-2.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-purple-50 text-[11px] font-semibold text-slate-700 cursor-pointer"
-                          >
-                            Сб 11:00
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <TrialBookingCalendar
+                      isEmbedded={true}
+                      groups={displayedGroups}
+                      selectedGroupId={selectedGroup}
+                      onSelectGroupId={(id) => setSelectedGroup(id)}
+                      defaultCourse={course || currentSelectedGroupObj?.courseName || 'Английский язык'}
+                      initialDateTimeStr={trialDateTime}
+                      onSave={(res: TrialBookingResult) => {
+                        setTrialDateTime(res.trialDateText);
+                        setCourse(res.directionOrCourse);
+                        if (res.format === 'group' && res.group) {
+                          setSelectedGroup(res.group.id);
+                        }
+                        toast.success(`Выбрано пробное занятие: ${res.trialDateText}`);
+                      }}
+                    />
                   </div>
                 )}
 
@@ -1667,13 +1607,16 @@ export function LeadDetailsModal({
                         <select
                           value={assignedTo}
                           onChange={(e) => setAssignedTo(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                          className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer font-medium"
                         >
-                          {INITIAL_TEACHERS.map(t => (
-                            <option key={t.id} value={t.name}>{t.name}</option>
+                          {ADMIN_MANAGERS.map(adm => (
+                            <option key={adm.id} value={adm.name}>
+                              {adm.name} ({adm.role})
+                            </option>
                           ))}
-                          <option value="Анна Смирнова">Анна Смирнова</option>
-                          <option value="Елена Менеджер">Елена Менеджер</option>
+                          {assignedTo && !ADMIN_MANAGERS.some(adm => adm.name === assignedTo) && (
+                            <option value={assignedTo}>{assignedTo} (Текущий)</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -1791,75 +1734,56 @@ export function LeadDetailsModal({
       {/* Trial Lesson Booking Modal */}
       {isBookingTrial && (
         <div
-          className="fixed inset-0 z-60 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100"
+          className="fixed inset-0 z-60 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-100"
           onClick={() => setIsBookingTrial(false)}
         >
           <div
-            className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-4"
+            className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 p-6 my-8 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
-                <Calendar className="w-4 h-4 text-purple-600" />
-                <span>Запись на пробный урок</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsBookingTrial(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <TrialBookingCalendar
+              groups={displayedGroups}
+              selectedGroupId={selectedGroup}
+              onSelectGroupId={(id) => setSelectedGroup(id)}
+              defaultCourse={course || lead.directionOrCourse || 'Английский язык'}
+              initialDateTimeStr={trialDateTime || lead.trialDate}
+              onCancel={() => setIsBookingTrial(false)}
+              onSave={(res: TrialBookingResult) => {
+                const now = new Date();
+                const dateFormatted = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                  Выберите группу
-                </label>
-                <select
-                  value={selectedGroup}
-                  onChange={(e) => setSelectedGroup(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500 cursor-pointer font-medium"
-                >
-                  {displayedGroups.map(g => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} ({g.courseName}) • {g.schedule} • {g.students?.length || 0}/{g.capacity || 8} уч.
-                    </option>
-                  ))}
-                </select>
-              </div>
+                const trialInteraction: TimelineInteraction = {
+                  id: `int_trial_${Date.now()}`,
+                  occurredAt: `${dateFormatted}, ${timeFormatted}`,
+                  channel: 'other',
+                  type: 'trial',
+                  author: userName || assignedTo || 'Администратор',
+                  content: `Записан(а) на пробный урок: ${res.trialDateText}`,
+                  result: res.format === 'group' ? `Группа: ${res.group?.name || 'Выбранная группа'}` : `Индивидуально: ${res.directionOrCourse}`,
+                };
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 uppercase block mb-1">
-                  Дата и время пробного урока
-                </label>
-                <input
-                  type="text"
-                  value={trialDateTime}
-                  onChange={(e) => setTrialDateTime(e.target.value)}
-                  placeholder="Чт 18 сен, 16:30"
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                />
-              </div>
-            </div>
+                const updatedLead: FullLeadData = {
+                  ...lead,
+                  status: 'trial_scheduled',
+                  trialDate: res.trialDateText,
+                  directionOrCourse: res.directionOrCourse,
+                  interactions: [trialInteraction, ...(Array.isArray(lead.interactions) ? lead.interactions : [])],
+                };
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setIsBookingTrial(false)}
-                className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleBookTrial}
-                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
-              >
-                Сохранить запись
-              </button>
-            </div>
+                saveLeadToStorage(updatedLead);
+                syncLeadToSupabase(updatedLead);
+                onUpdateLead?.(updatedLead);
+                setStatus('trial_scheduled');
+                setTrialDateTime(res.trialDateText);
+                setCourse(res.directionOrCourse);
+                if (res.format === 'group' && res.group) {
+                  setSelectedGroup(res.group.id);
+                }
+                setIsBookingTrial(false);
+                toast.success(`Пробный урок успешно назначен: ${res.trialDateText}`);
+              }}
+            />
           </div>
         </div>
       )}
