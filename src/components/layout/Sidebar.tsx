@@ -263,48 +263,43 @@ const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: a
 };
 
 
-interface SidebarProps {
-  mobileOpen: boolean;
+interface SidebarPanelProps {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  pathname: string;
   onCloseMobile: () => void;
+  onOpenProfile: () => void;
+  onOpenPalette: () => void;
+  role: string;
+  userName: string | null;
+  userEmail: string | null;
+  language: SupportedLanguage;
+  setLanguage: (lang: SupportedLanguage) => void;
+  t: (key: string, fallback?: string) => string;
+  handleLogout: () => void;
+  navSections: NavSection[];
 }
 
-export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { role, userName, userEmail } = useRole();
-  const { language, setLanguage, t } = useLanguage();
-  const [collapsed, setCollapsed] = useState(false);
-  const [profileModalOpen, setProfileModalOpen] = useState(false);
+function SidebarPanel({
+  collapsed,
+  onToggleCollapsed,
+  pathname,
+  onCloseMobile,
+  onOpenProfile,
+  onOpenPalette,
+  userName,
+  userEmail,
+  language,
+  setLanguage,
+  t,
+  handleLogout,
+  navSections,
+}: SidebarPanelProps) {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  
   const userMenuRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) setCollapsed(true);
-      else setCollapsed(false);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Hotkey listener for ⌘K / Ctrl+K
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setPaletteOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -318,23 +313,14 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
-  const navSections = role === 'owner' || role === 'developer' ? getOwnerNav() :
-    role === 'admin' ? getAdminNav() :
-    getTeacherNav();
-
-  const handleToggleCollapsed = () => setCollapsed(!collapsed);
-
   const displayName = userName || userEmail || '?';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
-  const drawerContent = (
-    <div className="flex flex-col h-full transition-all duration-300 relative bg-slate-50 border-r border-slate-200" style={{ width: collapsed ? '76px' : '260px' }}>
+  return (
+    <div
+      className="flex flex-col h-full transition-all duration-300 relative bg-slate-50 border-r border-slate-200 select-none"
+      style={{ width: collapsed ? '76px' : '260px' }}
+    >
       {/* 1. Header (Logo & Collapse) */}
       <div className="flex items-center justify-between p-3.5 flex-shrink-0 h-14 border-b border-slate-100">
         {!collapsed && (
@@ -351,7 +337,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         )}
         <button
           type="button"
-          onClick={handleToggleCollapsed}
+          onClick={onToggleCollapsed}
           className={cn(
             "flex items-center justify-center rounded-lg hover:bg-slate-200 transition-colors cursor-pointer text-slate-500 shrink-0",
             collapsed ? "w-full h-8" : "w-7 h-7"
@@ -367,7 +353,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         <div className="px-3 py-2 flex-shrink-0">
           <button
             type="button"
-            onClick={() => setPaletteOpen(true)}
+            onClick={onOpenPalette}
             className="w-full flex items-center justify-between px-3 py-2 text-xs text-slate-400 bg-white hover:bg-slate-100 border border-slate-200/80 rounded-xl transition-colors cursor-pointer shadow-2xs"
           >
             <span className="flex items-center gap-2">
@@ -381,7 +367,7 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         <div className="px-2 py-2 flex justify-center flex-shrink-0">
           <button
             type="button"
-            onClick={() => setPaletteOpen(true)}
+            onClick={onOpenPalette}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white hover:bg-slate-100 border border-slate-200/80 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer shadow-2xs"
             title="Поиск (⌘K)"
           >
@@ -404,26 +390,28 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         ))}
       </div>
 
-      {/* 4. Footer (Pinned to bottom with Avatar -> Notifications -> Language) */}
+      {/* 4. Footer (Pinned to bottom: Avatar (Left) -> Notifications (Center) -> Language (Right)) */}
       {!collapsed ? (
         <div className="mt-auto border-t border-slate-200/80 p-3 flex items-center justify-between flex-shrink-0 bg-slate-50 relative z-50">
           {/* 4.1 User Avatar (Left) */}
           <div ref={userMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              onClick={() => setUserDropdownOpen((prev) => !prev)}
               className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
               title={displayName}
+              aria-label="Профиль пользователя"
             >
               {avatarLetter}
             </button>
 
             {userDropdownOpen && (
-              <div className="absolute left-0 bottom-full mb-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-0 bottom-full mb-2 rounded-2xl shadow-2xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
                 <div
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
+                    onOpenProfile();
                   }}
                   className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
                 >
@@ -432,19 +420,24 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
+                    onOpenProfile();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <User size={14} className="text-slate-400" />
                   <span>Профиль</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUserDropdownOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium transition-colors"
                 >
                   <LogOut size={14} className="text-rose-500" />
                   <span>Выйти</span>
@@ -460,23 +453,25 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           <div ref={langMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              onClick={() => setLangMenuOpen((prev) => !prev)}
               className="text-xs font-medium text-slate-600 hover:bg-slate-200/70 px-2 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1 cursor-pointer transition-colors bg-white shadow-2xs"
               title="Сменить язык"
+              aria-label="Сменить язык"
             >
               <CountryFlag country={language} className="text-sm" />
               <span className="text-[10px] text-slate-400">▾</span>
             </button>
 
             {langMenuOpen && (
-              <div className="absolute right-0 bottom-full mb-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-[110] animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 bottom-full mb-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-2xl z-[110] animate-in fade-in zoom-in-95 duration-100">
                 {(['ru', 'en', 'de'] as SupportedLanguage[]).map((code) => {
                   const meta = LANGUAGE_LABELS[code];
                   return (
                     <button
                       key={code}
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setLanguage(code);
                         setLangMenuOpen(false);
                       }}
@@ -500,19 +495,21 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           <div ref={userMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+              onClick={() => setUserDropdownOpen((prev) => !prev)}
               className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-blue-200 transition-all shadow-xs"
               title={displayName}
+              aria-label="Профиль пользователя"
             >
               {avatarLetter}
             </button>
 
             {userDropdownOpen && (
-              <div className="absolute left-full bottom-0 ml-2 rounded-2xl shadow-xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-full bottom-0 ml-2 rounded-2xl shadow-2xl border border-slate-200 bg-white min-w-[220px] p-2 z-[110] animate-in fade-in zoom-in-95 duration-100">
                 <div
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
+                    onOpenProfile();
                   }}
                   className="cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-colors border-b border-slate-100 mb-1"
                 >
@@ -521,19 +518,24 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setUserDropdownOpen(false);
-                    setProfileModalOpen(true);
+                    onOpenProfile();
                   }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer"
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <User size={14} className="text-slate-400" />
                   <span>Профиль</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUserDropdownOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer font-medium transition-colors"
                 >
                   <LogOut size={14} className="text-rose-500" />
                   <span>Выйти</span>
@@ -549,22 +551,24 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           <div ref={langMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              onClick={() => setLangMenuOpen((prev) => !prev)}
               className="text-xs font-medium text-slate-600 hover:bg-slate-200/70 p-1.5 rounded-lg border border-slate-200 flex items-center justify-center cursor-pointer transition-colors bg-white shadow-2xs"
               title="Сменить язык"
+              aria-label="Сменить язык"
             >
               <CountryFlag country={language} className="text-sm" />
             </button>
 
             {langMenuOpen && (
-              <div className="absolute left-full bottom-0 ml-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-[110] animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-full bottom-0 ml-2 w-36 rounded-xl border border-slate-200 bg-white p-1 shadow-2xl z-[110] animate-in fade-in zoom-in-95 duration-100">
                 {(['ru', 'en', 'de'] as SupportedLanguage[]).map((code) => {
                   const meta = LANGUAGE_LABELS[code];
                   return (
                     <button
                       key={code}
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setLanguage(code);
                         setLangMenuOpen(false);
                       }}
@@ -583,24 +587,77 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </div>
         </div>
       )}
-
-      {/* Global Modals */}
-      <UserProfileModal
-        isOpen={profileModalOpen}
-        onClose={() => setProfileModalOpen(false)}
-      />
-      <CommandPalette
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-      />
     </div>
   );
+}
+
+interface SidebarProps {
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+}
+
+export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
+  const pathname = usePathname();
+  const { role, userName, userEmail } = useRole();
+  const { language, setLanguage, t } = useLanguage();
+  const [collapsed, setCollapsed] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) setCollapsed(true);
+      else setCollapsed(false);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Hotkey listener for ⌘K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const navSections = role === 'owner' || role === 'developer' ? getOwnerNav() :
+    role === 'admin' ? getAdminNav() :
+    getTeacherNav();
+
+  const handleToggleCollapsed = () => setCollapsed(!collapsed);
 
   return (
     <>
       {/* Desktop */}
       <div className="hidden md:block flex-shrink-0 h-full transition-all duration-300 relative z-40" style={{ width: collapsed ? '76px' : '260px' }}>
-        {drawerContent}
+        <SidebarPanel
+          collapsed={collapsed}
+          onToggleCollapsed={handleToggleCollapsed}
+          pathname={pathname}
+          onCloseMobile={onCloseMobile}
+          onOpenProfile={() => setProfileModalOpen(true)}
+          onOpenPalette={() => setPaletteOpen(true)}
+          role={role}
+          userName={userName}
+          userEmail={userEmail}
+          language={language}
+          setLanguage={setLanguage}
+          t={t}
+          handleLogout={handleLogout}
+          navSections={navSections}
+        />
       </div>
 
       {/* Mobile */}
@@ -611,13 +668,38 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           boxShadow: mobileOpen ? 'var(--md-elevation-3)' : 'none',
         }}
       >
-        {drawerContent}
+        <SidebarPanel
+          collapsed={false}
+          onToggleCollapsed={handleToggleCollapsed}
+          pathname={pathname}
+          onCloseMobile={onCloseMobile}
+          onOpenProfile={() => setProfileModalOpen(true)}
+          onOpenPalette={() => setPaletteOpen(true)}
+          role={role}
+          userName={userName}
+          userEmail={userEmail}
+          language={language}
+          setLanguage={setLanguage}
+          t={t}
+          handleLogout={handleLogout}
+          navSections={navSections}
+        />
       </div>
       
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onCloseMobile} />
       )}
+
+      {/* Global Modals (rendered ONCE at top-level) */}
+      <UserProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
     </>
   );
 }
