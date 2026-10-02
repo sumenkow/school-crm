@@ -10,24 +10,23 @@ import {
   ExternalLink,
   Check,
   Copy,
-  User,
   Users,
-  Lock,
   MessageSquare,
   History,
   Trash2,
   FileText,
-  CheckCircle2,
   AlertTriangle,
   Sparkles,
   ChevronDown,
+  ChevronRight,
   Mail,
   Send,
   BarChart2,
   RotateCcw,
   CalendarDays,
   XCircle,
-  ArrowRight,
+  Paperclip,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   FullLessonData,
@@ -40,6 +39,7 @@ import {
   deleteLessonFromStorage,
   recordLessonAttendanceBatch,
 } from '@/lib/data/lessonStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -94,7 +94,7 @@ function formatFullDateWithWeekday(dateStr: string): string {
     const day = d.getDate();
     const month = d.toLocaleDateString('ru-RU', { month: 'long' });
     const year = d.getFullYear();
-    return `${capitalizedWeekday}, ${day} ${month} ${year} г.`;
+    return `${capitalizedWeekday}, ${day} ${month} ${year}`;
   } catch {
     return dateStr;
   }
@@ -134,6 +134,11 @@ export function LessonModal({
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('Отмена по запросу');
+
+  // Communication confirmation modals
+  const [showEmailConfirmModal, setShowEmailConfirmModal] = useState(false);
+  const [showTgConfirmModal, setShowTgConfirmModal] = useState(false);
+  const [showAttendanceReportConfirmModal, setShowAttendanceReportConfirmModal] = useState(false);
 
   // Editable Form Fields
   const [topic, setTopic] = useState('');
@@ -184,6 +189,9 @@ export function LessonModal({
       setActiveTab(initialTab || 'main');
       setIsConfirmingDelete(false);
       setShowCancelConfirmModal(false);
+      setShowEmailConfirmModal(false);
+      setShowTgConfirmModal(false);
+      setShowAttendanceReportConfirmModal(false);
       setIsStatusDropdownOpen(false);
       setCurrentStatus(lesson.status || 'scheduled');
       setTopic(lesson.topic || '');
@@ -192,7 +200,7 @@ export function LessonModal({
       setGeneralLessonNoteVisibility(lesson.generalLessonNoteVisibility || 'parents');
       setNextLessonRecommendation(lesson.nextLessonRecommendation || '');
       setNextLessonRecommendationVisibility(lesson.nextLessonRecommendationVisibility || 'parents');
-      setZoomUrl(lesson.onlineMeetingUrl || 'https://zoom.us/j/teacher-room-english');
+      setZoomUrl(lesson.onlineMeetingUrl || 'https://zoom.us/j/123456789');
       setDate(lesson.date || new Date().toISOString().slice(0, 10));
       setStartTime(lesson.startTime || '18:45');
       setEndTime(lesson.endTime || '20:15');
@@ -217,14 +225,17 @@ export function LessonModal({
     }
   }, [isOpen, lesson, initialTab]);
 
-  // Teacher change handler
-  const handleTeacherChange = (id: string) => {
-    setTeacherId(id);
-    const found = INITIAL_TEACHERS.find((t) => t.id === id);
-    if (found) {
-      setTeacherName(found.name);
-    }
-  };
+  // Load group details for extra metadata (age, level, capacity)
+  const groupMetadata = useMemo(() => {
+    if (!lesson) return null;
+    const groups = getStoredGroups();
+    const g = groups.find((grp) => grp.id === lesson.groupId || grp.name === lesson.groupName);
+    return {
+      level: g?.level || 'B1',
+      ageRange: '13–16 лет',
+      totalEnrolled: lesson.students?.length || g?.students?.length || 7,
+    };
+  }, [lesson]);
 
   // Attendance handlers
   const handleMarkAllPresent = useCallback(() => {
@@ -271,16 +282,38 @@ export function LessonModal({
       navigator.clipboard.writeText(zoomUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-      toast.success('Ссылка на Zoom скопирована');
+      toast.success('Ссылка на занятие скопирована');
     }
   };
 
-  // Lifecycle Quick Actions
+  // Lifecycle Status Transitions
   const handleConductLesson = () => {
     setCurrentStatus('completed');
     setActiveTab('attendance');
     setIsStatusDropdownOpen(false);
-    toast.success('Статус изменен на "Проведено". Заполните посещаемость');
+
+    // Save immediate transition to storage
+    if (lesson) {
+      const updated: FullLessonData = {
+        ...lesson,
+        status: 'completed',
+        timelineEvents: [
+          ...(lesson.timelineEvents || []),
+          {
+            id: `ev_${Date.now()}_conduct`,
+            timestamp: `${new Date().toLocaleDateString('ru-RU')}, ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+            author: teacherName || 'Преподаватель',
+            role: 'Преподаватель',
+            type: 'completed',
+            comment: 'Статус занятия изменен на «Проведено». Открыт журнал посещаемости.',
+          },
+        ],
+      };
+      saveLessonToStorage(updated);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
+    }
+
+    toast.success('Статус изменен на "Проведено". Отметьте присутствующих');
   };
 
   const handleFocusReschedule = () => {
@@ -304,22 +337,21 @@ export function LessonModal({
     toast.success('Занятие восстановлено со статусом "Запланировано"');
   };
 
-  // Quick Action Buttons
-  const handleSendHomeworkEmail = () => {
-    if (!homework.trim()) {
-      toast.info('Сначала заполните поле "Домашнее задание"');
-      return;
-    }
-    toast.success(`Домашнее задание отправлено родителям (${attendance.length} писем)`);
+  // Quick Action Handlers
+  const handleSendHomeworkConfirm = () => {
+    setShowEmailConfirmModal(false);
+    toast.success(`Домашнее задание успешно отправлено родителям (${attendance.length} писем)`);
   };
 
-  const handleSendTelegramReminder = () => {
+  const handleSendTelegramConfirm = () => {
+    setShowTgConfirmModal(false);
     toast.success('Напоминание о занятии отправлено в Telegram-чат группы');
   };
 
-  const handleSendAttendanceReport = () => {
+  const handleSendAttendanceReportConfirm = () => {
+    setShowAttendanceReportConfirmModal(false);
     const present = attendance.filter((a) => a.status === 'present').length;
-    toast.success(`Отчет о посещаемости (${present}/${attendance.length}) отправлен родителям`);
+    toast.success(`Результаты посещаемости (${present}/${attendance.length}) отправлены родителям`);
   };
 
   // Save lesson
@@ -381,24 +413,6 @@ export function LessonModal({
           type: 'rescheduled',
           comment: `Занятие перенесено с ${lesson.date} (${lesson.startTime}–${lesson.endTime}) на ${date} (${startTime}–${endTime})`,
         });
-      } else if (newStatus === 'completed' && lesson.status !== 'completed') {
-        updatedEvents.push({
-          id: `ev_${Date.now()}_conduct`,
-          timestamp: timestampStr,
-          author: teacherName || 'Преподаватель',
-          role: 'Преподаватель',
-          type: 'completed',
-          comment: `Урок проведен. Присутствовали: ${attendance.filter((a) => a.status === 'present').length}/${attendance.length}`,
-        });
-      } else if (newStatus === 'cancelled' && lesson.status !== 'cancelled') {
-        updatedEvents.push({
-          id: `ev_${Date.now()}_cancel`,
-          timestamp: timestampStr,
-          author: teacherName || 'Администратор',
-          role: 'Администратор',
-          type: 'cancelled',
-          comment: `Занятие отменено (${cancelReason})`,
-        });
       } else {
         updatedEvents.push({
           id: `ev_${Date.now()}`,
@@ -446,7 +460,6 @@ export function LessonModal({
         nextLessonRecommendationVisibility,
         notes: generalLessonNote.trim() || lesson.notes,
         onlineMeetingUrl: zoomUrl.trim() || undefined,
-        room: 'Онлайн (Zoom)',
         status: newStatus,
         rescheduleInfo,
         timelineEvents: updatedEvents,
@@ -599,7 +612,8 @@ export function LessonModal({
   if (!isOpen || !lesson || !mounted) return null;
 
   const presentCount = attendance.filter((a) => a.status === 'present').length;
-  const absentCount = attendance.filter((a) => a.status === 'absent' || a.status === 'excused').length;
+  const absentCount = attendance.filter((a) => a.status === 'absent').length;
+  const excusedCount = attendance.filter((a) => a.status === 'excused').length;
   const totalStudents = attendance.length;
   const attendancePct = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
   const feedbackCount = attendance.filter((a) => a.feedback && a.feedback.trim().length > 0).length;
@@ -609,75 +623,80 @@ export function LessonModal({
   const statusConfig = {
     completed: {
       label: 'Проведено',
-      icon: Check,
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-400/20',
+      icon: CheckCircle2,
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       dotColor: 'bg-emerald-500',
     },
     scheduled: {
       label: 'Запланировано',
       icon: CalendarDays,
-      color: 'bg-blue-50 text-blue-700 border-blue-200 ring-blue-400/20',
+      color: 'bg-blue-50 text-blue-700 border-blue-200',
       dotColor: 'bg-blue-500',
     },
     rescheduled: {
       label: 'Перенесено',
       icon: RotateCcw,
-      color: 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-400/20',
+      color: 'bg-amber-50 text-amber-700 border-amber-200',
       dotColor: 'bg-amber-500',
     },
     cancelled: {
       label: 'Отменено',
       icon: XCircle,
-      color: 'bg-rose-50 text-rose-700 border-rose-200 ring-rose-400/20',
+      color: 'bg-rose-50 text-rose-700 border-rose-200',
       dotColor: 'bg-rose-500',
     },
   }[currentStatus || 'scheduled'];
 
+  // Donut chart calculations
+  const circumference = 2 * Math.PI * 26;
+  const presentOffset = circumference * (1 - (totalStudents > 0 ? presentCount / totalStudents : 0));
+  const absentOffset = circumference * (1 - (totalStudents > 0 ? (presentCount + absentCount) / totalStudents : 0));
+
   return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      {/* Background click overlay */}
+      {/* Background overlay */}
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Main Centered Modal Window */}
+      {/* Main Modal Card Container */}
       <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] flex flex-col overflow-hidden z-10 border border-slate-100 animate-in zoom-in-95 duration-150"
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden z-10 border border-slate-100 animate-in zoom-in-95 duration-150"
         role="dialog"
         aria-modal="true"
       >
-        {/* ================= 1. HEADER ================= */}
-        <div className="px-6 pt-5 pb-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
-          <div className="flex items-start justify-between gap-3">
-            {/* Left: Title, Subtitle, Status, Date/Time */}
-            <div className="min-w-0 flex-1 space-y-2">
+        {/* ================= 1. COMPACT TARGET HEADER ================= */}
+        <div className="px-6 pt-5 pb-4 border-b border-slate-100 bg-white shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            {/* Left Area: Title, Course, Status + Teacher, Date/Time */}
+            <div className="min-w-0 flex-1 space-y-2.5">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight truncate">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight leading-none truncate">
                   {lesson.groupName}
                 </h2>
-                <p className="text-xs font-semibold text-slate-500 truncate">
-                  {lesson.courseName || 'Основной курс'}
+                <p className="text-xs font-medium text-slate-500 mt-1">
+                  {lesson.courseName || 'Английский язык'}
                 </p>
               </div>
 
-              {/* Status and Action Row */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {/* Status Dropdown */}
+              {/* Status and Teacher Badge Row */}
+              <div className="flex items-center gap-3.5 flex-wrap">
+                {/* Interactive Status Pill */}
                 <div className="relative" ref={statusDropdownRef}>
                   <button
                     type="button"
                     onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
                     className={cn(
-                      'px-2.5 py-1 rounded-full text-xs font-bold border shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer hover:shadow-xs',
+                      'px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer hover:shadow-xs',
                       statusConfig.color
                     )}
                   >
-                    <span className={cn('w-2 h-2 rounded-full', statusConfig.dotColor)} />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span>{statusConfig.label}</span>
                     <ChevronDown className="w-3.5 h-3.5 opacity-60 ml-0.5" />
                   </button>
 
                   {/* Status Dropdown Menu */}
                   {isStatusDropdownOpen && (
-                    <div className="absolute left-0 top-full mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute left-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
                       <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         Управление статусом
                       </div>
@@ -690,7 +709,7 @@ export function LessonModal({
                             className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <Check className="w-4 h-4 text-emerald-600" />
-                            <span>Провести занятие</span>
+                            <span>Проведено</span>
                           </button>
 
                           <button
@@ -699,7 +718,7 @@ export function LessonModal({
                             className="w-full text-left px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <RotateCcw className="w-4 h-4 text-amber-600" />
-                            <span>Перенести занятие</span>
+                            <span>Перенести</span>
                           </button>
 
                           <div className="my-1 border-t border-slate-100" />
@@ -713,7 +732,7 @@ export function LessonModal({
                             className="w-full text-left px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
                           >
                             <XCircle className="w-4 h-4 text-rose-600" />
-                            <span>Отменить занятие</span>
+                            <span>Отменить</span>
                           </button>
                         </>
                       )}
@@ -721,7 +740,7 @@ export function LessonModal({
                       {currentStatus === 'completed' && (
                         <>
                           <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50 border-y border-slate-100">
-                            <span className="font-semibold text-emerald-700 block">Занятие проведено</span>
+                            <span className="font-semibold text-emerald-700 block">Занятие завершено</span>
                             <span className="text-[11px] text-slate-500">
                               Проведенные занятия нельзя отменять или переносить.
                             </span>
@@ -748,7 +767,7 @@ export function LessonModal({
                           className="w-full text-left px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 flex items-center gap-2 cursor-pointer transition-colors"
                         >
                           <RotateCcw className="w-4 h-4 text-blue-600" />
-                          <span>Восстановить занятие</span>
+                          <span>Восстановить в расписание</span>
                         </button>
                       )}
 
@@ -776,67 +795,156 @@ export function LessonModal({
                   )}
                 </div>
 
-                {/* Date & Time Text */}
-                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    {fullDateText}
-                  </span>
-                  <span>·</span>
-                  <span className="flex items-center gap-1 font-semibold text-slate-800">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    {startTime}–{endTime} {durationText && `(${durationText})`}
-                  </span>
+                {/* Single Teacher Profile Badge */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+                    {teacherName
+                      ? teacherName
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                      : 'МИ'}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold text-slate-900 text-xs leading-tight">
+                      {teacherName || 'Мария Иванова'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 leading-tight">
+                      Ведущий преподаватель
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Date & Time Row */}
+              <div className="flex items-center gap-3 text-xs font-medium text-slate-600 pt-0.5">
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  {fullDateText}
+                </span>
+                <span>·</span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  {startTime} – {endTime} {durationText && `(${durationText})`}
+                </span>
               </div>
             </div>
 
-            {/* Right: Single Teacher Badge & Close Button */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-700 shadow-2xs">
-                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">
-                  {teacherName
-                    ? teacherName
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                    : 'П'}
-                </div>
-                <div className="flex flex-col text-left">
-                  <span className="font-bold text-slate-900 leading-tight">
-                    {teacherName || 'Преподаватель'}
-                  </span>
-                  <span className="text-[10px] text-slate-400 leading-tight">
-                    Ведущий преподаватель
-                  </span>
-                </div>
-              </div>
-
+            {/* Right Area: Close Button + Compact Attendance Donut Card */}
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
-                title="Закрыть (Esc)"
+                className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                title="Закрыть"
               >
                 <X className="w-5 h-5" />
               </button>
+
+              {/* Compact Attendance Card */}
+              <div className="bg-white rounded-xl border border-slate-100 p-2.5 shadow-2xs w-60">
+                <div className="text-[11px] font-bold text-slate-800 mb-1.5">Посещаемость</div>
+                <div className="flex items-center justify-between gap-2.5">
+                  {/* Circular Donut Chart */}
+                  <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+                    <svg className="w-14 h-14 transform -rotate-90" viewBox="0 0 64 64">
+                      <circle
+                        cx="32"
+                        cy="32"
+                        r="26"
+                        stroke="#f1f5f9"
+                        strokeWidth="5.5"
+                        fill="transparent"
+                      />
+                      {totalStudents > 0 && (
+                        <>
+                          <circle
+                            cx="32"
+                            cy="32"
+                            r="26"
+                            stroke="#10b981"
+                            strokeWidth="5.5"
+                            fill="transparent"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={presentOffset}
+                            strokeLinecap="round"
+                            className="transition-all duration-500"
+                          />
+                          {absentCount > 0 && (
+                            <circle
+                              cx="32"
+                              cy="32"
+                              r="26"
+                              stroke="#f43f5e"
+                              strokeWidth="5.5"
+                              fill="transparent"
+                              strokeDasharray={circumference}
+                              strokeDashoffset={absentOffset}
+                              className="transition-all duration-500"
+                            />
+                          )}
+                        </>
+                      )}
+                    </svg>
+                    <span className="absolute text-xs font-bold text-slate-800">
+                      {attendancePct}%
+                    </span>
+                  </div>
+
+                  {/* Legend stats */}
+                  <div className="space-y-0.5 text-[11px] flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        Были
+                      </span>
+                      <span className="font-bold text-slate-900">{presentCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                        Пропуск
+                      </span>
+                      <span className="font-bold text-slate-900">{absentCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-slate-600">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                        Болезнь
+                      </span>
+                      <span className="font-bold text-slate-900">{excusedCount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom link */}
+                <div className="mt-1.5 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('attendance')}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                  >
+                    Открыть журнал →
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* ================= 2. 4-TAB NAVIGATION ================= */}
+        {/* ================= 2. TAB NAVIGATION ================= */}
         <div className="px-6 border-b border-slate-200 bg-white flex items-center gap-6 shrink-0 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('main')}
             className={cn(
-              'py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
+              'py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
               activeTab === 'main'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
             )}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className="w-4 h-4" />
             <span>Основное</span>
           </button>
 
@@ -844,13 +952,13 @@ export function LessonModal({
             type="button"
             onClick={() => setActiveTab('attendance')}
             className={cn(
-              'py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
+              'py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
               activeTab === 'attendance'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
             )}
           >
-            <Users className="w-3.5 h-3.5" />
+            <Users className="w-4 h-4" />
             <span>Посещаемость</span>
             <span
               className={cn(
@@ -868,13 +976,13 @@ export function LessonModal({
             type="button"
             onClick={() => setActiveTab('feedback')}
             className={cn(
-              'py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
+              'py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
               activeTab === 'feedback'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
             )}
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <MessageSquare className="w-4 h-4" />
             <span>Заметки</span>
             {feedbackCount > 0 && (
               <span
@@ -894,13 +1002,13 @@ export function LessonModal({
             type="button"
             onClick={() => setActiveTab('history')}
             className={cn(
-              'py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
+              'py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 shrink-0',
               activeTab === 'history'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
             )}
           >
-            <History className="w-3.5 h-3.5" />
+            <History className="w-4 h-4" />
             <span>История</span>
             <span
               className={cn(
@@ -916,112 +1024,82 @@ export function LessonModal({
         </div>
 
         {/* ================= 3. TAB CONTENT ================= */}
-        <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-5 bg-white">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-4 bg-white">
           {/* ----------------- TAB 1: ОСНОВНОЕ ----------------- */}
           {activeTab === 'main' && (
-            <div className="space-y-4 animate-in fade-in duration-100">
-              {/* Row 1: Group & Zoom Link */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="space-y-3.5 animate-in fade-in duration-100">
+              {/* Row 1: Учебная группа & Ссылка на занятие */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Column 1: Group */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                    Учебная группа <span className="text-rose-500">*</span>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Учебная группа *
                   </label>
-                  <div className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-slate-50 flex items-center justify-between shadow-2xs">
+                  <div className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 bg-white flex items-center justify-between shadow-2xs">
                     <span className="truncate">{lesson.groupName}</span>
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">
-                      {lesson.courseName || 'Курс'}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {lesson.courseName || 'Английский язык'}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
                   </div>
+                  <p className="text-[11px] text-slate-500 mt-1 pl-1">
+                    {groupMetadata?.totalEnrolled || 7} учеников · Возраст: {groupMetadata?.ageRange} · Уровень: {groupMetadata?.level}
+                  </p>
                 </div>
 
+                {/* Column 2: Link */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                    Преподаватель <span className="text-rose-500">*</span>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    Ссылка на занятие
                   </label>
-                  <select
-                    value={teacherId}
-                    onChange={(e) => handleTeacherChange(e.target.value)}
-                    disabled={!canEditSchedule || currentStatus === 'completed'}
-                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500 cursor-pointer shadow-2xs"
-                  >
-                    {INITIAL_TEACHERS.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.role || 'Преподаватель'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Row 2: Zoom Meeting Link with copy & open actions */}
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                  Ссылка на занятие (Zoom)
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
+                  <div className="relative flex items-center">
                     <input
                       type="url"
                       value={zoomUrl}
                       onChange={(e) => setZoomUrl(e.target.value)}
                       placeholder="https://zoom.us/j/..."
-                      className="w-full text-xs font-medium border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 bg-slate-50/50 focus:bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 shadow-2xs"
+                      className="w-full text-xs font-medium border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 shadow-2xs"
                     />
-                    <Video className="w-3.5 h-3.5 text-indigo-500 absolute left-2.5 top-3" />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    className="px-3 py-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                    title="Скопировать ссылку"
-                  >
-                    {copiedLink ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-slate-500" />
-                    )}
-                    <span>{copiedLink ? 'Скопировано' : 'Скопировать'}</span>
-                  </button>
-
-                  {zoomUrl && (
-                    <a
-                      href={zoomUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
+                      title="Скопировать ссылку"
                     >
-                      <span>Войти</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
+                      {copiedLink ? (
+                        <Check className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Row 3: Date, Start Time, End Time & Helper Banner */}
-              <div
-                className={cn(
-                  'rounded-xl transition-all space-y-2',
-                  highlightReschedule && 'bg-blue-50/70 border border-blue-200 p-3.5 ring-2 ring-blue-400/30'
-                )}
-              >
+              {/* Row 2: Дата, Начало, Окончание */}
+              <div className="space-y-1.5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                      Дата занятия <span className="text-rose-500">*</span>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Дата занятия *
                     </label>
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      disabled={!canEditSchedule || currentStatus === 'completed'}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
-                    />
+                    <div className="relative">
+                      <input
+                        ref={dateInputRef}
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        disabled={!canEditSchedule || currentStatus === 'completed'}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
+                      />
+                    </div>
                   </div>
+
                   <div>
-                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                      Начало <span className="text-rose-500">*</span>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Время начала *
                     </label>
                     <input
                       type="time"
@@ -1031,9 +1109,10 @@ export function LessonModal({
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
                     />
                   </div>
+
                   <div>
-                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                      Окончание <span className="text-rose-500">*</span>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Время окончания *
                     </label>
                     <input
                       type="time"
@@ -1045,138 +1124,123 @@ export function LessonModal({
                   </div>
                 </div>
 
-                {/* Helper Banner */}
-                <p className="text-[11px] text-slate-500 italic flex items-center gap-1.5 pt-1">
-                  <span>ℹ</span>
+                {/* Info banner */}
+                <div className="flex items-start gap-2 text-xs text-slate-600 pt-1">
+                  <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    i
+                  </div>
                   <span>
-                    При изменении даты или времени занятие будет перенесено в календаре. Это не изменяет регулярное расписание группы.
+                    При изменении даты или времени занятие будет перенесено в календарь. Это не изменяет расписание группы.
                   </span>
-                </p>
+                </div>
               </div>
 
-              {/* Row 4: Topic */}
+              {/* Row 3: Тема занятия */}
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
                   Тема занятия
                 </label>
                 <input
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="Например: Unit 1: Present Perfect vs Past Simple in conversation"
+                  placeholder="Present Perfect Continuous vs Past Simple in practice"
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white placeholder:text-slate-400 shadow-2xs"
                 />
               </div>
 
-              {/* Row 5: Homework */}
+              {/* Row 4: Домашнее задание */}
               <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
                   Домашнее задание
                 </label>
-                <textarea
-                  rows={2}
-                  value={homework}
-                  onChange={(e) => setHomework(e.target.value)}
-                  placeholder="Workbook p. 12-14, выучить 10 неправильных глаголов..."
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white placeholder:text-slate-400 leading-relaxed shadow-2xs"
-                />
-              </div>
-
-              {/* Attendance Summary Box */}
-              <div
-                className={cn(
-                  'p-4 rounded-xl border transition-all flex items-center justify-between gap-4',
-                  currentStatus === 'completed'
-                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
-                    : 'bg-slate-50/90 border-slate-200 text-slate-800'
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={cn(
-                      'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border',
-                      currentStatus === 'completed'
-                        ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
-                        : 'bg-slate-200 text-slate-600 border-slate-300'
-                    )}
+                <div className="relative">
+                  <textarea
+                    rows={2}
+                    value={homework}
+                    onChange={(e) => setHomework(e.target.value)}
+                    placeholder="Workbook p. 18–20, устное эссе"
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 pr-10 text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white placeholder:text-slate-400 leading-relaxed shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toast.info('Прикрепление файлов доступно')}
+                    className="absolute right-3 bottom-3 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                    title="Прикрепить файл"
                   >
-                    {currentStatus === 'completed' ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      <Users className="w-5 h-5" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold truncate">
-                      {currentStatus === 'completed'
-                        ? `Посещаемость: ${attendancePct}% • Были ${presentCount} из ${totalStudents}`
-                        : `Посещаемость не отмечена · ${totalStudents} учеников`}
-                    </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {currentStatus === 'completed'
-                        ? 'Журнал зафиксирован. Вы можете просмотреть или скорректировать данные.'
-                        : 'Проведите урок, чтобы зафиксировать присутствие учеников.'}
-                    </div>
-                  </div>
+                    <Paperclip className="w-4 h-4" />
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (currentStatus !== 'completed') {
-                      setCurrentStatus('completed');
-                    }
-                    setActiveTab('attendance');
-                  }}
-                  className={cn(
-                    'px-3.5 py-2 text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 shrink-0 cursor-pointer transition-colors',
-                    currentStatus === 'completed'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
-                  )}
-                >
-                  <span>
-                    {currentStatus === 'completed'
-                      ? 'Открыть журнал →'
-                      : 'Провести и открыть журнал →'}
-                  </span>
-                </button>
               </div>
 
-              {/* Quick Actions Box */}
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              {/* Row 5: Быстрые действия (3 equal cards) */}
+              <div className="pt-2">
+                <span className="text-xs font-bold text-slate-800 block mb-2">
                   Быстрые действия
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSendHomeworkEmail}
-                    className="px-3 py-1.5 bg-white hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* Card 1: Mail HW */}
+                  <div
+                    onClick={() => setShowEmailConfirmModal(true)}
+                    className="p-3 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
                   >
-                    <Mail className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Отправить ДЗ на email</span>
-                  </button>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <Mail className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
+                          Отправить ДЗ на почту
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          Родителям учеников
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSendTelegramReminder}
-                    className="px-3 py-1.5 bg-white hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                  {/* Card 2: Telegram Reminder */}
+                  <div
+                    onClick={() => setShowTgConfirmModal(true)}
+                    className="p-3 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
                   >
-                    <Send className="w-3.5 h-3.5 text-sky-500" />
-                    <span>Напомнить в Telegram</span>
-                  </button>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <Send className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
+                          Напомнить о занятии (Telegram)
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          Родителям учеников
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSendAttendanceReport}
-                    disabled={currentStatus !== 'completed' && presentCount === 0}
-                    className="px-3 py-1.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 hover:border-emerald-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                  {/* Card 3: Attendance Report */}
+                  <div
+                    onClick={() => setShowAttendanceReportConfirmModal(true)}
+                    className="p-3 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
                   >
-                    <BarChart2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Отправить отчет посещаемости</span>
-                  </button>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
+                          Отправить родителям результаты посещаемости
+                        </div>
+                        <div className="text-[11px] text-slate-400 truncate">
+                          Родителям учеников
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1533,18 +1597,18 @@ export function LessonModal({
           )}
         </div>
 
-        {/* ================= 4. UNIFIED FOOTER ================= */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
-          {/* Left Action: Delete with confirm safety */}
+        {/* ================= 4. FOOTER ================= */}
+        <div className="px-6 py-3.5 border-t border-slate-100 bg-white flex items-center justify-between gap-3 shrink-0">
+          {/* Left Action: Delete with confirm */}
           <div>
             {!isConfirmingDelete ? (
               <button
                 type="button"
                 onClick={() => setIsConfirmingDelete(true)}
                 disabled={isSubmitting}
-                className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-transparent hover:border-rose-200"
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1.5 cursor-pointer transition-colors p-1"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
                 <span>Удалить занятие</span>
               </button>
             ) : (
@@ -1569,41 +1633,29 @@ export function LessonModal({
           </div>
 
           {/* Right Actions: Cancel / Save */}
-          <div className="flex items-center gap-2.5">
-            {activeTab === 'history' ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl transition-colors cursor-pointer shadow-2xs"
-              >
-                Закрыть
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSubmitting}
-                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}</span>
-                </button>
-              </>
-            )}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSubmitting}
+              className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Check className="w-4 h-4" />
+              <span>{isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Cancel Confirmation Dialog */}
+      {/* Confirmation Modal 1: Cancel Lesson */}
       {showCancelConfirmModal && (
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
@@ -1614,7 +1666,7 @@ export function LessonModal({
               <div>
                 <h3 className="text-base font-bold text-slate-900">Отменить занятие?</h3>
                 <p className="text-xs text-slate-500">
-                  Занятие останется в истории и календаре со статусом «Отменено».
+                  Занятие останется в истории со статусом «Отменено».
                 </p>
               </div>
             </div>
@@ -1646,6 +1698,141 @@ export function LessonModal({
                 className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-2xs cursor-pointer transition-colors"
               >
                 Да, отменить занятие
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal 2: Send Homework Email */}
+      {showEmailConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Отправить домашнее задание?</h3>
+                <p className="text-xs text-slate-500">
+                  Отправить домашнее задание родителям {attendance.length} учеников группы «{lesson.groupName}»?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700">
+              <span className="font-semibold block mb-1">Текст ДЗ:</span>
+              <p className="italic text-slate-600">
+                {homework.trim() || 'Домашнее задание не заполнено'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEmailConfirmModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSendHomeworkConfirm}
+                disabled={!homework.trim()}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs cursor-pointer transition-colors disabled:opacity-50"
+              >
+                Отправить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal 3: Send Telegram Reminder */}
+      {showTgConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                <Send className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Напомнить о занятии?</h3>
+                <p className="text-xs text-slate-500">
+                  Отправить напоминание в Telegram-чат группы «{lesson.groupName}»?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 space-y-1">
+              <span className="font-semibold block">Шаблон сообщения:</span>
+              <p className="text-slate-600">
+                📅 Напоминание: занятие <strong>{lesson.groupName}</strong> в {startTime}–{endTime}.<br />
+                👨‍🏫 Преподаватель: {teacherName}.<br />
+                🔗 Ссылка: {zoomUrl}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowTgConfirmModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSendTelegramConfirm}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs cursor-pointer transition-colors"
+              >
+                Отправить напоминание
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal 4: Send Attendance Results */}
+      {showAttendanceReportConfirmModal && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Отправить результаты посещаемости?</h3>
+                <p className="text-xs text-slate-500">
+                  Отправить отчет родителям {attendance.length} учеников?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-700 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span>Присутствовали: {presentCount} из {attendance.length}</span>
+                <span className="text-emerald-700">{attendancePct}%</span>
+              </div>
+              <p className="text-slate-500 text-[11px]">
+                Родители получат статус посещения урока своим ребенком.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAttendanceReportConfirmModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSendAttendanceReportConfirm}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs cursor-pointer transition-colors"
+              >
+                Отправить результаты
               </button>
             </div>
           </div>
