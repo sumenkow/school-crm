@@ -254,18 +254,28 @@ export function recordLessonAttendanceBatch(params: {
 
     saveStudentToStorage(updatedStudent);
 
-    // If teacher provided a note, also record it in the student's timeline
+    // If teacher provided a note / comment, record it directly in the student's and parent's timeline
     if (rec.note && rec.note.trim()) {
       const now = new Date();
       const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      const primaryParent = student.parents?.[0];
+      const parentName = primaryParent ? `${primaryParent.firstName || ''} ${primaryParent.lastName || ''}`.trim() : undefined;
+
       const interaction: TimelineInteraction = {
         id: `int_att_${Date.now()}_${rec.studentId}`,
         studentId: rec.studentId,
+        studentName: `${student.firstName || ''} ${student.lastName || ''}`.trim() || rec.studentName,
+        parentId: primaryParent?.id,
+        parentName,
+        targetType: primaryParent ? 'parent' : 'student',
+        targetName: parentName || rec.studentName,
+        targetRole: primaryParent ? (primaryParent.relationshipType || 'Родитель') : 'Ученик',
         occurredAt: `Сегодня, ${timeFormatted}`,
+        createdAt: now.toISOString(),
         author: params.teacherName || 'Преподаватель',
         channel: 'other',
-        type: 'status_change',
-        content: `Посещаемость: ${rec.status === 'present' ? 'Присутствовал' : rec.status === 'absent' ? 'Пропуск' : 'Перенос'}. Комментарий преподавателя: "${rec.note.trim()}" (Урок: ${currentLesson.groupName})`,
+        type: 'follow_up',
+        content: `💬 Комментарий преподавателя по уроку «${currentLesson.groupName}» (${rec.status === 'present' ? 'Был на уроке' : rec.status === 'absent' ? 'Пропуск' : 'Перенос'}): «${rec.note.trim()}»`,
       };
       saveInteractionToStorage(interaction);
     }

@@ -336,6 +336,11 @@ export function isRoutineTimelineNoise(item: TimelineInteraction): boolean {
   if (!item || !item.content) return false;
   const contentLower = item.content.toLowerCase();
 
+  // Explicit teacher comments and notes should never be treated as noise
+  if (contentLower.includes('комментарий') || contentLower.includes('заметка') || contentLower.includes('обратная связь') || contentLower.includes('дз') || contentLower.includes('домашнее задание')) {
+    return false;
+  }
+
   // Routine lesson attendance checks (without explicit absence notes)
   if (
     (contentLower.includes('был на занятии') || contentLower.includes('был на уроке') || contentLower.includes('посетил урок') || contentLower.includes('присутствовал')) &&
