@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRole } from '@/context/RoleContext';
-import { FileText, Sparkles, Plus, Calendar, Clock } from 'lucide-react';
+import { FileText, Sparkles, Plus, Calendar } from 'lucide-react';
 
 interface HeaderGreetingProps {
   onOpenReport?: () => void;
@@ -33,15 +33,14 @@ export function HeaderGreeting({
   });
 
   const capitalizedDate = todayFormatted.charAt(0).toUpperCase() + todayFormatted.slice(1);
+  const displayName = userName || (role === 'owner' ? 'Руководитель' : 'Администратор');
 
   return (
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
       <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            {getGreeting()}, {userName || (role === 'owner' ? 'Руководитель' : 'Администратор')} 👋
-          </h1>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+          {getGreeting()}, {displayName}! Вот что происходит в вашей школе сегодня.
+        </h1>
         <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
@@ -54,7 +53,7 @@ export function HeaderGreeting({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5 shrink-0">
         {onOpenReport && (
           <button
             type="button"

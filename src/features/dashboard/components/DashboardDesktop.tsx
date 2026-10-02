@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { DashboardStateReturn } from '../hooks/useDashboardState';
 import { HeaderGreeting } from './HeaderGreeting';
 import { KpiGrid } from './KpiGrid';
-import { AnalyticsSection } from './AnalyticsSection';
 import { AttentionFeed } from './AttentionFeed';
 import { TodayScheduleWidget } from './TodayScheduleWidget';
 import { FunnelWidget } from './FunnelWidget';
+import { QuickFinanceWidget } from './QuickFinanceWidget';
+import { GroupOccupancyWidget } from './GroupOccupancyWidget';
 import { TeachersListWidget } from './TeachersListWidget';
+import { WeeklySummaryStrip } from './WeeklySummaryStrip';
 import { WidgetErrorBoundary } from './WidgetErrorBoundary';
 import { TaskModal } from '@/components/dashboard/TaskModal';
 import { TeacherModal } from '@/components/dashboard/TeacherModal';
@@ -31,15 +33,15 @@ export function DashboardDesktop({
   const router = useRouter();
 
   return (
-    <div className="hidden md:block space-y-6 w-full p-6 max-w-[1600px] mx-auto">
-      {/* 1. Header Greeting & Top Actions */}
+    <div className="hidden md:block space-y-4 lg:space-y-5 w-full p-4 lg:p-6 max-w-[1600px] mx-auto overflow-x-hidden">
+      {/* 1. Header Greeting & Top Actions (~80-100px) */}
       <HeaderGreeting
         onOpenReport={onOpenReport}
         onOpenExecutiveReport={onOpenExecutiveReport}
         onOpenCreateLead={actions.openCreateLead}
       />
 
-      {/* 2. Real Data-Backed KPI Metrics (5 Cards) */}
+      {/* 2. Real Data-Backed KPI Metrics (5 Compact Cards) */}
       <WidgetErrorBoundary widgetName="Метрики KPI" onRetry={actions.refreshAll}>
         <KpiGrid
           payments={data.payments}
@@ -51,60 +53,70 @@ export function DashboardDesktop({
         />
       </WidgetErrorBoundary>
 
-      {/* 3. Analytics Layer (Revenue Chart, Leads Chart, Group Occupancy with Shared Period Controller) */}
-      <AnalyticsSection
-        payments={data.payments}
-        leads={data.leads}
-        groups={data.groups}
-        isLoading={data.isLoading}
-        onRetry={actions.refreshAll}
-      />
+      {/* 3. Operations Row (3 Columns: Фокус внимания | Сегодня | Воронка) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 items-stretch">
+        <WidgetErrorBoundary widgetName="Фокус внимания" onRetry={actions.refreshAll}>
+          <AttentionFeed
+            payments={data.payments}
+            leads={data.leads}
+            groups={data.groups}
+            tasks={data.tasks}
+            students={data.students}
+            onOpenLead={actions.openLead}
+            onOpenTask={actions.openTask}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
 
-      {/* 4. Operational Dashboard Grid (2 Columns: 7/12 Focus & Schedule vs 5/12 Funnel & Teachers) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* Left Column (7 cols): Attention Focus & Today's Schedule */}
-        <div className="lg:col-span-7 space-y-6">
-          <WidgetErrorBoundary widgetName="Фокус внимания" onRetry={actions.refreshAll}>
-            <AttentionFeed
-              payments={data.payments}
-              leads={data.leads}
-              groups={data.groups}
-              tasks={data.tasks}
-              students={data.students}
-              onOpenLead={actions.openLead}
-              onOpenTask={actions.openTask}
-              isLoading={data.isLoading}
-            />
-          </WidgetErrorBoundary>
+        <WidgetErrorBoundary widgetName="Расписание на сегодня" onRetry={actions.refreshAll}>
+          <TodayScheduleWidget
+            lessons={data.lessons}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
 
-          <WidgetErrorBoundary widgetName="Расписание на сегодня" onRetry={actions.refreshAll}>
-            <TodayScheduleWidget
-              lessons={data.lessons}
-              isLoading={data.isLoading}
-            />
-          </WidgetErrorBoundary>
-        </div>
-
-        {/* Right Column (5 cols): Lead Conversion Funnel & Teachers Team */}
-        <div className="lg:col-span-5 space-y-6">
-          <WidgetErrorBoundary widgetName="Воронка продаж" onRetry={actions.refreshAll}>
-            <FunnelWidget
-              leads={data.leads}
-              isLoading={data.isLoading}
-            />
-          </WidgetErrorBoundary>
-
-          <WidgetErrorBoundary widgetName="Команда преподавателей" onRetry={actions.refreshAll}>
-            <TeachersListWidget
-              teachers={data.teachers}
-              groups={data.groups}
-              onSelectTeacher={(t) => actions.openTeacher(t)}
-              isLoading={data.isLoading}
-            />
-          </WidgetErrorBoundary>
-        </div>
+        <WidgetErrorBoundary widgetName="Воронка продаж" onRetry={actions.refreshAll}>
+          <FunnelWidget
+            leads={data.leads}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
       </div>
+
+      {/* 4. Management Row (3 Columns: Финансы | Группы | Преподаватели) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-5 items-stretch">
+        <WidgetErrorBoundary widgetName="Финансовый обзор" onRetry={actions.refreshAll}>
+          <QuickFinanceWidget
+            payments={data.payments}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
+
+        <WidgetErrorBoundary widgetName="Заполняемость групп" onRetry={actions.refreshAll}>
+          <GroupOccupancyWidget
+            groups={data.groups}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
+
+        <WidgetErrorBoundary widgetName="Команда преподавателей" onRetry={actions.refreshAll}>
+          <TeachersListWidget
+            teachers={data.teachers}
+            groups={data.groups}
+            onSelectTeacher={(t) => actions.openTeacher(t)}
+            isLoading={data.isLoading}
+          />
+        </WidgetErrorBoundary>
+      </div>
+
+      {/* 5. Weekly Summary Strip */}
+      <WeeklySummaryStrip
+        lessons={data.lessons}
+        students={data.students}
+        groups={data.groups}
+        onOpenReport={onOpenReport}
+        isLoading={data.isLoading}
+      />
 
       {/* Modals & Drawers */}
       <TaskModal
