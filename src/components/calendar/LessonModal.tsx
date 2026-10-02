@@ -27,6 +27,8 @@ import {
   XCircle,
   Paperclip,
   CheckCircle2,
+  ArrowLeftRight,
+  HelpCircle,
 } from 'lucide-react';
 import {
   FullLessonData,
@@ -40,6 +42,8 @@ import {
   recordLessonAttendanceBatch,
 } from '@/lib/data/lessonStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -122,7 +126,7 @@ export function LessonModal({
   onDelete,
 }: LessonModalProps) {
   const toast = useToast();
-  const { role } = useRole();
+  const { role, userName } = useRole();
   const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
@@ -134,6 +138,9 @@ export function LessonModal({
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('Отмена по запросу');
+
+  // Unsaved changes confirmation
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
 
   // Communication confirmation modals
   const [showEmailConfirmModal, setShowEmailConfirmModal] = useState(false);
@@ -189,6 +196,7 @@ export function LessonModal({
       setActiveTab(initialTab || 'main');
       setIsConfirmingDelete(false);
       setShowCancelConfirmModal(false);
+      setShowUnsavedChangesModal(false);
       setShowEmailConfirmModal(false);
       setShowTgConfirmModal(false);
       setShowAttendanceReportConfirmModal(false);
@@ -225,7 +233,48 @@ export function LessonModal({
     }
   }, [isOpen, lesson, initialTab]);
 
-  // Load group details for extra metadata (age, level, capacity)
+  // Track if any changes have been made (dirty checking)
+  const isDirty = useMemo(() => {
+    if (!lesson) return false;
+    const initialDate = lesson.date || '';
+    const initialStartTime = lesson.startTime || '';
+    const initialEndTime = lesson.endTime || '';
+    const initialTopic = lesson.topic || '';
+    const initialHomework = lesson.homework || '';
+    const initialZoom = lesson.onlineMeetingUrl || 'https://zoom.us/j/123456789';
+    const initialNote = lesson.generalLessonNote || lesson.notes || '';
+    const initialStatus = lesson.status || 'scheduled';
+
+    if (date !== initialDate) return true;
+    if (startTime !== initialStartTime) return true;
+    if (endTime !== initialEndTime) return true;
+    if (topic !== initialTopic) return true;
+    if (homework !== initialHomework) return true;
+    if (zoomUrl !== initialZoom) return true;
+    if (generalLessonNote !== initialNote) return true;
+    if (currentStatus !== initialStatus) return true;
+
+    // Check attendance status changes
+    for (const item of attendance) {
+      const original = (lesson.students || []).find((s) => s.id === item.studentId);
+      const originalStatus = original?.attendanceStatus === 'excused' ? 'excused' : original?.attendanceStatus === 'absent' ? 'absent' : 'present';
+      if (item.status !== originalStatus) return true;
+      if ((item.feedback || '') !== (original?.notes || '')) return true;
+    }
+
+    return false;
+  }, [lesson, date, startTime, endTime, topic, homework, zoomUrl, generalLessonNote, currentStatus, attendance]);
+
+  // Safe Close with Confirmation
+  const handleSafeClose = () => {
+    if (isDirty) {
+      setShowUnsavedChangesModal(true);
+    } else {
+      onClose();
+    }
+  };
+
+  // Load group details for extra metadata
   const groupMetadata = useMemo(() => {
     if (!lesson) return null;
     const groups = getStoredGroups();
@@ -408,11 +457,36 @@ export function LessonModal({
         updatedEvents.push({
           id: `ev_${Date.now()}_resched`,
           timestamp: timestampStr,
-          author: teacherName || 'Администратор',
+          author: userName || 'Администратор',
           role: 'Администратор',
           type: 'rescheduled',
           comment: `Занятие перенесено с ${lesson.date} (${lesson.startTime}–${lesson.endTime}) на ${date} (${startTime}–${endTime})`,
         });
+
+        // Send structured signal to Director's attention feed
+        const allStudents = getStoredStudents();
+        const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+        for (const st of lesson.students || []) {
+          const fullStudent = allStudents.find((s) => s.id === st.id);
+          const parentId = fullStudent?.parents?.[0]?.id;
+          const parentName = fullStudent?.parents?.[0]
+            ? `${fullStudent.parents[0].firstName} ${fullStudent.parents[0].lastName}`
+            : undefined;
+
+          saveInteractionToStorage({
+            id: `int_resched_${Date.now()}_${st.id}`,
+            studentId: st.id,
+            studentName: st.name,
+            parentId,
+            parentName,
+            occurredAt: `Сегодня, ${timeFormatted}`,
+            author: userName || 'Администратор',
+            channel: 'other',
+            type: 'organizational',
+            content: `🔄 Перенесено занятие группы «${lesson.groupName}» с ${lesson.date} (${lesson.startTime}–${lesson.endTime}) на ${date} (${startTime}–${endTime}). Преподаватель: ${teacherName}.`,
+          });
+        }
       } else {
         updatedEvents.push({
           id: `ev_${Date.now()}`,
@@ -435,14 +509,14 @@ export function LessonModal({
             newEndTime: endTime,
             room: 'Онлайн (Zoom)',
             reason: 'Перенос занятия',
-            changedBy: teacherName || 'Администратор',
+            changedBy: userName || 'Администратор',
             changedRole: 'Администратор',
             changedAt: timestampStr,
             notifyParents: true,
           }
         : lesson.rescheduleInfo;
 
-      // 3. Build updated lesson object
+      // 3. Build updated lesson object (scheduleOverride = true when rescheduled)
       const updatedLesson: FullLessonData = {
         ...lesson,
         date,
@@ -463,6 +537,7 @@ export function LessonModal({
         status: newStatus,
         rescheduleInfo,
         timelineEvents: updatedEvents,
+        scheduleOverride: isRescheduled ? true : (lesson as any).scheduleOverride,
         students: (lesson.students || []).map((s) => {
           const att = attendance.find((a) => a.studentId === s.id);
           return {
@@ -500,6 +575,7 @@ export function LessonModal({
       // 6. Global events
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
+      window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
 
       toast.success(isRescheduled ? 'Занятие успешно перенесено' : 'Данные занятия сохранены');
       onSave(updatedLesson);
@@ -611,6 +687,8 @@ export function LessonModal({
 
   if (!isOpen || !lesson || !mounted) return null;
 
+  const isCompleted = currentStatus === 'completed';
+  const isScheduled = currentStatus === 'scheduled';
   const presentCount = attendance.filter((a) => a.status === 'present').length;
   const absentCount = attendance.filter((a) => a.status === 'absent').length;
   const excusedCount = attendance.filter((a) => a.status === 'excused').length;
@@ -655,7 +733,7 @@ export function LessonModal({
   return createPortal(
     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
       {/* Background overlay */}
-      <div className="fixed inset-0" onClick={onClose} />
+      <div className="fixed inset-0" onClick={handleSafeClose} />
 
       {/* Main Modal Card Container */}
       <div
@@ -738,26 +816,12 @@ export function LessonModal({
                       )}
 
                       {currentStatus === 'completed' && (
-                        <>
-                          <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50 border-y border-slate-100">
-                            <span className="font-semibold text-emerald-700 block">Занятие завершено</span>
-                            <span className="text-[11px] text-slate-500">
-                              Проведенные занятия нельзя отменять или переносить.
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveTab('attendance');
-                              setIsStatusDropdownOpen(false);
-                            }}
-                            className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                          >
-                            <Users className="w-4 h-4 text-blue-600" />
-                            <span>Журнал посещаемости</span>
-                          </button>
-                        </>
+                        <div className="px-3 py-2 text-xs text-slate-500 bg-slate-50">
+                          <span className="font-semibold text-emerald-700 block">Занятие завершено</span>
+                          <span className="text-[11px] text-slate-500">
+                            Проведенные занятия нельзя отменять или переносить.
+                          </span>
+                        </div>
                       )}
 
                       {currentStatus === 'cancelled' && (
@@ -830,11 +894,11 @@ export function LessonModal({
               </div>
             </div>
 
-            {/* Right Area: Close Button + Compact Attendance Donut Card */}
+            {/* Right Area: Close Button + Compact Attendance Donut Summary */}
             <div className="flex flex-col items-end gap-2 shrink-0">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleSafeClose}
                 className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 title="Закрыть"
               >
@@ -915,17 +979,6 @@ export function LessonModal({
                       <span className="font-bold text-slate-900">{excusedCount}</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Bottom link */}
-                <div className="mt-1.5 text-right">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('attendance')}
-                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                  >
-                    Открыть журнал →
-                  </button>
                 </div>
               </div>
             </div>
@@ -1041,7 +1094,6 @@ export function LessonModal({
                       <span className="text-[11px] text-slate-500 font-medium">
                         {lesson.courseName || 'Английский язык'}
                       </span>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1 pl-1">
@@ -1082,17 +1134,31 @@ export function LessonModal({
               <div className="space-y-1.5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Дата занятия *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Дата занятия *
+                      </label>
+                      {!isCompleted && (
+                        <span
+                          title="Изменение даты или времени переносит только это занятие. Регулярное расписание учебной группы не изменяется."
+                          className="text-slate-400 hover:text-blue-600 cursor-help"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5 inline" />
+                        </span>
+                      )}
+                    </div>
                     <div className="relative">
                       <input
                         ref={dateInputRef}
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        disabled={!canEditSchedule || currentStatus === 'completed'}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
+                        disabled={!canEditSchedule || isCompleted}
+                        title={isCompleted ? 'Занятие уже проведено. Дату и время изменить нельзя.' : undefined}
+                        className={cn(
+                          'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs',
+                          isCompleted ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'border-slate-200'
+                        )}
                       />
                     </div>
                   </div>
@@ -1105,8 +1171,12 @@ export function LessonModal({
                       type="time"
                       value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
-                      disabled={!canEditSchedule || currentStatus === 'completed'}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
+                      disabled={!canEditSchedule || isCompleted}
+                      title={isCompleted ? 'Занятие уже проведено. Дату и время изменить нельзя.' : undefined}
+                      className={cn(
+                        'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs',
+                        isCompleted ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'border-slate-200'
+                      )}
                     />
                   </div>
 
@@ -1118,21 +1188,29 @@ export function LessonModal({
                       type="time"
                       value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
-                      disabled={!canEditSchedule || currentStatus === 'completed'}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 shadow-2xs"
+                      disabled={!canEditSchedule || isCompleted}
+                      title={isCompleted ? 'Занятие уже проведено. Дату и время изменить нельзя.' : undefined}
+                      className={cn(
+                        'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-2xs',
+                        isCompleted ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed' : 'border-slate-200'
+                      )}
                     />
                   </div>
                 </div>
 
-                {/* Info banner */}
-                <div className="flex items-start gap-2 text-xs text-slate-600 pt-1">
-                  <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                    i
+                {/* Info message about rescheduling */}
+                {isCompleted ? (
+                  <p className="text-[11px] text-slate-400 italic pt-0.5">
+                    Занятие уже проведено. Дату и время изменить нельзя.
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-0.5">
+                    <span className="text-blue-600 font-bold">ℹ</span>
+                    <span>
+                      Изменение даты или времени переносит только это занятие. Регулярное расписание группы не изменяется.
+                    </span>
                   </div>
-                  <span>
-                    При изменении даты или времени занятие будет перенесено в календарь. Это не изменяет расписание группы.
-                  </span>
-                </div>
+                )}
               </div>
 
               {/* Row 3: Тема занятия */}
@@ -1173,7 +1251,7 @@ export function LessonModal({
                 </div>
               </div>
 
-              {/* Row 5: Быстрые действия (3 equal cards) */}
+              {/* Row 5: Быстрые действия (3 contextual cards) */}
               <div className="pt-2">
                 <span className="text-xs font-bold text-slate-800 block mb-2">
                   Быстрые действия
@@ -1190,36 +1268,54 @@ export function LessonModal({
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
-                          Отправить ДЗ на почту
+                          Отправить ДЗ
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
-                          Родителям учеников
+                          Ученикам / родителям
                         </div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
                   </div>
 
-                  {/* Card 2: Telegram Reminder */}
-                  <div
-                    onClick={() => setShowTgConfirmModal(true)}
-                    className="p-3 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                        <Send className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
-                          Напомнить о занятии (Telegram)
+                  {/* Card 2: Telegram Reminder (Contextual: only for upcoming/scheduled) */}
+                  {isScheduled ? (
+                    <div
+                      onClick={() => setShowTgConfirmModal(true)}
+                      className="p-3 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                          <Send className="w-4 h-4" />
                         </div>
-                        <div className="text-[11px] text-slate-400 truncate">
-                          Родителям учеников
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
+                            Напомнить о занятии
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate">
+                            Telegram
+                          </div>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50/30 rounded-2xl border border-slate-100/60 flex items-center justify-between gap-2.5 opacity-50 cursor-not-allowed">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                          <Send className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-500 truncate">
+                            Напомнить о занятии
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate">
+                            Занятие завершено
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                  </div>
+                  )}
 
                   {/* Card 3: Attendance Report */}
                   <div
@@ -1232,10 +1328,10 @@ export function LessonModal({
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
-                          Отправить родителям результаты посещаемости
+                          Отправить посещаемость
                         </div>
                         <div className="text-[11px] text-slate-400 truncate">
-                          Родителям учеников
+                          Родителям
                         </div>
                       </div>
                     </div>
@@ -1636,7 +1732,7 @@ export function LessonModal({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleSafeClose}
               disabled={isSubmitting}
               className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
@@ -1654,6 +1750,55 @@ export function LessonModal({
           </div>
         </div>
       </div>
+
+      {/* Safety Confirmation Modal: Unsaved Changes */}
+      {showUnsavedChangesModal && (
+        <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-100">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Вы хотите сохранить изменения?</h3>
+                <p className="text-xs text-slate-500">
+                  В карточке есть несохраненные данные.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowUnsavedChangesModal(false)}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Продолжить редактирование
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUnsavedChangesModal(false);
+                  onClose();
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer transition-colors"
+              >
+                Не сохранять
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUnsavedChangesModal(false);
+                  handleSave();
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs cursor-pointer transition-colors"
+              >
+                Сохранить изменения
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal 1: Cancel Lesson */}
       {showCancelConfirmModal && (

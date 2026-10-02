@@ -1096,6 +1096,7 @@ export interface FullLessonData {
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   rescheduleInfo?: LessonRescheduleInfo;
   timelineEvents?: LessonTimelineEvent[];
+  scheduleOverride?: boolean;
   isTrial?: boolean;
   trialStudentsCount?: number;
   isBilled?: boolean;
