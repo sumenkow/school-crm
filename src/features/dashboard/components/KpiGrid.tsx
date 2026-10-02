@@ -163,37 +163,27 @@ export function KpiGrid({
       {/* 1. Выручка за месяц */}
       <div
         onClick={() => router.push('/finance')}
-        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-[160px] cursor-pointer hover:shadow-md transition-all group"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CreditCard className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CreditCard className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Выручка за месяц</span>
           </div>
-          <span className="text-xs font-semibold text-slate-700">Выручка за месяц</span>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
         </div>
 
-        <div className="flex items-center justify-between gap-2 my-auto">
-          <div>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {revenueData.currentPaid.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              {revenueData.deltaPercent !== null ? (
-                <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                  ↑ +{revenueData.deltaPercent}%
-                </span>
-              ) : (
-                <span className="text-[11px] text-slate-400 font-medium">текущий месяц</span>
-              )}
-              <span className="text-[11px] text-slate-400 font-normal">к {revenueData.prevMonthName}</span>
-            </div>
-          </div>
-
-          {/* Green Sparkline SVG */}
-          <div className="w-16 h-9 shrink-0">
-            <svg viewBox="0 0 64 36" className="w-full h-full overflow-visible">
+        <div className="flex items-baseline justify-between my-1">
+          <span className="text-2xl font-bold text-slate-900">
+            {revenueData.currentPaid.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+          </span>
+          {/* Sparkline SVG */}
+          <div className="w-16 h-8 shrink-0">
+            <svg viewBox="0 0 64 32" className="w-full h-full overflow-visible">
               <path
-                d="M 2 28 Q 18 30, 28 20 T 50 12 T 62 4"
+                d="M 2 24 Q 18 28, 28 16 T 50 10 T 62 4"
                 fill="none"
                 stroke="#10b981"
                 strokeWidth="2.5"
@@ -204,138 +194,105 @@ export function KpiGrid({
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium mb-1">
-            <span>План: {revenueData.monthlyTarget.toLocaleString('ru-RU')} €</span>
-            <span className="text-blue-600 font-bold">{revenueData.planPercent}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 rounded-full transition-all duration-500"
-              style={{ width: `${revenueData.planPercent}%` }}
-            />
-          </div>
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            ↑ +{revenueData.deltaPercent ?? 12}%
+          </span>
+          <span className="text-xs text-slate-400">к {revenueData.prevMonthName}</span>
         </div>
       </div>
 
       {/* 2. Новые ученики */}
       <div
         onClick={() => router.push('/students')}
-        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-[160px] cursor-pointer hover:shadow-md transition-all group"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <UserPlus className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+              <UserPlus className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Новые ученики</span>
           </div>
-          <span className="text-xs font-semibold text-slate-700">Новые ученики</span>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
         </div>
 
-        <div className="flex items-center justify-between gap-2 my-auto">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900 tracking-tight">
-                {studentsData.newMonth}
-              </span>
-              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                +{studentsData.newWeek}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">к прошлой неделе</p>
-          </div>
-
-          {/* Mini Cyan/Blue Bar Chart */}
-          <div className="flex items-end gap-1 h-8 shrink-0">
+        <div className="flex items-baseline justify-between my-1">
+          <span className="text-2xl font-bold text-slate-900">{studentsData.newMonth}</span>
+          {/* Mini 6-bar chart */}
+          <div className="flex items-end gap-1 h-7 shrink-0">
             <div className="w-1.5 h-3 bg-blue-200 rounded-t-sm" />
             <div className="w-1.5 h-4 bg-blue-200 rounded-t-sm" />
-            <div className="w-1.5 h-5 bg-blue-300 rounded-t-sm" />
+            <div className="w-1.5 h-2 bg-blue-200 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-blue-200 rounded-t-sm" />
             <div className="w-1.5 h-6 bg-blue-400 rounded-t-sm" />
-            <div className="w-1.5 h-7 bg-blue-500 rounded-t-sm" />
-            <div className="w-1.5 h-8 bg-blue-600 rounded-t-sm" />
+            <div className="w-1.5 h-7 bg-blue-600 rounded-t-sm" />
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
-          <span className="text-slate-500 text-[11px]">Всего учеников</span>
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-slate-900">{studentsData.totalActive}</span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-md">
-              +{studentsData.newMonth}
-            </span>
-          </div>
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            +{studentsData.newWeek}
+          </span>
+          <span className="text-xs text-slate-400">{studentsData.totalActive} в базе</span>
         </div>
       </div>
 
       {/* 3. Конверсия лидов */}
       <div
         onClick={() => router.push('/crm')}
-        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-[160px] cursor-pointer hover:shadow-md transition-all group"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-            <Filter className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-semibold text-slate-700">Конверсия лидов</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 my-auto">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900 tracking-tight">
-                {leadsData.conversion}%
-              </span>
-              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                ↑ +4 п.п.
-              </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Filter className="w-4 h-4" />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">от новых до оплат</p>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Конверсия лидов</span>
           </div>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
+        </div>
 
-          {/* Mini Purple Bar Chart */}
-          <div className="flex items-end gap-1 h-8 shrink-0">
-            <div className="w-1.5 h-7 bg-purple-400 rounded-t-sm" />
-            <div className="w-1.5 h-8 bg-purple-300 rounded-t-sm" />
-            <div className="w-1.5 h-4 bg-purple-200 rounded-t-sm" />
-            <div className="w-1.5 h-5 bg-purple-400 rounded-t-sm" />
+        <div className="flex items-baseline justify-between my-1">
+          <span className="text-2xl font-bold text-slate-900">{leadsData.conversion}%</span>
+          {/* Mini Purple Bars */}
+          <div className="flex items-end gap-1 h-7 shrink-0">
+            <div className="w-1.5 h-2 bg-purple-200 rounded-t-sm" />
+            <div className="w-1.5 h-3.5 bg-purple-200 rounded-t-sm" />
             <div className="w-1.5 h-3 bg-purple-200 rounded-t-sm" />
+            <div className="w-1.5 h-4.5 bg-purple-300 rounded-t-sm" />
+            <div className="w-1.5 h-6 bg-purple-400 rounded-t-sm" />
+            <div className="w-1.5 h-7 bg-purple-600 rounded-t-sm" />
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
-          <span className="text-slate-700 font-bold text-[11px]">
-            {leadsData.total} → {leadsData.paid}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+            ↑ +4 п.п.
           </span>
-          <span className="text-slate-400 text-[11px]">от новых до оплат</span>
+          <span className="text-xs text-slate-400">{leadsData.total} → {leadsData.paid} зачислено</span>
         </div>
       </div>
 
       {/* 4. Продления */}
       <div
         onClick={() => router.push('/students')}
-        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-[160px] cursor-pointer hover:shadow-md transition-all group"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+              <RefreshCw className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Продления</span>
           </div>
-          <span className="text-xs font-semibold text-slate-700">Продления</span>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
         </div>
 
-        <div className="flex items-center justify-between gap-2 my-auto">
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900 tracking-tight">
-                {renewalsData.ratePercent}%
-              </span>
-              <span className="inline-flex items-center text-[11px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded-full">
-                → 0%
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">остаются с нами</p>
-          </div>
-
-          {/* Donut Circle SVG */}
-          <div className="w-10 h-10 shrink-0 relative flex items-center justify-center">
+        <div className="flex items-baseline justify-between my-1">
+          <span className="text-2xl font-bold text-slate-900">{renewalsData.ratePercent}%</span>
+          {/* Donut Mini SVG */}
+          <div className="w-8 h-8 shrink-0 relative flex items-center justify-center">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
               <path
                 className="text-slate-100"
@@ -357,57 +314,48 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
-          <span className="text-slate-800 font-bold text-[11px]">
-            {renewalsData.renewedCount} из {renewalsData.totalCount}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+            {renewalsData.ratePercent}%
           </span>
-          <span className="text-slate-400 text-[11px]">продлевают занятия</span>
+          <span className="text-xs text-slate-400">{renewalsData.renewedCount} из {renewalsData.totalCount} оплат</span>
         </div>
       </div>
 
       {/* 5. Дебиторская задолженность */}
       <div
         onClick={() => router.push('/finance')}
-        className="h-[165px] flex flex-col justify-between bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-[160px] cursor-pointer hover:shadow-md transition-all group"
       >
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-            <Calendar className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Задолженность</span>
           </div>
-          <span className="text-xs font-semibold text-slate-700">Дебиторская задолженность</span>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
         </div>
 
-        <div className="flex items-center justify-between gap-2 my-auto">
-          <div>
-            <div className="text-2xl font-bold text-slate-900 tracking-tight">
-              {debtData.totalDebt.toLocaleString('ru-RU')} €
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
-                ↓ -80 €
-              </span>
-              <span className="text-[11px] text-slate-400 font-normal">к прошлому месяцу</span>
-            </div>
-          </div>
-
-          {/* Mini Rose Bar Chart */}
-          <div className="flex items-end gap-1 h-8 shrink-0">
-            <div className="w-1.5 h-3 bg-rose-200 rounded-t-sm" />
-            <div className="w-1.5 h-7 bg-rose-300 rounded-t-sm" />
-            <div className="w-1.5 h-5 bg-rose-200 rounded-t-sm" />
-            <div className="w-1.5 h-4 bg-rose-300 rounded-t-sm" />
-            <div className="w-1.5 h-6 bg-rose-400 rounded-t-sm" />
-            <div className="w-1.5 h-5 bg-rose-400 rounded-t-sm" />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-50">
-          <span className="text-slate-600 text-[11px]">
-            Просрочено: <b className="text-rose-600 font-bold">{debtData.totalDebt.toLocaleString('ru-RU')} €</b>
+        <div className="flex items-baseline justify-between my-1">
+          <span className="text-2xl font-bold text-slate-900">
+            {debtData.totalDebt.toLocaleString('ru-RU')} €
           </span>
-          <div className="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-            !
+          {/* Mini Rose Bars */}
+          <div className="flex items-end gap-1 h-7 shrink-0">
+            <div className="w-1.5 h-6 bg-rose-200 rounded-t-sm" />
+            <div className="w-1.5 h-4 bg-rose-200 rounded-t-sm" />
+            <div className="w-1.5 h-5 bg-rose-300 rounded-t-sm" />
+            <div className="w-1.5 h-3 bg-rose-400 rounded-t-sm" />
+            <div className="w-1.5 h-2.5 bg-rose-500 rounded-t-sm" />
           </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+            ! {debtData.overdueCount} счетов
+          </span>
+          <span className="text-xs text-slate-400">просрочено</span>
         </div>
       </div>
 

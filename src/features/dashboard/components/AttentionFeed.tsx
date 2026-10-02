@@ -169,22 +169,18 @@ export function AttentionFeed({
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex flex-col justify-between h-[390px]">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-50">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
-            !
-          </div>
-          <h3 className="text-sm font-bold text-slate-900">Требует вашего внимания</h3>
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+          <h3 className="font-bold text-slate-900 text-sm">Требует вашего внимания</h3>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600">
+        <span className="bg-rose-50 text-rose-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
           {attentionItems.length} ситуаций
         </span>
       </div>
 
-      {/* List */}
-      <div className="divide-y divide-slate-50 my-auto">
+      <div className="divide-y divide-slate-50 py-1">
         {attentionItems.slice(0, 5).map((item) => {
           const iconBg = {
             rose: 'bg-rose-50 text-rose-500',
@@ -199,47 +195,32 @@ export function AttentionFeed({
             : item.type === 'lead' ? User
             : Users;
 
+          const handleAction = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (item.rawLead && onOpenLead) {
+              onOpenLead(item.rawLead);
+            } else {
+              router.push(item.targetUrl);
+            }
+          };
+
           return (
-            <div
-              key={item.id}
-              onClick={() => {
-                if (item.rawLead && onOpenLead) {
-                  onOpenLead(item.rawLead);
-                } else {
-                  router.push(item.targetUrl);
-                }
-              }}
-              className="flex items-center justify-between py-2.5 hover:bg-slate-50/70 transition-colors cursor-pointer rounded-lg px-1 group"
-            >
-              <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs', iconBg)}>
-                  <IconComponent className="w-3.5 h-3.5" />
+            <div key={item.id} className="py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', iconBg)}>
+                  <IconComponent className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                    {item.title}
-                  </p>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {item.subtitle}
-                  </p>
+                  <p className="text-xs font-bold text-slate-900 truncate">{item.title}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{item.subtitle}</p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2.5 shrink-0">
-                <span className="text-[11px] text-slate-400 hidden sm:inline">
-                  {item.timeLabel}
-                </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] text-slate-400">{item.timeLabel}</span>
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (item.rawLead && onOpenLead) {
-                      onOpenLead(item.rawLead);
-                    } else {
-                      router.push(item.targetUrl);
-                    }
-                  }}
-                  className="px-3 py-1 rounded-lg text-xs font-medium text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors cursor-pointer"
+                  onClick={handleAction}
+                  className="text-xs font-semibold text-blue-600 bg-blue-50/50 hover:bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg transition-colors cursor-pointer"
                 >
                   {item.actionLabel}
                 </button>
@@ -249,17 +230,13 @@ export function AttentionFeed({
         })}
       </div>
 
-      {/* Footer link */}
-      <div className="pt-2 text-center border-t border-slate-50">
-        <button
-          type="button"
-          onClick={() => router.push('/tasks')}
-          className="text-xs font-medium text-blue-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
-        >
-          <span>Показать все ситуации ({attentionItems.length})</span>
-          <ChevronRight className="w-3 h-3" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => router.push('/tasks')}
+        className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 pt-2 border-t border-slate-50 cursor-pointer"
+      >
+        Показать все ситуации ({attentionItems.length}) →
+      </button>
     </div>
   );
 }
