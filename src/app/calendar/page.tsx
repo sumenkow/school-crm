@@ -443,8 +443,11 @@ export default function CalendarPage() {
       </div>
 
       {/* DESKTOP CALENDAR (>= 768px / hidden md:block) */}
-      <div className="hidden md:block space-y-4">
-        {/* 1. Header */}
+      <div className="hidden md:block">
+        <div className="flex gap-4 items-start relative min-w-0">
+          {/* Main Calendar Cockpit (Flexible & Auto-compressing) */}
+          <div className="flex-1 min-w-0 space-y-4 transition-all duration-200">
+            {/* 1. Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
@@ -1039,6 +1042,74 @@ export default function CalendarPage() {
             </div>
           </div>
         )}
+          </div>
+
+          {/* Embedded Side-by-Side Drawer (Screens >= 1440px) */}
+          {selectedLessonForDrawer && (
+            <div className="hidden min-[1440px]:block w-[400px] shrink-0 sticky top-4 h-[calc(100vh-2rem)]">
+              <LessonPreviewDrawer
+                isOpen={!!selectedLessonForDrawer}
+                lesson={selectedLessonForDrawer}
+                onClose={() => setSelectedLessonForDrawer(null)}
+                onEdit={(l) => {
+                  setSelectedLessonForDrawer(null);
+                  setSelectedLessonForDesktop(l);
+                }}
+                onLessonUpdated={(updated) => {
+                  setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+                  setSelectedLessonForDrawer(updated);
+                }}
+                onDuplicate={(l) => {
+                  const dup: FullLessonData = {
+                    ...l,
+                    id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                    status: 'scheduled',
+                    students: (l.students || []).map((s) => ({
+                      ...s,
+                      attendanceStatus: 'not_marked',
+                    })),
+                  };
+                  saveLessonToStorage(dup);
+                  setLessons((prev) => [dup, ...prev]);
+                  setSelectedLessonForDrawer(dup);
+                }}
+                isEmbedded={true}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Overlay Drawer (Screens < 1440px) */}
+        <div className="min-[1440px]:hidden">
+          <LessonPreviewDrawer
+            isOpen={!!selectedLessonForDrawer}
+            lesson={selectedLessonForDrawer}
+            onClose={() => setSelectedLessonForDrawer(null)}
+            onEdit={(l) => {
+              setSelectedLessonForDrawer(null);
+              setSelectedLessonForDesktop(l);
+            }}
+            onLessonUpdated={(updated) => {
+              setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+              setSelectedLessonForDrawer(updated);
+            }}
+            onDuplicate={(l) => {
+              const dup: FullLessonData = {
+                ...l,
+                id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+                status: 'scheduled',
+                students: (l.students || []).map((s) => ({
+                  ...s,
+                  attendanceStatus: 'not_marked',
+                })),
+              };
+              saveLessonToStorage(dup);
+              setLessons((prev) => [dup, ...prev]);
+              setSelectedLessonForDrawer(dup);
+            }}
+            isEmbedded={false}
+          />
+        </div>
       </div>
 
       {/* Schedule Lesson Modal */}
@@ -1067,42 +1138,14 @@ export default function CalendarPage() {
         onUpdateAttendance={handleUpdateAttendance}
       />
 
-      {/* Interactive Desktop Lesson Modal (Desktop) */}
+      {/* Interactive Desktop Lesson Modal (Desktop Full Modal) */}
       <DesktopLessonModal
         isOpen={!!selectedLessonForDesktop}
         lesson={selectedLessonForDesktop}
         onClose={() => setSelectedLessonForDesktop(null)}
         onSave={(updatedLesson) => {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
-        }}
-      />
-
-      {/* Quick Preview Drawer */}
-      <LessonPreviewDrawer
-        isOpen={!!selectedLessonForDrawer}
-        lesson={selectedLessonForDrawer}
-        onClose={() => setSelectedLessonForDrawer(null)}
-        onEdit={(l) => {
-          setSelectedLessonForDrawer(null);
-          setSelectedLessonForEdit(l);
-        }}
-        onLessonUpdated={(updated) => {
-          setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-          setSelectedLessonForDrawer(updated);
-        }}
-        onDuplicate={(l) => {
-          const dup: FullLessonData = {
-            ...l,
-            id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            status: 'scheduled',
-            students: (l.students || []).map((s) => ({
-              ...s,
-              attendanceStatus: 'not_marked',
-            })),
-          };
-          saveLessonToStorage(dup);
-          setLessons((prev) => [dup, ...prev]);
-          setSelectedLessonForDrawer(dup);
+          setSelectedLessonForDesktop(null);
         }}
       />
 
