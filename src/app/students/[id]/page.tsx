@@ -289,7 +289,18 @@ function getTimelineCategoryAndIcon(int: TimelineInteraction) {
     };
   }
 
-  // 7. Tasks (Pure system tasks without specific channel)
+  // 7. Teacher comment (from lesson attendance)
+  if (typeLower === 'teacher_comment' || (channelLower === 'note' && contentLower.includes('комментарий преподавателя'))) {
+    return {
+      category: 'communication',
+      icon: MessageSquare,
+      iconBg: 'bg-violet-500 text-white shadow-xs ring-2 ring-violet-200',
+      badgeBg: 'bg-violet-50 text-violet-800 border border-violet-300 font-bold',
+      channelLabel: '📝 Заметка преподавателя',
+    };
+  }
+
+  // 8. Tasks (Pure system tasks without specific channel)
   if (
     typeLower === 'task' ||
     typeLower === 'follow_up' ||
@@ -1411,14 +1422,20 @@ export default function StudentDetailsPage() {
       const parentIds = (currentStudent.parents || []).map((p) => p.id);
       const combined = getCombinedStudentTimeline(studentId, currentStudent.interactions, parentIds);
 
+      console.log('[CRM-DEBUG] syncStudentTimelineAndTasks', { studentId, combinedCount: combined.length, baseCount: (currentStudent.interactions || []).length });
+
       // Idempotency guard: only update if task count or interaction IDs actually changed
       const prevTaskIds = (currentStudent.tasks || []).map((t) => t.id).sort().join(',');
       const nextTaskIds = (studentTasks || []).map((t) => t.id).sort().join(',');
       const prevInteractionIds = (currentStudent.interactions || []).map((i) => i.id).sort().join(',');
       const nextInteractionIds = combined.map((i) => i.id).sort().join(',');
 
-      if (prevTaskIds === nextTaskIds && prevInteractionIds === nextInteractionIds) return;
+      if (prevTaskIds === nextTaskIds && prevInteractionIds === nextInteractionIds) {
+        console.log('[CRM-DEBUG] syncStudentTimelineAndTasks: NO CHANGE, skipping update');
+        return;
+      }
 
+      console.log('[CRM-DEBUG] syncStudentTimelineAndTasks: updating student, new interactions count:', combined.length);
       setStudent((prev) => ({
         ...prev,
         tasks: studentTasks,

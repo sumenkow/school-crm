@@ -202,6 +202,8 @@ export function recordLessonAttendanceBatch(params: {
 
     const eqSet = getEquivalentIds(rec.studentId);
     const recNameClean = (rec.studentName || '').trim().toLowerCase();
+
+    console.log('[CRM-DEBUG] recordLessonAttendanceBatch: processing rec', { recStudentId: rec.studentId, recStudentName: rec.studentName, hasNote: !!rec.note?.trim(), allStudentsCount: allStudents.length });
     
     // Priority 1: Exact ID or equivalence match
     let student = allStudents.find((s) => s.id === rec.studentId || eqSet.has(s.id));
@@ -228,7 +230,11 @@ export function recordLessonAttendanceBatch(params: {
         student = groupMatch || matchingByName[0];
       }
     }
-    if (!student) return;
+    if (!student) {
+      console.warn('[CRM-DEBUG] recordLessonAttendanceBatch: student NOT FOUND for', { recStudentId: rec.studentId, recStudentName: rec.studentName, allStudentIds: allStudents.map(s => s.id) });
+      return;
+    }
+    console.log('[CRM-DEBUG] recordLessonAttendanceBatch: student FOUND', { studentId: student.id, studentName: `${student.firstName} ${student.lastName}` });
 
     const existingHistory = student.attendanceStats?.history || [];
     const dateFormatted = currentLesson.dateFormatted || currentLesson.date;
@@ -309,11 +315,12 @@ export function recordLessonAttendanceBatch(params: {
         occurredAt: `Сегодня, ${timeFormatted}`,
         createdAt: now.toISOString(),
         author: teacherAuthor,
-        channel: 'other',
-        type: 'follow_up',
+        channel: 'note',
+        type: 'teacher_comment',
         content: `💬 Комментарий преподавателя по уроку «${currentLesson.groupName}» (${rec.status === 'present' ? 'Был на уроке' : rec.status === 'absent' ? 'Пропуск' : 'Перенос'}): «${cleanNote}»`,
       };
 
+      console.log('[CRM-DEBUG] saveInteractionToStorage called', { interactionId: interaction.id, studentId: interaction.studentId, studentName: interaction.studentName, content: interaction.content.slice(0, 80) });
       saveInteractionToStorage(interaction);
       updatedInteractions = [interaction, ...updatedInteractions];
     }

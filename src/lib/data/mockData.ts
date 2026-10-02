@@ -12,8 +12,8 @@ export interface TimelineInteraction {
   targetRole?: string;
   occurredAt: string;
   createdAt?: string;
-  channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other';
-  type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other';
+  channel: 'telegram' | 'whatsapp' | 'phone' | 'email' | 'call' | 'meeting' | 'other' | 'note';
+  type: 'initial_contact' | 'follow_up' | 'trial' | 'payment' | 'renewal' | 'complaint' | 'organizational' | 'status_change' | 'other' | 'teacher_comment';
   author: string;
   content: string;
   result?: string;
