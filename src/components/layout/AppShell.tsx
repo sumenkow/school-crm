@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MobileBottomNav } from './MobileBottomNav';
+import { NotificationCenter } from './NotificationCenter';
 import { createClient } from '@/lib/supabase/client';
 import { hydrateAllDataFromCloud } from '@/lib/data/cloudSync';
 
@@ -115,6 +116,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="print:hidden">
         <MobileBottomNav />
       </div>
+
+      {/* Floating Notification Center in bottom right */}
+      <NotificationCenter />
 
       {/* Mobile overlay backdrop */}
       {mobileOpen && (

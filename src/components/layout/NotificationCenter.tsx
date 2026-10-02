@@ -187,28 +187,28 @@ export function NotificationCenter() {
   const olderNotifs = notifications.filter((n) => n.timestamp < startOfYesterday);
 
   return (
-    <div className="relative shrink-0" ref={dropdownRef}>
+    <div className="fixed bottom-20 md:bottom-5 right-5 z-[9999] shrink-0 print:hidden" ref={dropdownRef}>
       {/* Bell Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative touch-target-44 sm:h-10 sm:w-10 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-2xs"
+        className="relative w-8 h-8 rounded-full border border-slate-200/90 bg-white/95 backdrop-blur-xs hover:bg-slate-50 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-md hover:shadow-lg text-slate-600 hover:text-slate-900"
         aria-label="Уведомления руководителя"
         title="Центр уведомлений руководителя"
       >
-        <Bell className="h-4 w-4 text-slate-600" />
+        <Bell className="h-3.5 w-3.5 text-slate-600" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-extrabold text-white shadow-xs animate-in zoom-in-50">
+          <span className="absolute -top-1 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-extrabold text-white shadow-xs animate-in zoom-in-50">
             {unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel (~400px) */}
+      {/* Dropdown Panel (~390px) opening upward */}
       {isOpen && (
-        <div className="absolute right-0 top-12 z-50 w-80 sm:w-[410px] rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        <div className="absolute right-0 bottom-10 z-[10000] w-80 sm:w-[390px] rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 overflow-hidden">
           {/* Panel Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/80">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 bg-slate-50/90">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
                 <Bell className="h-4 w-4" />
