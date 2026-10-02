@@ -108,6 +108,7 @@ interface DesktopLessonModalProps {
   isOpen: boolean;
   lesson: FullLessonData | null;
   initialTab?: LessonModalTab;
+  highlightReschedule?: boolean;
   onClose: () => void;
   onSave: (updatedLesson: FullLessonData) => void;
   onDelete?: (lessonId: string) => void;
@@ -117,6 +118,7 @@ export function DesktopLessonModal({
   isOpen,
   lesson,
   initialTab,
+  highlightReschedule,
   onClose,
   onSave,
   onDelete,
@@ -277,6 +279,24 @@ export function DesktopLessonModal({
       });
       const dayOfWeek = new Date(date).getDay() === 0 ? 6 : new Date(date).getDay() - 1;
 
+      const isRescheduled =
+        date !== lesson.date ||
+        startTime !== lesson.startTime ||
+        endTime !== lesson.endTime;
+
+      let newStatus: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled' = lesson.status;
+      if (lesson.status === 'completed') {
+        newStatus = 'completed';
+      } else if (lesson.status === 'cancelled') {
+        newStatus = isRescheduled ? 'rescheduled' : 'cancelled';
+      } else if (isRescheduled) {
+        newStatus = 'rescheduled';
+      } else if (activeTab === 'attendance' && attendance.some((a) => a.status === 'present')) {
+        newStatus = 'completed';
+      } else {
+        newStatus = lesson.status || 'scheduled';
+      }
+
       // 1. Record attendance batch (updates student history & localStorage)
       recordLessonAttendanceBatch({
         lessonId: lesson.id,
@@ -299,15 +319,45 @@ export function DesktopLessonModal({
       
       const updatedEvents: LessonTimelineEvent[] = [
         ...(lesson.timelineEvents || []),
-        {
+      ];
+
+      if (isRescheduled) {
+        updatedEvents.push({
+          id: `ev_${Date.now()}_resched`,
+          timestamp: timestampStr,
+          author: teacherName || 'Администратор',
+          role: 'Администратор',
+          type: 'rescheduled',
+          comment: `Занятие перенесено с ${lesson.date} (${lesson.startTime}–${lesson.endTime}) на ${date} (${startTime}–${endTime})`,
+        });
+      } else {
+        updatedEvents.push({
           id: `ev_${Date.now()}`,
           timestamp: timestampStr,
           author: teacherName || 'Преподаватель',
           role: 'Преподаватель',
           type: 'attendance_marked',
           comment: `Обновлены параметры урока и журнал посещаемости (${attendance.filter((a) => a.status === 'present').length}/${attendance.length} присутствуют)`,
-        },
-      ];
+        });
+      }
+
+      const rescheduleInfo: LessonRescheduleInfo | undefined = isRescheduled
+        ? {
+            previousDate: lesson.date,
+            previousTime: `${lesson.startTime} – ${lesson.endTime}`,
+            newDate: dateFormatted,
+            newTime: `${startTime} – ${endTime}`,
+            rawNewDate: date,
+            newStartTime: startTime,
+            newEndTime: endTime,
+            room: isOnlineFormat ? 'Онлайн (Zoom)' : room.trim() || 'Аудитория 1',
+            reason: 'Перенос занятия',
+            changedBy: teacherName || 'Администратор',
+            changedRole: 'Администратор',
+            changedAt: timestampStr,
+            notifyParents: true,
+          }
+        : lesson.rescheduleInfo;
 
       // 3. Build updated lesson object
       const updatedLesson: FullLessonData = {
@@ -323,7 +373,8 @@ export function DesktopLessonModal({
         homework: homework.trim() || undefined,
         onlineMeetingUrl: isOnlineFormat ? zoomUrl.trim() || undefined : undefined,
         room: isOnlineFormat ? 'Онлайн (Zoom)' : room.trim() || 'Аудитория 1',
-        status: 'completed',
+        status: newStatus,
+        rescheduleInfo,
         timelineEvents: updatedEvents,
         students: (lesson.students || []).map((s) => {
           const att = attendance.find((a) => a.studentId === s.id);
@@ -352,7 +403,7 @@ export function DesktopLessonModal({
             start_time: updatedLesson.startTime,
             end_time: updatedLesson.endTime,
             room: updatedLesson.room,
-            status: 'completed',
+            status: newStatus,
             updated_at: new Date().toISOString(),
           })
           .eq('id', updatedLesson.id);
@@ -377,7 +428,7 @@ export function DesktopLessonModal({
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
 
-      toast.success('Данные занятия и журнал сохранены');
+      toast.success(isRescheduled ? 'Занятие успешно перенесено' : 'Данные занятия и журнал сохранены');
       onSave(updatedLesson);
       onClose();
     } catch (err: any) {
@@ -706,42 +757,65 @@ export function DesktopLessonModal({
               </div>
 
               {/* Row 2: Date & Start / End Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                    Дата урока
-                  </label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    disabled={!canEditSchedule}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                    Время начала
-                  </label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    disabled={!canEditSchedule}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
-                    Время окончания
-                  </label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    disabled={!canEditSchedule}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
-                  />
+              <div
+                className={cn(
+                  'rounded-xl transition-all',
+                  highlightReschedule && 'bg-blue-50/70 border border-blue-200 p-3.5 ring-2 ring-blue-400/30'
+                )}
+              >
+                {highlightReschedule && (
+                  <div className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold text-blue-800">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Перенос занятия: выберите новую дату и время</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                      Дата урока
+                    </label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      disabled={!canEditSchedule}
+                      autoFocus={highlightReschedule}
+                      className={cn(
+                        'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500',
+                        highlightReschedule ? 'border-blue-300 ring-1 ring-blue-300' : 'border-slate-200'
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                      Время начала
+                    </label>
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      disabled={!canEditSchedule}
+                      className={cn(
+                        'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500',
+                        highlightReschedule ? 'border-blue-300 ring-1 ring-blue-300' : 'border-slate-200'
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">
+                      Время окончания
+                    </label>
+                    <input
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      disabled={!canEditSchedule}
+                      className={cn(
+                        'w-full border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500',
+                        highlightReschedule ? 'border-blue-300 ring-1 ring-blue-300' : 'border-slate-200'
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -27,8 +27,9 @@ import {
   History,
   Check,
 } from 'lucide-react';
-import { FullLessonData, INITIAL_TEACHERS } from '@/lib/data/mockData';
+import { FullLessonData, INITIAL_TEACHERS, LessonTimelineEvent } from '@/lib/data/mockData';
 import { saveLessonToStorage } from '@/lib/data/lessonStorage';
+import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,11 @@ export interface LessonPreviewDrawerProps {
   isOpen: boolean;
   lesson: FullLessonData | null;
   onClose: () => void;
-  onEdit: (lesson: FullLessonData, initialTab?: 'main' | 'attendance' | 'feedback' | 'history') => void;
+  onEdit: (
+    lesson: FullLessonData,
+    initialTab?: 'main' | 'attendance' | 'feedback' | 'history',
+    highlightReschedule?: boolean
+  ) => void;
   onLessonUpdated?: (lesson: FullLessonData) => void;
   onDuplicate?: (lesson: FullLessonData) => void;
   isEmbedded?: boolean;
@@ -80,6 +85,8 @@ export function LessonPreviewDrawer({
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'notes'>('overview');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside
@@ -231,15 +238,54 @@ export function LessonPreviewDrawer({
   };
 
   // Handle Cancel lesson action
-  const handleCancelLesson = () => {
-    const updatedLesson: FullLessonData = {
-      ...lesson,
-      status: 'cancelled',
-    };
-    saveLessonToStorage(updatedLesson);
-    if (onLessonUpdated) onLessonUpdated(updatedLesson);
-    setShowCancelConfirm(false);
-    toast.success('Занятие отменено');
+  const handleCancelLesson = async () => {
+    if (!lesson) return;
+    setIsCancelling(true);
+    try {
+      const now = new Date();
+      const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      
+      const updatedEvents: LessonTimelineEvent[] = [
+        ...(lesson.timelineEvents || []),
+        {
+          id: `ev_${Date.now()}_cancel`,
+          timestamp: timestampStr,
+          author: 'Администратор',
+          role: 'Администратор',
+          type: 'cancelled',
+          comment: cancelReason.trim() ? `Отмена занятия: ${cancelReason.trim()}` : 'Занятие отменено',
+        },
+      ];
+
+      const updatedLesson: FullLessonData = {
+        ...lesson,
+        status: 'cancelled',
+        timelineEvents: updatedEvents,
+      };
+
+      saveLessonToStorage(updatedLesson);
+
+      try {
+        const supabase = createClient();
+        await supabase
+          .from('lessons')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('id', updatedLesson.id);
+      } catch (err) {
+        console.warn('Supabase cancel update notice:', err);
+      }
+
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+      if (onLessonUpdated) onLessonUpdated(updatedLesson);
+      setShowCancelConfirm(false);
+      setCancelReason('');
+      toast.success('Занятие отменено');
+    } catch (err: any) {
+      console.error('Failed to cancel lesson:', err);
+      toast.error('Не удалось отменить занятие');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   // Handle Revert to scheduled
@@ -520,7 +566,7 @@ export function LessonPreviewDrawer({
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      onEdit(lesson, 'main');
+                      onEdit(lesson, 'main', true);
                     }}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
@@ -898,36 +944,82 @@ export function LessonPreviewDrawer({
         </>
       )}
 
-      {/* Cancel Confirmation Modal */}
+      {/* Safe Cancel Confirmation Modal */}
       {showCancelConfirm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-60 flex items-center justify-center p-4 animate-in fade-in duration-100">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-60 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Header with soft red alert icon */}
+            <div className="flex items-start gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
                 <AlertCircle className="h-5 w-5" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Отменить занятие?</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Статус урока будет изменен на «Отменено».
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-900">Отменить занятие?</h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Подтвердите отмену запланированного занятия
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
+            {/* Context block: Group, Date/Time, Teacher */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Группа:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[220px]">{lesson.groupName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Курс:</span>
+                <span className="font-semibold text-slate-700">{lesson.courseName || 'Основной курс'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Дата и время:</span>
+                <span className="font-semibold text-slate-800">{dateFormattedStr} · {lesson.startTime} – {lesson.endTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Преподаватель:</span>
+                <span className="font-semibold text-slate-800">{lesson.teacherName}</span>
+              </div>
+            </div>
+
+            {/* Warning block */}
+            <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3 text-xs text-amber-900 leading-relaxed">
+              Занятие будет сохранено в системе со статусом <strong className="font-semibold text-amber-950">«Отменено»</strong>. Связи с группой, преподавателем и учениками сохранятся.
+            </div>
+
+            {/* Cancellation reason input */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 block">
+                Причина отмены <span className="text-slate-400 font-normal">(необязательно)</span>
+              </label>
+              <textarea
+                rows={2}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Например: болезнь преподавателя, праздничный день..."
+                className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none transition-all"
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={() => setShowCancelConfirm(false)}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                onClick={() => {
+                  setShowCancelConfirm(false);
+                  setCancelReason('');
+                }}
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
               >
-                Назад
+                Не отменять
               </button>
               <button
                 type="button"
                 onClick={handleCancelLesson}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs"
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
               >
-                Да, отменить
+                {isCancelling ? 'Отмена...' : 'Подтвердить отмену'}
               </button>
             </div>
           </div>
