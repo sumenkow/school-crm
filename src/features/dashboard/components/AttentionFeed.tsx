@@ -167,27 +167,27 @@ export function AttentionFeed({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-full min-h-[260px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-full min-h-[245px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-full min-h-[260px]">
+    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-full">
       {/* Шапка */}
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-50">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-            <AlertCircle className="w-4 h-4" />
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-50">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-3.5 h-3.5" />
           </div>
-          <h3 className="font-bold text-slate-900 text-sm">Требует вашего внимания</h3>
+          <h3 className="font-bold text-slate-900 text-xs">Требует вашего внимания</h3>
         </div>
-        <span className="bg-rose-50 text-rose-600 font-bold text-xs px-2.5 py-1 rounded-full">
+        <span className="bg-rose-50 text-rose-600 font-bold text-[11px] px-2 py-0.5 rounded-full">
           {attentionItems.length} ситуаций
         </span>
       </div>
 
-      {/* Список ситуаций */}
-      <div className="divide-y divide-slate-50 py-1 my-auto">
+      {/* Список ситуаций — компактные строки py-1.5 */}
+      <div className="divide-y divide-slate-50 my-auto">
         {attentionItems.slice(0, 3).map((item) => {
           const iconBgClass = {
             rose: 'bg-rose-50 text-rose-500',
@@ -215,33 +215,33 @@ export function AttentionFeed({
             <div
               key={item.id}
               onClick={handleAction}
-              className="py-2.5 flex items-center justify-between gap-2 hover:bg-slate-50/50 rounded-xl px-1 -mx-1 transition-colors cursor-pointer group"
+              className="py-1.5 flex items-center justify-between gap-2 hover:bg-slate-50/50 rounded-xl px-1 -mx-1 transition-colors cursor-pointer group"
             >
               {/* Иконка + Текст */}
-              <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', iconBgClass)}>
-                  <IconComponent className="w-4 h-4" />
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', iconBgClass)}>
+                  <IconComponent className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-slate-900 truncate leading-snug group-hover:text-blue-600 transition-colors">
                     {item.title}
                   </p>
-                  <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">
+                  <p className="text-[11px] text-slate-400 truncate leading-none mt-0.5">
                     {item.subtitle}
                   </p>
                 </div>
               </div>
 
-              {/* Время (выровнено справа) */}
-              <span className="text-xs text-slate-400 shrink-0 w-24 text-right mr-3 hidden sm:inline-block">
+              {/* Время */}
+              <span className="text-[11px] text-slate-400 shrink-0 w-20 text-right hidden sm:inline-block">
                 {item.timeLabel}
               </span>
 
-              {/* Кнопка действия строго фиксированного размера */}
+              {/* Кнопка действия */}
               <button
                 type="button"
                 onClick={handleAction}
-                className="w-[88px] h-8 flex items-center justify-center text-xs font-semibold text-blue-600 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/80 rounded-xl transition-colors shrink-0 cursor-pointer"
+                className="w-[82px] h-7 flex items-center justify-center text-[11px] font-semibold text-blue-600 bg-blue-50/70 hover:bg-blue-100 border border-blue-200/80 rounded-lg shrink-0 transition-colors cursor-pointer"
               >
                 {item.actionLabel}
               </button>
@@ -250,11 +250,11 @@ export function AttentionFeed({
         })}
       </div>
 
-      {/* Ссылка внизу */}
+      {/* Нижняя ссылка */}
       <button
         type="button"
         onClick={() => router.push('/tasks')}
-        className="w-full text-center text-xs font-semibold text-blue-600 hover:text-blue-700 pt-3 border-t border-slate-50 cursor-pointer"
+        className="w-full text-center text-[11px] font-semibold text-blue-600 hover:text-blue-700 pt-2 border-t border-slate-50 cursor-pointer"
       >
         Показать все ситуации ({attentionItems.length}) →
       </button>

@@ -63,25 +63,25 @@ export function FunnelWidget({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-full min-h-[260px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm space-y-3 animate-pulse h-full min-h-[245px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-full min-h-[260px]">
+    <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between h-full">
       <div>
         <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-          <h3 className="font-bold text-slate-900 text-sm">Воронка лидов</h3>
+          <h3 className="font-bold text-slate-900 text-xs">Воронка лидов</h3>
           <button
             type="button"
             onClick={() => router.push('/crm')}
-            className="text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+            className="text-[11px] font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
           >
             Подробнее →
           </button>
         </div>
 
-        <div className="space-y-1.5 my-2">
+        <div className="space-y-1.5 my-1.5">
           {stagesData.stages.map((stage) => {
             const widthPercent = Math.max(8, Math.min(100, Math.round((stage.count / stagesData.maxCount) * 100)));
 
@@ -110,7 +110,7 @@ export function FunnelWidget({
         </div>
 
         {/* Conversion Row */}
-        <div className="flex items-center justify-between px-1 py-1.5 border-t border-slate-50 mt-1">
+        <div className="flex items-center justify-between px-1 py-1 border-t border-slate-50 mt-1">
           <span className="text-[11px] text-slate-500">Конверсия</span>
           <div className="flex items-baseline gap-1">
             <span className="font-bold text-slate-900 text-xs">{stagesData.conversionRate}%</span>
@@ -122,7 +122,7 @@ export function FunnelWidget({
       {/* Компактный нижний алерт (28px) */}
       <div
         onClick={() => router.push('/crm')}
-        className="h-7 px-2.5 rounded-lg bg-rose-50/90 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100 transition-colors mt-2"
+        className="h-7 px-2.5 rounded-lg bg-rose-50/90 border border-rose-100 flex items-center justify-between text-xs text-rose-700 cursor-pointer hover:bg-rose-100 transition-colors mt-1.5"
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
