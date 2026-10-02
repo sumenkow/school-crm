@@ -21,6 +21,8 @@ import {
   MessageSquare,
   ChevronRight,
   Sparkles,
+  ArrowRight,
+  FileText,
 } from 'lucide-react';
 import { FullLessonData, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { saveLessonToStorage } from '@/lib/data/lessonStorage';
@@ -38,6 +40,29 @@ export interface LessonPreviewDrawerProps {
   isEmbedded?: boolean;
 }
 
+function getStudentWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `${count} учеников`;
+  if (mod10 === 1) return `${count} ученик`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} ученика`;
+  return `${count} учеников`;
+}
+
+function getAbsentWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `${count} пропусков`;
+  if (mod10 === 1) return `${count} пропуск`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} пропуска`;
+  return `${count} пропусков`;
+}
+
+function getPresentWord(count: number): string {
+  if (count === 1) return '1 был';
+  return `${count} были`;
+}
+
 export function LessonPreviewDrawer({
   isOpen,
   lesson,
@@ -49,7 +74,7 @@ export function LessonPreviewDrawer({
 }: LessonPreviewDrawerProps) {
   const toast = useToast();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'details' | 'attendance' | 'notes'>('details');
+  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'notes'>('overview');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -86,10 +111,10 @@ export function LessonPreviewDrawer({
 
   if (!isOpen || !lesson) return null;
 
-  // Teacher details from verified list
+  // Teacher details
   const teacher = INITIAL_TEACHERS.find((t) => t.id === lesson.teacherId) || {
     id: lesson.teacherId || 't1',
-    name: lesson.teacherName,
+    name: lesson.teacherName || 'Преподаватель',
     role: 'Ведущий преподаватель',
   };
 
@@ -102,8 +127,16 @@ export function LessonPreviewDrawer({
       .join('')
       .toUpperCase() || 'ПР';
 
+  const teacherColorMap: Record<string, string> = {
+    t1: 'bg-rose-500',
+    t2: 'bg-amber-500',
+    t3: 'bg-emerald-500',
+    t4: 'bg-indigo-500',
+  };
+  const teacherBg = teacherColorMap[teacher.id] || 'bg-blue-500';
+
   // Date formatting in Russian
-  const daysRu = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+  const daysRu = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const monthsRu = [
     'января',
     'февраля',
@@ -147,12 +180,6 @@ export function LessonPreviewDrawer({
       ? `${durHours} ч`
       : `${durMins} мин`;
 
-  const trialCount =
-    lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length ||
-    lesson.trialStudentsCount ||
-    (lesson.isTrial ? lesson.students?.length : 0) ||
-    0;
-
   // Status Chip config
   const statusConfig = {
     completed: {
@@ -173,12 +200,20 @@ export function LessonPreviewDrawer({
     },
   }[lesson.status || 'scheduled'];
 
+  // Attendance stats
+  const students = lesson.students || [];
+  const totalStudentsCount = students.length;
+  const presentCount = students.filter((s) => s.attendanceStatus === 'present').length;
+  const absentCount = students.filter((s) => s.attendanceStatus === 'absent').length;
+  const attendanceRate =
+    totalStudentsCount > 0 ? Math.round((presentCount / totalStudentsCount) * 100) : 0;
+
   // Handle student attendance status change inside Drawer
   const handleStudentAttendanceChange = (
     studentId: string,
     newStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked'
   ) => {
-    const updatedStudents = (lesson.students || []).map((s) =>
+    const updatedStudents = students.map((s) =>
       s.id === studentId ? { ...s, attendanceStatus: newStatus } : s
     );
 
@@ -215,7 +250,7 @@ export function LessonPreviewDrawer({
       ...lesson,
       id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       status: 'scheduled',
-      students: (lesson.students || []).map((s) => ({
+      students: students.map((s) => ({
         ...s,
         attendanceStatus: 'not_marked',
       })),
@@ -225,6 +260,8 @@ export function LessonPreviewDrawer({
     if (onLessonUpdated) onLessonUpdated(dupLesson);
     toast.success('Занятие успешно продублировано');
   };
+
+  const isOnline = !!(lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн'));
 
   const drawerContent = (
     <div
@@ -237,21 +274,16 @@ export function LessonPreviewDrawer({
       role="dialog"
       aria-modal="true"
     >
-      {/* 1. SHAPKA DRAWER */}
-      <div className="p-4 border-b border-slate-100 bg-white space-y-2.5 shrink-0">
+      {/* 1. ШАПКА ПАНЕЛИ */}
+      <div className="p-4 border-b border-slate-100 bg-white space-y-2 shrink-0">
         <div className="flex items-start justify-between gap-3">
-          <div
-            onClick={() => onEdit(lesson)}
-            className="min-w-0 flex-1 cursor-pointer group"
-            title="Нажмите, чтобы открыть полную карточку урока"
-          >
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-snug">
-                {lesson.groupName.split('(')[0].trim()}
-              </h2>
-              <Edit3 className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 transition-opacity shrink-0" />
-            </div>
-            <p className="text-xs text-slate-500 truncate mt-0.5">{lesson.courseName || 'Курс школы'}</p>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-bold text-slate-900 truncate leading-snug">
+              {lesson.groupName.split('(')[0].trim()}
+            </h2>
+            <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">
+              {lesson.courseName || 'Робототехника'}
+            </p>
           </div>
           <button
             type="button"
@@ -263,22 +295,22 @@ export function LessonPreviewDrawer({
           </button>
         </div>
 
-        {/* Status and Type Badges */}
+        {/* Чипсы статусов в один ряд */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
           <span
             className={cn(
-              'text-xs font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs',
+              'text-xs font-semibold px-2 py-0.5 rounded-full border shadow-2xs',
               statusConfig.classes
             )}
           >
             {statusConfig.label}
           </span>
-          <span className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200/60 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full">
             {lesson.isTrial ? 'Пробное' : 'Основной курс'}
           </span>
-          {lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн') ? (
-            <span className="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Video className="h-3 w-3 text-indigo-600" />
+          {isOnline ? (
+            <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Video className="h-3 w-3 text-blue-600" />
               Онлайн (Zoom)
             </span>
           ) : (
@@ -289,69 +321,82 @@ export function LessonPreviewDrawer({
           )}
         </div>
 
-        {/* Date and Time Information */}
-        <div className="pt-1 text-xs text-slate-600 space-y-1">
-          <div className="flex items-center gap-1.5 font-medium text-slate-700">
-            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span>{dateFormattedStr}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-            <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span>
-              {lesson.startTime} – {lesson.endTime} ({durationStr})
-            </span>
-          </div>
+        {/* Дата и время */}
+        <div className="text-xs text-slate-500 mt-2 flex items-center gap-1.5 font-medium">
+          <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <span>
+            {dateFormattedStr} · {lesson.startTime} – {lesson.endTime} ({durationStr})
+          </span>
         </div>
+
+        {/* Плашка преподавателя */}
+        <Link
+          href={`/teachers/${lesson.teacherId || 't1'}`}
+          className="flex items-center gap-2 p-1.5 rounded-xl bg-slate-50 border border-slate-100/80 hover:bg-slate-100/80 transition-colors group cursor-pointer"
+        >
+          <div
+            className={cn(
+              'h-6 w-6 rounded-full text-white font-bold text-[10px] flex items-center justify-center shrink-0 shadow-2xs',
+              teacherBg
+            )}
+          >
+            {teacherInitials}
+          </div>
+          <span className="text-xs text-slate-700 font-medium group-hover:text-blue-600 transition-colors truncate">
+            {lesson.teacherName} · {getStudentWord(totalStudentsCount)}
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-300 ml-auto group-hover:text-blue-500 transition-colors shrink-0" />
+        </Link>
       </div>
 
-      {/* 2. QUICK ACTIONS */}
-      <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2 shrink-0">
+      {/* 2. КНОПКИ БЫСТРОГО ДЕЙСТВИЯ (в один ряд) */}
+      <div className="px-4 py-2.5 border-b border-slate-100 bg-white flex items-center gap-2 shrink-0">
         {lesson.onlineMeetingUrl ? (
           <a
             href={lesson.onlineMeetingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors border border-blue-200/80 shadow-2xs cursor-pointer"
+            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
-            <Video className="h-3.5 w-3.5 text-blue-600" />
-            <span>Открыть в Zoom</span>
-            <ExternalLink className="h-3 w-3 opacity-60 ml-0.5" />
+            <Video className="h-3.5 w-3.5" />
+            <span>Открыть Zoom</span>
+            <ExternalLink className="h-3 w-3 opacity-70 ml-0.5" />
           </a>
         ) : (
           <button
             type="button"
             disabled
-            className="flex-1 py-2 bg-slate-100 text-slate-400 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 border border-slate-200 cursor-not-allowed opacity-60"
+            title="Zoom ссылка не указана для этого занятия"
+            className="flex-1 py-2 px-4 bg-slate-100 text-slate-400 font-medium text-xs rounded-xl flex items-center justify-center gap-1.5 border border-slate-200 cursor-not-allowed opacity-60"
           >
             <Video className="h-3.5 w-3.5" />
-            <span>Zoom ссылка не указана</span>
+            <span>Zoom не указан</span>
           </button>
         )}
 
-        {/* More actions menu */}
+        <button
+          type="button"
+          onClick={() => onEdit(lesson)}
+          className="py-2 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+          title="Редактировать параметры занятия"
+        >
+          <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+          <span>Изменить</span>
+        </button>
+
+        {/* Меню дополнительных действий [ ··· ] */}
         <div className="relative shrink-0" ref={menuRef}>
           <button
             type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             title="Дополнительные действия"
-            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer shadow-2xs"
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shadow-2xs"
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
 
           {isMenuOpen && (
             <div className="absolute right-0 mt-1.5 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg z-30 space-y-1 text-xs animate-in fade-in zoom-in-95 duration-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  onEdit(lesson);
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
-              >
-                <Edit3 className="h-3.5 w-3.5 text-slate-400" />
-                <span>Редактировать</span>
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -372,241 +417,214 @@ export function LessonPreviewDrawer({
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors text-left cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Отменить урок</span>
+                <span>Отменить занятие</span>
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* 3. LINKED ENTITIES (GROUP, TEACHER, STUDENTS) */}
-      <div className="px-4 py-3 border-b border-slate-100 space-y-2.5 bg-white shrink-0">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          Связанные сущности
-        </div>
-
-        <div className="space-y-1.5">
-          {/* Group Link */}
-          <Link
-            href={`/groups/${lesson.groupId || '1'}`}
-            className="flex items-center justify-between p-2 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs shrink-0 group-hover:scale-105 transition-transform">
-                <BookOpen className="h-3.5 w-3.5" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 truncate transition-colors">
-                  {lesson.groupName}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {lesson.students?.length || 0} учеников · {lesson.courseName || 'Курс'}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
-          </Link>
-
-          {/* Teacher Link */}
-          <Link
-            href={`/teachers/${lesson.teacherId || 't1'}`}
-            className="flex items-center justify-between p-2 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                {teacherInitials}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 truncate transition-colors">
-                  {lesson.teacherName}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {teacher.role || 'Ведущий преподаватель'}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-500 transition-colors shrink-0" />
-          </Link>
-
-          {/* Students Overlap Avatars Row */}
-          <div
-            onClick={() => setActiveTab('attendance')}
-            className="flex items-center justify-between p-2 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
-                <Users className="h-3.5 w-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                  Ученики ({lesson.students?.length || 0})
-                </p>
-                <p className="text-[10px] text-slate-400">Нажмите для просмотра посещаемости</p>
-              </div>
-            </div>
-
-            {/* Overlapping student avatar bubbles */}
-            <div className="flex items-center pl-2 shrink-0">
-              {(lesson.students || []).slice(0, 4).map((st, i) => {
-                const sInitials =
-                  st.name
-                    .trim()
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase() || 'У';
-
-                return (
-                  <div
-                    key={st.id || i}
-                    title={st.name}
-                    className={cn(
-                      'h-6 w-6 rounded-full bg-slate-100 border-2 border-white font-bold text-slate-700 flex items-center justify-center text-[9px] shadow-2xs',
-                      i > 0 && '-ml-2'
-                    )}
-                  >
-                    {sInitials}
-                  </div>
-                );
-              })}
-              {(lesson.students?.length || 0) > 4 && (
-                <div className="h-6 w-6 rounded-full bg-blue-50 border-2 border-white font-bold text-blue-700 flex items-center justify-center text-[9px] shadow-2xs -ml-2">
-                  +{(lesson.students?.length || 0) - 4}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. TABS ROW */}
-      <div className="flex border-b border-slate-100 px-4 bg-white text-xs font-semibold shrink-0">
+      {/* 3. ВКЛАДКИ ПАНЕЛИ */}
+      <div className="flex border-b border-slate-100 px-4 bg-white text-xs shrink-0">
         <button
           type="button"
-          onClick={() => setActiveTab('details')}
+          onClick={() => setActiveTab('overview')}
           className={cn(
-            'py-2.5 px-3 border-b-2 transition-colors cursor-pointer',
-            activeTab === 'details'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+            'py-2.5 px-3 transition-colors cursor-pointer font-semibold',
+            activeTab === 'overview'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          Детали
+          Обзор
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('attendance')}
           className={cn(
-            'py-2.5 px-3 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5',
+            'py-2.5 px-3 transition-colors cursor-pointer font-semibold flex items-center gap-1.5',
             activeTab === 'attendance'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
           <span>Посещаемость</span>
           <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded-full">
-            {lesson.students?.length || 0}
+            {totalStudentsCount}
           </span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('notes')}
           className={cn(
-            'py-2.5 px-3 border-b-2 transition-colors cursor-pointer',
+            'py-2.5 px-3 transition-colors cursor-pointer font-semibold',
             activeTab === 'notes'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'border-b-2 border-blue-600 text-blue-600'
+              : 'border-b-2 border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
           Заметки
         </button>
       </div>
 
-      {/* 5. TAB CONTENTS (SCROLLABLE) */}
+      {/* 4. СОДЕРЖИМОЕ ВКЛАДОК */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
-        {/* TAB 1: DETAILS */}
-        {activeTab === 'details' && (
+        {/* ВКЛАДКА 1: ОБЗОР */}
+        {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* Topic & Homework */}
+            {/* Блок «Тема и задание» */}
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
-                <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                <span>Тема занятия</span>
-              </div>
-              <p className="text-slate-800 text-xs font-medium pl-5 leading-relaxed">
-                {lesson.topic || 'Тема не указана'}
-              </p>
-
-              {lesson.homework && (
-                <div className="pt-2 border-t border-slate-200/60 mt-2">
-                  <div className="flex items-center gap-1.5 text-slate-700 font-semibold mb-1">
-                    <BookOpen className="h-3.5 w-3.5 text-amber-600" />
-                    <span>Домашнее задание</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-5 leading-relaxed">
-                    {lesson.homework}
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Тема и задание</span>
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => onEdit(lesson)}
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+                >
+                  Изменить
+                </button>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-slate-800 leading-snug">
+                  {lesson.topic || 'Тема не указана'}
+                </p>
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  {lesson.homework ? `ДЗ: ${lesson.homework}` : 'Домашнее задание не задано'}
+                </p>
+              </div>
             </div>
 
-            {/* Two-column Key-Value Details */}
-            <div className="rounded-xl border border-slate-100 divide-y divide-slate-100">
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Тип занятия</span>
-                <span className="font-semibold text-slate-800">
-                  {lesson.isTrial ? 'Пробное занятие' : 'Основной курс'}
+            {/* Блок «Посещаемость» */}
+            <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                  <Users className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Посещаемость</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onEdit(lesson)}
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors cursor-pointer flex items-center gap-0.5"
+                >
+                  <span>Открыть журнал</span>
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* Сводка чипсов: [ ● 3 были ] [ ● 1 пропуск ] [ ◷ 75% ] */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <span>{getPresentWord(presentCount)}</span>
+                </span>
+                <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                  <span>{getAbsentWord(absentCount)}</span>
+                </span>
+                <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1">
+                  <span>◷ {attendanceRate}%</span>
                 </span>
               </div>
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Формат</span>
-                <span className="font-semibold text-slate-800">
-                  {lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн')
-                    ? 'Онлайн (Zoom)'
-                    : lesson.room || 'Офлайн'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Длительность</span>
-                <span className="font-semibold text-slate-800">{durationStr}</span>
-              </div>
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Статус</span>
-                <span className="font-semibold text-slate-800">{statusConfig.label}</span>
-              </div>
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Пробные ученики</span>
-                <span className="font-semibold text-slate-800">
-                  {trialCount > 0 ? `Да (${trialCount} уч.)` : 'Нет'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-2.5">
-                <span className="text-slate-400">Списание баланса</span>
-                <span className="font-semibold text-slate-800">
-                  {lesson.isBilled ? '✓ Списано' : 'Авто при завершении'}
-                </span>
-              </div>
+
+              {/* Компактный список учеников (строки по ~30px) */}
+              {students.length === 0 ? (
+                <p className="text-slate-400 text-xs py-2 text-center">Нет привязанных учеников</p>
+              ) : (
+                <div className="divide-y divide-slate-100 pt-1">
+                  {students.map((st) => {
+                    const stInitials =
+                      st.name
+                        .trim()
+                        .split(' ')
+                        .slice(0, 2)
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase() || 'У';
+
+                    const isPresent = st.attendanceStatus === 'present';
+                    const isAbsent = st.attendanceStatus === 'absent';
+                    const isExcused = st.attendanceStatus === 'excused';
+
+                    // Determine gender suffix for Russian name
+                    const firstName = st.name.trim().split(' ')[0] || '';
+                    const isFemale =
+                      firstName.endsWith('а') ||
+                      firstName.endsWith('я') ||
+                      firstName.endsWith('ь');
+                    const presentLabel = isFemale ? 'Была' : 'Был';
+
+                    return (
+                      <div
+                        key={st.id}
+                        className="h-[30px] flex items-center justify-between gap-2 py-1 text-xs"
+                      >
+                        <Link
+                          href={`/students/${st.id}`}
+                          className="flex items-center gap-2 min-w-0 flex-1 group"
+                        >
+                          <div className="h-5 w-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-200 shrink-0 group-hover:border-blue-400 transition-colors">
+                            {stInitials}
+                          </div>
+                          <span className="font-medium text-slate-900 group-hover:text-blue-600 truncate transition-colors text-xs">
+                            {st.name}
+                          </span>
+                        </Link>
+
+                        <div className="shrink-0 text-[11px] font-semibold">
+                          {isPresent && (
+                            <span className="text-emerald-700 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              <span>{presentLabel}</span>
+                            </span>
+                          )}
+                          {isAbsent && (
+                            <span className="text-rose-600 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                              <span>Пропуск</span>
+                            </span>
+                          )}
+                          {isExcused && (
+                            <span className="text-amber-600 flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              <span>Болезнь</span>
+                            </span>
+                          )}
+                          {!isPresent && !isAbsent && !isExcused && (
+                            <span className="text-slate-400 font-normal flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                              <span>Не отмечен</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* TAB 2: ATTENDANCE */}
+        {/* ВКЛАДКА 2: ПОСЕЩАЕМОСТЬ */}
         {activeTab === 'attendance' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-              <span>Состав группы: {lesson.students?.length || 0} уч.</span>
+              <span>Состав группы: {totalStudentsCount} уч.</span>
               <span>Статус присутствия</span>
             </div>
 
-            {!lesson.students || lesson.students.length === 0 ? (
+            {students.length === 0 ? (
               <div className="py-8 text-center text-slate-400">
                 <Users className="h-6 w-6 mx-auto mb-1.5 opacity-40" />
                 <p>В этой группе пока нет добавленных учеников</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
-                {lesson.students.map((st) => {
+                {students.map((st) => {
                   const stInitials =
                     st.name
                       .trim()
@@ -640,7 +658,7 @@ export function LessonPreviewDrawer({
                         </div>
                       </Link>
 
-                      {/* Quick Attendance Selector */}
+                      {/* Кнопки отметки присутствия */}
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
@@ -690,7 +708,7 @@ export function LessonPreviewDrawer({
           </div>
         )}
 
-        {/* TAB 3: NOTES */}
+        {/* ВКЛАДКА 3: ЗАМЕТКИ */}
         {activeTab === 'notes' && (
           <div className="space-y-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
@@ -711,44 +729,22 @@ export function LessonPreviewDrawer({
                   <BookOpen className="h-3.5 w-3.5 text-amber-600" />
                   <span>Материалы и ссылки</span>
                 </div>
-                <p className="text-slate-600 text-xs leading-relaxed">
-                  {lesson.homework}
-                </p>
+                <p className="text-slate-600 text-xs leading-relaxed">{lesson.homework}</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* 6. ACTION FOOTER (PINNED AT BOTTOM) */}
-      <div className="p-3 border-t border-slate-100 bg-white flex items-center gap-2 shrink-0">
+      {/* 5. НИЖНЯЯ ЗАКРЕПЛЕННАЯ ССЫЛКА (Sticky Footer) */}
+      <div className="border-t border-slate-100 bg-white shrink-0">
         <button
           type="button"
           onClick={() => onEdit(lesson)}
-          className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+          className="w-full py-3 text-center text-xs font-semibold text-blue-600 hover:bg-blue-50/50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <Edit3 className="h-3.5 w-3.5" />
-          <span>Изменить</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDuplicateLesson}
-          className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-          title="Создать копию занятия"
-        >
-          <Copy className="h-3.5 w-3.5 text-slate-400" />
-          <span className="hidden sm:inline">Дублировать</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowCancelConfirm(true)}
-          className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-          title="Отменить занятие"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Отменить</span>
+          <span>Открыть полную карточку занятия</span>
+          <ArrowRight className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
