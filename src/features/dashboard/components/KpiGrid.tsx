@@ -8,7 +8,8 @@ import {
   Filter,
   RefreshCw,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  ChevronRight
 } from 'lucide-react';
 import { FullPaymentData, FullStudentData, FullLeadData, FullGroupData, FullTaskData } from '@/lib/data/mockData';
 import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
