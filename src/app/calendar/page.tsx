@@ -24,7 +24,6 @@ import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
 import { LessonModal } from '@/components/calendar/LessonModal';
-import { LessonDetailsDrawer } from '@/components/calendar/LessonDetailsDrawer';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
 
@@ -171,7 +170,6 @@ export default function CalendarPage() {
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
   const [desktopModalTab, setDesktopModalTab] = useState<'main' | 'attendance' | 'feedback' | 'history'>('main');
   const [desktopModalHighlightReschedule, setDesktopModalHighlightReschedule] = useState(false);
-  const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
 
   // Sync stored lessons and subscribe to Supabase Realtime
   useEffect(() => {
@@ -253,7 +251,9 @@ export default function CalendarPage() {
   };
 
   const handleLessonClick = (lesson: FullLessonData) => {
-    setSelectedLessonForDrawer(lesson);
+    setSelectedLessonForDesktop(lesson);
+    setDesktopModalTab('main');
+    setDesktopModalHighlightReschedule(false);
   };
 
   const handleDropLessonOnSlot = async (
@@ -344,8 +344,8 @@ export default function CalendarPage() {
     saveLessonToStorage(updatedLesson);
 
     setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
-    if (selectedLessonForDrawer?.id === updatedLesson.id) {
-      setSelectedLessonForDrawer(updatedLesson);
+    if (selectedLessonForDesktop?.id === updatedLesson.id) {
+      setSelectedLessonForDesktop(updatedLesson);
     }
 
     try {
@@ -474,8 +474,8 @@ export default function CalendarPage() {
       if (prev.some((l) => l.id === newLesson.id)) return prev;
       return [newLesson, ...prev];
     });
-    // Immediately open the newly created lesson's drawer!
-    setSelectedLessonForDrawer(newLesson);
+    // Immediately open the newly created lesson's modal!
+    setSelectedLessonForDesktop(newLesson);
   };
 
   // Render-level dedup: guard against any remaining duplicates by ID
@@ -868,7 +868,7 @@ export default function CalendarPage() {
                             (lesson.isTrial ? lesson.students?.length : 0) ||
                             0;
                           const isTrial = lesson.isTrial || trialCount > 0;
-                          const isSelected = selectedLessonForDrawer?.id === lesson.id;
+                          const isSelected = selectedLessonForDesktop?.id === lesson.id;
                           const isDraggable = lesson.status === 'scheduled';
                           const isDraggingThis = draggedLessonId === lesson.id;
 
@@ -1060,7 +1060,7 @@ export default function CalendarPage() {
                   </div>
                 ) : (
                   dayLessons.map((lesson) => {
-                    const isSelected = selectedLessonForDrawer?.id === lesson.id;
+                    const isSelected = selectedLessonForDesktop?.id === lesson.id;
                     return (
                       <div
                         key={lesson.id}
@@ -1207,86 +1207,6 @@ export default function CalendarPage() {
           </div>
         )}
           </div>
-
-          {/* Embedded Side-by-Side Drawer (Screens >= 1440px) */}
-          {selectedLessonForDrawer && (
-            <div className="hidden min-[1440px]:block w-[400px] shrink-0 sticky top-4 h-[calc(100vh-2rem)]">
-              <LessonDetailsDrawer
-                isOpen={!!selectedLessonForDrawer}
-                lesson={selectedLessonForDrawer}
-                onClose={() => setSelectedLessonForDrawer(null)}
-                onEdit={(l, tab, highlightReschedule) => {
-                  setDesktopModalTab(tab || 'main');
-                  setDesktopModalHighlightReschedule(!!highlightReschedule);
-                  setSelectedLessonForDesktop(l);
-                }}
-                onLessonUpdated={(updated) => {
-                  setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-                  setSelectedLessonForDrawer(updated);
-                }}
-                onDuplicate={(l) => {
-                  const dup: FullLessonData = {
-                    ...l,
-                    id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                    status: 'scheduled',
-                    students: (l.students || []).map((s) => ({
-                      ...s,
-                      attendanceStatus: 'not_marked',
-                    })),
-                  };
-                  saveLessonToStorage(dup);
-                  setLessons((prev) => [dup, ...prev]);
-                  setSelectedLessonForDrawer(dup);
-                }}
-                onDelete={(lessonId) => {
-                  setLessons((prev) => prev.filter((l) => l.id !== lessonId));
-                  if (selectedLessonForDrawer?.id === lessonId) {
-                    setSelectedLessonForDrawer(null);
-                  }
-                }}
-                isEmbedded={true}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Overlay Drawer (Screens < 1440px) */}
-        <div className="min-[1440px]:hidden">
-          <LessonDetailsDrawer
-            isOpen={!!selectedLessonForDrawer}
-            lesson={selectedLessonForDrawer}
-            onClose={() => setSelectedLessonForDrawer(null)}
-            onEdit={(l, tab, highlightReschedule) => {
-              setDesktopModalTab(tab || 'main');
-              setDesktopModalHighlightReschedule(!!highlightReschedule);
-              setSelectedLessonForDesktop(l);
-            }}
-            onLessonUpdated={(updated) => {
-              setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-              setSelectedLessonForDrawer(updated);
-            }}
-            onDuplicate={(l) => {
-              const dup: FullLessonData = {
-                ...l,
-                id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-                status: 'scheduled',
-                students: (l.students || []).map((s) => ({
-                  ...s,
-                  attendanceStatus: 'not_marked',
-                })),
-              };
-              saveLessonToStorage(dup);
-              setLessons((prev) => [dup, ...prev]);
-              setSelectedLessonForDrawer(dup);
-            }}
-            onDelete={(lessonId) => {
-              setLessons((prev) => prev.filter((l) => l.id !== lessonId));
-              if (selectedLessonForDrawer?.id === lessonId) {
-                setSelectedLessonForDrawer(null);
-              }
-            }}
-            isEmbedded={false}
-          />
         </div>
       </div>
 
@@ -1330,17 +1250,11 @@ export default function CalendarPage() {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
           setSelectedLessonForDesktop(null);
           setDesktopModalHighlightReschedule(false);
-          if (selectedLessonForDrawer?.id === updatedLesson.id) {
-            setSelectedLessonForDrawer(updatedLesson);
-          }
         }}
         onDelete={(lessonId) => {
           setLessons((prev) => prev.filter((l) => l.id !== lessonId));
           setSelectedLessonForDesktop(null);
           setDesktopModalHighlightReschedule(false);
-          if (selectedLessonForDrawer?.id === lessonId) {
-            setSelectedLessonForDrawer(null);
-          }
         }}
       />
     </>
