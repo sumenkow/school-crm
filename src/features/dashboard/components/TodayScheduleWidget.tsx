@@ -45,29 +45,18 @@ export function TodayScheduleWidget({
     });
 
     if (filtered.length === 0) {
-      // Pick distinct scheduled lessons with unique times
-      const seenTimes = new Set<string>();
-      const distinct: FullLessonData[] = [];
-      for (const l of lessons) {
-        const time = l.startTime || '15:00';
-        if (!seenTimes.has(time) || distinct.length < 4) {
-          seenTimes.add(time);
-          distinct.push(l);
-          if (distinct.length >= 4) break;
-        }
-      }
-      filtered = distinct.length > 0 ? distinct : lessons.slice(0, 4);
+      filtered = lessons.slice(0, 4);
     }
 
-    // Sort strictly ascending by startTime (e.g., 15:00 -> 16:00 -> 18:45)
+    // Sort strictly ascending by startTime (e.g., 15:00 -> 16:30 -> 18:45)
     const sorted = [...filtered].sort((a, b) => {
-      const timeA = a.startTime || '00:00';
-      const timeB = b.startTime || '00:00';
+      const timeA = a.startTime || (a as any).start_time || '00:00';
+      const timeB = b.startTime || (b as any).start_time || '00:00';
       return timeA.localeCompare(timeB);
     });
 
     const totalCount = sorted.length;
-    const trialsCount = sorted.filter(l => l.isTrial || l.trialStudentsCount).length;
+    const trialsCount = sorted.filter(l => l.isTrial || (l as any).trialStudentsCount).length;
 
     return {
       todayLessons: sorted,
@@ -88,7 +77,7 @@ export function TodayScheduleWidget({
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between pb-2.5">
+      <div className="flex items-center justify-between pb-2">
         <div>
           <h3 className="font-bold text-slate-900 text-sm">Сегодня</h3>
           <p className="text-[11px] text-slate-400 capitalize">{todayFormatted}</p>
@@ -102,31 +91,31 @@ export function TodayScheduleWidget({
         </button>
       </div>
 
-      {/* 4 цветные плашки сверху */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        <div className="bg-emerald-50/70 p-2 rounded-xl text-center">
-          <span className="block text-base font-bold text-emerald-700">{stats.total}</span>
-          <span className="text-[10px] text-emerald-600 font-medium">занятий</span>
+      {/* 4 компактные цветные плашки сверху (h-11, без переноса строк) */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-2">
+        <div className="bg-emerald-50/80 h-11 px-1.5 py-1 rounded-lg flex flex-col items-center justify-center text-center">
+          <span className="text-sm font-bold text-emerald-700 leading-none">{stats.total}</span>
+          <span className="text-[10px] text-emerald-600 font-medium leading-none mt-1 whitespace-nowrap truncate w-full">занятий</span>
         </div>
-        <div className="bg-purple-50/70 p-2 rounded-xl text-center">
-          <span className="block text-base font-bold text-purple-700">{stats.trials}</span>
-          <span className="text-[10px] text-purple-600 font-medium">пробных</span>
+        <div className="bg-purple-50/80 h-11 px-1.5 py-1 rounded-lg flex flex-col items-center justify-center text-center">
+          <span className="text-sm font-bold text-purple-700 leading-none">{stats.trials}</span>
+          <span className="text-[10px] text-purple-600 font-medium leading-none mt-1 whitespace-nowrap truncate w-full">пробных</span>
         </div>
-        <div className="bg-amber-50/70 p-2 rounded-xl text-center">
-          <span className="block text-base font-bold text-amber-700">{stats.expectedPayments}</span>
-          <span className="text-[10px] text-amber-600 font-medium">ожид. оплат</span>
+        <div className="bg-amber-50/80 h-11 px-1.5 py-1 rounded-lg flex flex-col items-center justify-center text-center">
+          <span className="text-sm font-bold text-amber-700 leading-none">{stats.expectedPayments}</span>
+          <span className="text-[10px] text-amber-600 font-medium leading-none mt-1 whitespace-nowrap truncate w-full">ожид. оплат</span>
         </div>
-        <div className="bg-blue-50/70 p-2 rounded-xl text-center">
-          <span className="block text-base font-bold text-blue-700">{stats.tasks}</span>
-          <span className="text-[10px] text-blue-600 font-medium">задачи</span>
+        <div className="bg-blue-50/80 h-11 px-1.5 py-1 rounded-lg flex flex-col items-center justify-center text-center">
+          <span className="text-sm font-bold text-blue-700 leading-none">{stats.tasks}</span>
+          <span className="text-[10px] text-blue-600 font-medium leading-none mt-1 whitespace-nowrap truncate w-full">задачи</span>
         </div>
       </div>
 
       {/* Вертикальный таймлайн */}
-      <div className="space-y-2 relative before:absolute before:left-[45px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 my-1">
+      <div className="space-y-1 relative before:absolute before:left-[45px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 my-0.5">
         {todayLessons.slice(0, 4).map((event, idx) => {
-          const isOnline = !event.room || event.onlineMeetingUrl || event.room.toLowerCase().includes('онлайн') || idx % 2 === 0;
-          const time = event.startTime || '15:00';
+          const isOnline = !event.room || event.onlineMeetingUrl || (event.room && event.room.toLowerCase().includes('онлайн')) || idx % 2 === 0;
+          const time = event.startTime || (event as any).start_time || (event as any).time || '15:00';
           const title = event.isTrial ? 'Пробный урок' : `${event.courseName || 'Английский'} · ${event.groupName || 'Группа'}`;
           const teacher = event.teacherName || 'Преподаватель';
           const format = isOnline ? 'Онлайн' : 'Офлайн';
@@ -162,7 +151,7 @@ export function TodayScheduleWidget({
       <button
         type="button"
         onClick={() => router.push('/calendar')}
-        className="w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600 mt-2 pt-2 border-t border-slate-50 cursor-pointer"
+        className="w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600 mt-1 pt-1.5 border-t border-slate-50 cursor-pointer"
       >
         Показать все →
       </button>

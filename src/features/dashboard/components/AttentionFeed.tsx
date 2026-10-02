@@ -67,8 +67,8 @@ export function AttentionFeed({
         type: 'debt',
         iconType: 'rose',
         title: 'Просрочена оплата',
-        subtitle: `${p.studentName || 'Иванов Иван'} • ${Math.round(debtEur)} € • 3 дня`,
-        timeLabel: 'Сегодня, 09:12',
+        subtitle: `${p.studentName || 'Иван Смирнов'} · ${Math.round(debtEur)} € долг`,
+        timeLabel: 'Сегодня',
         actionLabel: 'Открыть',
         targetUrl: p.studentId ? `/students/${p.studentId}` : '/finance',
       });
@@ -82,8 +82,8 @@ export function AttentionFeed({
         type: 'trial',
         iconType: 'purple',
         title: 'Пробное без назначения',
-        subtitle: `${trialLead.name} • заявка 2 дня назад`,
-        timeLabel: 'Вчера, 14:20',
+        subtitle: `${trialLead.name} · без даты пробного`,
+        timeLabel: 'Вчера',
         actionLabel: 'Назначить',
         targetUrl: `/crm/leads/${trialLead.id}`,
         rawLead: trialLead,
@@ -93,13 +93,14 @@ export function AttentionFeed({
     // 3. Ending subscription package (2 lessons remaining)
     const endingSubStudent = students.find(s => s.status === 'active' && s.finance?.activeSubscription?.lessonsRemaining && s.finance.activeSubscription.lessonsRemaining <= 2);
     if (endingSubStudent) {
+      const rem = endingSubStudent.finance?.activeSubscription?.lessonsRemaining || 2;
       items.push({
         id: `att_pkg_${endingSubStudent.id}`,
         type: 'package',
         iconType: 'amber',
         title: 'Заканчивается пакет занятий',
-        subtitle: `${endingSubStudent.firstName} ${endingSubStudent.lastName} • осталось 2 занятия`,
-        timeLabel: 'Вчера, 11:05',
+        subtitle: `${endingSubStudent.firstName} ${endingSubStudent.lastName} · ост. ${rem} ${rem === 1 ? 'занятие' : 'занятия'}`,
+        timeLabel: 'Вчера',
         actionLabel: 'Напомнить',
         targetUrl: `/students/${endingSubStudent.id}`,
       });
@@ -110,8 +111,8 @@ export function AttentionFeed({
         type: 'package',
         iconType: 'amber',
         title: 'Заканчивается пакет занятий',
-        subtitle: 'Алексей Попов • осталось 2 занятия',
-        timeLabel: 'Вчера, 11:05',
+        subtitle: 'Алексей Попов · ост. 2 занятия',
+        timeLabel: 'Вчера',
         actionLabel: 'Напомнить',
         targetUrl: '/students',
       });
@@ -125,8 +126,8 @@ export function AttentionFeed({
         type: 'lead',
         iconType: 'blue',
         title: 'Лид без реакции',
-        subtitle: `${unhandledLead.name} • 1 день`,
-        timeLabel: 'Вчера, 10:15',
+        subtitle: `${unhandledLead.name} · 1 день без ответа`,
+        timeLabel: 'Вчера',
         actionLabel: 'Открыть',
         targetUrl: `/crm/leads/${unhandledLead.id}`,
         rawLead: unhandledLead,
@@ -137,8 +138,8 @@ export function AttentionFeed({
         type: 'lead',
         iconType: 'blue',
         title: 'Лид без реакции',
-        subtitle: 'Елена Васильева • 1 день',
-        timeLabel: 'Вчера, 10:15',
+        subtitle: 'Елена Васильева · 1 день без ответа',
+        timeLabel: 'Вчера',
         actionLabel: 'Открыть',
         targetUrl: '/crm',
       });
@@ -147,13 +148,15 @@ export function AttentionFeed({
     // 5. Low-capacity group
     const lowGroup = groups.find(g => g.status === 'active' && !g.is_deleted && (g.students?.length || 0) < (g.capacity || 8));
     if (lowGroup) {
+      const enrolled = lowGroup.students?.length || 0;
+      const capacity = lowGroup.capacity || 8;
       items.push({
         id: `att_grp_${lowGroup.id}`,
         type: 'group',
         iconType: 'purple',
         title: 'Группа недозаполнена',
-        subtitle: `${lowGroup.name} • ${lowGroup.students?.length || 6}/${lowGroup.capacity || 8} мест`,
-        timeLabel: '30 сент., 18:40',
+        subtitle: `${lowGroup.name} · ${enrolled}/${capacity} мест`,
+        timeLabel: '30 сент.',
         actionLabel: 'Открыть',
         targetUrl: `/groups/${lowGroup.id}`,
       });
@@ -170,7 +173,7 @@ export function AttentionFeed({
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
-      <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
           <h3 className="font-bold text-slate-900 text-sm">Требует вашего внимания</h3>
@@ -180,7 +183,7 @@ export function AttentionFeed({
         </span>
       </div>
 
-      <div className="divide-y divide-slate-50 py-0.5 my-1">
+      <div className="divide-y divide-slate-50 py-0.5 my-0.5">
         {attentionItems.slice(0, 5).map((item) => {
           const iconBg = {
             rose: 'bg-rose-50 text-rose-500',
@@ -205,7 +208,7 @@ export function AttentionFeed({
           };
 
           return (
-            <div key={item.id} className="py-2 flex items-center justify-between gap-2.5">
+            <div key={item.id} className="py-1.5 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', iconBg)}>
                   <IconComponent className="w-3.5 h-3.5" />
@@ -215,8 +218,7 @@ export function AttentionFeed({
                   <p className="text-[11px] text-slate-400 truncate">{item.subtitle}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[11px] text-slate-400 hidden sm:inline">{item.timeLabel}</span>
+              <div className="flex items-center shrink-0">
                 <button
                   type="button"
                   onClick={handleAction}
@@ -233,7 +235,7 @@ export function AttentionFeed({
       <button
         type="button"
         onClick={() => router.push('/tasks')}
-        className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 mt-2 pt-2 border-t border-slate-50 cursor-pointer"
+        className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 mt-1 pt-1.5 border-t border-slate-50 cursor-pointer"
       >
         Показать все ситуации ({attentionItems.length}) →
       </button>

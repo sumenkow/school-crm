@@ -26,10 +26,22 @@ export function TeachersListWidget({
     if (sourceList.length === 0) return [];
 
     return sourceList.slice(0, 4).map(teacher => {
-      const teacherGroups = (groups || []).filter(
-        g => (g.teacherId === teacher.id || (g as any).teacher_id === teacher.id || (g as any).teacher?.id === teacher.id) &&
-             g.status === 'active' && !g.is_deleted && !(g as any).isDeleted
-      );
+      // Robust matching by id, teacher_id, teacher.id, teacherName or name
+      const teacherNameClean = (teacher.name || '').trim().toLowerCase();
+      const teacherIdClean = String(teacher.id || '').trim();
+
+      const teacherGroups = (groups || []).filter(g => {
+        const isActive = g.status === 'active' && !g.is_deleted && !(g as any).isDeleted;
+        if (!isActive) return false;
+
+        const gTId = String(g.teacherId || (g as any).teacher_id || (g as any).teacher?.id || '').trim();
+        if (gTId && gTId === teacherIdClean) return true;
+
+        const gTName = String(g.teacherName || (g as any).teacher?.name || '').trim().toLowerCase();
+        if (gTName && teacherNameClean && gTName === teacherNameClean) return true;
+
+        return false;
+      });
 
       let totalStudents = 0;
       let totalCapacity = 0;
@@ -41,9 +53,25 @@ export function TeachersListWidget({
         totalCapacity += cap;
       });
 
-      const hasCapacity = totalCapacity > 0;
-      const workload = hasCapacity ? Math.round((totalStudents / totalCapacity) * 100) : null;
-      
+      // If groups in global state don't match, fallback to teacher's embedded activeGroups / studentsCount
+      const effectiveGroupsCount = teacherGroups.length > 0
+        ? teacherGroups.length
+        : (teacher.activeGroups?.length || 0);
+
+      const effectiveStudentsCount = totalStudents > 0
+        ? totalStudents
+        : (teacher.studentsCount || (teacher.activeGroups ? teacher.activeGroups.reduce((acc, ag) => acc + (ag.studentsCount || 0), 0) : 0));
+
+      // Calculate academic workload %
+      let workload = 0;
+      if (typeof teacher.weeklyHours === 'number') {
+        workload = Math.min(100, Math.round((teacher.weeklyHours / 20) * 100));
+      } else if (totalCapacity > 0) {
+        workload = Math.round((totalStudents / totalCapacity) * 100);
+      } else if (effectiveGroupsCount > 0) {
+        workload = Math.min(100, effectiveGroupsCount * 30);
+      }
+
       const initials = (teacher.name || '')
         .trim()
         .split(' ')
@@ -53,31 +81,53 @@ export function TeachersListWidget({
         .join('')
         .toUpperCase() || 'ПР';
 
-      let workloadStatus: string | null = null;
-      let workloadStatusClass = '';
+      let workloadStatus = 'Свободные часы';
+      let workloadStatusClass = 'bg-amber-50 text-amber-700';
 
-      if (workload !== null) {
-        if (workload >= 80) {
-          workloadStatus = 'Хорошая загрузка';
-          workloadStatusClass = 'bg-emerald-50 text-emerald-700';
-        } else if (workload >= 60) {
-          workloadStatus = 'Близка к полной';
-          workloadStatusClass = 'bg-amber-50 text-amber-700';
-        } else {
-          workloadStatus = 'Есть места';
-          workloadStatusClass = 'bg-blue-50 text-blue-700';
-        }
+      if (workload >= 80) {
+        workloadStatus = 'Высокая загрузка';
+        workloadStatusClass = 'bg-emerald-50 text-emerald-700';
+      } else if (workload >= 50) {
+        workloadStatus = 'Оптимальная';
+        workloadStatusClass = 'bg-blue-50 text-blue-700';
+      } else {
+        workloadStatus = 'Свободные часы';
+        workloadStatusClass = 'bg-amber-50 text-amber-700';
       }
 
-      const subject = (teacher as any).specialization || (teacher as any).subject || (teacherGroups[0] as any)?.course || (teacherGroups[0] as any)?.courseId || 'Преподаватель';
+      // Determine subject name
+      let subject = (teacher as any).specialization || (teacher as any).subject;
+      if (!subject && teacherGroups.length > 0) {
+        subject = teacherGroups[0].courseName || (teacherGroups[0] as any).course || (teacherGroups[0] as any).courseId;
+      }
+      if (!subject && teacher.role) {
+        const roleLower = teacher.role.toLowerCase();
+        if (roleLower.includes('английск')) subject = 'Английский';
+        else if (roleLower.includes('робототехник')) subject = 'Робототехника';
+        else if (roleLower.includes('математик')) subject = 'Математика';
+        else if (roleLower.includes('немецк')) subject = 'Немецкий';
+        else subject = teacher.role.split('(')[0].replace(/^(Ведущий преподаватель|Преподаватель)\s+/i, '').trim();
+      }
+      if (!subject) subject = 'Преподаватель';
+
+      // Format Russian grammar for groups & students
+      const groupsStr = effectiveGroupsCount === 1 ? '1 активная группа'
+        : [2, 3, 4].includes(effectiveGroupsCount % 10) && ![12, 13, 14].includes(effectiveGroupsCount % 100)
+        ? `${effectiveGroupsCount} активных группы`
+        : `${effectiveGroupsCount} активных групп`;
+
+      const studentsStr = effectiveStudentsCount === 1 ? '1 ученик'
+        : [2, 3, 4].includes(effectiveStudentsCount % 10) && ![12, 13, 14].includes(effectiveStudentsCount % 100)
+        ? `${effectiveStudentsCount} ученика`
+        : `${effectiveStudentsCount} учеников`;
 
       return {
         id: teacher.id,
         name: teacher.name,
         initials,
         subject,
-        studentsCount: totalStudents,
-        groupsCount: teacherGroups.length,
+        groupsStr,
+        studentsStr,
         workload,
         workloadStatus,
         workloadStatusClass,
@@ -122,34 +172,24 @@ export function TeachersListWidget({
                     router.push('/teachers');
                   }
                 }}
-                className="py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 rounded-lg px-1 transition-colors"
+                className="py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 rounded-lg px-1 transition-colors gap-2"
               >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0">
                     {teacher.initials}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-900 truncate">{teacher.name}</p>
                     <p className="text-[11px] text-slate-400 truncate">
-                      {teacher.subject} · {teacher.studentsCount > 0 ? `${teacher.studentsCount} уч.` : `${teacher.groupsCount} групп`}
+                      {teacher.subject} · {teacher.groupsStr} · {teacher.studentsStr}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {teacher.workload !== null ? (
-                    <>
-                      <span className="text-xs font-bold text-slate-700">{teacher.workload}%</span>
-                      {teacher.workloadStatus && (
-                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', teacher.workloadStatusClass)}>
-                          {teacher.workloadStatus}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 font-medium px-1.5 py-0.5 bg-slate-50 rounded">
-                      {teacher.groupsCount} {teacher.groupsCount === 1 ? 'группа' : 'групп'}
-                    </span>
-                  )}
+                  <span className="text-xs font-bold text-slate-700">{teacher.workload}%</span>
+                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', teacher.workloadStatusClass)}>
+                    {teacher.workloadStatus}
+                  </span>
                 </div>
               </div>
             ))}

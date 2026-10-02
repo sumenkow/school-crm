@@ -78,8 +78,22 @@ export function GroupOccupancyWidget({
 
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-full border-4 ${averageRate >= 80 ? 'border-emerald-500 text-emerald-700' : averageRate >= 50 ? 'border-blue-500 text-blue-700' : 'border-amber-500 text-amber-700'} flex items-center justify-center font-bold text-xs shrink-0`}>
-              {averageRate}%
+            <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+              <svg className="w-12 h-12 -rotate-90" viewBox="0 0 40 40">
+                <circle cx="20" cy="20" r="16" fill="transparent" stroke="#E2E8F0" strokeWidth="4" />
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="16"
+                  fill="transparent"
+                  stroke={averageRate >= 80 ? '#10B981' : averageRate >= 50 ? '#3B82F6' : '#F59E0B'}
+                  strokeWidth="4"
+                  strokeDasharray={100.5}
+                  strokeDashoffset={100.5 - (100.5 * averageRate) / 100}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <span className="absolute text-xs font-bold text-slate-800">{averageRate}%</span>
             </div>
             <div className="min-w-0">
               <span className="text-xs font-bold text-slate-800 block">Средняя загрузка</span>

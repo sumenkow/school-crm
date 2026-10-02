@@ -198,7 +198,7 @@ export function KpiGrid({
               'inline-flex items-center gap-0.5 text-xs font-medium px-2 py-0.5 rounded-full',
               financeData.deltaPercent > 0 ? 'text-emerald-600 bg-emerald-50' : financeData.deltaPercent < 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-600 bg-slate-100'
             )}>
-              {financeData.deltaPercent > 0 ? `↑ +${financeData.deltaPercent}%` : financeData.deltaPercent < 0 ? `↓ ${financeData.deltaPercent}%` : '0%'}
+              {financeData.deltaPercent > 0 ? `↑ +${financeData.deltaPercent}%` : financeData.deltaPercent < 0 ? `↓ ${Math.abs(financeData.deltaPercent)}%` : '0%'}
             </span>
           ) : (
             <span className="inline-flex items-center text-xs font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
@@ -289,11 +289,11 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-            {leadsData.paid} оплатили
+        <div className="flex items-center justify-between pt-2 border-t border-slate-50 gap-1">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
+            {leadsData.total} → {leadsData.paid}
           </span>
-          <span className="text-xs text-slate-400">{leadsData.total} лидов всего</span>
+          <span className="text-[11px] text-slate-400 truncate">от новых к оплате</span>
         </div>
       </div>
 
