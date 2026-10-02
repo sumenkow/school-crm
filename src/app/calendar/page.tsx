@@ -27,11 +27,112 @@ import { DesktopLessonModal } from '@/components/calendar/DesktopLessonModal';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
 
+const CALENDAR_START_HOUR = 9;
+const CALENDAR_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const HOUR_HEIGHT = 64;
+
+const SHORT_DAY_NAMES = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+
+function getLessonsCountWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) return `${count} занятий`;
+  if (mod10 === 1) return `${count} занятие`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} занятия`;
+  return `${count} занятий`;
+}
+
+function parseTimeToMinutes(timeStr?: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(':').map(Number);
+  return (parts[0] || 0) * 60 + (parts[1] || 0);
+}
+
+interface PositionedLessonItem {
+  lesson: FullLessonData;
+  startMin: number;
+  endMin: number;
+  top: number;
+  height: number;
+  trackIdx: number;
+  left: string;
+  width: string;
+}
+
+function layoutDayLessons(dayLessons: FullLessonData[]): PositionedLessonItem[] {
+  if (dayLessons.length === 0) return [];
+
+  const minGridMin = CALENDAR_START_HOUR * 60;
+  const maxGridMin = (CALENDAR_START_HOUR + CALENDAR_HOURS.length) * 60;
+
+  const items = dayLessons.map((lesson) => {
+    const startMin = parseTimeToMinutes(lesson.startTime);
+    let endMin = lesson.endTime ? parseTimeToMinutes(lesson.endTime) : startMin + 60;
+    if (endMin <= startMin) endMin = startMin + 60;
+
+    const clampedStart = Math.max(minGridMin, Math.min(startMin, maxGridMin - 30));
+    const clampedEnd = Math.max(clampedStart + 30, Math.min(endMin, maxGridMin));
+
+    const top = Math.round(((clampedStart - minGridMin) / 60) * HOUR_HEIGHT);
+    const height = Math.max(42, Math.round(((clampedEnd - clampedStart) / 60) * HOUR_HEIGHT) - 2);
+
+    return {
+      lesson,
+      startMin,
+      endMin,
+      top,
+      height,
+    };
+  });
+
+  // Sort by startMin asc, duration desc
+  items.sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
+
+  // Compute column tracks for overlaps
+  const tracks: { endMin: number }[] = [];
+  const positioned = items.map((item) => {
+    let trackIdx = tracks.findIndex((t) => t.endMin <= item.startMin);
+    if (trackIdx === -1) {
+      tracks.push({ endMin: item.endMin });
+      trackIdx = tracks.length - 1;
+    } else {
+      tracks[trackIdx].endMin = item.endMin;
+    }
+    return {
+      ...item,
+      trackIdx,
+    };
+  });
+
+  return positioned.map((item) => {
+    const overlapping = positioned.filter(
+      (other) => item.startMin < other.endMin && other.startMin < item.endMin
+    );
+    const totalTracks = Math.max(...overlapping.map((o) => o.trackIdx)) + 1;
+    const widthPct = 100 / totalTracks;
+    const leftPct = item.trackIdx * widthPct;
+
+    return {
+      ...item,
+      left: `calc(${leftPct}% + 2px)`,
+      width: `calc(${widthPct}% - 4px)`,
+    };
+  });
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
+  const [now, setNow] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const getMonday = (d: Date) => {
     const date = new Date(d);
@@ -313,6 +414,16 @@ export default function CalendarPage() {
     });
   }, [currentRangeLessons]);
 
+  const nowHours = now.getHours();
+  const nowMinutes = now.getMinutes();
+  const nowTotalMinutes = nowHours * 60 + nowMinutes;
+  const isNowInRange =
+    nowTotalMinutes >= CALENDAR_START_HOUR * 60 &&
+    nowTotalMinutes <= (CALENDAR_START_HOUR + CALENDAR_HOURS.length) * 60;
+  const nowOffsetMinutes = nowTotalMinutes - CALENDAR_START_HOUR * 60;
+  const currentTimeTop = (nowOffsetMinutes / 60) * HOUR_HEIGHT;
+  const currentTimeStr = `${String(nowHours).padStart(2, '0')}:${String(nowMinutes).padStart(2, '0')}`;
+
   return (
     <>
       {/* MOBILE AGENDA CALENDAR (< 768px / md:hidden) */}
@@ -479,177 +590,257 @@ export default function CalendarPage() {
 
         {/* VIEW 1: WEEK CALENDAR (MAIN VIEW) */}
         {viewMode === 'week' && (
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-            {daysOfWeek.map((day) => {
-              const dayLessons = filteredLessons.filter((l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex));
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden flex flex-col">
+            {/* 1. Header of Days (7 columns with left axis spacer) */}
+            <div className="flex border-b border-slate-200 bg-slate-50/70 select-none">
+              <div className="w-14 shrink-0 border-r border-slate-200 flex items-center justify-center">
+                <Clock className="h-3.5 w-3.5 text-slate-400" />
+              </div>
+              <div className="grid grid-cols-7 flex-1 divide-x divide-slate-200">
+                {daysOfWeek.map((day) => {
+                  const dayLessons = filteredLessons.filter(
+                    (l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex)
+                  );
 
-              return (
-                <div
-                  key={day.dayIndex}
-                  className={cn(
-                    'min-h-[420px] rounded-2xl border bg-white p-3 shadow-xs flex flex-col transition-all',
-                    day.isToday ? 'border-blue-400 ring-2 ring-blue-100 bg-blue-50/10' : 'border-slate-200 hover:border-slate-300'
-                  )}
-                >
-                  {/* Day Header */}
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                  return (
                     <div
+                      key={day.dayIndex}
                       onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                      className="cursor-pointer group flex items-center gap-1.5"
+                      className={cn(
+                        'py-2 px-1 text-center transition-colors cursor-pointer hover:bg-slate-100/60',
+                        day.isToday && 'bg-blue-50/40'
+                      )}
                       title={t('calendar.createLessonDayHint', 'Нажмите, чтобы создать занятие на этот день')}
                     >
-                      <span className={cn('text-xs font-bold uppercase group-hover:text-blue-600 transition-colors', day.isToday ? 'text-blue-600' : 'text-slate-500')}>
-                        {day.name}
-                      </span>
-                      <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full transition-transform group-hover:scale-105', day.isToday ? 'bg-blue-600 text-white font-bold' : 'text-slate-600 bg-slate-100')}>
-                        {day.date}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                      title={t('calendar.createLessonTitle', 'Создать занятие')}
-                      className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Lessons in Day */}
-                  <div className="space-y-2 flex-1 flex flex-col">
-                    {dayLessons.length === 0 ? (
-                      <div
-                        onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                        className="flex flex-1 flex-col items-center justify-center text-center p-3 rounded-xl border border-dashed border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 cursor-pointer group transition-all"
-                      >
-                        <Plus className="h-4 w-4 text-slate-300 group-hover:text-blue-500 transition-colors mb-1" />
-                        <span className="text-[11px] text-slate-400 group-hover:text-blue-600 font-medium">
-                          + {t('calendar.addLesson', 'Добавить занятие')}
+                      <div className="flex items-center justify-center gap-1">
+                        <span
+                          className={cn(
+                            'text-xs font-bold uppercase',
+                            day.isToday ? 'text-blue-600' : 'text-slate-600'
+                          )}
+                        >
+                          {SHORT_DAY_NAMES[day.dayIndex]}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-xs font-semibold px-1.5 py-0.5 rounded-md transition-transform',
+                            day.isToday
+                              ? 'bg-blue-600 text-white font-bold shadow-2xs'
+                              : 'text-slate-700 bg-slate-100'
+                          )}
+                        >
+                          {day.date}
                         </span>
                       </div>
-                    ) : (
-                      <>
-                        <div className="space-y-2 flex-1">
-                          {dayLessons.map((lesson) => (
+                      <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                        {getLessonsCountWord(dayLessons.length)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Scrollable Timetable Canvas (09:00 - 21:00) */}
+            <div className="relative flex max-h-[720px] overflow-y-auto no-scrollbar">
+              {/* Vertical Time Axis */}
+              <div className="w-14 shrink-0 select-none border-r border-slate-200 bg-slate-50/30">
+                {CALENDAR_HOURS.map((hour) => (
+                  <div
+                    key={hour}
+                    style={{ height: `${HOUR_HEIGHT}px` }}
+                    className="relative border-b border-slate-100 pr-2 pt-1 text-right"
+                  >
+                    <span className="text-[10px] font-medium text-slate-400">
+                      {String(hour).padStart(2, '0')}:00
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* 7 Days Canvas Grid */}
+              <div className="relative grid flex-1 grid-cols-7 divide-x divide-slate-200 bg-white min-w-0">
+                {daysOfWeek.map((day) => {
+                  const dayLessons = filteredLessons.filter(
+                    (l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex)
+                  );
+                  const positionedLessons = layoutDayLessons(dayLessons);
+
+                  return (
+                    <div
+                      key={day.dayIndex}
+                      className={cn(
+                        'relative flex flex-col justify-between min-w-0 transition-colors',
+                        day.isToday && 'bg-blue-50/5'
+                      )}
+                      style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT + 44}px` }}
+                    >
+                      {/* Background Horizontal Guide Lines */}
+                      <div
+                        className="absolute inset-x-0 top-0 pointer-events-none"
+                        style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
+                      >
+                        {CALENDAR_HOURS.map((hour) => (
+                          <div
+                            key={hour}
+                            style={{ height: `${HOUR_HEIGHT}px` }}
+                            className="border-b border-slate-100 w-full"
+                          />
+                        ))}
+                      </div>
+
+                      {/* 3. Current Time Indicator (Line & Dot & Badge) */}
+                      {day.isToday && isNowInRange && (
+                        <div
+                          className="absolute inset-x-0 z-20 pointer-events-none flex items-center"
+                          style={{ top: `${currentTimeTop}px` }}
+                        >
+                          <div className="relative w-full border-b-2 border-blue-500">
+                            <div className="absolute -left-1 -top-[5px] h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white shadow-2xs" />
+                            <span className="absolute left-2 -top-5 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-2xs">
+                              {currentTimeStr}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Lesson Cards Container */}
+                      <div
+                        className="relative w-full"
+                        style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
+                      >
+                        {positionedLessons.map((item) => {
+                          const { lesson } = item;
+                          const trialCount =
+                            lesson.students?.filter(
+                              (s) => (s as any).isTrial || s.name?.includes('Пробное')
+                            ).length ||
+                            lesson.trialStudentsCount ||
+                            (lesson.isTrial ? lesson.students?.length : 0) ||
+                            0;
+                          const isTrial = lesson.isTrial || trialCount > 0;
+
+                          let cardClasses =
+                            'bg-blue-50/80 border-l-4 border-l-blue-500 border-blue-100 text-blue-900 hover:border-blue-300';
+                          if (lesson.status === 'cancelled') {
+                            cardClasses =
+                              'bg-slate-50 border-l-4 border-l-slate-400 opacity-60 text-slate-600 border-slate-200';
+                          } else if (lesson.status === 'completed') {
+                            cardClasses =
+                              'bg-emerald-50/80 border-l-4 border-l-emerald-500 border-emerald-100 text-emerald-900 hover:border-emerald-300';
+                          } else if (lesson.status === 'rescheduled' || isTrial) {
+                            cardClasses =
+                              'bg-amber-50/80 border-l-4 border-l-amber-500 border-amber-100 text-amber-900 hover:border-amber-300';
+                          }
+
+                          return (
                             <div
                               key={lesson.id}
                               onClick={() => handleLessonClick(lesson)}
+                              style={{
+                                top: `${item.top}px`,
+                                height: `${item.height}px`,
+                                left: item.left,
+                                width: item.width,
+                              }}
                               className={cn(
-                                'rounded-xl border p-2.5 text-xs transition-all hover:shadow-md cursor-pointer text-left',
-                                lesson.status === 'completed'
-                                  ? 'border-slate-200 border-l-4 border-l-emerald-500 bg-emerald-50/30 hover:border-emerald-300'
-                                  : lesson.status === 'rescheduled'
-                                  ? 'border-slate-200 border-l-4 border-l-amber-500 bg-amber-50/40 hover:border-amber-300'
-                                  : lesson.status === 'cancelled'
-                                  ? 'border-slate-200 border-l-4 border-l-rose-500 bg-rose-50/30 opacity-70'
-                                  : 'border-slate-200 border-l-4 border-l-blue-500 bg-white hover:border-blue-300'
+                                'absolute p-2 rounded-lg border flex flex-col justify-between transition-all hover:shadow-md cursor-pointer select-none overflow-hidden z-10',
+                                cardClasses
                               )}
                             >
-                              {/* Row 1: Time on the left & Compact Zoom icon on the right (strictly clean) */}
-                              <div className="flex items-center justify-between gap-1">
-                                <span className={cn(
-                                  "text-xs font-semibold whitespace-nowrap",
-                                  lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-700'
-                                )}>
-                                  {lesson.startTime} – {lesson.endTime}
-                                </span>
-                                {lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн') ? (
-                                  <a
-                                    href={lesson.onlineMeetingUrl || '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Открыть Zoom / конференцию"
-                                    className="inline-flex items-center gap-1 text-[10px] text-indigo-700 hover:text-indigo-900 font-bold bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors shrink-0"
+                              {/* Top part: Time, Zoom badge, Group name, Teacher name */}
+                              <div className="min-w-0">
+                                <div className="flex items-center justify-between gap-1 leading-none">
+                                  <span
+                                    className={cn(
+                                      'text-[11px] font-bold whitespace-nowrap tracking-tight',
+                                      lesson.status === 'cancelled'
+                                        ? 'text-slate-400'
+                                        : 'text-slate-800'
+                                    )}
                                   >
-                                    <Video className="h-2.5 w-2.5 text-indigo-600" />
-                                    <span>Zoom</span>
-                                  </a>
-                                ) : null}
+                                    {lesson.startTime} – {lesson.endTime}
+                                  </span>
+                                  {lesson.onlineMeetingUrl ||
+                                  lesson.room?.toLowerCase().includes('онлайн') ? (
+                                    <span
+                                      title="Zoom / Онлайн"
+                                      className="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1 py-0.2 rounded shrink-0"
+                                    >
+                                      <Video className="h-2.5 w-2.5 text-indigo-600" />
+                                      <span>Zoom</span>
+                                    </span>
+                                  ) : null}
+                                </div>
+
+                                <p
+                                  className={cn(
+                                    'mt-1 text-xs font-bold truncate leading-tight',
+                                    lesson.status === 'cancelled'
+                                      ? 'text-slate-500 line-through decoration-rose-400'
+                                      : 'text-slate-900'
+                                  )}
+                                >
+                                  {lesson.groupName.split('(')[0].trim()}
+                                </p>
+
+                                <p
+                                  className={cn(
+                                    'mt-0.5 text-[11px] truncate leading-tight',
+                                    lesson.status === 'cancelled'
+                                      ? 'text-slate-400'
+                                      : 'text-slate-500'
+                                  )}
+                                >
+                                  {lesson.teacherName}
+                                </p>
                               </div>
 
-                              {/* Row 2: Group Name */}
-                              <p className={cn(
-                                "mt-1 font-bold leading-snug",
-                                lesson.status === 'cancelled'
-                                  ? 'text-slate-500 line-through decoration-rose-400'
-                                  : 'text-slate-900'
-                              )}>
-                                {lesson.groupName.split('(')[0]}
-                              </p>
+                              {/* Bottom row: Students count & Badges */}
+                              <div className="flex items-center justify-between gap-1 mt-auto pt-1 text-[10px] border-t border-slate-900/5 leading-none">
+                                <span className="font-medium text-slate-500 whitespace-nowrap flex items-center gap-0.5 text-[10px]">
+                                  <Users className="h-3 w-3 text-slate-400" />
+                                  <span>{lesson.students?.length || 0} уч.</span>
+                                </span>
 
-                              {/* Row 3: Teacher */}
-                              <p className={cn(
-                                "mt-0.5 text-[11px]",
-                                lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-500'
-                              )}>
-                                {lesson.teacherName}
-                              </p>
-
-                              {(() => {
-                                const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
-                                if (trialCount > 0 && lesson.status !== 'cancelled') {
-                                  return (
-                                    <div className="mt-1.5 flex items-center gap-1">
-                                      <span className="rounded-md bg-purple-100 text-purple-900 font-bold px-1.5 py-0.5 text-[10px] border border-purple-200 flex items-center gap-1">
-                                        <span>🎯 {t('calendar.trialLessonCount', 'Пробное занятие')} — {trialCount}</span>
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              {/* Footer: Room on left | Status + Students count on right */}
-                              <div className="mt-2 flex items-center justify-between border-t border-slate-200/50 pt-1.5 text-[10px] text-slate-500">
-                                <span className="truncate max-w-[95px]" title={lesson.room}>{lesson.room}</span>
-                                <div className="flex items-center gap-1.5 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {trialCount > 0 && (
+                                    <span className="rounded bg-purple-100 px-1 py-0.5 text-[9px] font-bold text-purple-900 border border-purple-200 whitespace-nowrap">
+                                      🎯 Пробное · {trialCount}
+                                    </span>
+                                  )}
                                   {lesson.status === 'completed' && (
-                                    <span className="text-[10px] font-bold text-emerald-700">
-                                      ✓ {t('status.completed', 'Проведено')}
-                                    </span>
+                                    <span className="text-[9px] font-bold text-emerald-700">✓</span>
                                   )}
-
                                   {lesson.status === 'rescheduled' && (
-                                    <span
-                                      className="inline-flex items-center gap-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300/80 px-1.5 py-0.5 text-[9px] font-bold"
-                                      title={lesson.rescheduleInfo ? `Перенесено с ${lesson.rescheduleInfo.previousDate} (${lesson.rescheduleInfo.previousTime}) на ${lesson.rescheduleInfo.newDate} (${lesson.rescheduleInfo.newTime}). Причина: ${lesson.rescheduleInfo.reason}` : 'Занятие перенесено'}
-                                    >
-                                      ⇄ {t('status.rescheduled', 'Перенесено')}
-                                    </span>
+                                    <span className="text-[9px] font-bold text-amber-700">⇄</span>
                                   )}
-
                                   {lesson.status === 'cancelled' && (
-                                    <span className="text-[10px] font-bold text-rose-600">
-                                      ✕ {t('status.cancelled', 'Отменено')}
-                                    </span>
+                                    <span className="text-[9px] font-bold text-rose-600">✕</span>
                                   )}
-
-                                  {lesson.isBilled && lesson.status === 'completed' && (
-                                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200">
-                                      💳
-                                    </span>
-                                  )}
-
-                                  <span className={cn("font-semibold", lesson.status === 'cancelled' ? 'text-slate-400' : 'text-slate-700')}>
-                                    {lesson.students.length} {t('calendar.studentsShort', 'уч.')}
-                                  </span>
                                 </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* 5. Bottom "+ Ещё занятие" button */}
+                      <div className="p-1.5 mt-auto relative z-10">
                         <button
+                          type="button"
                           onClick={() => handleOpenScheduleForDate(day.fullDate)}
-                          className="w-full mt-2 py-1.5 rounded-lg border border-dashed border-slate-200 text-[11px] font-medium text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="w-full border border-dashed border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/40 text-[11px] font-medium rounded-lg py-1 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                         >
-                          <Plus className="h-3 w-3" /> {t('calendar.moreLessons', 'Ещё занятие')}
+                          <Plus className="h-3 w-3" />
+                          {t('calendar.moreLessons', 'Ещё занятие')}
                         </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
