@@ -26,9 +26,10 @@ import {
   RotateCcw,
   History,
   Check,
+  ChevronDown,
 } from 'lucide-react';
 import { FullLessonData, INITIAL_TEACHERS, LessonTimelineEvent } from '@/lib/data/mockData';
-import { saveLessonToStorage } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, deleteLessonFromStorage } from '@/lib/data/lessonStorage';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -45,6 +46,7 @@ export interface LessonDetailsDrawerProps {
   ) => void;
   onLessonUpdated?: (lesson: FullLessonData) => void;
   onDuplicate?: (lesson: FullLessonData) => void;
+  onDelete?: (lessonId: string) => void;
   isEmbedded?: boolean;
 }
 
@@ -80,29 +82,37 @@ export function LessonDetailsDrawer({
   onEdit,
   onLessonUpdated,
   onDuplicate,
+  onDelete,
   isEmbedded = false,
 }: LessonDetailsDrawerProps) {
   const toast = useToast();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'notes'>('overview');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setIsStatusMenuOpen(false);
+      }
     }
-    if (isMenuOpen) {
+    if (isMenuOpen || isStatusMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isMenuOpen]);
+  }, [isMenuOpen, isStatusMenuOpen]);
 
   // Handle ESC key to close
   useEffect(() => {
@@ -110,6 +120,8 @@ export function LessonDetailsDrawer({
       if (e.key === 'Escape') {
         if (showCancelConfirm) {
           setShowCancelConfirm(false);
+        } else if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
         } else {
           onClose();
         }
@@ -119,7 +131,7 @@ export function LessonDetailsDrawer({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, showCancelConfirm, onClose]);
+  }, [isOpen, showCancelConfirm, showDeleteConfirm, onClose]);
 
   if (!isOpen || !lesson) return null;
 
@@ -192,26 +204,6 @@ export function LessonDetailsDrawer({
       ? `${durHours} ч`
       : `${durMins} мин`;
 
-  // Status Chip config
-  const statusConfig = {
-    completed: {
-      label: '✓ Проведено',
-      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-    rescheduled: {
-      label: '⇄ Перенесено',
-      classes: 'bg-amber-50 text-amber-700 border-amber-200',
-    },
-    cancelled: {
-      label: '✕ Отменено',
-      classes: 'bg-rose-50 text-rose-700 border-rose-200',
-    },
-    scheduled: {
-      label: '📅 Запланировано',
-      classes: 'bg-blue-50 text-blue-700 border-blue-200',
-    },
-  }[lesson.status || 'scheduled'];
-
   // Attendance stats
   const students = lesson.students || [];
   const totalStudentsCount = students.length;
@@ -237,6 +229,54 @@ export function LessonDetailsDrawer({
     saveLessonToStorage(updatedLesson);
     if (onLessonUpdated) onLessonUpdated(updatedLesson);
     toast.success('Посещаемость обновлена');
+  };
+
+  // Handle Conduct lesson action
+  const handleConductLesson = async () => {
+    if (!lesson) return;
+    try {
+      const now = new Date();
+      const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+      
+      const updatedEvents: LessonTimelineEvent[] = [
+        ...(lesson.timelineEvents || []),
+        {
+          id: `ev_${Date.now()}_conduct`,
+          timestamp: timestampStr,
+          author: 'Администратор',
+          role: 'Администратор',
+          type: 'completed',
+          comment: 'Занятие переведено в статус "Проведено"',
+        },
+      ];
+
+      const updatedLesson: FullLessonData = {
+        ...lesson,
+        status: 'completed',
+        timelineEvents: updatedEvents,
+      };
+
+      saveLessonToStorage(updatedLesson);
+
+      try {
+        const supabase = createClient();
+        await supabase
+          .from('lessons')
+          .update({ status: 'completed', updated_at: new Date().toISOString() })
+          .eq('id', updatedLesson.id);
+      } catch (err) {
+        console.warn('Supabase completed update notice:', err);
+      }
+
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+      if (onLessonUpdated) onLessonUpdated(updatedLesson);
+      setIsStatusMenuOpen(false);
+      setActiveTab('attendance');
+      toast.success('Занятие проведено. Отметьте посещаемость в журнале.');
+    } catch (err: any) {
+      console.error('Failed to conduct lesson:', err);
+      toast.error('Не удалось провести занятие');
+    }
   };
 
   // Handle Cancel lesson action
@@ -290,28 +330,24 @@ export function LessonDetailsDrawer({
     }
   };
 
-  // Handle Revert to scheduled
-  const handleRevertToScheduled = () => {
-    const updatedLesson: FullLessonData = {
-      ...lesson,
-      status: 'scheduled',
-    };
-    saveLessonToStorage(updatedLesson);
-    if (onLessonUpdated) onLessonUpdated(updatedLesson);
-    setIsMenuOpen(false);
-    toast.success('Занятие возвращено в статус "Запланировано"');
-  };
-
-  // Handle Restore lesson
-  const handleRestoreLesson = () => {
-    const updatedLesson: FullLessonData = {
-      ...lesson,
-      status: 'scheduled',
-    };
-    saveLessonToStorage(updatedLesson);
-    if (onLessonUpdated) onLessonUpdated(updatedLesson);
-    setIsMenuOpen(false);
-    toast.success('Занятие успешно восстановлено');
+  // Handle Delete lesson action
+  const handleDeleteLesson = async () => {
+    if (!lesson) return;
+    setIsDeleting(true);
+    try {
+      deleteLessonFromStorage(lesson.id);
+      if (onDelete) {
+        onDelete(lesson.id);
+      }
+      setShowDeleteConfirm(false);
+      onClose();
+      toast.success('Занятие удалено из расписания');
+    } catch (err: any) {
+      console.error('Failed to delete lesson:', err);
+      toast.error('Не удалось удалить занятие');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Handle Duplicate lesson action
@@ -350,7 +386,7 @@ export function LessonDetailsDrawer({
       aria-modal="true"
     >
       {/* 1. ШАПКА ПАНЕЛИ */}
-      <div className="p-4 border-b border-slate-100 bg-white space-y-2 shrink-0">
+      <div className="p-4 border-b border-slate-100 bg-white space-y-2.5 shrink-0">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold text-slate-900 truncate leading-snug">
@@ -370,38 +406,137 @@ export function LessonDetailsDrawer({
           </button>
         </div>
 
-        {/* Чипсы статусов в один ряд */}
+        {/* Интерактивный статус занятия и метка пробного урока */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span
-            className={cn(
-              'text-xs font-semibold px-2 py-0.5 rounded-full border shadow-2xs',
-              statusConfig.classes
-            )}
-          >
-            {statusConfig.label}
-          </span>
-          <span className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full">
-            {lesson.isTrial ? 'Пробное' : 'Основной курс'}
-          </span>
-          {isOnline ? (
-            <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Video className="h-3 w-3 text-blue-600" />
-              Онлайн (Zoom)
+          {lesson.status === 'completed' ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Проведено</span>
+            </span>
+          ) : lesson.status === 'cancelled' ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1.5">
+              <X className="h-3.5 w-3.5 text-rose-600" />
+              <span>Отменено</span>
             </span>
           ) : (
-            <span className="text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <MapPin className="h-3 w-3 text-slate-400" />
-              {lesson.room || 'Аудитория'}
+            /* Активный статус для scheduled / rescheduled с выпадающим меню действий */
+            <div className="relative inline-block" ref={statusMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
+                className={cn(
+                  'text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer hover:shadow-xs',
+                  lesson.status === 'rescheduled'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100/80'
+                    : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100/80'
+                )}
+                title="Нажмите, чтобы изменить статус занятия"
+              >
+                <span>{lesson.status === 'rescheduled' ? '⇄ Перенесено' : '📅 Запланировано'}</span>
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-150', isStatusMenuOpen && 'rotate-180')} />
+              </button>
+
+              {isStatusMenuOpen && (
+                <div className="absolute left-0 mt-1.5 w-60 rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-xl z-40 space-y-0.5 text-xs animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Действия со статусом
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStatusMenuOpen(false);
+                      handleConductLesson();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-700 font-semibold transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="h-6 w-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Check className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <div className="leading-tight font-semibold">Провести занятие</div>
+                      <div className="text-[10px] text-emerald-600/80 font-normal">Перейти к посещаемости</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStatusMenuOpen(false);
+                      onEdit(lesson, 'main', true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 font-medium transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="h-6 w-6 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Calendar className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <div className="leading-tight font-semibold">Перенести занятие</div>
+                      <div className="text-[10px] text-slate-400 font-normal">Изменить дату или время</div>
+                    </div>
+                  </button>
+
+                  <div className="h-px bg-slate-100 my-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStatusMenuOpen(false);
+                      setShowCancelConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 font-medium transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="h-6 w-6 rounded-md bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <div className="leading-tight font-semibold">Отменить занятие</div>
+                      <div className="text-[10px] text-rose-400 font-normal">С сохранением в истории</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsStatusMenuOpen(false);
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-700 font-medium transition-colors text-left cursor-pointer group"
+                  >
+                    <div className="h-6 w-6 rounded-md bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <div className="leading-tight font-semibold text-rose-700">Удалить занятие</div>
+                      <div className="text-[10px] text-rose-400 font-normal">Безвозвратно из расписания</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {lesson.isTrial && (
+            <span className="text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-lg">
+              Пробное
             </span>
           )}
         </div>
 
-        {/* Дата и время */}
-        <div className="text-xs text-slate-500 mt-2 flex items-center gap-1.5 font-medium">
-          <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-          <span>
-            {dateFormattedStr} · {lesson.startTime} – {lesson.endTime} ({durationStr})
-          </span>
+        {/* Дата, время и аудитория */}
+        <div className="text-xs text-slate-500 mt-2 flex items-center justify-between gap-1.5 font-medium">
+          <div className="flex items-center gap-1.5 truncate">
+            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <span className="truncate">
+              {dateFormattedStr} · {lesson.startTime} – {lesson.endTime} ({durationStr})
+            </span>
+          </div>
+          {lesson.room && !isOnline && (
+            <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 shrink-0 flex items-center gap-1">
+              <MapPin className="h-3 w-3 text-slate-400" />
+              {lesson.room}
+            </span>
+          )}
         </div>
 
         {/* Плашка преподавателя */}
@@ -451,7 +586,7 @@ export function LessonDetailsDrawer({
 
         <button
           type="button"
-          onClick={() => onEdit(lesson)}
+          onClick={() => onEdit(lesson, 'main')}
           className="py-2 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
           title="Редактировать параметры занятия"
         >
@@ -494,8 +629,20 @@ export function LessonDetailsDrawer({
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Users className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Открыть журнал посещаемости</span>
+                    <span>Журнал посещаемости</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onEdit(lesson, 'history');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
+                  >
+                    <History className="h-3.5 w-3.5 text-slate-400" />
+                    <span>История изменений</span>
+                  </button>
+                  <div className="h-px bg-slate-100 my-1" />
                   <button
                     type="button"
                     onClick={() => {
@@ -505,16 +652,7 @@ export function LessonDetailsDrawer({
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Дублировать</span>
-                  </button>
-                  <div className="h-px bg-slate-100 my-1" />
-                  <button
-                    type="button"
-                    onClick={handleRevertToScheduled}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-amber-50 text-amber-700 transition-colors text-left cursor-pointer"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-                    <span>Вернуть в статус Запланировано</span>
+                    <span>Дублировать занятие</span>
                   </button>
                 </>
               ) : lesson.status === 'cancelled' ? (
@@ -530,6 +668,7 @@ export function LessonDetailsDrawer({
                     <History className="h-3.5 w-3.5 text-slate-400" />
                     <span>Просмотр истории</span>
                   </button>
+                  <div className="h-px bg-slate-100 my-1" />
                   <button
                     type="button"
                     onClick={() => {
@@ -539,16 +678,7 @@ export function LessonDetailsDrawer({
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Дублировать</span>
-                  </button>
-                  <div className="h-px bg-slate-100 my-1" />
-                  <button
-                    type="button"
-                    onClick={handleRestoreLesson}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 text-emerald-700 font-semibold transition-colors text-left cursor-pointer"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Восстановить занятие</span>
+                    <span>Дублировать занятие</span>
                   </button>
                 </>
               ) : (
@@ -557,46 +687,23 @@ export function LessonDetailsDrawer({
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      onEdit(lesson, 'attendance');
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
-                  >
-                    <Check className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Провести занятие</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onEdit(lesson, 'main', true);
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
-                  >
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Перенести занятие</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
                       handleDuplicateLesson();
                     }}
                     className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
                     <Copy className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Дублировать</span>
+                    <span>Дублировать занятие</span>
                   </button>
-                  <div className="h-px bg-slate-100 my-1" />
                   <button
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
-                      setShowCancelConfirm(true);
+                      onEdit(lesson, 'history');
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 text-rose-600 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors text-left cursor-pointer"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Отменить занятие</span>
+                    <History className="h-3.5 w-3.5 text-slate-400" />
+                    <span>История изменений</span>
                   </button>
                 </>
               )}
@@ -1022,6 +1129,67 @@ export function LessonDetailsDrawer({
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
               >
                 {isCancelling ? 'Отмена...' : 'Подтвердить отмену'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safe Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-60 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Header with red trash icon */}
+            <div className="flex items-start gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-900">Удалить занятие?</h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Это действие нельзя отменить
+                </p>
+              </div>
+            </div>
+
+            {/* Context block: Group, Date/Time, Teacher */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Группа:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[220px]">{lesson.groupName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Дата и время:</span>
+                <span className="font-semibold text-slate-800">{dateFormattedStr} · {lesson.startTime} – {lesson.endTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Преподаватель:</span>
+                <span className="font-semibold text-slate-800">{lesson.teacherName}</span>
+              </div>
+            </div>
+
+            {/* Warning alert block */}
+            <div className="rounded-xl bg-rose-50 border border-rose-200/80 p-3 text-xs text-rose-900 leading-relaxed">
+              Занятие будет <strong className="font-semibold text-rose-950">безвозвратно удалено</strong> из расписания. Если вы просто не проводите занятие в этот день, рекомендуем использовать <strong>«Отменить занятие»</strong>.
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteLesson}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isDeleting ? 'Удаление...' : 'Удалить занятие'}
               </button>
             </div>
           </div>

@@ -1072,6 +1072,12 @@ export default function CalendarPage() {
                   setLessons((prev) => [dup, ...prev]);
                   setSelectedLessonForDrawer(dup);
                 }}
+                onDelete={(lessonId) => {
+                  setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+                  if (selectedLessonForDrawer?.id === lessonId) {
+                    setSelectedLessonForDrawer(null);
+                  }
+                }}
                 isEmbedded={true}
               />
             </div>
@@ -1106,6 +1112,12 @@ export default function CalendarPage() {
               saveLessonToStorage(dup);
               setLessons((prev) => [dup, ...prev]);
               setSelectedLessonForDrawer(dup);
+            }}
+            onDelete={(lessonId) => {
+              setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+              if (selectedLessonForDrawer?.id === lessonId) {
+                setSelectedLessonForDrawer(null);
+              }
             }}
             isEmbedded={false}
           />
