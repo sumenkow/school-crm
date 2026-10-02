@@ -209,13 +209,17 @@ export function AttentionFeed({
             };
 
             return (
-              <div key={item.id} className="py-2 flex items-center justify-between gap-2 h-[46px]">
+              <div
+                key={item.id}
+                onClick={handleAction}
+                className="py-1.5 px-1.5 -mx-1.5 flex items-center justify-between gap-2 h-[46px] rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', iconBg)}>
                     <IconComponent className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate leading-tight">{item.title}</p>
+                    <p className="text-xs font-bold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors">{item.title}</p>
                     <p className="text-[11px] text-slate-400 truncate leading-tight">{item.subtitle}</p>
                   </div>
                 </div>

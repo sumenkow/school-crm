@@ -118,15 +118,22 @@ export function GroupOccupancyWidget({
                 const percent = capacity > 0 ? Math.round((enrolled / capacity) * 100) : 100;
 
                 return (
-                  <div key={group.id} className="flex items-center justify-between text-xs gap-2 py-0.5">
-                    <span className="text-slate-700 font-medium truncate flex-1 min-w-0 text-[11px]">{group.name}</span>
+                  <div
+                    key={group.id}
+                    onClick={() => router.push(`/groups/${group.id}`)}
+                    className="flex items-center justify-between text-xs gap-2 py-0.5 px-1 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <span className="text-slate-700 font-medium truncate flex-1 min-w-0 text-[11px] hover:text-blue-600 transition-colors">{group.name}</span>
                     <span className="text-slate-400 font-semibold shrink-0 text-[11px]">{enrolled}/{capacity}</span>
                     <div className="w-12 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
                       <div className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.min(percent, 100)}%` }} />
                     </div>
                     <button
                       type="button"
-                      onClick={() => router.push(`/groups?open=${group.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/groups/${group.id}`);
+                      }}
                       className="text-[10px] font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors px-1.5 py-0.5 rounded cursor-pointer shrink-0"
                     >
                       Заполнить

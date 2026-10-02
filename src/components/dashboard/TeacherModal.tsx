@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Calendar, MessageCircle, Send, Award, Users, CheckCircle, Clock } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
@@ -9,6 +10,7 @@ interface TeacherModalProps {
 }
 
 export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps) {
+  const router = useRouter();
   const toast = useToast();
 
   if (!isOpen || !teacherData) return null;
@@ -92,7 +94,7 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
           <button 
             type="button"
             onClick={() => toast.success('Переход в Telegram...')}
-            className="flex-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            className="flex-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send size={14} /> Написать в Telegram
           </button>
@@ -100,10 +102,10 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
           <button 
             type="button"
             onClick={() => {
-              toast.success('Открываем календарь...');
+              router.push('/calendar');
               onClose();
             }}
-            className="flex-1 bg-slate-900 text-white hover:bg-slate-800 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2"
+            className="flex-1 bg-slate-900 text-white hover:bg-slate-800 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <Calendar size={14} /> Расписание в календаре
           </button>

@@ -18,6 +18,8 @@ import { TeacherModal } from '@/components/dashboard/TeacherModal';
 import { QuickActionDrawer } from '@/components/dashboard/QuickActionDrawer';
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { LeadDetailsModal } from '@/components/crm/LeadDetailsModal';
+import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
+import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
 
 interface DashboardDesktopProps extends DashboardStateReturn {
   onOpenReport: () => void;
@@ -72,6 +74,7 @@ export function DashboardDesktop({
         <WidgetErrorBoundary widgetName="Расписание на сегодня" onRetry={actions.refreshAll}>
           <TodayScheduleWidget
             lessons={data.lessons}
+            onSelectLesson={(lesson) => actions.openLesson(lesson)}
             isLoading={data.isLoading}
           />
         </WidgetErrorBoundary>
@@ -149,6 +152,24 @@ export function DashboardDesktop({
         lead={data.selectedLead}
         onClose={actions.closeLead}
         onUpdateLead={() => actions.refreshAll()}
+      />
+
+      <LessonQuickViewModal
+        isOpen={!!data.selectedLesson}
+        lesson={data.selectedLesson}
+        onClose={actions.closeLesson}
+        onUpdateAttendance={(lessonId, studentId, status) => {
+          const all = getStoredLessons();
+          const target = all.find(l => l.id === lessonId);
+          if (target) {
+            const updatedStudents = (target.students || []).map(s => {
+              if (s.id === studentId) return { ...s, attendanceStatus: status };
+              return s;
+            });
+            saveLessonToStorage({ ...target, students: updatedStudents });
+            actions.refreshAll();
+          }
+        }}
       />
 
       <QuickActionDrawer
