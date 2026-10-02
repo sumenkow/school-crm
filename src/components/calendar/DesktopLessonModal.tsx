@@ -131,6 +131,9 @@ export function DesktopLessonModal({
   const [topic, setTopic] = useState('');
   const [homework, setHomework] = useState('');
   const [generalLessonNote, setGeneralLessonNote] = useState('');
+  const [generalLessonNoteVisibility, setGeneralLessonNoteVisibility] = useState<'parents' | 'internal'>('parents');
+  const [nextLessonRecommendation, setNextLessonRecommendation] = useState('');
+  const [nextLessonRecommendationVisibility, setNextLessonRecommendationVisibility] = useState<'parents' | 'internal'>('parents');
   const [zoomUrl, setZoomUrl] = useState('');
   const [isOnlineFormat, setIsOnlineFormat] = useState(true);
   const [room, setRoom] = useState('');
@@ -159,6 +162,9 @@ export function DesktopLessonModal({
       setTopic(lesson.topic || '');
       setHomework(lesson.homework || '');
       setGeneralLessonNote('');
+      setGeneralLessonNoteVisibility('parents');
+      setNextLessonRecommendation('');
+      setNextLessonRecommendationVisibility('parents');
       setZoomUrl(lesson.onlineMeetingUrl || '');
       setIsOnlineFormat(
         !!(lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн') || lesson.room?.toLowerCase().includes('zoom'))
@@ -1077,102 +1083,128 @@ export function DesktopLessonModal({
 
           {/* ================= TAB 3: ОБРАТНАЯ СВЯЗЬ ================= */}
           {activeTab === 'feedback' && (
-            <div className="space-y-5 animate-in fade-in duration-100">
-              {/* Section 1: Общий комментарий к уроку */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-2">
-                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase">
-                  <FileText className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Общий отчет по уроку (заметка преподавателя)</span>
-                </label>
+            <div className="space-y-4 animate-in fade-in duration-100">
+              {/* Блок 1: "Общий комментарий по занятию" */}
+              <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5 uppercase">
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Общий комментарий по занятию</span>
+                  </label>
+                  <select
+                    value={generalLessonNoteVisibility}
+                    onChange={(e) =>
+                      setGeneralLessonNoteVisibility(e.target.value as 'parents' | 'internal')
+                    }
+                    className="text-[11px] font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                  >
+                    <option value="parents">👁️ Виден родителям ▾</option>
+                    <option value="internal">🔒 Только для школы ▾</option>
+                  </select>
+                </div>
                 <textarea
                   rows={2}
                   value={generalLessonNote}
                   onChange={(e) => setGeneralLessonNote(e.target.value)}
-                  placeholder="Опишите ход урока, вовлеченность группы, общие сложности или пожелания..."
-                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
+                  placeholder="Что происходило на уроке, успехи группы, пройденные темы..."
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 leading-relaxed shadow-2xs"
                 />
               </div>
 
-              {/* Section 2: Персональная обратная связь ученикам */}
-              <div className="space-y-3">
+              {/* Блок 2: "Рекомендации к следующему занятию" */}
+              <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/90 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5 uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Рекомендации к следующему занятию</span>
+                  </label>
+                  <select
+                    value={nextLessonRecommendationVisibility}
+                    onChange={(e) =>
+                      setNextLessonRecommendationVisibility(
+                        e.target.value as 'parents' | 'internal'
+                      )
+                    }
+                    className="text-[11px] font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                  >
+                    <option value="parents">👁️ Виден родителям ▾</option>
+                    <option value="internal">🔒 Только для школы ▾</option>
+                  </select>
+                </div>
+                <textarea
+                  rows={2}
+                  value={nextLessonRecommendation}
+                  onChange={(e) => setNextLessonRecommendation(e.target.value)}
+                  placeholder="На что обратить внимание к следующему занятию, что повторить..."
+                  className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 leading-relaxed shadow-2xs"
+                />
+              </div>
+
+              {/* Блок 3: "Индивидуальные комментарии" */}
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-700 uppercase">
-                    Персональный отзыв ученикам ({attendance.length})
+                  <h4 className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    Индивидуальные комментарии ({attendance.length})
                   </h4>
-                  <span className="text-[11px] text-slate-400">
-                    Клик по тегу добавляет его в текст
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    Синхронизируется с личным кабинетом
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {attendance.map((st) => (
                     <div
                       key={st.studentId}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-2.5 shadow-2xs"
+                      className="p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-colors space-y-2 shadow-2xs"
                     >
-                      {/* Student info header & Visibility toggle */}
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
-                            {st.name.split(' ').map((n) => n[0]).join('')}
-                          </div>
-                          <span className="text-xs font-bold text-slate-900">{st.name}</span>
-                          <span
-                            className={cn(
-                              'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                              st.status === 'present'
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : st.status === 'excused'
-                                ? 'bg-amber-50 text-amber-700'
-                                : 'bg-rose-50 text-rose-700'
-                            )}
-                          >
-                            {st.status === 'present' ? '🟢 Был' : st.status === 'excused' ? '🟡 Болезнь' : '🔴 Пропуск'}
-                          </span>
+                      <div className="flex items-center gap-2.5">
+                        {/* Avatar */}
+                        <div className="h-7 w-7 rounded-full bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-[10px] shrink-0 border border-slate-200">
+                          {st.name.split(' ').map((n) => n[0]).join('')}
                         </div>
 
-                        {/* Visibility Pill Selector */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFeedbackVisibility(st.studentId)}
-                          className={cn(
-                            'text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer',
-                            st.isPrivateFeedback
-                              ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                          )}
+                        {/* Name */}
+                        <span className="text-xs font-semibold text-slate-800 w-36 truncate shrink-0">
+                          {st.name}
+                        </span>
+
+                        {/* Note Input */}
+                        <input
+                          type="text"
+                          value={st.feedback || ''}
+                          onChange={(e) => handleFeedbackChange(st.studentId, e.target.value)}
+                          placeholder="Заметка к уроку..."
+                          className="flex-1 h-8 text-xs border border-slate-200 rounded-lg px-2.5 bg-slate-50 focus:bg-white focus:border-blue-500 text-slate-800 placeholder:text-slate-400 focus:outline-none transition-colors"
+                        />
+
+                        {/* Visibility Selector */}
+                        <select
+                          value={st.isPrivateFeedback ? 'internal' : 'parents'}
+                          onChange={(e) => {
+                            const isPrivate = e.target.value === 'internal';
+                            setAttendance((prev) =>
+                              prev.map((item) =>
+                                item.studentId === st.studentId
+                                  ? { ...item, isPrivateFeedback: isPrivate }
+                                  : item
+                              )
+                            );
+                          }}
+                          className="text-[11px] font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-slate-700 cursor-pointer shrink-0 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
                         >
-                          {st.isPrivateFeedback ? (
-                            <>
-                              <EyeOff className="w-3 h-3 text-amber-600" />
-                              <span>🔒 Только для школы</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-3 h-3 text-blue-600" />
-                              <span>📢 Для родителей (в ЛК)</span>
-                            </>
-                          )}
-                        </button>
+                          <option value="parents">👁️ Виден родителям ▾</option>
+                          <option value="internal">🔒 Только внутренний ▾</option>
+                        </select>
                       </div>
 
-                      {/* Feedback input */}
-                      <textarea
-                        rows={2}
-                        value={st.feedback || ''}
-                        onChange={(e) => handleFeedbackChange(st.studentId, e.target.value)}
-                        placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
-                        className="w-full text-xs font-medium bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-lg px-3 py-2 transition-all text-slate-800 placeholder:text-slate-400"
-                      />
-
                       {/* Quick Chips */}
-                      <div className="flex flex-wrap items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1 pl-9">
                         {QUICK_FEEDBACK_TAGS.map((chip) => (
                           <button
                             key={chip}
                             type="button"
                             onClick={() => handleAppendChipToFeedback(st.studentId, chip)}
-                            className="text-[10px] font-semibold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/70 transition-colors cursor-pointer"
+                            className="text-[10px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200/70 transition-colors cursor-pointer"
                           >
                             + {chip}
                           </button>
@@ -1191,42 +1223,62 @@ export function DesktopLessonModal({
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Аудит изменений занятия</span>
+                  <span>Таймлайн аудита занятия</span>
                 </h4>
                 <span className="text-[11px] text-slate-400">
-                  Всего событий: {historyItems.length}
+                  Всего записей: {historyItems.length}
                 </span>
               </div>
 
-              <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+              {/* Vertical timeline */}
+              <div className="relative pl-6 space-y-3.5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
                 {historyItems.map((item) => (
                   <div key={item.id} className="relative group">
                     {/* Timeline bullet */}
                     <div className="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-white border-2 border-blue-500 shadow-xs" />
 
-                    <div className="p-3.5 bg-slate-50/80 hover:bg-slate-50 rounded-xl border border-slate-200 transition-colors space-y-1.5">
+                    <div className="p-3 bg-slate-50/80 hover:bg-slate-50 rounded-xl border border-slate-200 transition-colors space-y-1.5">
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full border', item.badgeColor)}>
-                            {item.type}
-                          </span>
+                          <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[9px] font-bold shrink-0">
+                            {item.author.split(' ').map((n) => n[0]).join('')}
+                          </div>
                           <span className="text-xs font-bold text-slate-800">
                             {item.author}
                           </span>
                           <span className="text-[10px] text-slate-400 font-medium">
-                            ({item.role})
+                            · {item.role}
+                          </span>
+                          <span className={cn('text-[10px] font-bold px-1.5 py-0.2 rounded-full border', item.badgeColor)}>
+                            {item.type}
                           </span>
                         </div>
                         <span className="text-[11px] font-medium text-slate-400">
                           {item.date}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                      <p className="text-xs text-slate-600 leading-relaxed font-normal pl-7">
                         {item.comment}
                       </p>
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* System Metadata Info Box */}
+              <div className="p-3 bg-slate-50/70 rounded-xl border border-slate-200/80 text-[11px] text-slate-500 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span>Создано:</span>
+                  <span className="font-semibold text-slate-700">
+                    {lesson.dateFormatted || lesson.date}, 10:00 · Анна Админ
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Последнее изменение:</span>
+                  <span className="font-semibold text-slate-700">
+                    {lesson.dateFormatted || lesson.date}, {lesson.endTime || '20:15'} · {teacherName || lesson.teacherName}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -1267,25 +1319,37 @@ export function DesktopLessonModal({
             )}
           </div>
 
-          {/* Right Action: Cancel & Save */}
+          {/* Right Action: Cancel / Save or Close on History tab */}
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
-            >
-              Отмена
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              <span>{isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}</span>
-            </button>
+            {activeTab === 'history' ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-xl transition-colors cursor-pointer shadow-2xs"
+              >
+                Закрыть
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSubmitting}
+                  className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
