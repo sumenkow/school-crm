@@ -22,10 +22,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
-import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
-import { DesktopLessonModal } from '@/components/calendar/DesktopLessonModal';
-import { LessonPreviewDrawer } from '@/components/calendar/LessonPreviewDrawer';
-import { EditLessonModal } from '@/components/calendar/EditLessonModal';
+import { LessonModal } from '@/components/calendar/LessonModal';
+import { LessonDetailsDrawer } from '@/components/calendar/LessonDetailsDrawer';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
 
@@ -164,12 +162,10 @@ export default function CalendarPage() {
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
   });
-  const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
   const [desktopModalTab, setDesktopModalTab] = useState<'main' | 'attendance' | 'feedback' | 'history'>('main');
   const [desktopModalHighlightReschedule, setDesktopModalHighlightReschedule] = useState(false);
   const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
-  const [selectedLessonForEdit, setSelectedLessonForEdit] = useState<FullLessonData | null>(null);
 
   // Sync stored lessons and subscribe to Supabase Realtime
   useEffect(() => {
@@ -1049,7 +1045,7 @@ export default function CalendarPage() {
           {/* Embedded Side-by-Side Drawer (Screens >= 1440px) */}
           {selectedLessonForDrawer && (
             <div className="hidden min-[1440px]:block w-[400px] shrink-0 sticky top-4 h-[calc(100vh-2rem)]">
-              <LessonPreviewDrawer
+              <LessonDetailsDrawer
                 isOpen={!!selectedLessonForDrawer}
                 lesson={selectedLessonForDrawer}
                 onClose={() => setSelectedLessonForDrawer(null)}
@@ -1084,7 +1080,7 @@ export default function CalendarPage() {
 
         {/* Overlay Drawer (Screens < 1440px) */}
         <div className="min-[1440px]:hidden">
-          <LessonPreviewDrawer
+          <LessonDetailsDrawer
             isOpen={!!selectedLessonForDrawer}
             lesson={selectedLessonForDrawer}
             onClose={() => setSelectedLessonForDrawer(null)}
@@ -1134,16 +1130,8 @@ export default function CalendarPage() {
         }}
       />
 
-      {/* Quick Lesson View & Attendance Modal (Mobile Fallback) */}
-      <LessonQuickViewModal
-        isOpen={!!selectedLessonForQuickView}
-        lesson={selectedLessonForQuickView}
-        onClose={() => setSelectedLessonForQuickView(null)}
-        onUpdateAttendance={handleUpdateAttendance}
-      />
-
-      {/* Interactive Desktop Lesson Modal (Desktop Full Modal) */}
-      <DesktopLessonModal
+      {/* Interactive Unified Lesson Modal (4-tab system) */}
+      <LessonModal
         isOpen={!!selectedLessonForDesktop}
         lesson={selectedLessonForDesktop}
         initialTab={desktopModalTab}
@@ -1169,19 +1157,6 @@ export default function CalendarPage() {
           }
         }}
       />
-
-      {/* Edit Lesson Modal */}
-      {selectedLessonForEdit && (
-        <EditLessonModal
-          isOpen={!!selectedLessonForEdit}
-          lesson={selectedLessonForEdit}
-          onClose={() => setSelectedLessonForEdit(null)}
-          onSaved={(updated) => {
-            setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
-            setSelectedLessonForEdit(null);
-          }}
-        />
-      )}
     </>
   );
 }

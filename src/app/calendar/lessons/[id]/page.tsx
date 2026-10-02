@@ -39,8 +39,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RescheduleLessonModal } from '@/components/calendar/RescheduleLessonModal';
-import { EditLessonModal } from '@/components/calendar/EditLessonModal';
+import { LessonModal } from '@/components/calendar/LessonModal';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 import { saveLessonToStorage, getStoredLessons, processAutomaticLessonBilling } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
@@ -1139,25 +1138,24 @@ export default function LessonDetailsPage() {
         </form>
       </div>
 
-      {/* MODAL: Edit Lesson Parameters */}
-      <EditLessonModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+      {/* MODAL: Unified Lesson Modal (Edit & Reschedule) */}
+      <LessonModal
+        isOpen={isEditModalOpen || isRescheduleModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setIsRescheduleModalOpen(false);
+        }}
         lesson={lesson}
-        onSaved={(upd) => {
+        initialTab="main"
+        highlightReschedule={isRescheduleModalOpen}
+        onSave={(upd) => {
           setLesson(upd);
           setTopic(upd.topic);
           setHomework(upd.homework || '');
           setStatus(upd.status);
+          setIsEditModalOpen(false);
+          setIsRescheduleModalOpen(false);
         }}
-      />
-
-      {/* MODAL: Reschedule Lesson */}
-      <RescheduleLessonModal
-        isOpen={isRescheduleModalOpen}
-        onClose={() => setIsRescheduleModalOpen(false)}
-        lesson={lesson}
-        onReschedule={handleRescheduleConfirmed}
       />
 
       {/* MODAL: Send Homework Emails */}
