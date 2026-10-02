@@ -39,6 +39,10 @@ export function DashboardDesktop({
       
       {/* 1. Header Greeting & Top Month Switcher */}
       <HeaderGreeting
+        selectedDate={data.selectedDate}
+        onPrevMonth={actions.prevMonth}
+        onNextMonth={actions.nextMonth}
+        onResetMonth={actions.resetMonth}
         onOpenReport={onOpenReport}
         onOpenExecutiveReport={onOpenExecutiveReport}
         onOpenCreateLead={actions.openCreateLead}
@@ -52,6 +56,7 @@ export function DashboardDesktop({
           leads={data.leads}
           groups={data.groups}
           tasks={data.tasks}
+          selectedDate={data.selectedDate}
           isLoading={data.isLoading}
         />
       </WidgetErrorBoundary>
@@ -100,6 +105,7 @@ export function DashboardDesktop({
             <QuickFinanceWidget
               payments={data.payments}
               students={data.students}
+              selectedDate={data.selectedDate}
               isLoading={data.isLoading}
             />
           </WidgetErrorBoundary>

@@ -25,6 +25,7 @@ export interface KpiGridProps {
   leads: FullLeadData[];
   groups: FullGroupData[];
   tasks?: FullTaskData[];
+  selectedDate?: Date;
   isLoading?: boolean;
   className?: string;
 }
@@ -34,15 +35,17 @@ export function KpiGrid({
   students,
   leads,
   groups,
+  selectedDate,
   isLoading = false,
   className,
 }: KpiGridProps) {
   const router = useRouter();
+  const activeDate = selectedDate || new Date();
 
   // 1. Unified Finance Data
   const financeData = useMemo(() => {
-    return getDashboardFinanceMetrics(payments, students);
-  }, [payments, students]);
+    return getDashboardFinanceMetrics(payments, students, activeDate);
+  }, [payments, students, activeDate]);
 
   // Real Sparkline for Revenue
   const sparkline = useMemo(() => {
@@ -52,22 +55,31 @@ export function KpiGrid({
   // 2. New Students
   const studentsData = useMemo(() => {
     const active = students.filter(s => s.status === 'active');
-    const nowMs = Date.now();
+    const refYear = activeDate.getFullYear();
+    const refMonth = activeDate.getMonth();
+    const nowMs = activeDate.getTime();
     const thirtyDaysAgo = nowMs - 30 * 24 * 60 * 60 * 1000;
     const sevenDaysAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
 
     const newMonth = students.filter(s => {
+      if (s.createdAt) {
+        const d = new Date(s.createdAt);
+        if (d.getFullYear() === refYear && d.getMonth() === refMonth) return true;
+      }
       if (s.isNewUntil && new Date(s.isNewUntil).getTime() > nowMs) return true;
-      if (s.createdAt && new Date(s.createdAt).getTime() > thirtyDaysAgo) return true;
+      if (s.createdAt && new Date(s.createdAt).getTime() > thirtyDaysAgo && new Date(s.createdAt).getTime() <= nowMs) return true;
       return false;
     }).length;
 
     const newWeek = students.filter(s => {
-      if (s.createdAt && new Date(s.createdAt).getTime() > sevenDaysAgo) return true;
+      if (s.createdAt) {
+        const cd = new Date(s.createdAt).getTime();
+        return cd > sevenDaysAgo && cd <= nowMs;
+      }
       return false;
     }).length;
 
-    // Real weekly distribution for mini-bars (last 6 weeks)
+    // Real weekly distribution for mini-bars (last 6 weeks from activeDate)
     const weekBars = [0, 0, 0, 0, 0, 0];
     students.forEach(s => {
       if (!s.createdAt) return;
@@ -87,7 +99,7 @@ export function KpiGrid({
       weekBars,
       maxBar,
     };
-  }, [students]);
+  }, [students, activeDate]);
 
   // 3. Lead Funnel
   const leadsData = useMemo(() => {

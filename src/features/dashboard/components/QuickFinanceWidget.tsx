@@ -10,19 +10,22 @@ import { cn } from '@/lib/utils';
 export interface QuickFinanceWidgetProps {
   payments: FullPaymentData[];
   students?: FullStudentData[];
+  selectedDate?: Date;
   isLoading?: boolean;
 }
 
 export function QuickFinanceWidget({
   payments,
   students = [],
+  selectedDate,
   isLoading = false,
 }: QuickFinanceWidgetProps) {
   const router = useRouter();
+  const activeDate = selectedDate || new Date();
 
   const financeSummary = useMemo(() => {
-    return getDashboardFinanceMetrics(payments, students);
-  }, [payments, students]);
+    return getDashboardFinanceMetrics(payments, students, activeDate);
+  }, [payments, students, activeDate]);
 
   if (isLoading) {
     return (

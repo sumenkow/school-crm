@@ -55,6 +55,9 @@ export function useDashboardState() {
   const [teachers, setTeachers] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
   const [attentionItems, setAttentionItems] = useState<any[]>([]);
 
+  // Selected date / month for dashboard metrics
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
   // Modals & Drawers selection state
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
@@ -168,6 +171,18 @@ export function useDashboardState() {
   const openLesson = (lesson: FullLessonData) => setSelectedLesson(lesson);
   const closeLesson = () => setSelectedLesson(null);
 
+  const prevMonth = useCallback(() => {
+    setSelectedDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  }, []);
+
+  const nextMonth = useCallback(() => {
+    setSelectedDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  }, []);
+
+  const resetMonth = useCallback(() => {
+    setSelectedDate(new Date());
+  }, []);
+
   return {
     data: {
       payments,
@@ -178,6 +193,7 @@ export function useDashboardState() {
       tasks,
       teachers,
       isLoading,
+      selectedDate,
       selectedTask,
       selectedTeacher,
       selectedLead,
@@ -194,6 +210,10 @@ export function useDashboardState() {
     },
     actions: {
       refreshAll,
+      prevMonth,
+      nextMonth,
+      resetMonth,
+      setSelectedDate,
       openDrawer,
       closeDrawer,
       openTask,
