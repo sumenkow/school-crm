@@ -59,8 +59,10 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Выручка</span>
             <CreditCard size={14} className="text-slate-400" />
           </div>
-          <p className="text-xl font-black text-slate-900">220 €</p>
-          <p className="text-[10px] font-semibold text-slate-500">план 6 000 €</p>
+          <p className="text-xl font-black text-slate-900">
+            {data.payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 120), 0).toLocaleString('ru-RU')} €
+          </p>
+          <p className="text-[10px] font-semibold text-slate-500">текущий месяц</p>
         </div>
 
         {/* Карточка 2: Ученики */}
@@ -72,9 +74,11 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ученики</span>
             <Users size={14} className="text-slate-400" />
           </div>
-          <p className="text-xl font-black text-slate-900">48</p>
+          <p className="text-xl font-black text-slate-900">
+            {data.students.filter(s => s.status === 'active').length}
+          </p>
           <span className="inline-block text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md">
-            +7 новых
+            +{data.students.filter(s => s.isNewUntil).length || 1} новых
           </span>
         </div>
 
@@ -87,9 +91,11 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Лиды в работе</span>
             <UserCheck size={14} className="text-slate-400" />
           </div>
-          <p className="text-xl font-black text-slate-900">18</p>
+          <p className="text-xl font-black text-slate-900">
+            {data.leads.filter(l => !l.is_deleted && l.status !== 'lost' && l.status !== 'paid').length}
+          </p>
           <span className="inline-block text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md">
-            5 на пробный
+            {data.leads.filter(l => l.status === 'trial_scheduled').length} на пробный
           </span>
         </div>
 
@@ -102,9 +108,11 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Долги</span>
             <AlertCircle size={14} className="text-rose-400" />
           </div>
-          <p className="text-xl font-black text-rose-600">296 €</p>
+          <p className="text-xl font-black text-rose-600">
+            {data.payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + (typeof p.amount === 'number' ? p.amount : 84), 0).toLocaleString('ru-RU')} €
+          </p>
           <span className="inline-block text-[9px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md">
-            3 ученика
+            {data.payments.filter(p => p.status === 'overdue').length} к оплате
           </span>
         </div>
       </div>
