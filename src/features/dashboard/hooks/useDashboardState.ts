@@ -1,64 +1,111 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DrawerState, DrawerType } from '@/components/dashboard/QuickActionDrawer';
 import { createClient } from '@/lib/supabase/client';
-import { FullLeadData } from '@/lib/data/mockData';
+import {
+  FullLeadData,
+  FullStudentData,
+  FullGroupData,
+  FullPaymentData,
+  FullLessonData,
+  FullTaskData,
+  FullTeacherData,
+  INITIAL_STUDENTS,
+  INITIAL_LEADS,
+  INITIAL_GROUPS,
+  INITIAL_PAYMENTS,
+  INITIAL_LESSONS,
+  INITIAL_TASKS,
+  INITIAL_TEACHERS
+} from '@/lib/data/mockData';
+import { getStoredPayments } from '@/lib/data/paymentStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredLeads } from '@/lib/data/leadStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredTasks } from '@/lib/data/taskStorage';
+import { useFocusSync } from '@/hooks/useFocusSync';
 
 export function useDashboardState() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Entities state
+  const [payments, setPayments] = useState<FullPaymentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
+  });
+
+  const [students, setStudents] = useState<FullStudentData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+  });
+
+  const [leads, setLeads] = useState<FullLeadData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredLeads(true, true) : INITIAL_LEADS;
+  });
+
+  const [groups, setGroups] = useState<FullGroupData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+  });
+
+  const [lessons, setLessons] = useState<FullLessonData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+  });
+
+  const [tasks, setTasks] = useState<FullTaskData[]>(INITIAL_TASKS);
+  const [teachers, setTeachers] = useState<FullTeacherData[]>(INITIAL_TEACHERS);
+  const [attentionItems, setAttentionItems] = useState<any[]>([]);
+
+  // Modals & Drawers selection state
   const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any | null>(null);
-  const [selectedTeacher, setSelectedTeacher] = useState<any | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<FullTeacherData | null>(null);
   const [selectedLead, setSelectedLead] = useState<FullLeadData | null>(null);
   const [isLeadDrawerOpen, setIsLeadDrawerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [isStudentDrawerOpen, setIsStudentDrawerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<FullLessonData | null>(null);
 
   const [drawerState, setDrawerState] = useState<DrawerState>({ isOpen: false, type: null, entityId: null });
 
-  const [attentionItems, setAttentionItems] = useState([
-    { entityType: 'payment', entityId: '1', type: 'debt', label: 'Долг', name: 'Иванов Иван', description: 'Просрочка 150 €', color: 'bg-rose-50 text-rose-700 border border-rose-200', phone: '+123456789' },
-    { entityType: 'lead', entityId: '2', type: 'trial', label: 'Пробный', name: 'Мария Смирнова', description: 'Ждет назначения', color: 'bg-purple-50 text-purple-700 border border-purple-200', phone: '+123456789' },
-    { entityType: 'student', entityId: '3', type: 'churn', label: 'Отток', name: 'Алексей Попов', description: 'Не выходит на связь', color: 'bg-amber-50 text-amber-700 border border-amber-200', phone: '+123456789' },
-    { entityType: 'payment', entityId: '4', type: 'debt', label: 'Долг', name: 'Елена Васильева', description: 'Частичная оплата', color: 'bg-rose-50 text-rose-700 border border-rose-200', phone: '+123456789' },
-    { entityType: 'lead', entityId: '5', type: 'trial', label: 'Пробный', name: 'Дмитрий Соколов', description: 'Завтра 14:00', color: 'bg-purple-50 text-purple-700 border border-purple-200', phone: '+123456789' },
-  ]);
+  // Refresh all entities from storage
+  const refreshAll = useCallback(() => {
+    setPayments(getStoredPayments());
+    setStudents(getStoredStudents());
+    setLeads(getStoredLeads(true, true));
+    setGroups(getStoredGroups());
+    setLessons(getStoredLessons());
+    getStoredTasks().then(res => {
+      if (Array.isArray(res)) setTasks(res);
+    }).catch(() => {});
+  }, []);
 
-  const [teachersList, setTeachersList] = useState([
-    { id: 't1', name: 'Мария Иванова', role: 'Английский', load: '92%', count: 18 },
-    { id: 't2', name: 'Дмитрий Соколов', role: 'Робототехника', load: '85%', count: 14 },
-    { id: 't3', name: 'Елена Васильева', role: 'Математика', load: '78%', count: 11 },
-    { id: 't4', name: 'Сергей Петров', role: 'Программирование', load: '65%', count: 8 },
-  ]);
+  useFocusSync(refreshAll);
 
   // Realtime Supabase Subscription & Custom Event Listeners
   useEffect(() => {
-    const handleStorageChange = (e: any) => {
-      if (e?.detail?.id) {
-        setAttentionItems(prev => prev.filter(i => i.entityId !== e.detail.id));
-      }
+    refreshAll();
+
+    const handleStorageChange = () => {
+      refreshAll();
     };
+
     window.addEventListener('crm-tasks-changed', handleStorageChange);
     window.addEventListener('crm-payments-changed', handleStorageChange);
     window.addEventListener('crm-leads-changed', handleStorageChange);
+    window.addEventListener('crm-students-changed', handleStorageChange);
+    window.addEventListener('crm-groups-changed', handleStorageChange);
+    window.addEventListener('crm-lessons-changed', handleStorageChange);
 
     let channel: any;
     try {
       const supabase = createClient();
       channel = supabase
         .channel('dashboard-realtime-sync')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public' },
-          (payload) => {
-            if (payload.new && (payload.new as any).id) {
-              const updatedId = (payload.new as any).id;
-              setAttentionItems(prev => prev.filter(i => i.entityId !== updatedId));
-            }
-          }
-        )
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+          refreshAll();
+        })
         .subscribe();
     } catch (e) {
       console.warn('Realtime subscription error:', e);
@@ -68,6 +115,10 @@ export function useDashboardState() {
       window.removeEventListener('crm-tasks-changed', handleStorageChange);
       window.removeEventListener('crm-payments-changed', handleStorageChange);
       window.removeEventListener('crm-leads-changed', handleStorageChange);
+      window.removeEventListener('crm-students-changed', handleStorageChange);
+      window.removeEventListener('crm-groups-changed', handleStorageChange);
+      window.removeEventListener('crm-lessons-changed', handleStorageChange);
+
       if (channel) {
         try {
           const supabase = createClient();
@@ -75,7 +126,7 @@ export function useDashboardState() {
         } catch (e) {}
       }
     };
-  }, []);
+  }, [refreshAll]);
 
   const openDrawer = (type: DrawerType, entityId: string, initialData?: any) => setDrawerState({ isOpen: true, type, entityId, initialData });
   const closeDrawer = () => setDrawerState(prev => ({ ...prev, isOpen: false }));
@@ -83,11 +134,11 @@ export function useDashboardState() {
   const openTask = (item: any) => setSelectedTask(item);
   const closeTask = () => setSelectedTask(null);
   const completeTask = (taskId: string) => {
-    setAttentionItems(prev => prev.filter(item => item.entityId !== taskId));
     setSelectedTask(null);
+    refreshAll();
   };
 
-  const openTeacher = (t: any) => setSelectedTeacher(t);
+  const openTeacher = (t: FullTeacherData) => setSelectedTeacher(t);
   const closeTeacher = () => setSelectedTeacher(null);
 
   const openLead = (lead: FullLeadData) => {
@@ -114,22 +165,35 @@ export function useDashboardState() {
   const openProfile = () => setIsProfileOpen(true);
   const closeProfile = () => setIsProfileOpen(false);
 
+  const openLesson = (lesson: FullLessonData) => setSelectedLesson(lesson);
+  const closeLesson = () => setSelectedLesson(null);
+
   return {
     data: {
-      attentionItems,
-      teachersList,
+      payments,
+      students,
+      leads,
+      groups,
+      lessons,
+      tasks,
+      teachers,
+      isLoading,
       selectedTask,
       selectedTeacher,
       selectedLead,
       selectedStudent,
       selectedPayment,
+      selectedLesson,
       drawerState,
       isCreateLeadOpen,
       isLeadDrawerOpen,
       isStudentDrawerOpen,
       isProfileOpen,
+      attentionItems,
+      teachersList: teachers,
     },
     actions: {
+      refreshAll,
       openDrawer,
       closeDrawer,
       openTask,
@@ -145,6 +209,8 @@ export function useDashboardState() {
       closeCreateLead,
       openProfile,
       closeProfile,
+      openLesson,
+      closeLesson,
       setAttentionItems,
       setSelectedPayment,
     },
