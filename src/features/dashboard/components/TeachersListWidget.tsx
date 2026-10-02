@@ -14,7 +14,7 @@ export interface TeachersListWidgetProps {
 }
 
 export function TeachersListWidget({
-  teachers,
+  teachers: inputTeachers,
   groups,
   onSelectTeacher,
   isLoading = false,
@@ -66,22 +66,36 @@ export function TeachersListWidget({
     ];
   }, []);
 
+  const teachers = useMemo(() => {
+    if (inputTeachers && inputTeachers.length > 0) {
+      return inputTeachers.slice(0, 4).map(t => ({
+        id: t.id,
+        name: t.name,
+        initials: t.name.split(' ').map(n => n[0]).join(''),
+        subject: (t as any).specialization || (t as any).subject || 'Преподаватель',
+        studentsCount: (t as any).studentsCount || 12,
+        workload: (t as any).workload || 85,
+        workloadStatus: ((t as any).workload || 85) >= 80 ? 'Хорошая загрузка' : ((t as any).workload || 85) >= 70 ? 'Близка к полной загрузке' : 'Есть свободные места',
+        workloadStatusClass: ((t as any).workload || 85) >= 80 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
+      }));
+    }
+    return teachersList.map(t => ({
+      id: t.id,
+      name: t.name,
+      initials: t.name.split(' ').map(n => n[0]).join(''),
+      subject: t.subject,
+      studentsCount: t.studentsCount,
+      workload: t.percent,
+      workloadStatus: t.statusText,
+      workloadStatusClass: t.statusColor,
+    }));
+  }, [inputTeachers, teachersList]);
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-[260px]" />
     );
   }
-
-  const teachers = teachersList.map(t => ({
-    id: t.id,
-    name: t.name,
-    initials: t.name.split(' ').map(n => n[0]).join(''),
-    subject: t.subject,
-    studentsCount: t.studentsCount,
-    workload: t.percent,
-    workloadStatus: t.statusText,
-    workloadStatusClass: t.statusColor,
-  }));
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
