@@ -119,6 +119,39 @@ export function saveLessonToStorage(lesson: FullLessonData): void {
 }
 
 /**
+ * Deletes a lesson from in-memory INITIAL_LESSONS, localStorage, and triggers Supabase cloud deletion.
+ */
+export function deleteLessonFromStorage(lessonId: string): void {
+  // 1. In-memory deletion
+  const idx = INITIAL_LESSONS.findIndex((l) => l.id === lessonId);
+  if (idx !== -1) {
+    INITIAL_LESSONS.splice(idx, 1);
+  }
+
+  // 2. LocalStorage deletion
+  if (typeof window !== 'undefined') {
+    try {
+      const all = getStoredLessons();
+      const updated = all.filter((item) => item.id !== lessonId);
+      localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: { lessonId, deleted: true } }));
+    } catch (err) {
+      console.error('Failed to delete lesson from localStorage:', err);
+    }
+
+    // 3. Supabase Cloud DB deletion
+    try {
+      import('@/lib/supabase/client').then(({ createClient }) => {
+        const supabase = createClient();
+        supabase.from('lessons').delete().eq('id', lessonId).then();
+      }).catch((e) => console.warn('Supabase delete import error:', e));
+    } catch (err) {
+      console.warn('Supabase lesson deletion warning:', err);
+    }
+  }
+}
+
+/**
  * Updates attendance for a batch of students in a lesson,
  * recalculates student attendance statistics, updates student records and timeline,
  * and persists everything immediately to Supabase and LocalStorage.

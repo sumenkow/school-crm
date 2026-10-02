@@ -1146,6 +1146,16 @@ export default function CalendarPage() {
         onSave={(updatedLesson) => {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
           setSelectedLessonForDesktop(null);
+          if (selectedLessonForDrawer?.id === updatedLesson.id) {
+            setSelectedLessonForDrawer(updatedLesson);
+          }
+        }}
+        onDelete={(lessonId) => {
+          setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+          setSelectedLessonForDesktop(null);
+          if (selectedLessonForDrawer?.id === lessonId) {
+            setSelectedLessonForDrawer(null);
+          }
         }}
       />
 
