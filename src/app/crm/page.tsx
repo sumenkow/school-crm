@@ -43,6 +43,7 @@ import { LeadDetailsModal, WhatsAppIcon, TelegramIcon } from '@/components/crm/L
 import { ConvertLeadModal } from '@/components/crm/ConvertLeadModal';
 import { softDeleteLead, restoreLead, getStoredLeads, syncLeadToSupabase, saveLeadToStorage } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -1126,22 +1127,24 @@ export default function CrmPage() {
       </div>
 
       {/* Lead Details Modal Window (Same unified modal pattern as Students/Parents) */}
-      <LeadDetailsModal
-        isOpen={Boolean(selectedLeadForDrawer)}
-        lead={selectedLeadForDrawer}
-        onClose={() => setSelectedLeadForDrawer(null)}
-        onUpdateLead={(updated) => {
-          setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
-          setSelectedLeadForDrawer(updated);
-        }}
-        onConverted={(studentId) => {
-          setLeads(getStoredLeads(true, true));
-          setSelectedLeadForDrawer(null);
-        }}
-        onStatusChange={(leadId, newStatus) => {
-          handleQuickStatusChange(leadId, newStatus);
-        }}
-      />
+      <ErrorBoundary fallbackTitle="Ошибка отображения карточки лида" onReset={() => setSelectedLeadForDrawer(null)}>
+        <LeadDetailsModal
+          isOpen={Boolean(selectedLeadForDrawer)}
+          lead={selectedLeadForDrawer}
+          onClose={() => setSelectedLeadForDrawer(null)}
+          onUpdateLead={(updated) => {
+            setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+            setSelectedLeadForDrawer(updated);
+          }}
+          onConverted={(studentId) => {
+            setLeads(getStoredLeads(true, true));
+            setSelectedLeadForDrawer(null);
+          }}
+          onStatusChange={(leadId, newStatus) => {
+            handleQuickStatusChange(leadId, newStatus);
+          }}
+        />
+      </ErrorBoundary>
 
       {/* Modal to create new lead */}
       <CreateLeadModal
@@ -1152,16 +1155,18 @@ export default function CrmPage() {
 
       {/* Modal: Confirmation & 1-click enroll to students on drop in "Оплачено (Успех)" */}
       {leadForConvertModal && (
-        <ConvertLeadModal
-          isOpen={Boolean(leadForConvertModal)}
-          lead={leadForConvertModal}
-          onClose={() => setLeadForConvertModal(null)}
-          onSuccess={(studentId) => {
-            commitStatusChange(leadForConvertModal.id, 'paid');
-            setLeadForConvertModal(null);
-            toast.success('Лид успешно переведен в базу учеников и оплачен!');
-          }}
-        />
+        <ErrorBoundary fallbackTitle="Ошибка отображения зачисления" onReset={() => setLeadForConvertModal(null)}>
+          <ConvertLeadModal
+            isOpen={Boolean(leadForConvertModal)}
+            lead={leadForConvertModal}
+            onClose={() => setLeadForConvertModal(null)}
+            onSuccess={(studentId) => {
+              commitStatusChange(leadForConvertModal.id, 'paid');
+              setLeadForConvertModal(null);
+              toast.success('Лид успешно переведен в базу учеников и оплачен!');
+            }}
+          />
+        </ErrorBoundary>
       )}
 
       {/* Modal: Quick loss reason when dropped into "Отказ или Архив" */}

@@ -209,25 +209,31 @@ export function LeadDetailsModal({
     }
   }, [lead, userName]);
 
+  // Helper for safe string trim
+  const safeTrim = (val: unknown): string => {
+    if (val === null || val === undefined) return '';
+    return String(val).trim();
+  };
+
   // Computed student age from birth date if provided
   const computedAge = useMemo(() => {
     if (studentBirthDate) {
       const a = calculateAge(studentBirthDate);
       if (a !== null) return formatAgeRussian(a);
     }
-    return studentAge || '';
+    return safeTrim(studentAge);
   }, [studentBirthDate, studentAge]);
 
   // Dynamic qualification score calculation
   const qualificationStats = useMemo(() => {
     const checks = [
-      { name: 'Контакт / Телефон', isFilled: Boolean(contactPhone?.trim() || lead?.contact?.trim()) },
-      { name: 'Имя родителя', isFilled: Boolean(parentName?.trim() || lead?.name?.trim()) },
-      { name: 'Имя ученика', isFilled: Boolean(studentName?.trim() || lead?.studentName?.trim()) },
-      { name: 'Возраст / Дата рождения', isFilled: Boolean(computedAge?.trim() || studentBirthDate?.trim()) },
-      { name: 'Курс / Направление', isFilled: Boolean(course?.trim() || lead?.directionOrCourse?.trim()) },
-      { name: 'Потребность / Цель', isFilled: Boolean(goal?.trim() || lead?.studentNotes?.trim()) },
-      { name: 'Параметры сделки (€)', isFilled: Boolean(offerAmount?.trim() || lead?.offerAmount?.trim()) },
+      { name: 'Контакт / Телефон', isFilled: Boolean(safeTrim(contactPhone) || safeTrim(lead?.contact)) },
+      { name: 'Имя родителя', isFilled: Boolean(safeTrim(parentName) || safeTrim(lead?.name)) },
+      { name: 'Имя ученика', isFilled: Boolean(safeTrim(studentName) || safeTrim(lead?.studentName)) },
+      { name: 'Возраст / Дата рождения', isFilled: Boolean(safeTrim(computedAge) || safeTrim(studentBirthDate)) },
+      { name: 'Курс / Направление', isFilled: Boolean(safeTrim(course) || safeTrim(lead?.directionOrCourse)) },
+      { name: 'Потребность / Цель', isFilled: Boolean(safeTrim(goal) || safeTrim(lead?.studentNotes)) },
+      { name: 'Параметры сделки (€)', isFilled: Boolean(safeTrim(offerAmount) || safeTrim(lead?.offerAmount)) },
     ];
     const filledCount = checks.filter(c => c.isFilled).length;
     const totalCount = checks.length;
@@ -238,12 +244,12 @@ export function LeadDetailsModal({
   // Section completeness for edit sidebar
   const sectionStatus = useMemo(() => {
     return {
-      contact: Boolean(parentName?.trim() && contactPhone?.trim()),
-      student: Boolean(studentName?.trim() || computedAge?.trim() || studentGrade?.trim()),
-      need: Boolean(course?.trim() && (level || goal?.trim())),
-      group_trial: Boolean(selectedGroup || trialDateTime?.trim()),
-      deal: Boolean(offerAmount?.trim() && source?.trim()),
-      comment: Boolean(generalComment?.trim()),
+      contact: Boolean(safeTrim(parentName) && safeTrim(contactPhone)),
+      student: Boolean(safeTrim(studentName) || safeTrim(computedAge) || safeTrim(studentGrade)),
+      need: Boolean(safeTrim(course) && (level || safeTrim(goal))),
+      group_trial: Boolean(selectedGroup || safeTrim(trialDateTime)),
+      deal: Boolean(safeTrim(offerAmount) && safeTrim(source)),
+      comment: Boolean(safeTrim(generalComment)),
     };
   }, [parentName, contactPhone, studentName, computedAge, studentGrade, course, level, goal, selectedGroup, trialDateTime, offerAmount, source, generalComment]);
 
