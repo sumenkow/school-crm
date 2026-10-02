@@ -167,87 +167,99 @@ export function AttentionFeed({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-3.5 shadow-sm space-y-3 animate-pulse h-[260px]" />
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-3 animate-pulse h-full min-h-[260px]" />
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[260px]">
-      <div>
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-            <h3 className="font-bold text-slate-900 text-sm">Требует вашего внимания</h3>
+    <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col justify-between h-full min-h-[260px]">
+      {/* Шапка */}
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-50">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4" />
           </div>
-          <span className="bg-rose-50 text-rose-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-            {attentionItems.length} ситуаций
-          </span>
+          <h3 className="font-bold text-slate-900 text-sm">Требует вашего внимания</h3>
         </div>
-
-        <div className="divide-y divide-slate-50 py-0.5">
-          {attentionItems.slice(0, 3).map((item) => {
-            const iconBg = {
-              rose: 'bg-rose-100 text-rose-600',
-              purple: 'bg-purple-100 text-purple-600',
-              amber: 'bg-amber-100 text-amber-600',
-              blue: 'bg-blue-100 text-blue-600',
-            }[item.iconType];
-
-            const IconComponent = item.type === 'debt' ? AlertCircle
-              : item.type === 'trial' ? AlertCircle
-              : item.type === 'package' ? AlertTriangle
-              : item.type === 'lead' ? User
-              : Users;
-
-            const handleAction = (e: React.MouseEvent) => {
-              e.stopPropagation();
-              if (item.rawLead && onOpenLead) {
-                onOpenLead(item.rawLead);
-              } else {
-                router.push(item.targetUrl);
-              }
-            };
-
-            return (
-              <div
-                key={item.id}
-                onClick={handleAction}
-                className="py-1.5 px-1.5 -mx-1.5 flex items-center justify-between gap-2 h-[46px] rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0', iconBg)}>
-                    <IconComponent className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 truncate leading-tight group-hover:text-blue-600 transition-colors">{item.title}</p>
-                    <p className="text-[11px] text-slate-400 truncate leading-tight">{item.subtitle}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[11px] text-slate-400 whitespace-nowrap hidden sm:inline-block">
-                    {item.timeLabel}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAction}
-                    className="text-xs font-semibold text-blue-600 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/80 px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    {item.actionLabel}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <span className="bg-rose-50 text-rose-600 font-bold text-xs px-2.5 py-1 rounded-full">
+          {attentionItems.length} ситуаций
+        </span>
       </div>
 
+      {/* Список ситуаций */}
+      <div className="divide-y divide-slate-50 py-1 my-auto">
+        {attentionItems.slice(0, 3).map((item) => {
+          const iconBgClass = {
+            rose: 'bg-rose-50 text-rose-500',
+            purple: 'bg-purple-50 text-purple-600',
+            amber: 'bg-amber-50 text-amber-600',
+            blue: 'bg-blue-50 text-blue-600',
+          }[item.iconType];
+
+          const IconComponent = item.type === 'debt' ? AlertCircle
+            : item.type === 'trial' ? AlertCircle
+            : item.type === 'package' ? AlertTriangle
+            : item.type === 'lead' ? User
+            : Users;
+
+          const handleAction = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (item.rawLead && onOpenLead) {
+              onOpenLead(item.rawLead);
+            } else {
+              router.push(item.targetUrl);
+            }
+          };
+
+          return (
+            <div
+              key={item.id}
+              onClick={handleAction}
+              className="py-2.5 flex items-center justify-between gap-2 hover:bg-slate-50/50 rounded-xl px-1 -mx-1 transition-colors cursor-pointer group"
+            >
+              {/* Иконка + Текст */}
+              <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                <div className={cn('w-9 h-9 rounded-full flex items-center justify-center shrink-0', iconBgClass)}>
+                  <IconComponent className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-900 truncate leading-snug group-hover:text-blue-600 transition-colors">
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">
+                    {item.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              {/* Время (выровнено справа) */}
+              <span className="text-xs text-slate-400 shrink-0 w-24 text-right mr-3 hidden sm:inline-block">
+                {item.timeLabel}
+              </span>
+
+              {/* Кнопка действия строго фиксированного размера */}
+              <button
+                type="button"
+                onClick={handleAction}
+                className="w-[88px] h-8 flex items-center justify-center text-xs font-semibold text-blue-600 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/80 rounded-xl transition-colors shrink-0 cursor-pointer"
+              >
+                {item.actionLabel}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Ссылка внизу */}
       <button
         type="button"
         onClick={() => router.push('/tasks')}
-        className="w-full text-center text-[11px] font-medium text-blue-600 hover:text-blue-700 pt-1 border-t border-slate-50 cursor-pointer"
+        className="w-full text-center text-xs font-semibold text-blue-600 hover:text-blue-700 pt-3 border-t border-slate-50 cursor-pointer"
       >
         Показать все ситуации ({attentionItems.length}) →
       </button>
     </div>
   );
 }
+
+export { AttentionFeed as AttentionPanel };

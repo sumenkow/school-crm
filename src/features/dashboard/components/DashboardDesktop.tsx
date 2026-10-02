@@ -56,35 +56,41 @@ export function DashboardDesktop({
         />
       </WidgetErrorBoundary>
 
-      {/* 3. Operations Row (3 Equal Columns: Требует вашего внимания | Сегодня | Воронка лидов) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-        <WidgetErrorBoundary widgetName="Фокус внимания" onRetry={actions.refreshAll}>
-          <AttentionFeed
-            payments={data.payments}
-            leads={data.leads}
-            groups={data.groups}
-            tasks={data.tasks}
-            students={data.students}
-            onOpenLead={actions.openLead}
-            onOpenTask={actions.openTask}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+      {/* 3. Operations Row (12 Columns: 5 Фокус внимания | 4 Сегодня | 3 Воронка лидов) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+        <div className="lg:col-span-5 flex flex-col">
+          <WidgetErrorBoundary widgetName="Фокус внимания" onRetry={actions.refreshAll}>
+            <AttentionFeed
+              payments={data.payments}
+              leads={data.leads}
+              groups={data.groups}
+              tasks={data.tasks}
+              students={data.students}
+              onOpenLead={actions.openLead}
+              onOpenTask={actions.openTask}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
 
-        <WidgetErrorBoundary widgetName="Расписание на сегодня" onRetry={actions.refreshAll}>
-          <TodayScheduleWidget
-            lessons={data.lessons}
-            onSelectLesson={(lesson) => actions.openLesson(lesson)}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+        <div className="lg:col-span-4 flex flex-col">
+          <WidgetErrorBoundary widgetName="Расписание на сегодня" onRetry={actions.refreshAll}>
+            <TodayScheduleWidget
+              lessons={data.lessons}
+              onSelectLesson={(lesson) => actions.openLesson(lesson)}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
 
-        <WidgetErrorBoundary widgetName="Воронка продаж" onRetry={actions.refreshAll}>
-          <FunnelWidget
-            leads={data.leads}
-            isLoading={data.isLoading}
-          />
-        </WidgetErrorBoundary>
+        <div className="lg:col-span-3 flex flex-col">
+          <WidgetErrorBoundary widgetName="Воронка продаж" onRetry={actions.refreshAll}>
+            <FunnelWidget
+              leads={data.leads}
+              isLoading={data.isLoading}
+            />
+          </WidgetErrorBoundary>
+        </div>
       </div>
 
       {/* 4. Management Row (3 Equal Columns: Финансы | Группы | Команда преподавателей) */}
