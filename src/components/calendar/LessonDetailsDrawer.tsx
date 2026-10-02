@@ -29,7 +29,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FullLessonData, INITIAL_TEACHERS, LessonTimelineEvent } from '@/lib/data/mockData';
-import { saveLessonToStorage, deleteLessonFromStorage } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, deleteLessonFromStorage, recordLessonAttendanceBatch } from '@/lib/data/lessonStorage';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -227,7 +227,25 @@ export function LessonDetailsDrawer({
     };
 
     saveLessonToStorage(updatedLesson);
+
+    // Sync student stats and attendance history everywhere
+    recordLessonAttendanceBatch({
+      lessonId: lesson.id,
+      topic: lesson.topic,
+      homework: lesson.homework,
+      teacherName: lesson.teacherName,
+      status: lesson.status,
+      studentRecords: updatedStudents.map((s) => ({
+        studentId: s.id,
+        studentName: s.name,
+        status: s.attendanceStatus === 'not_marked' ? 'not_marked' : s.attendanceStatus,
+        note: s.notes,
+      })),
+    });
+
     if (onLessonUpdated) onLessonUpdated(updatedLesson);
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
     toast.success('Посещаемость обновлена');
   };
 
@@ -1005,17 +1023,25 @@ export function LessonDetailsDrawer({
                 <span>Заметки преподавателя</span>
               </div>
               <p className="text-slate-600 text-xs leading-relaxed">
-                {lesson.topic
-                  ? `Урок посвящен теме: "${lesson.topic}".`
-                  : 'Нет дополнительных заметок к занятию.'}
+                {lesson.generalLessonNote || lesson.notes || (lesson.topic ? `Урок посвящен теме: "${lesson.topic}".` : 'Нет дополнительных заметок к занятию.')}
               </p>
             </div>
+
+            {lesson.nextLessonRecommendation && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-blue-900 font-semibold text-xs">
+                  <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Рекомендации к следующему уроку</span>
+                </div>
+                <p className="text-slate-700 text-xs leading-relaxed">{lesson.nextLessonRecommendation}</p>
+              </div>
+            )}
 
             {lesson.homework && (
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
                   <BookOpen className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Материалы и ссылки</span>
+                  <span>Домашнее задание</span>
                 </div>
                 <p className="text-slate-600 text-xs leading-relaxed">{lesson.homework}</p>
               </div>

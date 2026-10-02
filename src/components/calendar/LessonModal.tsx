@@ -167,10 +167,10 @@ export function LessonModal({
       setIsConfirmingDelete(false);
       setTopic(lesson.topic || '');
       setHomework(lesson.homework || '');
-      setGeneralLessonNote('');
-      setGeneralLessonNoteVisibility('parents');
-      setNextLessonRecommendation('');
-      setNextLessonRecommendationVisibility('parents');
+      setGeneralLessonNote(lesson.generalLessonNote || lesson.notes || '');
+      setGeneralLessonNoteVisibility(lesson.generalLessonNoteVisibility || 'parents');
+      setNextLessonRecommendation(lesson.nextLessonRecommendation || '');
+      setNextLessonRecommendationVisibility(lesson.nextLessonRecommendationVisibility || 'parents');
       setZoomUrl(lesson.onlineMeetingUrl || '');
       setIsOnlineFormat(
         !!(lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн') || lesson.room?.toLowerCase().includes('zoom'))
@@ -305,6 +305,7 @@ export function LessonModal({
         topic: topic.trim() || lesson.topic,
         homework: homework.trim() || undefined,
         teacherName: teacherName || lesson.teacherName,
+        status: newStatus,
         studentRecords: attendance.map((a) => ({
           studentId: a.studentId,
           studentName: a.name,
@@ -373,6 +374,11 @@ export function LessonModal({
         teacherName: teacherName.trim() || lesson.teacherName,
         topic: topic.trim() || 'Тема урока',
         homework: homework.trim() || undefined,
+        generalLessonNote: generalLessonNote.trim() || undefined,
+        generalLessonNoteVisibility,
+        nextLessonRecommendation: nextLessonRecommendation.trim() || undefined,
+        nextLessonRecommendationVisibility,
+        notes: generalLessonNote.trim() || lesson.notes,
         onlineMeetingUrl: isOnlineFormat ? zoomUrl.trim() || undefined : undefined,
         room: isOnlineFormat ? 'Онлайн (Zoom)' : room.trim() || 'Аудитория 1',
         status: newStatus,

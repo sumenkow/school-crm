@@ -1087,6 +1087,11 @@ export interface FullLessonData {
   room: string;
   topic: string;
   homework?: string;
+  notes?: string;
+  generalLessonNote?: string;
+  generalLessonNoteVisibility?: 'parents' | 'internal';
+  nextLessonRecommendation?: string;
+  nextLessonRecommendationVisibility?: 'parents' | 'internal';
   onlineMeetingUrl?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   rescheduleInfo?: LessonRescheduleInfo;

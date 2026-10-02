@@ -158,13 +158,14 @@ export function deleteLessonFromStorage(lessonId: string): void {
  */
 export function recordLessonAttendanceBatch(params: {
   lessonId: string;
-  topic: string;
+  topic?: string;
   homework?: string;
-  teacherName: string;
+  teacherName?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   studentRecords: Array<{
     studentId: string;
     studentName: string;
-    status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'not_marked';
+    status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
     note?: string;
   }>;
 }): { updatedLesson: FullLessonData | null } {
@@ -179,7 +180,7 @@ export function recordLessonAttendanceBatch(params: {
       return {
         ...ls,
         attendanceStatus: record.status,
-        notes: record.note || ls.notes,
+        notes: record.note !== undefined ? record.note : ls.notes,
       };
     }
     return ls;
@@ -187,7 +188,7 @@ export function recordLessonAttendanceBatch(params: {
 
   const updatedLesson: FullLessonData = {
     ...currentLesson,
-    status: 'completed',
+    status: params.status || currentLesson.status || 'completed',
     topic: params.topic || currentLesson.topic,
     homework: params.homework !== undefined ? params.homework : currentLesson.homework,
     students: updatedStudentsInLesson,
