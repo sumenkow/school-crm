@@ -202,16 +202,32 @@ export function recordLessonAttendanceBatch(params: {
 
     const eqSet = getEquivalentIds(rec.studentId);
     const recNameClean = (rec.studentName || '').trim().toLowerCase();
-    const student = allStudents.find((s) => {
-      if (s.id === rec.studentId) return true;
-      if (eqSet.has(s.id)) return true;
-      if (recNameClean) {
+    
+    // Priority 1: Exact ID or equivalence match
+    let student = allStudents.find((s) => s.id === rec.studentId || eqSet.has(s.id));
+    
+    // Priority 2: If ID didn't match, match by name with group disambiguation
+    if (!student && recNameClean) {
+      const matchingByName = allStudents.filter((s) => {
         const directName = `${s.firstName || ''} ${s.lastName || ''}`.trim().toLowerCase();
         const reversedName = `${s.lastName || ''} ${s.firstName || ''}`.trim().toLowerCase();
-        if (directName === recNameClean || reversedName === recNameClean) return true;
+        return directName === recNameClean || reversedName === recNameClean;
+      });
+
+      if (matchingByName.length === 1) {
+        student = matchingByName[0];
+      } else if (matchingByName.length > 1) {
+        // Disambiguate by checking which student is enrolled in this lesson's group
+        const groupMatch = matchingByName.find((s) =>
+          (s.groups || []).some(
+            (g) =>
+              (currentLesson.groupId && g.id === currentLesson.groupId) ||
+              (currentLesson.groupName && g.name?.toLowerCase() === currentLesson.groupName.toLowerCase())
+          )
+        );
+        student = groupMatch || matchingByName[0];
       }
-      return false;
-    });
+    }
     if (!student) return;
 
     const existingHistory = student.attendanceStats?.history || [];

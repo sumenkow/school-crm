@@ -413,13 +413,16 @@ export function getCombinedStudentTimeline(
 
   // Stored interactions matching student, lead, or parents
   stored.forEach((i) => {
-    const isStudentIdMatch = i.studentId && studentIdSet.has(String(i.studentId));
+    const isStudentIdMatch = Boolean(i.studentId && studentIdSet.has(String(i.studentId)));
+    // Name match ONLY applies if the interaction has no explicit studentId (legacy/unlinked interactions)
     const isStudentNameMatch = Boolean(
-      studentFullName && i.studentName &&
+      !i.studentId &&
+      studentFullName &&
+      i.studentName &&
       (i.studentName.trim().toLowerCase() === studentFullName || i.studentName.trim().toLowerCase() === studentReversedName)
     );
-    const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
-    const isLeadMatch = (i as any).leadId && (i as any).convertedStudentId && studentIdSet.has(String((i as any).convertedStudentId));
+    const isParentMatch = Boolean(i.parentId && parentIdSets.has(String(i.parentId)));
+    const isLeadMatch = Boolean((i as any).leadId && (i as any).convertedStudentId && studentIdSet.has(String((i as any).convertedStudentId)));
 
     if ((isStudentIdMatch || isStudentNameMatch || isParentMatch || isLeadMatch) && !isRoutineTimelineNoise(i)) {
       list.push(i);
@@ -429,12 +432,14 @@ export function getCombinedStudentTimeline(
   allKnownStudents.forEach((st) => {
     if (st.parents?.some((p) => parentIdSets.has(String(p.id))) || studentIdSet.has(String(st.id))) {
       (st.interactions || []).forEach((i) => {
-        const isStudentIdMatch = i.studentId && studentIdSet.has(String(i.studentId));
+        const isStudentIdMatch = Boolean(i.studentId && studentIdSet.has(String(i.studentId)));
         const isStudentNameMatch = Boolean(
-          studentFullName && i.studentName &&
+          !i.studentId &&
+          studentFullName &&
+          i.studentName &&
           (i.studentName.trim().toLowerCase() === studentFullName || i.studentName.trim().toLowerCase() === studentReversedName)
         );
-        const isParentMatch = i.parentId && parentIdSets.has(String(i.parentId));
+        const isParentMatch = Boolean(i.parentId && parentIdSets.has(String(i.parentId)));
         if ((isStudentIdMatch || isStudentNameMatch || isParentMatch) && !isRoutineTimelineNoise(i)) {
           list.push(i);
         }
