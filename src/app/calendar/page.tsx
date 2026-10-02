@@ -17,13 +17,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData } from '@/lib/data/mockData';
-import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { DesktopLessonModal } from '@/components/calendar/DesktopLessonModal';
+import { LessonPreviewDrawer } from '@/components/calendar/LessonPreviewDrawer';
+import { EditLessonModal } from '@/components/calendar/EditLessonModal';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
 
@@ -164,6 +166,8 @@ export default function CalendarPage() {
   });
   const [selectedLessonForQuickView, setSelectedLessonForQuickView] = useState<FullLessonData | null>(null);
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
+  const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
+  const [selectedLessonForEdit, setSelectedLessonForEdit] = useState<FullLessonData | null>(null);
 
   // Sync stored lessons and subscribe to Supabase Realtime
   useEffect(() => {
@@ -245,7 +249,7 @@ export default function CalendarPage() {
   };
 
   const handleLessonClick = (lesson: FullLessonData) => {
-    router.push(`/calendar/lessons/${lesson.id}`);
+    setSelectedLessonForDrawer(lesson);
   };
 
   const todayStr = getTodayDateStr();
@@ -1072,6 +1076,48 @@ export default function CalendarPage() {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
         }}
       />
+
+      {/* Quick Preview Drawer */}
+      <LessonPreviewDrawer
+        isOpen={!!selectedLessonForDrawer}
+        lesson={selectedLessonForDrawer}
+        onClose={() => setSelectedLessonForDrawer(null)}
+        onEdit={(l) => {
+          setSelectedLessonForDrawer(null);
+          setSelectedLessonForEdit(l);
+        }}
+        onLessonUpdated={(updated) => {
+          setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+          setSelectedLessonForDrawer(updated);
+        }}
+        onDuplicate={(l) => {
+          const dup: FullLessonData = {
+            ...l,
+            id: `l_dup_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            status: 'scheduled',
+            students: (l.students || []).map((s) => ({
+              ...s,
+              attendanceStatus: 'not_marked',
+            })),
+          };
+          saveLessonToStorage(dup);
+          setLessons((prev) => [dup, ...prev]);
+          setSelectedLessonForDrawer(dup);
+        }}
+      />
+
+      {/* Edit Lesson Modal */}
+      {selectedLessonForEdit && (
+        <EditLessonModal
+          isOpen={!!selectedLessonForEdit}
+          lesson={selectedLessonForEdit}
+          onClose={() => setSelectedLessonForEdit(null)}
+          onSaved={(updated) => {
+            setLessons((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+            setSelectedLessonForEdit(null);
+          }}
+        />
+      )}
     </>
   );
 }
