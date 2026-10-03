@@ -8,13 +8,14 @@ import { StudentProfileDesktop } from '@/features/students/components/StudentPro
 import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, INITIAL_LESSONS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo, getEquivalentIds } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent, normalizeStudent } from '@/lib/data/studentStorage';
-import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import { LessonModal } from '@/components/calendar/LessonModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import {
@@ -514,6 +515,7 @@ export default function StudentDetailsPage() {
 
   // Next Upcoming Lesson State
   const [upcomingLesson, setUpcomingLesson] = useState<FullLessonData | null>(null);
+  const [selectedLessonForModal, setSelectedLessonForModal] = useState<FullLessonData | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const computeNextLesson = () => {
@@ -2048,245 +2050,278 @@ export default function StudentDetailsPage() {
       {/* TAB 1: ЕДИНАЯ МОНОЛИТНАЯ ВКЛАДКА «ОБУЧЕНИЕ» */}
       {activeTab === 'education' && (
         <div className="space-y-6">
-          {/* БЛОК 1: ВЕРХНЯЯ ПАНЕЛЬ КУРСОВ (ДВУХКОЛОНОЧНАЯ СЕТКА) */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Текущие зачисления и группы</h3>
-                <p className="text-xs text-slate-500">Ученик может параллельно обучаться на нескольких предметах</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEnrollGroupModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Зачислить в группу
-              </button>
-            </div>
-
-            {student.groups.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-                <BookOpen className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Ученик пока не зачислен ни в одну группу</p>
-                <p className="text-[11px] text-slate-400 mt-0.5 mb-3">Выберите группу для начала посещения занятий</p>
-                <button
-                  type="button"
-                  onClick={() => setIsEnrollGroupModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Зачислить в группу
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {student.groups.map((grp) => {
-                  const cleanGroupName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
-                  const cleanGroupLower = cleanGroupName.toLowerCase();
-                  const grpIdStr = String(grp.id || '').trim().toLowerCase();
-                  const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
-                  const targetGroup =
-                    storedGroups.find(
-                      (g) =>
-                        g.id === grp.id ||
-                        g.name === cleanGroupName ||
-                        g.name === grp.name ||
-                        (g.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase() === cleanGroupLower
-                    ) || { id: grp.id || '1', name: cleanGroupName };
-
-                  const allLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
-                  const groupLessons = allLessons.filter((l) => {
-                    const lGId = String(l.groupId || '').trim().toLowerCase();
-                    const lGName = (l.groupName || l.courseName || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
-                    if (grpIdStr && lGId === grpIdStr) return true;
-                    if (cleanGroupLower && (lGName === cleanGroupLower || lGName.includes(cleanGroupLower) || cleanGroupLower.includes(lGName))) return true;
-                    return false;
-                  });
-
-                  const nowMs = Date.now();
-                  const upcomingLesson = groupLessons
-                    .filter((l) => {
-                      if (l.status === 'cancelled' || l.status === 'completed') return false;
-                      let isoDate = l.date;
-                      if (l.date && l.date.includes('.')) {
-                        const parts = l.date.split('.');
-                        if (parts.length === 3) isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                      }
-                      const time = l.startTime || '00:00';
-                      const ms = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
-                      return !isNaN(ms) ? ms >= nowMs - 2 * 60 * 60 * 1000 : true;
-                    })
-                    .sort((a, b) => {
-                      const parse = (l: any) => {
-                        let iso = l.date;
-                        if (l.date && l.date.includes('.')) {
-                          const parts = l.date.split('.');
-                          if (parts.length === 3) iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                        }
-                        return new Date(`${iso}T${l.startTime || '00:00'}`).getTime() || 0;
-                      };
-                      return parse(a) - parse(b);
-                    })[0] || null;
-
-                  const nextLessonText = upcomingLesson
-                    ? `${upcomingLesson.dateFormatted || upcomingLesson.date}${upcomingLesson.startTime ? ` · ${upcomingLesson.startTime}` : ''}`
-                    : (grp.schedule ? `${grp.schedule.split('•')[0].trim()} · ${grp.schedule.split('•')[1]?.trim() || ''}` : 'По расписанию группы');
-
-                  const rawTId = (grp as any).teacherId;
-                  const teacherName = grp.teacherName || 'Мария Иванова';
-                  const targetTeacher =
-                    INITIAL_TEACHERS.find(
-                      (t) =>
-                        (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
-                        t.name === teacherName ||
-                        t.name.includes(teacherName)
-                    ) || INITIAL_TEACHERS[0];
-
-                  const totalLessons = student.attendanceStats?.totalLessons || 16;
-                  const presentCount = student.attendanceStats?.presentCount || 0;
-                  const progressPercent = totalLessons > 0 ? Math.round((presentCount / totalLessons) * 100) : 100;
-                  const progressText = `Пройдено ${presentCount} из ${totalLessons} уроков`;
-
-                  return (
-                    <div
-                      key={grp.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between hover:border-blue-200 hover:shadow-sm transition-all"
-                    >
-                      <div className="space-y-3.5">
-                        {/* Header: Category & Clean Group Name + Status */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-                              {grp.courseName || 'Английский язык'}
-                            </span>
-                            <h4 className="text-base font-bold text-slate-900 mt-0.5 truncate">
-                              <Link
-                                href={`/groups/${targetGroup.id}`}
-                                className="hover:text-blue-600 hover:underline transition-colors"
-                              >
-                                {cleanGroupName}
-                              </Link>
-                            </h4>
-                          </div>
-                          <span className="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Активна
-                          </span>
-                        </div>
-
-                        {/* Key Parameters Block */}
-                        <div className="space-y-2 text-xs border-t border-slate-100 pt-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Преподаватель:</span>
-                            <Link
-                              href={`/teachers/${targetTeacher.id}`}
-                              className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition-colors truncate max-w-[200px]"
-                            >
-                              {teacherName}
-                            </Link>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Расписание:</span>
-                            <span className="font-medium text-slate-800">{grp.schedule || 'Пн, Чт • 18:45–20:15'}</span>
-                          </div>
-
-                          <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Ближайший урок:</span>
-                            <span className="font-semibold text-blue-600 flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-blue-500 shrink-0" />
-                              {nextLessonText}
-                            </span>
-                          </div>
-
-                          {/* Subscription Progress */}
-                          <div className="pt-1 space-y-1">
-                            <div className="flex items-center justify-between text-[11px]">
-                              <span className="text-slate-400">Прогресс абонемента:</span>
-                              <span className="font-semibold text-slate-700">{progressText}</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                                style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Footer Actions */}
-                      <div className="pt-3.5 mt-3 flex items-center justify-between border-t border-slate-100">
-                        <button
-                          type="button"
-                          onClick={() => setGroupToExclude({ id: grp.id, name: cleanGroupName })}
-                          className="text-xs font-medium text-slate-400 hover:text-rose-600 hover:underline transition-colors cursor-pointer"
-                        >
-                          Исключить из группы
-                        </button>
-                        <Link
-                          href={`/groups/${targetGroup.id}?tab=journal`}
-                          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
-                        >
-                          Журнал группы →
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* If student is enrolled in only 1 group, fill 2nd column with invitation to enroll in 2nd course */}
-                {student.groups.length === 1 && (
-                  <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-5 flex flex-col items-center justify-center text-center space-y-3 min-h-[190px] hover:border-blue-300 transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                      <Plus className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-800">Второй курс не выбран</h4>
-                      <p className="text-[11px] text-slate-500 mt-1 max-w-[220px]">
-                        Ученик посещает 1 курс. Можно зачислить во вторую группу для параллельного обучения.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsEnrollGroupModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors shadow-xs cursor-pointer"
-                    >
-                      + Зачислить на 2-й курс
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* БЛОК 2: СВОДНЫЕ KPI ПОСЕЩАЕМОСТИ */}
+          {/* 2-КОЛОНОЧНАЯ СЕТКА ЗАНЯТИЙ (50/50: Ближайшие и Последние занятия) */}
           {(() => {
-            const rawRate = parseInt(student.attendanceStats.attendanceRate) || 0;
-            const rateBadgeColor =
-              rawRate >= 90
-                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
-                : rawRate >= 70
-                ? 'text-amber-700 bg-amber-50 border-amber-200'
-                : 'text-rose-700 bg-rose-50 border-rose-200';
+            const allLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+            const studentGroupIds = new Set((student.groups || []).map((g) => String(g.id).trim().toLowerCase()));
+            const studentGroupNames = new Set((student.groups || []).map((g) => (g.name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase()));
+            const nowMs = Date.now();
+
+            const parseDateMs = (l: FullLessonData): number => {
+              if (!l.date) return 0;
+              let isoDate = l.date;
+              if (l.date.includes('.')) {
+                const parts = l.date.split('.');
+                if (parts.length === 3) isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              }
+              const time = l.startTime || '00:00';
+              const ms = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+              return isNaN(ms) ? 0 : ms;
+            };
+
+            const isLessonForStudent = (l: FullLessonData) => {
+              const inStudents = (l.students || []).some((s) => String(s.id) === String(student.id));
+              const lGId = String(l.groupId || '').trim().toLowerCase();
+              const lGName = (l.groupName || l.courseName || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+              const inGroups = (lGId && studentGroupIds.has(lGId)) || (lGName && studentGroupNames.has(lGName));
+              return inStudents || inGroups;
+            };
+
+            // 1. Upcoming Lessons
+            const upcomingLessons = allLessons
+              .filter((l) => {
+                if (l.status === 'cancelled' || l.status === 'completed') return false;
+                if (!isLessonForStudent(l)) return false;
+                const ms = parseDateMs(l);
+                return ms >= nowMs - 2 * 60 * 60 * 1000;
+              })
+              .sort((a, b) => parseDateMs(a) - parseDateMs(b));
+
+            // 2. Past Lessons: prioritize student.attendanceStats.history
+            const historyItems = student.attendanceStats?.history || [];
+
+            // Helper to format upcoming date for badge (top dayOfWeek, bottom date)
+            const formatUpcomingBadge = (dStr?: string) => {
+              if (!dStr) return { dayOfWeek: 'Пн', dateFormatted: '—' };
+              const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+              const months = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+              if (dStr.includes('.')) {
+                const p = dStr.split('.');
+                if (p.length >= 2) {
+                  const d = parseInt(p[0], 10);
+                  const m = parseInt(p[1], 10);
+                  const y = p[2] ? parseInt(p[2], 10) : 2026;
+                  const dateObj = new Date(y < 100 ? 2000 + y : y, m - 1, d);
+                  if (!isNaN(dateObj.getTime())) {
+                    return {
+                      dayOfWeek: days[dateObj.getDay()],
+                      dateFormatted: `${d} ${months[m - 1]}`,
+                    };
+                  }
+                }
+              }
+              return { dayOfWeek: 'Урок', dateFormatted: dStr.replace(/\s*202\d/, '').trim() };
+            };
+
+            // Helper to format past date
+            const formatPastDate = (dStr?: string) => {
+              if (!dStr) return '—';
+              const months = ['янв.', 'фев.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'];
+              if (dStr.includes('.')) {
+                const p = dStr.split('.');
+                if (p.length >= 2) {
+                  const d = parseInt(p[0], 10);
+                  const m = parseInt(p[1], 10);
+                  return `${d} ${months[m - 1]}`;
+                }
+              }
+              return dStr.replace(/\s*202\d/, '').trim();
+            };
+
+            const pricePerLesson = student.finance?.deposit?.pricePerLesson || 12;
 
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className={cn('rounded-2xl border p-4 shadow-xs', rateBadgeColor)}>
-                  <span className="text-xs font-semibold text-slate-600">Процент посещаемости:</span>
-                  <p className="text-2xl font-extrabold mt-1">{student.attendanceStats.attendanceRate}</p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                {/* ЛЕВАЯ КОЛОНКА: «Ближайшие занятия» */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-sm font-bold text-slate-900">Ближайшие занятия</h3>
+                      </div>
+                      <Link
+                        href="/calendar"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                      >
+                        Все занятия →
+                      </Link>
+                    </div>
+
+                    {/* List of upcoming lessons */}
+                    <div className="divide-y divide-slate-100">
+                      {upcomingLessons.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <p className="text-xs font-semibold text-slate-600">Нет запланированных занятий</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Все будущие уроки отобразятся здесь</p>
+                        </div>
+                      ) : (
+                        upcomingLessons.slice(0, 4).map((lesson, idx) => {
+                          const dateParts = formatUpcomingBadge(lesson.date);
+                          const groupTitle = (lesson.groupName || lesson.courseName || 'Основная группа').replace(/\s*\([^)]*\)/g, '').trim();
+                          const formatTime = lesson.startTime && lesson.endTime ? `${lesson.startTime} – ${lesson.endTime}` : (lesson.startTime || '18:45 – 20:15');
+                          const subtitle = lesson.courseName
+                            ? `${lesson.courseName} · ${lesson.room || (lesson.onlineMeetingUrl ? 'Онлайн' : 'Офлайн')}`
+                            : (lesson.room || 'Офлайн');
+
+                          return (
+                            <div
+                              key={lesson.id || idx}
+                              onClick={() => {
+                                if (lesson.id) {
+                                  setSelectedLessonForModal(lesson);
+                                }
+                              }}
+                              className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/70 -mx-2 px-2 rounded-xl transition-colors cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                {/* Square Date Badge */}
+                                <div className="bg-blue-50 text-blue-600 rounded-xl p-1.5 text-center w-14 shrink-0 flex flex-col justify-center">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider leading-tight">
+                                    {dateParts.dayOfWeek}
+                                  </span>
+                                  <span className="text-xs font-extrabold leading-tight">
+                                    {dateParts.dateFormatted}
+                                  </span>
+                                </div>
+
+                                {/* Lesson Data */}
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-slate-900 shrink-0">
+                                      {formatTime}
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-800 truncate" title={groupTitle}>
+                                      {groupTitle}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-500 truncate">
+                                    {subtitle}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Status Badge & Arrow */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-semibold px-2 py-0.5 flex items-center gap-1">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                                  <span>Запланировано</span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                  <span className="text-xs text-slate-400">Всего уроков:</span>
-                  <p className="text-2xl font-extrabold text-slate-900 mt-1">{student.attendanceStats.totalLessons}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                  <span className="text-xs text-slate-400">Присутствовал:</span>
-                  <p className="text-2xl font-extrabold text-blue-600 mt-1">{student.attendanceStats.presentCount}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-                  <span className="text-xs text-slate-400">Пропущено:</span>
-                  <p className="text-2xl font-extrabold text-rose-600 mt-1">{student.attendanceStats.absentCount}</p>
+
+                {/* ПРАВАЯ КОЛОНКА: «Последние занятия» */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-slate-600" />
+                        <h3 className="text-sm font-bold text-slate-900">Последние занятия</h3>
+                      </div>
+                      <Link
+                        href="/calendar"
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                      >
+                        Все занятия →
+                      </Link>
+                    </div>
+
+                    {/* List of past lessons */}
+                    <div className="divide-y divide-slate-100">
+                      {historyItems.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <p className="text-xs font-semibold text-slate-600">История проведенных занятий пока отсутствует</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Здесь будут отображаться завершенные уроки</p>
+                        </div>
+                      ) : (
+                        historyItems.slice(0, 4).map((item, idx) => {
+                          const dateShort = formatPastDate(item.date);
+                          const timeStr = item.time || '18:45 – 20:15';
+                          const isPresent = item.status === 'present';
+                          const isAbsence = item.status === 'absent' || item.status === 'sick' || item.status === 'excused';
+                          const cleanGrpName = (item.groupName || '').replace(/\s*\([^)]*\)/g, '').trim();
+                          const matchedGroup = student.groups.find(
+                            (g) => (g.name || '').toLowerCase() === cleanGrpName.toLowerCase()
+                          );
+                          const groupCourse = matchedGroup?.courseName
+                            ? `${cleanGrpName} / ${matchedGroup.courseName}`
+                            : (cleanGrpName || 'Основная группа');
+
+                          const chargeText = isPresent ? `-${pricePerLesson} €` : '0 €';
+
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                const matchedLesson = allLessons.find(
+                                  (l) =>
+                                    (l.date === item.date || l.dateFormatted === item.date) &&
+                                    (l.groupName || '').toLowerCase().includes(cleanGrpName.toLowerCase())
+                                );
+                                if (matchedLesson) {
+                                  setSelectedLessonForModal(matchedLesson);
+                                }
+                              }}
+                              className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/70 -mx-2 px-2 rounded-xl transition-colors cursor-pointer group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                {/* Date & Time */}
+                                <div className="w-20 shrink-0 space-y-0.5">
+                                  <div className="text-xs font-semibold text-slate-800">
+                                    {dateShort}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono">
+                                    {timeStr}
+                                  </div>
+                                </div>
+
+                                {/* Group & Course */}
+                                <div className="min-w-0">
+                                  <h4 className="text-xs font-semibold text-slate-800 truncate" title={groupCourse}>
+                                    {groupCourse}
+                                  </h4>
+                                  <p className="text-[11px] text-slate-500 truncate" title={item.topic || 'Занятие по расписанию'}>
+                                    {item.topic || 'Занятие по расписанию'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Status & Financial Charge & Arrow */}
+                              <div className="flex items-center gap-2.5 shrink-0">
+                                <span
+                                  className={cn(
+                                    'rounded-full px-2 py-0.5 text-[10px] font-bold border',
+                                    isPresent
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                      : isAbsence
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-purple-50 text-purple-700 border-purple-200'
+                                  )}
+                                >
+                                  {isPresent ? '✓ Был' : isAbsence ? '✕ Пропуск' : 'Перенос'}
+                                </span>
+
+                                <span className="text-xs font-bold text-slate-700 font-mono w-12 text-right">
+                                  {chargeText}
+                                </span>
+
+                                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -4036,6 +4071,23 @@ export default function StudentDetailsPage() {
         }}
         defaultGroupId={student.groups?.[0]?.id}
         onScheduled={() => {
+          computeNextLesson();
+        }}
+      />
+
+      {/* LESSON MODAL */}
+      <LessonModal
+        isOpen={Boolean(selectedLessonForModal)}
+        lesson={selectedLessonForModal}
+        onClose={() => setSelectedLessonForModal(null)}
+        onSave={(updatedLesson) => {
+          saveLessonToStorage(updatedLesson);
+          setSelectedLessonForModal(null);
+          computeNextLesson();
+          toast.success('Занятие успешно сохранено');
+        }}
+        onDelete={() => {
+          setSelectedLessonForModal(null);
           computeNextLesson();
         }}
       />
