@@ -2688,144 +2688,150 @@ export default function StudentDetailsPage() {
             );
           })()}
 
-          {/* БЛОК 2: ПАНЕЛЬ ДЕЙСТВИЙ ВЫПИСКИ */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
-            {/* Быстрые фильтры */}
-            <div className="flex items-center gap-1.5 text-xs font-medium">
-              <span className="text-slate-400 mr-1 text-[11px]">Фильтр:</span>
-              <button
-                type="button"
-                onClick={() => setLedgerFilter('all')}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
-                  ledgerFilter === 'all'
-                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                Все операции
-              </button>
-              <button
-                type="button"
-                onClick={() => setLedgerFilter('deposits')}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
-                  ledgerFilter === 'deposits'
-                    ? 'bg-white text-emerald-700 shadow-xs border border-emerald-200 font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                Только пополнения
-              </button>
-              <button
-                type="button"
-                onClick={() => setLedgerFilter('deductions')}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs transition-all font-semibold',
-                  ledgerFilter === 'deductions'
-                    ? 'bg-white text-rose-700 shadow-xs border border-rose-200 font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                )}
-              >
-                Только списания
-              </button>
-            </div>
+          {/* БЛОК 2: ФИНАНСОВЫЕ ОПЕРАЦИИ (ТАБ-ФИЛЬТРЫ И ТАБЛИЦА ИСТОРИИ) */}
+          {(() => {
+            const eurRubRate = getEurRubRate();
+            const ledgerItems = buildChronologicalLedger(student, customPricePerLesson);
 
-            {/* Группа кнопок действий */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsInvoiceModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
-                title="Сформировать европейский счёт на оплату (Faktúra)"
-              >
-                <CreditCard className="h-3.5 w-3.5" />
-                Выставить счёт
-              </button>
-              <button
-                type="button"
-                onClick={handleOpenEmailStatementModal}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-                title="Отправить выписку представителю на email"
-              >
-                Отправить выписку на email
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPaymentModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Внести платёж
-              </button>
-            </div>
-          </div>
+            const filtered = ledgerItems.filter((ev) => {
+              if (ledgerFilter === 'deposits') return ev.type === 'deposit' || ev.amountEUR > 0;
+              if (ledgerFilter === 'deductions') return ev.type === 'deduction' || ev.amountEUR < 0;
+              return true;
+            });
 
-          {/* БЛОК 3: ЕДИНАЯ ФИНАНСОВАЯ ВЫПИСКА (LEDGER) */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Единая финансовая выписка (Движение средств)
-              </h4>
-              <span className="text-[11px] text-slate-400 font-mono">Валюта: EUR (€)</span>
-            </div>
+            return (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex flex-col">
+                {/* Шапка блока */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-900">Финансовые операции</h3>
 
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-100 bg-slate-50 font-semibold text-slate-600">
-                <tr>
-                  <th className="py-3 pl-4 pr-3">Дата и время</th>
-                  <th className="px-3 py-3">Назначение / Операция</th>
-                  <th className="px-3 py-3">Способ / Источник</th>
-                  <th className="px-3 py-3 text-right">Сумма</th>
-                  <th className="py-3 pl-3 pr-4 text-right">Остаток</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {(() => {
-                  const ledgerItems = buildChronologicalLedger(student, customPricePerLesson);
+                  {/* Сегментированный таб-фильтр */}
+                  <div className="h-7 bg-slate-100 p-0.5 rounded-lg flex items-center text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setLedgerFilter('all')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer',
+                        ledgerFilter === 'all'
+                          ? 'bg-white text-slate-900 font-semibold shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      Все операции
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerFilter('deposits')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer',
+                        ledgerFilter === 'deposits'
+                          ? 'bg-white text-slate-900 font-semibold shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      Пополнения
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerFilter('deductions')}
+                      className={cn(
+                        'px-2.5 py-1 rounded-md transition-all font-medium cursor-pointer',
+                        ledgerFilter === 'deductions'
+                          ? 'bg-white text-slate-900 font-semibold shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      )}
+                    >
+                      Списания
+                    </button>
+                  </div>
+                </div>
 
-                  const filtered = ledgerItems.filter((ev) => {
-                    if (ledgerFilter === 'deposits') return ev.type === 'deposit';
-                    if (ledgerFilter === 'deductions') return ev.type === 'deduction';
-                    return true;
-                  });
+                {/* Шапка таблицы */}
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 pb-2 mb-1 grid grid-cols-12 gap-2">
+                  <div className="col-span-2">Дата и время</div>
+                  <div className="col-span-5">Назначение / Операция</div>
+                  <div className="col-span-2">Способ / Источник</div>
+                  <div className="col-span-2 text-right">Сумма</div>
+                  <div className="col-span-1 text-right">Остаток</div>
+                </div>
 
-                  return filtered.map((ev) => {
-                    const isPlus = ev.type === 'deposit';
-                    const displayAmtEUR = isPlus ? `+${ev.amountEUR} €` : `-${ev.amountEUR} €`;
-                    const displayAmtRUB = `(~${(ev.amountEUR * 100).toLocaleString('ru-RU')} ₽)`;
+                {/* Контейнер строк скроллится локально (Zero-Scroll viewport) */}
+                {filtered.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    Финансовых операций пока нет
+                  </div>
+                ) : (
+                  <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-50 pr-1">
+                    {filtered.map((ev) => {
+                      const isDeposit = ev.type === 'deposit';
+                      const rubEquivalent = (ev.amountEUR * eurRubRate).toLocaleString('ru-RU');
 
-                    return (
-                      <tr key={ev.id} className="hover:bg-slate-50/70">
-                        <td className="py-3 pl-4 pr-3 font-semibold text-slate-900 whitespace-nowrap">{ev.date}</td>
-                        <td className="px-3 py-3 font-medium text-slate-800">{ev.description}</td>
-                        <td className="px-3 py-3 text-slate-500 whitespace-nowrap">
-                          {ev.type === 'deduction' ? (
-                            <span className="rounded-md bg-purple-50 text-purple-700 px-2 py-0.5 text-[10px] font-semibold border border-purple-100">
-                              ⚡ {ev.method}
+                      // Separate primary description and optional secondary details (e.g. group name)
+                      let mainTitle = ev.description;
+                      let subtitle = '';
+                      if (ev.description.includes(' (')) {
+                        const parts = ev.description.split(' (');
+                        mainTitle = parts[0];
+                        subtitle = parts[1]?.replace(/\)$/, '') || '';
+                      }
+
+                      return (
+                        <div
+                          key={ev.id}
+                          className="py-2 grid grid-cols-12 gap-2 items-center text-xs hover:bg-slate-50/60 transition-colors"
+                        >
+                          {/* Дата и время */}
+                          <div className="col-span-2 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                            {ev.date}
+                          </div>
+
+                          {/* Назначение / Операция */}
+                          <div className="col-span-5 min-w-0 pr-2">
+                            <div className="font-semibold text-slate-800 truncate" title={mainTitle}>
+                              {mainTitle}
+                            </div>
+                            {subtitle && (
+                              <div className="text-[11px] text-slate-400 truncate mt-0.5" title={subtitle}>
+                                {subtitle}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Способ / Источник */}
+                          <div className="col-span-2 text-[11px] text-slate-500 truncate" title={ev.method}>
+                            {ev.type === 'deduction' ? (
+                              <span className="truncate">⚡ {ev.method.replace(/^⚡\s*/, '')}</span>
+                            ) : (
+                              <span className="truncate">{ev.method.replace(/^💳\s*/, '')}</span>
+                            )}
+                          </div>
+
+                          {/* Сумма */}
+                          <div className="col-span-2 text-right whitespace-nowrap">
+                            {isDeposit ? (
+                              <span className="text-emerald-600 font-bold block">+{ev.amountEUR} €</span>
+                            ) : (
+                              <span className="text-slate-700 font-bold block">-{ev.amountEUR} €</span>
+                            )}
+                            <span className="text-[10px] text-slate-400 font-normal block">
+                              ≈ {rubEquivalent} ₽
                             </span>
-                          ) : (
-                            <span className="rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-semibold border border-emerald-100">
-                              💳 {ev.method}
+                          </div>
+
+                          {/* Остаток */}
+                          <div className="col-span-1 text-right font-bold whitespace-nowrap">
+                            <span className={ev.runningBalanceEUR < 0 ? 'text-rose-600' : 'text-slate-900'}>
+                              {ev.runningBalanceEUR} €
                             </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-right font-bold whitespace-nowrap">
-                          <span className={isPlus ? 'text-emerald-600' : 'text-slate-700'}>
-                            {displayAmtEUR}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-normal block">{displayAmtRUB}</span>
-                        </td>
-                        <td className="py-3 pl-3 pr-4 text-right font-semibold text-slate-800 whitespace-nowrap">
-                          {ev.runningBalanceEUR} €
-                        </td>
-                      </tr>
-                    );
-                  });
-                })()}
-              </tbody>
-            </table>
-          </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

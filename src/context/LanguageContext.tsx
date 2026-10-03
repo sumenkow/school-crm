@@ -377,7 +377,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'students.tabOverview': 'Обзор',
     'students.tabAcademic': 'Обучение и группы',
     'students.tabAttendance': 'Посещаемость',
-    'students.tabFinance': 'Оплаты и баланс',
+    'students.tabFinance': 'Финансы',
     'students.tabFamily': 'Семья и контакты',
     'students.tabNotes': 'Заметки',
     'students.riskAlert': 'Внимание: высокий риск оттока из-за пропусков',
