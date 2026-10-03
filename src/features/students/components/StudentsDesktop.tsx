@@ -252,18 +252,18 @@ export function StudentsDesktop({
   };
 
   return (
-    <div className="hidden md:block w-full overflow-visible bg-white rounded-2xl border border-slate-100 shadow-xs">
-      <table className="w-full table-fixed border-collapse text-left text-xs">
+    <div className="hidden md:block w-full overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-xs">
+      <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-xs">
         <colgroup>
-          <col className="w-[40px]" />   {/* Чекбокс */}
-          <col className="w-[21%]" />    {/* Ученик ⇅ */}
-          <col className="w-[18%]" />    {/* Представитель */}
-          <col className="w-[17%]" />    {/* Обучение */}
-          <col className="w-[16%]" />    {/* Ближайшее занятие */}
-          <col className="w-[10%]" />    {/* Посещаемость ⇅ */}
-          <col className="w-[11%]" />    {/* Баланс ⇅ */}
-          <col className="w-[10%]" />    {/* Статус */}
-          <col className="w-[40px]" />   {/* Действия ··· */}
+          <col className="w-10" />      {/* Чекбокс 40px */}
+          <col className="w-[20%]" />   {/* Ученик ⇅ */}
+          <col className="w-[17%]" />   {/* Представитель */}
+          <col className="w-[17%]" />   {/* Обучение */}
+          <col className="w-[15%]" />   {/* Ближайшее занятие */}
+          <col className="w-[10%]" />   {/* Посещаемость ⇅ */}
+          <col className="w-[10%]" />   {/* Баланс ⇅ */}
+          <col className="w-[11%]" />   {/* Статус */}
+          <col className="w-10" />      {/* Действия ··· 40px */}
         </colgroup>
 
         {/* Шапка таблицы */}
@@ -394,7 +394,7 @@ export function StudentsDesktop({
                   key={student.id}
                   className={cn(
                     'h-[74px] max-h-[74px] transition-colors border-b border-slate-100 group/row relative',
-                    isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
+                    isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'
                   )}
                 >
                   {/* Чекбокс */}
