@@ -2,11 +2,23 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Copy, Phone, Check } from 'lucide-react';
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  RotateCcw,
+  Globe,
+  Code2,
+  Calculator,
+  BookOpen,
+  ChevronRight,
+  X,
+} from 'lucide-react';
 import { cn, isEntityNew } from '@/lib/utils';
 import type { StudentListItem } from '@/app/students/page';
 import { restoreStudent } from '@/lib/data/studentStorage';
 import { useToast } from '@/context/ToastContext';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -19,6 +31,58 @@ const TelegramIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => 
     <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.536-.196 1.006.128.833.942z" />
   </svg>
 );
+
+function getCourseSubject(groupName: string): string {
+  const gn = (groupName || '').toLowerCase();
+  if (gn.includes('english') || gn.includes('англ') || gn.includes('b1') || gn.includes('a2') || gn.includes('c1') || gn.includes('teens')) {
+    return 'Английский язык';
+  }
+  if (gn.includes('math') || gn.includes('матем') || gn.includes('алгебр') || gn.includes('геометр')) {
+    return 'Математика';
+  }
+  if (gn.includes('code') || gn.includes('програм') || gn.includes('python') || gn.includes('scratch') || gn.includes('web') || gn.includes('it')) {
+    return 'Программирование';
+  }
+  if (gn.includes('робот') || gn.includes('robot')) {
+    return 'Робототехника';
+  }
+  if (gn.includes('дизайн') || gn.includes('design') || gn.includes('art')) {
+    return 'Графический дизайн';
+  }
+  if (gn.includes('испан') || gn.includes('spanish')) {
+    return 'Испанский язык';
+  }
+  if (gn.includes('немец') || gn.includes('deutsch')) {
+    return 'Немецкий язык';
+  }
+  return 'Основной курс';
+}
+
+function getSubjectIcon(subject: string) {
+  if (subject === 'Английский язык' || subject.includes('язык')) {
+    return <Globe className="w-3.5 h-3.5" />;
+  }
+  if (subject === 'Программирование' || subject === 'Робототехника') {
+    return <Code2 className="w-3.5 h-3.5" />;
+  }
+  if (subject === 'Математика') {
+    return <Calculator className="w-3.5 h-3.5" />;
+  }
+  return <BookOpen className="w-3.5 h-3.5" />;
+}
+
+function getStudentAge(birthDate?: string): number | null {
+  if (!birthDate) return null;
+  const birth = new Date(birthDate);
+  if (isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age > 0 && age < 100 ? age : null;
+}
 
 type SortField = 'name' | 'attendanceRate' | 'finance';
 type SortOrder = 'default' | 'asc' | 'desc';
@@ -48,38 +112,38 @@ export function StudentsDesktop({
   sortOrder,
   onSortToggle,
   statusFilter,
+  onOpenTeacherModal,
+  onOpenStudentDrawer,
   onRefreshStudents,
 }: StudentsDesktopProps) {
   const toast = useToast();
   const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
-  const [copiedPhoneId, setCopiedPhoneId] = useState<string | null>(null);
+  const [activeTelegramStudent, setActiveTelegramStudent] = useState<StudentListItem | null>(null);
 
-  const handleCopyPhone = (e: React.MouseEvent, phone: string, studentId: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!phone || phone === '—') return;
-    navigator.clipboard.writeText(phone.replace(/\D/g, ''));
-    setCopiedPhoneId(studentId);
-    toast.success(`Номер ${phone} скопирован!`);
-    setTimeout(() => setCopiedPhoneId(null), 2000);
+  const handleStudentClick = (studentId: string, tab?: string) => {
+    if (onOpenStudentDrawer) {
+      onOpenStudentDrawer(studentId, tab);
+    }
   };
 
   return (
-    <div className="hidden md:block w-full overflow-visible">
+    <div className="hidden md:block w-full overflow-visible bg-white rounded-2xl border border-slate-100 shadow-xs">
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
           <col className="w-[44px]" />   {/* Чекбокс */}
-          <col className="w-[19%]" />    {/* Ученик */}
-          <col className="w-[21%]" />    {/* Представитель */}
-          <col className="w-[17%]" />    {/* Курс */}
-          <col className="w-[13%]" />    {/* Учитель */}
-          <col className="w-[11%]" />    {/* Посещаемость */}
-          <col className="w-[19%]" />    {/* Статус оплаты */}
+          <col className="w-[21%]" />    {/* Ученик ⇅ */}
+          <col className="w-[19%]" />    {/* Представитель */}
+          <col className="w-[18%]" />    {/* Обучение */}
+          <col className="w-[14%]" />    {/* Ближайшее занятие */}
+          <col className="w-[10%]" />    {/* Посещаемость ⇅ */}
+          <col className="w-[11%]" />    {/* Баланс ⇅ */}
+          <col className="w-[7%]" />     {/* Статус */}
         </colgroup>
 
-        <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        {/* Шапка таблицы */}
+        <thead className="h-10 bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none">
           <tr>
-            <th className="px-3.5 py-3 text-center">
+            <th className="px-3.5 py-2.5 text-center">
               <input
                 type="checkbox"
                 checked={allFilteredSelected}
@@ -88,11 +152,11 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-3.5 py-3 text-left">
+            <th className="px-3.5 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
-                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer"
               >
                 <span>УЧЕНИК</span>
                 {sortField === 'name' ? (
@@ -102,14 +166,14 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3 text-left">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-3.5 py-3 text-left">КУРС</th>
-            <th className="px-3.5 py-3 text-left">УЧИТЕЛЬ</th>
-            <th className="px-3.5 py-3 text-center">
+            <th className="px-3.5 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-3.5 py-2.5 text-left">ОБУЧЕНИЕ</th>
+            <th className="px-3.5 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
+            <th className="px-3.5 py-2.5 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
-                className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer mx-auto"
+                className="inline-flex items-center justify-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer mx-auto"
               >
                 <span>ПОСЕЩАЕМОСТЬ</span>
                 {sortField === 'attendanceRate' ? (
@@ -119,13 +183,13 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-3 text-left">
+            <th className="px-3.5 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
-                className="inline-flex items-center gap-1 font-bold text-slate-700 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer"
               >
-                <span>СТАТУС ОПЛАТЫ</span>
+                <span>БАЛАНС</span>
                 {sortField === 'finance' ? (
                   sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
                 ) : (
@@ -133,16 +197,16 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            {statusFilter === 'deleted' && (
-              <th className="px-3.5 py-3 text-center">ДЕЙСТВИЕ</th>
-            )}
+            <th className="px-3.5 py-2.5 text-center">
+              <span>СТАТУС</span>
+            </th>
           </tr>
         </thead>
 
         <tbody className="divide-y divide-slate-100 text-slate-700">
           {students.length === 0 ? (
             <tr>
-              <td colSpan={statusFilter === 'deleted' ? 8 : 7} className="py-8 text-center text-slate-500">
+              <td colSpan={8} className="py-12 text-center text-xs text-slate-500 font-medium">
                 {statusFilter === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
               </td>
             </tr>
@@ -154,7 +218,18 @@ export function StudentsDesktop({
                 : '';
               const phoneClean = (student.parentPhone || '').replace(/\D/g, '');
 
-              // Date formatting for paidUntil without year (e.g. "28.09.2026" -> "28.09")
+              // Student age / subtitle
+              const calculatedAge = getStudentAge(student.rawStudentObj?.birthDate);
+              const ageDisplay = calculatedAge ? `${calculatedAge} лет` : student.isAdult ? 'Взрослый' : '14 лет';
+              const categoryTitle = student.isAdult ? 'Студент' : 'Школьник';
+
+              // Course & Subject info
+              const primaryGroup = student.groups[0];
+              const groupName = primaryGroup?.name || student.groupName || '— Без группы';
+              const subjectName = primaryGroup ? getCourseSubject(groupName) : 'Основной курс';
+              const subjectIcon = getSubjectIcon(subjectName);
+
+              // Date formatting for paidUntil
               const rawPaidUntil = student.paidUntil || '28.09';
               const formattedPaidUntil = rawPaidUntil.split('.').slice(0, 2).join('.');
 
@@ -162,12 +237,12 @@ export function StudentsDesktop({
                 <tr
                   key={student.id}
                   className={cn(
-                    'h-14 transition-colors border-b border-slate-100',
+                    'h-[74px] max-h-[74px] transition-colors border-b border-slate-100 group/row',
                     isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
                   )}
                 >
                   {/* Чекбокс */}
-                  <td className="px-3.5 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3.5 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -176,11 +251,14 @@ export function StudentsDesktop({
                     />
                   </td>
 
-                  {/* 1. УЧЕНИК */}
-                  <td className="px-3.5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <Link href={`/students/${student.id}`} className="relative shrink-0 block">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200 hover:border-blue-400 transition-colors">
+                  {/* 1. КОЛОНКА: УЧЕНИК */}
+                  <td className="px-3.5 py-2.5 align-middle">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        onClick={() => handleStudentClick(student.id)}
+                        className="relative shrink-0 cursor-pointer group/avatar"
+                      >
+                        <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center border border-slate-200 group-hover/avatar:border-blue-400 group-hover/avatar:bg-blue-50 transition-colors">
                           {student.initials}
                         </div>
                         {isEntityNew(student.createdAt, student.isNewUntil) && (
@@ -195,170 +273,200 @@ export function StudentsDesktop({
                               ? 'bg-emerald-500'
                               : student.status === 'trial'
                               ? 'bg-purple-500'
-                              : 'bg-amber-500'
+                              : student.status === 'paused'
+                              ? 'bg-amber-500'
+                              : 'bg-slate-400'
                           )}
                         />
-                      </Link>
-                      <div className="min-w-0">
+                      </div>
+
+                      <div className="min-w-0 flex-1">
                         <Link
                           href={`/students/${student.id}`}
-                          className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors whitespace-nowrap block"
+                          onClick={(e) => {
+                            if (onOpenStudentDrawer) {
+                              e.preventDefault();
+                              handleStudentClick(student.id);
+                            }
+                          }}
+                          className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block"
+                          title={student.name}
                         >
                           {student.name}
                         </Link>
-                        <span className="text-[11px] text-slate-400 block whitespace-nowrap">
-                          {student.isAdult ? 'Студент' : 'Школьник'}
-                        </span>
+                        <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 truncate">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="truncate">
+                            {categoryTitle} · {ageDisplay}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </td>
 
-                  {/* 2. ПРЕДСТАВИТЕЛЬ */}
-                  <td className="px-3.5 py-3">
-                    {student.parentId ? (
+                  {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ */}
+                  <td className="px-3.5 py-2.5 align-middle">
+                    {student.parentId || student.parentName ? (
                       <div className="min-w-0 space-y-0.5">
                         <Link
-                          href={`/parents/${student.parentId}`}
-                          className="text-xs font-semibold text-slate-800 hover:text-blue-600 hover:underline truncate block"
-                          title={parentCleanName}
+                          href={student.parentId ? `/parents/${student.parentId}` : '#'}
+                          className="text-xs font-medium text-slate-800 hover:text-blue-600 truncate block"
+                          title={parentCleanName || 'Представитель'}
                         >
-                          {parentCleanName}
+                          {parentCleanName || 'Представитель'}
                         </Link>
-                        <div className="flex items-center justify-between gap-1.5 min-w-0">
-                          <a
-                            href={phoneClean ? `tel:${phoneClean}` : '#'}
-                            onClick={(e) => e.stopPropagation()}
-                            title="Позвонить по телефону"
-                            className="font-mono text-[11px] text-slate-500 hover:text-blue-600 hover:underline whitespace-nowrap block shrink-0"
-                          >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[11px] text-slate-400 font-mono truncate">
                             {student.parentPhone || '—'}
-                          </a>
+                          </span>
                           {phoneClean && (
-                            <div className="flex items-center gap-1 shrink-0">
-                              {/* WhatsApp button */}
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              {/* WhatsApp Mini Button */}
                               <a
                                 href={`https://wa.me/${phoneClean}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
                                 title="Написать в WhatsApp"
-                                className="w-6 h-6 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                                className="w-5 h-5 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer border border-emerald-200/60"
                               >
-                                <WhatsAppIcon className="w-3.5 h-3.5" />
+                                <WhatsAppIcon className="w-3 h-3" />
                               </a>
 
-                              {/* Telegram button */}
-                              <a
-                                href={student.telegram ? `https://t.me/${student.telegram.replace('@', '')}` : `https://wa.me/${phoneClean}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                title="Написать в Telegram"
-                                className="w-6 h-6 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                              {/* Telegram Mini Button (In-CRM Integration) */}
+                              <button
+                                type="button"
+                                onClick={() => setActiveTelegramStudent(student)}
+                                title="Открыть Telegram-диалог в CRM"
+                                className="w-5 h-5 rounded bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer border border-sky-200/60"
                               >
-                                <TelegramIcon className="w-3.5 h-3.5" />
-                              </a>
+                                <TelegramIcon className="w-3 h-3" />
+                              </button>
                             </div>
                           )}
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center">
-                        <span className="text-slate-400 font-semibold">—</span>
-                      </div>
+                      <div className="text-[11px] text-slate-400 font-medium">— Самостоятельно</div>
                     )}
                   </td>
 
-                  {/* 3. КУРС */}
-                  <td className="px-3.5 py-3">
+                  {/* 3. КОЛОНКА: ОБУЧЕНИЕ (Группа / Курс) */}
+                  <td className="px-3.5 py-2.5 align-middle">
                     {student.groups.length > 0 ? (
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Link
-                            href={`/calendar/lessons/${student.groups[0].nextLessonId || student.groups[0].id}`}
-                            className="text-xs font-semibold text-blue-600 hover:underline truncate"
-                          >
-                            {student.groups[0].name}
-                          </Link>
-                          {student.groups.length > 1 && (
-                            <div
-                              className="relative shrink-0 inline-flex items-center"
-                              onMouseEnter={() => setActiveCoursePopoverId(student.id)}
-                              onMouseLeave={() => setActiveCoursePopoverId(null)}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded cursor-pointer hover:bg-blue-100 transition-colors">
-                                +{student.groups.length - 1}
-                              </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Иконка предмета/направления */}
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/60 shadow-2xs">
+                          {subjectIcon}
+                        </div>
 
-                              {/* Popover */}
-                              {activeCoursePopoverId === student.id && (
-                                <div className="absolute left-0 bottom-full mb-2 z-50 w-72 p-3.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150 font-normal">
-                                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
-                                    Дополнительные курсы ({student.groups.length - 1})
-                                  </div>
-                                  <div className="space-y-2.5">
-                                    {student.groups.slice(1).map((g) => (
-                                      <div key={g.id} className="space-y-1">
-                                        <div className="font-bold text-white text-sm">{g.name}</div>
-                                        <div className="text-slate-300 text-xs flex items-center gap-1.5">
-                                          <span>🗓 {g.schedule}</span>
-                                          {g.room && <span>• {g.room}</span>}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <Link
+                              href={primaryGroup ? `/calendar/lessons/${primaryGroup.nextLessonId || primaryGroup.id}` : '#'}
+                              className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block"
+                              title={groupName}
+                            >
+                              {groupName}
+                            </Link>
+
+                            {student.groups.length > 1 && (
+                              <div
+                                className="relative shrink-0 inline-flex items-center"
+                                onMouseEnter={() => setActiveCoursePopoverId(student.id)}
+                                onMouseLeave={() => setActiveCoursePopoverId(null)}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 py-0.2 rounded cursor-pointer hover:bg-blue-100 transition-colors">
+                                  +{student.groups.length - 1}
+                                </span>
+
+                                {/* Popover */}
+                                {activeCoursePopoverId === student.id && (
+                                  <div className="absolute left-0 bottom-full mb-2 z-50 w-72 p-3.5 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 text-xs animate-in fade-in duration-150 font-normal">
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-800 pb-1">
+                                      Дополнительные курсы ({student.groups.length - 1})
+                                    </div>
+                                    <div className="space-y-2.5">
+                                      {student.groups.slice(1).map((g) => (
+                                        <div key={g.id} className="space-y-1">
+                                          <div className="font-bold text-white text-sm">{g.name}</div>
+                                          <div className="text-slate-300 text-xs flex items-center gap-1.5">
+                                            <span>🗓 {g.schedule}</span>
+                                            {g.room && <span>• {g.room}</span>}
+                                          </div>
+                                          <div className="text-slate-400 text-[11px]">
+                                            Преподаватель: {g.teacherName}
+                                          </div>
+                                          <Link
+                                            href={`/calendar/lessons/${g.nextLessonId || g.id}`}
+                                            className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                                          >
+                                            Перейти к уроку →
+                                          </Link>
                                         </div>
-                                        <div className="text-slate-400 text-[11px]">
-                                          Преподаватель: {g.teacherName}
-                                        </div>
-                                        <Link
-                                          href={`/calendar/lessons/${g.nextLessonId || g.id}`}
-                                          className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
-                                        >
-                                          Перейти к уроку →
-                                        </Link>
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                            {subjectName}
+                          </div>
                         </div>
-                        <div className="pt-0.5">
-                          <span className="text-[11px] text-slate-500 font-medium inline-flex items-center gap-1 bg-slate-50/80 px-1.5 py-0.5 rounded-md border border-slate-200/50 max-w-full truncate">
-                            <span className="text-blue-500 font-bold">→</span>
-                            <span className="truncate">{student.groups[0].nextLessonDate || 'Ср 21 сен, 18:45'}</span>
-                          </span>
-                        </div>
+
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0 ml-auto" />
                       </div>
                     ) : (
                       <span className="text-xs text-slate-400 select-none pl-1">— Без группы</span>
                     )}
                   </td>
 
-                  {/* 4. УЧИТЕЛЬ */}
-                  <td className="px-3.5 py-3">
-                    {student.teacherId ? (
-                      <Link
-                        href={`/teachers/${student.teacherId}`}
-                        className="text-xs font-medium text-slate-800 hover:text-blue-600 hover:underline block truncate"
-                      >
-                        {student.teacherName}
-                      </Link>
+                  {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ */}
+                  <td className="px-3.5 py-2.5 align-middle">
+                    {student.groups.length > 0 ? (
+                      <div className="min-w-0 space-y-0.5">
+                        <Link
+                          href={primaryGroup ? `/calendar/lessons/${primaryGroup.nextLessonId || primaryGroup.id}` : '#'}
+                          className="text-xs font-medium text-slate-700 hover:text-blue-600 transition-colors truncate block"
+                        >
+                          {primaryGroup?.nextLessonDate || student.nextLessonDate || 'Ср 21 сен, 18:45'}
+                        </Link>
+                        <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                          {student.teacherId ? (
+                            <span
+                              onClick={() => {
+                                if (onOpenTeacherModal && student.teacherId) {
+                                  onOpenTeacherModal(student.teacherId, student.teacherName);
+                                }
+                              }}
+                              className="hover:text-blue-600 cursor-pointer"
+                            >
+                              {student.teacherName}
+                            </span>
+                          ) : (
+                            student.teacherName || 'Мария Иванова'
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <span className="text-xs text-slate-400 select-none">—</span>
                     )}
                   </td>
 
-                  {/* 5. ПОСЕЩАЕМОСТЬ (Traffic light + micro progress bar) */}
-                  <td className="px-3.5 py-3 text-center">
-                    <Link
-                      href={`/students/${student.id}?tab=attendance`}
-                      className="flex flex-col items-center justify-center gap-1 group cursor-pointer w-full"
+                  {/* 5. КОЛОНКА: ПОСЕЩАЕМОСТЬ */}
+                  <td className="px-3.5 py-2.5 text-center align-middle">
+                    <div
+                      onClick={() => handleStudentClick(student.id, 'attendance')}
+                      className="flex flex-col items-center justify-center group/att cursor-pointer w-full"
                     >
                       <span
                         className={cn(
                           'text-xs font-bold',
                           student.attendanceRate >= 90
-                            ? 'text-slate-700'
+                            ? 'text-slate-800'
                             : student.attendanceRate >= 70
                             ? 'text-amber-600'
                             : 'text-rose-600'
@@ -366,7 +474,7 @@ export function StudentsDesktop({
                       >
                         {student.attendanceRate}%
                       </span>
-                      <div className="w-11 h-1.5 bg-slate-200/70 rounded-full overflow-hidden">
+                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200/50">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
@@ -379,80 +487,140 @@ export function StudentsDesktop({
                           style={{ width: `${Math.min(student.attendanceRate, 100)}%` }}
                         />
                       </div>
-                    </Link>
+                    </div>
                   </td>
 
-                  {/* 6. СТАТУС ОПЛАТЫ */}
-                  <td className="px-3.5 py-3">
-                    <Link
-                      href={`/students/${student.id}?tab=finance`}
-                      className="block group min-w-0"
+                  {/* 6. КОЛОНКА: БАЛАНС */}
+                  <td className="px-3.5 py-2.5 align-middle">
+                    <div
+                      onClick={() => handleStudentClick(student.id, 'finance')}
+                      className="group/fin min-w-0 cursor-pointer"
                     >
                       {student.financeStatus === 'active_sub' && (
                         <div className="space-y-0.5">
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
                             ✓ Оплачено до {formattedPaidUntil}
                           </span>
-                          <div className="text-[11px] text-slate-500 font-medium truncate">
-                            Баланс: {student.netBalanceEur > 0 ? `+${student.netBalanceEur} €` : `${student.netBalanceEur} €`} <span className="text-slate-400 font-normal">• абонемент</span>
+                          <div className="text-[11px] text-slate-400 font-normal truncate">
+                            Баланс: {student.netBalanceEur > 0 ? `+${student.netBalanceEur} €` : `${student.netBalanceEur} €`}
                           </div>
                         </div>
                       )}
                       {student.financeStatus === 'deposit' && (
                         <div className="space-y-0.5">
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
                             Депозит: +{student.balanceEur} €
                           </span>
                           <div className="text-[11px] font-semibold text-emerald-600 truncate">
-                            Баланс: +{student.balanceEur} € <span className="text-slate-400 font-normal">({student.balanceRub?.toLocaleString('ru-RU')} ₽)</span>
+                            +{student.balanceEur} €
                           </div>
                         </div>
                       )}
                       {student.financeStatus === 'debt' && (
                         <div className="space-y-0.5">
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap inline-block">
+                          <span className="bg-rose-50 text-rose-700 border border-rose-200/60 text-[11px] font-bold px-2 py-0.5 rounded-lg whitespace-nowrap inline-block">
                             Долг: -{student.debtEur} €
                           </span>
                           <div className="text-[11px] font-semibold text-rose-600 truncate">
-                            Баланс: -{student.debtEur} € <span className="text-rose-400 font-normal">(-{student.debtRub?.toLocaleString('ru-RU')} ₽)</span>
+                            -{student.debtEur} €
                           </div>
                         </div>
                       )}
                       {student.financeStatus === 'trial' && (
                         <div className="space-y-0.5">
-                          <span className="bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg inline-block">
+                          <span className="bg-purple-50 text-purple-700 border border-purple-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-block">
                             Пробный
                           </span>
                           <div className="text-[11px] text-purple-700 font-medium truncate">
-                            Баланс: 0 € <span className="text-slate-400 font-normal">(пробный урок)</span>
+                            0 €
                           </div>
                         </div>
                       )}
-                    </Link>
+                    </div>
                   </td>
 
-                  {statusFilter === 'deleted' && (
-                    <td className="px-3.5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  {/* 7. КОЛОНКА: СТАТУС */}
+                  <td className="px-3.5 py-2.5 text-center align-middle">
+                    {student.isDeleted ? (
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           restoreStudent(student.id);
                           onRefreshStudents();
                           toast.success(`Ученик ${student.name} восстановлен`);
                         }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors cursor-pointer"
+                        title="Восстановить ученика"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        Восстановить
+                        <span>Вернуть</span>
                       </button>
-                    </td>
-                  )}
+                    ) : (
+                      <span
+                        className={cn(
+                          'rounded-full px-2.5 py-0.5 font-semibold text-[11px] inline-block shadow-2xs',
+                          student.status === 'active' && 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
+                          student.status === 'trial' && 'bg-purple-50 text-purple-700 border border-purple-200/60',
+                          student.status === 'paused' && 'bg-amber-50 text-amber-700 border border-amber-200/60',
+                          student.status === 'archived' && 'bg-slate-100 text-slate-600 border border-slate-200'
+                        )}
+                      >
+                        {student.status === 'active' && 'Активен'}
+                        {student.status === 'trial' && 'Пробный'}
+                        {student.status === 'paused' && 'Пауза'}
+                        {student.status === 'archived' && 'Архив'}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })
           )}
         </tbody>
       </table>
+
+      {/* In-CRM Telegram Chat Dialog Modal */}
+      {activeTelegramStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                  <TelegramIcon className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">
+                    Telegram-диалог: {activeTelegramStudent.name}
+                  </span>
+                  <span className="text-[11px] text-slate-400 block">
+                    {activeTelegramStudent.parentName ? `Родитель: ${activeTelegramStudent.parentName}` : 'Личный чат с учеником'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTelegramStudent(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 max-h-[80vh] overflow-y-auto">
+              <TelegramChatBox
+                recipientType="student"
+                recipientId={activeTelegramStudent.id}
+                recipientName={activeTelegramStudent.name}
+                telegramHandle={activeTelegramStudent.telegram}
+                onMessageSent={() => {
+                  onRefreshStudents();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
