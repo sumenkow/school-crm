@@ -305,7 +305,7 @@ export function StudentsDesktop({
               </button>
             </th>
             <th className="px-2 py-2 text-left">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-2 py-2 text-left">ОБУЧЕНИЕ</th>
+            <th className="px-2 py-2 text-center">ОБУЧЕНИЕ</th>
             <th className="px-2 py-2 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
             <th className="px-2 py-2 text-center">
               <button
@@ -591,7 +591,7 @@ export function StudentsDesktop({
                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0 ml-auto" />
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400 select-none pl-1">— Без группы</span>
+                      <div className="text-xs text-slate-400 select-none text-center">— Без группы</div>
                     )}
                   </td>
 
