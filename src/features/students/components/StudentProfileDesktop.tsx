@@ -687,7 +687,7 @@ export function StudentProfileDesktop({
                     <p className="text-[11px] text-slate-500 truncate">
                       {studentOverdueDebt > 0
                         ? 'Задолженность по оплате'
-                        : `Оплачено до ${student.paidUntil || formattedPaidUntil || '28.09.2026'}`}
+                        : `Оплачено до ${student.finance?.activeSubscription?.renewalDate || (student as any).paidUntil || formattedPaidUntil || '28.09.2026'}`}
                     </p>
                   </>
                 )}
