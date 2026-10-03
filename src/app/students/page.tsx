@@ -4,7 +4,25 @@ import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'reac
 import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Filter, Plus, AlertTriangle, GraduationCap, RotateCcw, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  Plus,
+  AlertTriangle,
+  GraduationCap,
+  RotateCcw,
+  Trash2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Info,
+  ChevronDown,
+  MoreHorizontal,
+  Bookmark,
+  Settings2,
+  Download,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
@@ -16,6 +34,7 @@ import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 import { getStoredStudents, restoreStudent } from '@/lib/data/studentStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
@@ -197,9 +216,19 @@ function StudentsContent() {
   const activeTeacherIdFromUrl = searchParams.get('teacherId');
   const filterParam = searchParams.get('filter');
 
+  // Filter & Search states
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState(filterParam === 'absences' ? 'absences' : 'all');
+  const [statusTab, setStatusTab] = useState<'all' | 'active' | 'inactive' | 'attention' | 'deleted'>(
+    filterParam === 'absences' ? 'attention' : 'all'
+  );
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
+  const [attendanceFilter, setAttendanceFilter] = useState<string>('all');
+  const [balanceFilter, setBalanceFilter] = useState<string>('all');
+  const [studentTypeFilter, setStudentTypeFilter] = useState<string>('all');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -207,12 +236,9 @@ function StudentsContent() {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('default');
 
-  // Popover state for +N courses hover
-  const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
-
   useEffect(() => {
     if (filterParam === 'absences') {
-      setStatusFilter('absences');
+      setStatusTab('attention');
     }
   }, [filterParam]);
 
@@ -221,9 +247,14 @@ function StudentsContent() {
     return list.map(mapFullStudentToListItem);
   });
 
+  const [groups, setGroups] = useState<{ id: string; name: string }[]>(() => {
+    return typeof window !== 'undefined' ? getStoredGroups() : [];
+  });
+
   const refreshStudents = useCallback(() => {
     const list = getStoredStudents();
     setStudents(list.map(mapFullStudentToListItem));
+    setGroups(getStoredGroups());
   }, []);
 
   useFocusSync(refreshStudents);
@@ -233,10 +264,12 @@ function StudentsContent() {
 
     window.addEventListener('crm-students-changed', refreshStudents);
     window.addEventListener('crm-payments-changed', refreshStudents);
+    window.addEventListener('crm-groups-changed', refreshStudents);
 
     return () => {
       window.removeEventListener('crm-students-changed', refreshStudents);
       window.removeEventListener('crm-payments-changed', refreshStudents);
+      window.removeEventListener('crm-groups-changed', refreshStudents);
     };
   }, [refreshStudents]);
 
@@ -306,18 +339,108 @@ function StudentsContent() {
     }
   };
 
-  const activeStudents = students.filter((s) => !s.isDeleted);
-  const deletedStudents = students.filter((s) => s.isDeleted);
+  const activeStudents = useMemo(() => students.filter((s) => !s.isDeleted), [students]);
+  const deletedStudents = useMemo(() => students.filter((s) => s.isDeleted), [students]);
+
+  const totalCount = activeStudents.length;
+  const activeCount = useMemo(
+    () => activeStudents.filter((s) => s.status === 'active' || s.status === 'trial').length,
+    [activeStudents]
+  );
+  const inactiveCount = useMemo(
+    () => activeStudents.filter((s) => s.status === 'paused' || s.status === 'archived').length,
+    [activeStudents]
+  );
+  const attentionCount = useMemo(
+    () =>
+      activeStudents.filter(
+        (s) =>
+          s.isChurnRisk ||
+          (s.absentLessons !== undefined && s.absentLessons >= 3) ||
+          s.debtEur > 0 ||
+          s.netBalanceEur < 0 ||
+          s.financeStatus === 'debt' ||
+          s.attendanceRate < 80
+      ).length,
+    [activeStudents]
+  );
   const deletedCount = deletedStudents.length;
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchTerm !== '' ||
+      selectedGroupId !== 'all' ||
+      selectedTeacherId !== 'all' ||
+      attendanceFilter !== 'all' ||
+      balanceFilter !== 'all' ||
+      studentTypeFilter !== 'all' ||
+      statusTab !== 'all'
+    );
+  }, [searchTerm, selectedGroupId, selectedTeacherId, attendanceFilter, balanceFilter, studentTypeFilter, statusTab]);
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSelectedGroupId('all');
+    setSelectedTeacherId('all');
+    setAttendanceFilter('all');
+    setBalanceFilter('all');
+    setStudentTypeFilter('all');
+    setStatusTab('all');
+    if (filterParam) {
+      router.replace('/students');
+    }
+  };
+
+  const handleSaveFilters = () => {
+    toast.success('Параметры фильтрации сохранены');
+  };
 
   const filteredStudents = useMemo(() => {
     let result = students.filter((s) => {
-      const matchesSearch =
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.groupName && s.groupName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (s.parentName && s.parentName.toLowerCase().includes(searchTerm.toLowerCase()));
+      // Tab filter
+      if (statusTab === 'deleted') {
+        if (!s.isDeleted) return false;
+      } else {
+        if (s.isDeleted) return false;
 
-      if (!matchesSearch) return false;
+        if (statusTab === 'active') {
+          if (s.status !== 'active' && s.status !== 'trial') return false;
+        } else if (statusTab === 'inactive') {
+          if (s.status !== 'paused' && s.status !== 'archived') return false;
+        } else if (statusTab === 'attention') {
+          const needsAttention =
+            s.isChurnRisk ||
+            (s.absentLessons !== undefined && s.absentLessons >= 3) ||
+            s.debtEur > 0 ||
+            s.netBalanceEur < 0 ||
+            s.financeStatus === 'debt' ||
+            s.attendanceRate < 80;
+          if (!needsAttention) return false;
+        }
+      }
+
+      // Search query
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        const matchesSearch =
+          s.name.toLowerCase().includes(q) ||
+          (s.parentPhone && s.parentPhone.toLowerCase().includes(q)) ||
+          (s.groupName && s.groupName.toLowerCase().includes(q)) ||
+          s.groups.some((g) => g.name.toLowerCase().includes(q)) ||
+          (s.parentName && s.parentName.toLowerCase().includes(q)) ||
+          (s.teacherName && s.teacherName.toLowerCase().includes(q));
+
+        if (!matchesSearch) return false;
+      }
+
+      // Group filter
+      if (selectedGroupId !== 'all') {
+        const matchesGroup =
+          s.groupId === selectedGroupId ||
+          s.groupName === selectedGroupId ||
+          s.groups.some((g) => g.id === selectedGroupId || g.name === selectedGroupId);
+        if (!matchesGroup) return false;
+      }
 
       // Teacher filter
       if (selectedTeacherId !== 'all') {
@@ -331,20 +454,28 @@ function StudentsContent() {
         if (!matchesTeacher) return false;
       }
 
-      if (statusFilter === 'deleted') {
-        return Boolean(s.isDeleted);
+      // Attendance filter
+      if (attendanceFilter !== 'all') {
+        if (attendanceFilter === 'excellent' && s.attendanceRate < 90) return false;
+        if (attendanceFilter === 'good' && (s.attendanceRate < 80 || s.attendanceRate >= 90)) return false;
+        if (attendanceFilter === 'warning' && s.attendanceRate >= 80) return false;
+        if (attendanceFilter === 'absences' && !(s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3))) return false;
       }
 
-      if (s.isDeleted) return false;
+      // Balance filter
+      if (balanceFilter !== 'all') {
+        if (balanceFilter === 'debt' && !(s.debtEur > 0 || s.netBalanceEur < 0 || s.financeStatus === 'debt')) return false;
+        if (balanceFilter === 'deposit' && !(s.balanceEur > 0 || s.netBalanceEur > 0 || s.financeStatus === 'deposit')) return false;
+        if (balanceFilter === 'active_sub' && s.financeStatus !== 'active_sub') return false;
+        if (balanceFilter === 'trial' && s.financeStatus !== 'trial' && s.status !== 'trial') return false;
+      }
 
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'absences') {
-        return s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3);
+      // Student type filter
+      if (studentTypeFilter !== 'all') {
+        if (s.studentType !== studentTypeFilter) return false;
       }
-      if (statusFilter === 'school_student' || statusFilter === 'adult_student') {
-        return s.studentType === statusFilter;
-      }
-      return s.status === statusFilter;
+
+      return true;
     });
 
     if (sortField && sortOrder !== 'default') {
@@ -363,9 +494,18 @@ function StudentsContent() {
     }
 
     return result;
-  }, [students, searchTerm, statusFilter, selectedTeacherId, sortField, sortOrder]);
-
-  const churnRiskCount = activeStudents.filter((s) => s.isChurnRisk || (s.absentLessons !== undefined && s.absentLessons >= 3)).length;
+  }, [
+    students,
+    statusTab,
+    searchTerm,
+    selectedGroupId,
+    selectedTeacherId,
+    attendanceFilter,
+    balanceFilter,
+    studentTypeFilter,
+    sortField,
+    sortOrder,
+  ]);
 
   // Master Checkbox State
   const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selectedIds.includes(s.id));
@@ -398,12 +538,12 @@ function StudentsContent() {
   };
 
   const handleBulkExport = () => {
-    const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+    const targetStudents = selectedIds.length > 0 ? students.filter((s) => selectedIds.includes(s.id)) : filteredStudents;
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       ['ФИО,Тип,Родитель,Телефон,Группа,Посещаемость,Баланс EUR']
         .concat(
-          selectedStudents.map(
+          targetStudents.map(
             (s) => `"${s.name}","${s.studentType}","${s.parentName || '—'}","${s.parentPhone || ''}","${s.groupName || ''}","${s.attendanceRate}%","${s.netBalanceEur} €"`
           )
         )
@@ -416,49 +556,215 @@ function StudentsContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Выгружен файл экспорта (${selectedStudents.length} записей)`);
+    toast.success(`Выгружен файл экспорта (${targetStudents.length} записей)`);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Title & Actions */}
+    <div className="space-y-4">
+      {/* 1. Header & Title */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('students.title', 'Ученики школы')}</h1>
-          <p className="text-sm text-slate-600">
-            {t('students.subtitle', 'Единая база учеников и студентов')} • Всего: {activeStudents.length} (активных: {activeStudents.filter(s => s.status === 'active').length})
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <span>Ученики</span>
+            <Info className="w-4 h-4 text-slate-400 cursor-help" />
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium">
+            Всего: {totalCount} · Активных: {activeCount} · Неактивных: {inactiveCount}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Main action: Add Student */}
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-medium text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
-            {t('action.addStudent', 'Новый ученик')}
+            <Plus className="h-3.5 w-3.5" />
+            <span>Новый ученик</span>
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
           </button>
+
+          {/* More actions dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer flex items-center justify-center"
+              aria-label="Дополнительные действия"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+
+            {isActionsMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setIsActionsMenuOpen(false)}
+                />
+                <div className="absolute right-0 mt-1.5 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg z-30 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      handleBulkExport();
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Экспорт CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      setStatusTab('deleted');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Удаленные ученики ({deletedCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      refreshStudents();
+                      toast.success('Список учеников обновлен');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Обновить список</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={t('students.search', 'Поиск по имени ученика, родителю или группе...')}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+      {/* 2. Status Pills Row */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setStatusTab('all')}
+            className={cn(
+              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              statusTab === 'all'
+                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            Все ({totalCount})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusTab('active')}
+            className={cn(
+              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              statusTab === 'active'
+                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            Активные ({activeCount})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusTab('inactive')}
+            className={cn(
+              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              statusTab === 'inactive'
+                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                : 'text-slate-600 hover:bg-slate-100'
+            )}
+          >
+            Неактивные ({inactiveCount})
+          </button>
+
+          {attentionCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setStatusTab('attention')}
+              className={cn(
+                'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer flex items-center gap-1.5',
+                statusTab === 'attention'
+                  ? 'bg-amber-50 text-amber-700 font-semibold border border-amber-200/80 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              )}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Требуют внимания ({attentionCount})</span>
+            </button>
+          )}
+
+          {statusTab === 'deleted' && (
+            <button
+              type="button"
+              onClick={() => setStatusTab('deleted')}
+              className="h-8 px-3 text-xs font-semibold rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-slate-500" />
+              <span>Удаленные ({deletedCount})</span>
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 text-xs text-slate-600">
-            <Filter className="h-3.5 w-3.5" />
-            <span>{t('action.filter', 'Фильтр')}:</span>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="h-8 px-3 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Сбросить</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSaveFilters}
+              className="h-8 px-3 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-slate-400" />
+              <span>Сохранить фильтры</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Search & Filter Bar */}
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[260px]">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Поиск по имени, родителю, телефону, группе, преподавателю..."
+              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
+
+          {/* Group Select Filter */}
+          <select
+            value={selectedGroupId}
+            onChange={(e) => setSelectedGroupId(e.target.value)}
+            className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+          >
+            <option value="all">Группа: Все</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
 
           {/* Teacher Select Filter */}
           <select
@@ -466,38 +772,92 @@ function StudentsContent() {
             onChange={(e) => setSelectedTeacherId(e.target.value)}
             className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
           >
-            {teachersList.map((tItem) => (
-              <option key={tItem.id} value={tItem.id}>
-                {tItem.name}
-              </option>
-            ))}
+            <option value="all">Преподаватель: Все</option>
+            {teachersList
+              .filter((t) => t.id !== 'all')
+              .map((tItem) => (
+                <option key={tItem.id} value={tItem.id}>
+                  {tItem.name}
+                </option>
+              ))}
           </select>
 
-          {/* Status Select Filter */}
+          {/* Attendance Select Filter */}
           <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              if (e.target.value !== 'absences') {
-                router.replace('/students');
-              }
-            }}
-            className="h-9 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+            value={attendanceFilter}
+            onChange={(e) => setAttendanceFilter(e.target.value)}
+            className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
           >
-            <option value="all">{t('students.filterAll', 'Все ученики')} ({activeStudents.length})</option>
-            <option value="absences">{t('students.filterAbsences', 'Риск оттока: 3+ пропуска')} ({churnRiskCount})</option>
-            <option value="active">{t('status.active', 'Активные')}</option>
-            <option value="trial">{t('status.trial', 'Пробные')}</option>
-            <option value="paused">{t('status.paused', 'На паузе')}</option>
-            <option value="school_student">{t('students.filterSchool', 'Школьники (с родителями)')}</option>
-            <option value="adult_student">{t('students.filterAdult', 'Студенты')}</option>
-            <option value="deleted">Удаленные ({deletedCount})</option>
+            <option value="all">Посещаемость: Все</option>
+            <option value="excellent">Отличная (≥90%)</option>
+            <option value="good">Хорошая (80–89%)</option>
+            <option value="warning">Внимание (&lt;80%)</option>
+            <option value="absences">Риск оттока (3+ пропуска)</option>
           </select>
+
+          {/* Balance Select Filter */}
+          <select
+            value={balanceFilter}
+            onChange={(e) => setBalanceFilter(e.target.value)}
+            className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+          >
+            <option value="all">Баланс: Все</option>
+            <option value="debt">Есть задолженность</option>
+            <option value="deposit">Депозит / Предоплата</option>
+            <option value="active_sub">Активный абонемент</option>
+            <option value="trial">Пробный урок</option>
+          </select>
+
+          {/* More Filters Button */}
+          <button
+            type="button"
+            onClick={() => setShowMoreFilters(!showMoreFilters)}
+            className={cn(
+              'h-9 px-3 text-xs font-medium border rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs',
+              showMoreFilters || studentTypeFilter !== 'all'
+                ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            )}
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            <span>Еще фильтры</span>
+          </button>
         </div>
+
+        {/* Extended Filters Drawer */}
+        {showMoreFilters && (
+          <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs animate-in fade-in duration-150">
+            <span className="text-slate-500 font-medium mr-1">Категория:</span>
+            <button
+              type="button"
+              onClick={() => setStudentTypeFilter(studentTypeFilter === 'school_student' ? 'all' : 'school_student')}
+              className={cn(
+                'px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer',
+                studentTypeFilter === 'school_student'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              )}
+            >
+              Школьники (с родителями)
+            </button>
+            <button
+              type="button"
+              onClick={() => setStudentTypeFilter(studentTypeFilter === 'adult_student' ? 'all' : 'adult_student')}
+              className={cn(
+                'px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer',
+                studentTypeFilter === 'adult_student'
+                  ? 'bg-purple-600 text-white border-purple-600'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+              )}
+            >
+              Студенты (взрослые)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Deleted Banner */}
-      {statusFilter === 'deleted' && (
+      {statusTab === 'deleted' && (
         <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700">
           <div className="flex items-center gap-2">
             <Trash2 className="h-4 w-4 text-slate-500" />
@@ -505,7 +865,7 @@ function StudentsContent() {
           </div>
           <button
             type="button"
-            onClick={() => setStatusFilter('all')}
+            onClick={() => setStatusTab('all')}
             className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Вернуться ко всем
@@ -513,8 +873,8 @@ function StudentsContent() {
         </div>
       )}
 
-      {/* Churn Risk Active Filter Banner */}
-      {statusFilter === 'absences' && (
+      {/* Attention / Churn Risk Active Filter Banner */}
+      {statusTab === 'attention' && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs animate-in fade-in duration-150">
           <div className="flex items-center gap-2.5 text-amber-950">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-200 text-amber-900">
@@ -522,18 +882,18 @@ function StudentsContent() {
             </div>
             <div>
               <span className="font-bold text-sm">
-                Применен фильтр: «Риск оттока (3+ пропуска)»
+                Применен фильтр: «Требуют внимания»
               </span>
               <p className="text-amber-800 mt-0.5">
-                Отображаются только ученики с высоким риском оттока из-за 3 и более пропущенных занятий ({filteredStudents.length} уч.). Свяжитесь с родителями для согласования отработок.
+                Отображаются ученики с рисками оттока (3+ пропуска, посещаемость &lt;80% или задолженность). Найдено: {filteredStudents.length} уч.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => {
-              setStatusFilter('all');
-              router.replace('/students');
+              setStatusTab('all');
+              if (filterParam) router.replace('/students');
             }}
             className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-bold text-amber-900 hover:bg-amber-100 transition-colors shrink-0 cursor-pointer"
           >
@@ -541,21 +901,20 @@ function StudentsContent() {
           </button>
         </div>
       )}
-
       {/* Students Table (Desktop 100% Fit) & Cards List (Mobile) */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
         {/* Mobile Cards List (< 768px) */}
         <div className="md:hidden divide-y divide-slate-100">
           {filteredStudents.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500">
-              {statusFilter === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
+              {statusTab === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
             </div>
           ) : (
             filteredStudents.map((student) => (
               <div
                 key={student.id}
                 onClick={() => {
-                  if (statusFilter !== 'deleted') {
+                  if (statusTab !== 'deleted') {
                     handleOpenStudentDrawer(student.id);
                   }
                 }}
@@ -621,7 +980,7 @@ function StudentsContent() {
                   </div>
                 </div>
 
-                {statusFilter === 'deleted' && (
+                {statusTab === 'deleted' && (
                   <div className="pt-2 text-right" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
@@ -652,7 +1011,7 @@ function StudentsContent() {
           sortField={sortField}
           sortOrder={sortOrder}
           onSortToggle={handleSortToggle}
-          statusFilter={statusFilter}
+          statusFilter={statusTab}
           onOpenTeacherModal={handleOpenTeacherModal}
           onOpenStudentDrawer={handleOpenStudentDrawer}
           onRefreshStudents={refreshStudents}
