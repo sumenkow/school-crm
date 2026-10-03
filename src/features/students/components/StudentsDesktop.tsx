@@ -267,21 +267,21 @@ export function StudentsDesktop({
     <div className="hidden md:block w-full overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-xs">
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
-          <col className="w-[44px]" />   {/* Чекбокс 44px */}
-          <col className="w-[190px]" />  {/* Ученик 190px */}
-          <col className="w-[285px]" />  {/* Представитель 285px */}
-          <col className="w-[200px]" />  {/* Обучение 200px */}
-          <col className="w-[180px]" />  {/* Ближайшее занятие 180px */}
-          <col className="w-[110px]" />  {/* Посещаемость 110px */}
-          <col className="w-[110px]" />  {/* Баланс 110px */}
-          <col className="w-[120px]" />  {/* Статус 120px */}
-          <col className="w-[44px]" />   {/* Действия ··· 44px */}
+          <col className="w-[36px]" />   {/* Чекбокс 36px */}
+          <col className="w-[210px]" />  {/* Ученик 210px */}
+          <col className="w-[175px]" />  {/* Представитель 175px (1-2 символа до значков) */}
+          <col className="w-[180px]" />  {/* Обучение 180px */}
+          <col className="w-[135px]" />  {/* Ближайшее занятие 135px (без ...) */}
+          <col className="w-[95px]" />   {/* Посещаемость 95px */}
+          <col className="w-[85px]" />   {/* Баланс 85px */}
+          <col className="w-[95px]" />   {/* Статус 95px */}
+          <col className="w-[36px]" />   {/* Действия ··· 36px */}
         </colgroup>
 
         {/* Шапка таблицы */}
         <thead className="h-10 bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none">
           <tr>
-            <th className="px-2 py-2.5 text-center">
+            <th className="px-1 py-2 text-center">
               <input
                 type="checkbox"
                 checked={allFilteredSelected}
@@ -290,7 +290,7 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-2.5 py-2.5 text-left">
+            <th className="pl-1.5 pr-2 py-2 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
@@ -304,10 +304,10 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-2.5 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-2.5 py-2.5 text-left">ОБУЧЕНИЕ</th>
-            <th className="px-2.5 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
-            <th className="px-2 py-2.5 text-center">
+            <th className="px-2 py-2 text-left">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-2 py-2 text-left">ОБУЧЕНИЕ</th>
+            <th className="px-2 py-2 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
+            <th className="px-1.5 py-2 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
@@ -321,7 +321,7 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-2.5 py-2.5 text-left">
+            <th className="px-1.5 py-2 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
@@ -335,10 +335,10 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-2 py-2.5 text-center">
+            <th className="px-1 py-2 text-center">
               <span>СТАТУС</span>
             </th>
-            <th className="px-1 py-2.5 text-center">
+            <th className="px-1 py-2 text-center">
               <span className="sr-only">Действия</span>
             </th>
           </tr>
@@ -410,7 +410,7 @@ export function StudentsDesktop({
                   )}
                 >
                   {/* Чекбокс */}
-                  <td className="px-2 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-1 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -420,8 +420,8 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 1. КОЛОНКА: УЧЕНИК */}
-                  <td className="px-2.5 py-2 align-middle">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <td className="pl-1.5 pr-2 py-2 align-middle">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div
                         onClick={() => handleStudentClick(student.id)}
                         className="relative shrink-0 cursor-pointer group/avatar"
@@ -463,10 +463,10 @@ export function StudentsDesktop({
                     </div>
                   </td>
 
-                  {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ (Вертикальные кнопки WA/TG) */}
-                  <td className="px-2.5 py-2 align-middle">
+                  {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ (1-2 символа зазор до иконок) */}
+                  <td className="px-2 py-2 align-middle">
                     {student.parentId || student.parentName ? (
-                      <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex items-center justify-between gap-1.5 min-w-0">
                         <div className="min-w-0 flex-1">
                           <Link
                             href={student.parentId ? `/parents/${student.parentId}` : '#'}
@@ -514,7 +514,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 3. КОЛОНКА: ОБУЧЕНИЕ (Группа / Курс) */}
-                  <td className="px-2.5 py-2 align-middle">
+                  <td className="px-2 py-2 align-middle">
                     {student.groups.length > 0 ? (
                       <div className="flex items-center gap-2 min-w-0">
                         {/* Иконка предмета/направления */}
@@ -595,8 +595,8 @@ export function StudentsDesktop({
                     )}
                   </td>
 
-                  {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ */}
-                  <td className="px-2.5 py-2 align-middle">
+                  {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ (Без многоточий) */}
+                  <td className="px-2 py-2 align-middle">
                     {upcomingLesson ? (
                       <button
                         type="button"
@@ -606,29 +606,26 @@ export function StudentsDesktop({
                             setSelectedLessonModal(lesson);
                           }
                         }}
-                        className="w-full flex items-center justify-between gap-1.5 p-1 -m-1 rounded-lg hover:bg-slate-100/80 transition-colors group/lesson cursor-pointer text-left"
+                        className="w-full text-left p-1 -m-1 rounded-lg hover:bg-slate-100/80 transition-colors group/lesson cursor-pointer block"
                         title="Открыть карточку урока"
                       >
-                        <div className="min-w-0">
-                          <div className="flex items-center text-xs font-semibold text-slate-800 group-hover/lesson:text-blue-600 transition-colors">
-                            <Calendar className="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
-                            <span className="truncate">{upcomingLesson.dateDayFormatted}</span>
-                          </div>
-                          <div className="text-[11px] text-slate-400 mt-0.5 truncate pl-5">
-                            {upcomingLesson.timeFormatted}
-                          </div>
+                        <div className="flex items-center text-xs font-semibold text-slate-800 group-hover/lesson:text-blue-600 transition-colors whitespace-nowrap">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
+                          <span className="whitespace-nowrap">{upcomingLesson.dateDayFormatted}</span>
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover/lesson:text-blue-500 shrink-0" />
+                        <div className="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap pl-5">
+                          {upcomingLesson.timeFormatted}
+                        </div>
                       </button>
                     ) : (
-                      <span className="text-[11px] text-slate-400 font-normal italic select-none">
-                        Нет запланированных
+                      <span className="text-[11px] text-slate-400 font-normal italic select-none whitespace-nowrap">
+                        Нет занятий
                       </span>
                     )}
                   </td>
 
                   {/* 5. КОЛОНКА: ПОСЕЩАЕМОСТЬ */}
-                  <td className="px-2 py-2 text-center align-middle">
+                  <td className="px-1.5 py-2 text-center align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'attendance')}
                       className="flex flex-col items-center justify-center group/att cursor-pointer w-full"
@@ -636,7 +633,7 @@ export function StudentsDesktop({
                       <span className="text-xs font-bold text-slate-900 group-hover/att:text-blue-600 transition-colors leading-tight">
                         {attendanceRate}%
                       </span>
-                      <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
+                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
@@ -656,31 +653,31 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 6. КОЛОНКА: БАЛАНС */}
-                  <td className="px-2.5 py-2 align-middle">
+                  <td className="px-1.5 py-2 align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'finance')}
                       className="group/fin min-w-0 cursor-pointer space-y-0.5"
                     >
                       {hasDebt ? (
-                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200/60 whitespace-nowrap">
                           -{student.debtEur || Math.abs(netBalance)} €
                         </div>
                       ) : hasDeposit ? (
-                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 whitespace-nowrap">
                           +{student.balanceEur || netBalance} €
                         </div>
                       ) : student.status === 'trial' || student.financeStatus === 'trial' ? (
-                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200/60 whitespace-nowrap">
                           Пробный
                         </div>
                       ) : (
-                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
                           0 €
                         </div>
                       )}
 
                       {rubFormatted && (
-                        <div className="text-[10px] text-slate-400 font-normal truncate">
+                        <div className="text-[10px] text-slate-400 font-normal truncate whitespace-nowrap">
                           {rubFormatted}
                         </div>
                       )}
@@ -688,7 +685,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 7. КОЛОНКА: СТАТУС (Интерактивный выпадающий селектор) */}
-                  <td className="px-2 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-1 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     {student.isDeleted ? (
                       <button
                         type="button"
@@ -713,7 +710,7 @@ export function StudentsDesktop({
                             )
                           }
                           className={cn(
-                            'text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs border',
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-0.5 transition-all cursor-pointer shadow-2xs border whitespace-nowrap',
                             isAttention && student.status === 'active'
                               ? 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100'
                               : student.status === 'active'
@@ -744,7 +741,7 @@ export function StudentsDesktop({
                               ? 'Внимание'
                               : getStatusLabel(student.status)}
                           </span>
-                          <ChevronDown className="w-3 h-3 opacity-60" />
+                          <ChevronDown className="w-2.5 h-2.5 opacity-60" />
                         </button>
 
                         {/* Status Dropdown Menu */}
