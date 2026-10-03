@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Phone,
   Plus,
@@ -13,6 +14,11 @@ import {
   Sparkles,
   Clock,
   FileText,
+  BookOpen,
+  TrendingUp,
+  CreditCard,
+  User,
+  ChevronRight,
 } from 'lucide-react';
 import { cn, isEntityNew, formatPhone, getWhatsAppLink, getTelLink, normalizePhone } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -106,6 +112,7 @@ export interface StudentProfileDesktopProps {
   onSelectTab: (tabKey: string) => void;
   onOpenTelegramConnect?: () => void;
   onOpenCreateInvoiceModal?: () => void;
+  onOpenEnrollModal?: () => void;
 }
 
 export function StudentProfileDesktop({
@@ -123,7 +130,9 @@ export function StudentProfileDesktop({
   onSelectTab,
   onOpenTelegramConnect,
   onOpenCreateInvoiceModal,
+  onOpenEnrollModal,
 }: StudentProfileDesktopProps) {
+  const router = useRouter();
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
   const [selectedLessonModal, setSelectedLessonModal] = useState<FullLessonData | null>(null);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -485,257 +494,282 @@ export function StudentProfileDesktop({
         </div>
       </div>
 
-      {/* LEVEL 2: Metrics Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs grid grid-cols-12 gap-3 divide-x divide-slate-100">
-        {/* Block 1: КУРС И ГРУППА / КУРСЫ (4/12) */}
-        <div className="col-span-4 min-w-0 pr-3 space-y-1.5">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            {studentGroups.length > 1 ? `КУРСЫ И ГРУППЫ (${studentGroups.length})` : 'КУРС И ГРУППА'}
-          </span>
-          {studentGroups.length > 0 ? (() => {
-            const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
-            const lessonHref = upcomingLesson?.id ? `/calendar/lessons/${upcomingLesson.id}` : '/calendar';
+      {/* LEVEL 2: 4-Card Summary Grid */}
+      {(() => {
+        const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+        const firstGroup = studentGroups[0];
+        const cleanGroupName = firstGroup ? (firstGroup.name || '').replace(/\s*\([^)]*\)/g, '').trim() || firstGroup.name : '';
+        const targetGroup = firstGroup
+          ? storedGroups.find(
+              (g) =>
+                g.id === firstGroup.id ||
+                g.name === cleanGroupName ||
+                g.name === firstGroup.name ||
+                g.courseName === firstGroup.courseName
+            ) || { id: firstGroup.id || '1', name: cleanGroupName }
+          : null;
 
-            if (studentGroups.length === 1) {
-              const firstGrp = studentGroups[0];
-              const targetGroup = storedGroups.find(g => g.id === firstGrp.id || g.name === firstGrp.name || g.courseName === firstGrp.courseName) || INITIAL_GROUPS.find(g => g.name === firstGrp.name) || INITIAL_GROUPS[0];
-              const groupHref = `/groups/${targetGroup.id}`;
+        const presentLessonsCount = student.attendanceStats?.presentCount ?? 0;
+        const totalLessonsCount =
+          student.attendanceStats?.totalLessons ||
+          presentLessonsCount + (student.attendanceStats?.absentCount ?? 0) ||
+          16;
 
-              const teacherName = firstGrp.teacherName || (student as any).teacherName || 'Мария Иванова';
-              const rawTId = (student as any).teacherId || (firstGrp as any).teacherId;
-              const targetTeacher = INITIAL_TEACHERS.find(
-                (t) =>
-                  (rawTId && (t.id === rawTId || t.id === `t${rawTId}` || t.id.replace(/^t/, '') === String(rawTId).replace(/^t/, ''))) ||
-                  t.name === teacherName ||
-                  t.name.includes(teacherName)
-              ) || INITIAL_TEACHERS[0];
-              const teacherHref = `/teachers/${targetTeacher.id}`;
+        const remLessons = student.finance?.activeSubscription?.lessonsRemaining;
+        const lessonsRemainingText =
+          typeof remLessons === 'number'
+            ? `${remLessons} ${remLessons === 1 ? 'занятие' : remLessons >= 2 && remLessons <= 4 ? 'занятия' : 'занятий'}`
+            : '';
 
-              const cleanFirstGrpName = (firstGrp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || firstGrp.name;
+        const contactName = cleanParentName || (student.studentType === 'adult_student' ? `${student.firstName} ${student.lastName}` : 'Не указан');
+        const contactPhone = primaryParent?.phone || student.phone || '';
+        const contactTelegramClean = (primaryParent?.telegram || student.telegram || '').replace('@', '');
 
-              return (
-                <div className="space-y-1">
-                  <Link
-                    href={groupHref}
-                    className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-                  >
-                    {cleanFirstGrpName}
-                  </Link>
-                  {upcomingLesson && upcomingLesson.date ? (
+        const circumference = 2 * Math.PI * 17; // r=17
+        const strokeDashoffset = circumference - (Math.min(100, Math.max(0, attendanceRateNum)) / 100) * circumference;
+
+        return (
+          <div className="grid grid-cols-4 gap-4 mb-5">
+            {/* КАРТОЧКА 1: «Текущая группа» */}
+            <div
+              onClick={() => {
+                if (targetGroup) {
+                  router.push(`/groups/${targetGroup.id}`);
+                } else {
+                  onOpenEnrollModal?.();
+                }
+              }}
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Текущая группа</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+
+              <div className="mt-3 min-w-0">
+                {firstGroup ? (
+                  <>
+                    <h3 className="text-sm font-bold text-slate-900 truncate" title={cleanGroupName}>
+                      {cleanGroupName}
+                    </h3>
+                    <p className="text-xs text-slate-500 truncate mt-0.5" title={firstGroup.courseName || cleanGroupName}>
+                      {firstGroup.courseName ? `${cleanGroupName} / ${firstGroup.courseName}` : cleanGroupName}
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-400">Без группы</span>
                     <button
                       type="button"
-                      onClick={() => setSelectedLessonModal(upcomingLesson)}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 max-w-full truncate bg-blue-50/60 px-2 py-0.5 rounded-md border border-blue-100/80 cursor-pointer text-left"
-                      title="Открыть карточку ближайшего урока"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenEnrollModal?.();
+                      }}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
                     >
-                      <Clock className="w-3 h-3 shrink-0 text-blue-500" />
-                      <span className="truncate">Урок: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}</span>
+                      Зачислить
                     </button>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 block truncate pl-0.5">
-                      Следующее занятие: —
-                    </span>
-                  )}
-                  <Link
-                    href={teacherHref}
-                    className="text-[11px] text-slate-500 hover:text-blue-600 hover:underline block truncate pl-0.5"
-                  >
-                    Преподаватель: {teacherName}
-                  </Link>
-                </div>
-              );
-            }
-
-            // Multiple groups (2 or more courses)
-            return (
-              <div className="space-y-2">
-                {studentGroups.map((grp, gIdx) => {
-                  const cleanGrpName = (grp.name || '').replace(/\s*\([^)]*\)/g, '').trim() || grp.name;
-                  const targetGroup = storedGroups.find(g => g.id === grp.id || g.name === cleanGrpName || g.name === grp.name || g.courseName === grp.courseName) || INITIAL_GROUPS[0];
-                  const teacherName = grp.teacherName || 'Мария Иванова';
-                  const targetTeacher = INITIAL_TEACHERS.find(
-                    (t) => t.name === teacherName || t.name.includes(teacherName)
-                  ) || INITIAL_TEACHERS[0];
-
-                  return (
-                    <div key={grp.id || gIdx} className="space-y-1 border-b border-slate-100/80 pb-1.5 last:border-0 last:pb-0">
-                      <Link
-                        href={`/groups/${targetGroup.id}`}
-                        className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline truncate block"
-                        title={cleanGrpName}
-                      >
-                        {cleanGrpName}
-                      </Link>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 gap-2">
-                        <Link
-                          href={`/teachers/${targetTeacher.id}`}
-                          className="hover:text-blue-600 hover:underline truncate min-w-0"
-                        >
-                          {teacherName}
-                        </Link>
-                        {grp.schedule && (
-                          <span className="text-[10px] text-slate-600 font-mono shrink-0 bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
-                            {grp.schedule.split('•')[0]?.trim() || grp.schedule}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
-            );
-          })() : (
-            <span className="text-xs text-slate-400 font-medium block mt-1 pl-0.5">— Без группы</span>
-          )}
-        </div>
+            </div>
 
-        {/* Block 2: ПРЕДСТАВИТЕЛЬ (3/12) */}
-        <div className="col-span-3 min-w-0 pl-3 pr-2 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-            ПРЕДСТАВИТЕЛЬ
-          </span>
-          {primaryParent ? (() => {
-            const parentHref = primaryParent.id ? `/parents/${primaryParent.id}` : '/parents';
-            const parentPhoneClean = primaryParent.phone ? primaryParent.phone.replace(/\D/g, '') : '';
-            return (
-              <div className="space-y-0.5">
-                <Link
-                  href={parentHref}
-                  className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline block truncate"
-                >
-                  {cleanParentName}
-                </Link>
-                <div className="flex items-center gap-1.5">
-                  {primaryParent.phone ? (
-                    <a
-                      href={getTelLink(primaryParent.phone)}
-                      className="text-[11px] text-slate-500 hover:text-blue-600 font-mono"
-                      title={formatPhone(primaryParent.phone)}
-                    >
-                      {formatPhone(primaryParent.phone)}
-                    </a>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 font-mono">—</span>
-                  )}
-                  {normalizePhone(primaryParent.phone) && (
-                    <a
-                      href={getWhatsAppLink(primaryParent.phone)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-4 h-4 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-colors shrink-0"
-                      title="WhatsApp родителя"
-                    >
-                      <WhatsAppIcon className="w-2.5 h-2.5" />
-                    </a>
-                  )}
+            {/* КАРТОЧКА 2: «Посещаемость» */}
+            <div
+              onClick={() => onSelectTab('education')}
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Посещаемость</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+
+              <div className="mt-2 flex items-center gap-3">
+                {/* Donut-индикатор (w-12 h-12) */}
+                <div className="w-12 h-12 relative flex items-center justify-center shrink-0">
+                  <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
+                    <circle
+                      cx="22"
+                      cy="22"
+                      r="17"
+                      className="stroke-slate-100"
+                      strokeWidth="4"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="22"
+                      cy="22"
+                      r="17"
+                      className={cn(
+                        'transition-all duration-500',
+                        attendanceRateNum >= 80
+                          ? 'stroke-emerald-500'
+                          : attendanceRateNum >= 60
+                          ? 'stroke-amber-500'
+                          : 'stroke-rose-500'
+                      )}
+                      strokeWidth="4"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      strokeLinecap="round"
+                      fill="transparent"
+                    />
+                  </svg>
+                  <span className="absolute text-[11px] font-extrabold text-slate-900">
+                    {attendanceRateNum}%
+                  </span>
+                </div>
+
+                <div className="min-w-0 space-y-0.5">
+                  <div className="text-xs font-bold text-slate-800 truncate">
+                    {presentLessonsCount} из {totalLessonsCount} занятий
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {lastAbsence ? (
+                      lastAbsence.status === 'absent'
+                        ? `${formatAbsenceDate(lastAbsence.date)} пропуск`
+                        : `${formatAbsenceDate(lastAbsence.date)} болезнь`
+                    ) : (
+                      'Все по графику'
+                    )}
+                  </p>
                 </div>
               </div>
-            );
-          })() : (
-            <span className="text-xs text-slate-400 font-medium block mt-1">—</span>
-          )}
-        </div>
+            </div>
 
-        {/* Block 3: ПОСЕЩАЕМОСТЬ (2/12) */}
-        <div
-          onClick={() => onSelectTab('attendance')}
-          className="col-span-2 min-w-0 pl-3 pr-2 space-y-1 cursor-pointer hover:bg-slate-50/60 p-1 -m-1 rounded-xl transition-colors group"
-          title="Перейти к посещаемости"
-        >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate group-hover:text-blue-600">
-            ПОСЕЩАЕМОСТЬ
-          </span>
-          <div className="flex items-center gap-2">
-            <span
+            {/* КАРТОЧКА 3: «Баланс» */}
+            <div
+              onClick={() => role !== 'teacher' && onSelectTab('finance')}
               className={cn(
-                'text-sm font-extrabold',
-                attendanceRateNum >= 90
-                  ? 'text-emerald-600'
-                  : attendanceRateNum >= 70
-                  ? 'text-amber-600'
-                  : 'text-rose-600'
+                'bg-white rounded-2xl p-4 border border-slate-100 shadow-sm transition-colors relative group flex flex-col justify-between',
+                role !== 'teacher' ? 'hover:border-slate-200 cursor-pointer' : 'cursor-default'
               )}
             >
-              {attendanceRateNum}%
-            </span>
-            <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden shrink-0">
-              <div
-                className={cn(
-                  'h-full rounded-full transition-all',
-                  attendanceRateNum >= 90
-                    ? 'bg-emerald-500'
-                    : attendanceRateNum >= 70
-                    ? 'bg-amber-500'
-                    : 'bg-rose-500'
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Баланс</span>
+                </div>
+                {role !== 'teacher' && (
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
                 )}
-                style={{ width: `${Math.min(attendanceRateNum, 100)}%` }}
-              />
+              </div>
+
+              <div className="mt-2 min-w-0 space-y-0.5">
+                {role === 'teacher' ? (
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800">Обучение активно</span>
+                    <p className="text-[11px] text-slate-400 italic">Финансы скрыты</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={cn(
+                          'text-xl font-bold tracking-tight',
+                          studentOverdueDebt > 0 ? 'text-rose-600' : 'text-slate-900'
+                        )}
+                      >
+                        {studentOverdueDebt > 0 ? `-${studentOverdueDebt} €` : `${studentDeposit || 0} €`}
+                      </span>
+                      {lessonsRemainingText && (
+                        <span className="text-xs font-semibold text-slate-500">
+                          {lessonsRemainingText}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {studentOverdueDebt > 0
+                        ? 'Задолженность по оплате'
+                        : `Оплачено до ${student.paidUntil || formattedPaidUntil || '28.09.2026'}`}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* КАРТОЧКА 4: «Представитель» */}
+            <div
+              onClick={() => onSelectTab('profile')}
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{student.studentType === 'adult_student' ? 'Студент' : 'Представитель'}</span>
+                  <span className="bg-slate-100 text-slate-600 text-[9.5px] font-medium px-1.5 py-0.5 rounded-md">
+                    {student.studentType === 'adult_student' ? 'Прямой контакт' : 'Основной контакт'}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+
+              <div className="mt-2 min-w-0 space-y-1">
+                <h4 className="text-xs font-bold text-slate-900 truncate">
+                  {contactName}
+                </h4>
+                <div className="flex items-center justify-between gap-1.5">
+                  {contactPhone ? (
+                    <a
+                      href={getTelLink(contactPhone)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs font-mono text-slate-600 hover:text-blue-600 truncate font-semibold"
+                      title={formatPhone(contactPhone)}
+                    >
+                      {formatPhone(contactPhone)}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400 font-mono">—</span>
+                  )}
+
+                  {normalizePhone(contactPhone) && (
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {/* WhatsApp */}
+                      <a
+                        href={getWhatsAppLink(contactPhone)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-5 h-5 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
+                        title="Написать в WhatsApp"
+                      >
+                        <WhatsAppIcon className="w-3 h-3" />
+                      </a>
+
+                      {/* Telegram */}
+                      {contactTelegramClean ? (
+                        <a
+                          href={`https://t.me/${contactTelegramClean}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
+                          title={`Написать в Telegram (@${contactTelegramClean})`}
+                        >
+                          <TelegramIcon className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={onOpenTelegramConnect}
+                          className="w-5 h-5 rounded bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
+                          title="Подключить Telegram-бота"
+                        >
+                          <TelegramIcon className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          
-          {/* Last absence indicator: compact */}
-          {lastAbsence ? (
-            lastAbsence.status === 'absent' ? (
-              <span 
-                className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-1.5 py-0.5 text-[9.5px] font-bold text-rose-700 max-w-full truncate" 
-                title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Без причины)`}
-              >
-                <span className="shrink-0 text-[8px]">⚠</span>
-                <span className="truncate">{formatAbsenceDate(lastAbsence.date)} пропуск</span>
-              </span>
-            ) : (
-              <span 
-                className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-800 max-w-full truncate" 
-                title={lastAbsence.notes ? `Причина: ${lastAbsence.notes}` : `Пропуск: ${formatAbsenceDate(lastAbsence.date)} (Болезнь)`}
-              >
-                <span className="shrink-0 text-[8px]">🏥</span>
-                <span className="truncate">{formatAbsenceDate(lastAbsence.date)} болезнь</span>
-              </span>
-            )
-          ) : (
-            <span className="text-[10px] text-slate-400 block truncate">100% норма</span>
-          )}
-        </div>
-
-        {/* Block 4: СТАТУС ОПЛАТЫ (3/12) */}
-        <div
-          onClick={() => role !== 'teacher' && onSelectTab('finance')}
-          className={cn(
-            "col-span-3 min-w-0 pl-3 space-y-1 p-1 -m-1 rounded-xl transition-colors group",
-            role !== 'teacher' ? "cursor-pointer hover:bg-slate-50/60" : "cursor-default"
-          )}
-          title={role !== 'teacher' ? "Перейти к финансам" : "Доступ к финансам ограничен"}
-        >
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate group-hover:text-blue-600">
-            СТАТУС ОПЛАТЫ
-          </span>
-          {role === 'teacher' ? (
-            <>
-              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
-                Обучение активно
-              </span>
-              <div className="text-[11px] text-slate-400 italic block">
-                Финансы скрыты
-              </div>
-            </>
-          ) : (
-            <>
-              {studentOverdueDebt > 0 ? (
-                <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2 py-0.5 rounded-lg inline-block">
-                  Долг: -{studentOverdueDebt} €
-                </span>
-              ) : (
-                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2 py-0.5 rounded-lg inline-block">
-                  ✓ Оплачено до {formattedPaidUntil}
-                </span>
-              )}
-              <div className="text-[11px] text-slate-500 font-medium truncate">
-                Депозит: {finSummary.formattedDeposit || '0 €'}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Lesson Modal (Unified with Calendar) */}
       <LessonModal

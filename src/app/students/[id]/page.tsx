@@ -1490,6 +1490,7 @@ export default function StudentDetailsPage() {
         onOpenEditStudentModal={handleOpenEditStudentModal}
         onOpenTelegramConnect={() => setIsTelegramConnectOpen(true)}
         onOpenCreateInvoiceModal={() => setIsInvoiceModalOpen(true)}
+        onOpenEnrollModal={() => setIsEnrollGroupModalOpen(true)}
         onConvertAdultModal={() => {
           setStudentDirectPhone(student.phone || student.parents[0]?.phone || '');
           setStudentDirectTelegram(student.telegram || '');
