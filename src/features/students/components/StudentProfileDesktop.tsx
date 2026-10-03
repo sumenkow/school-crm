@@ -530,171 +530,7 @@ export function StudentProfileDesktop({
 
         return (
           <div className="grid grid-cols-4 gap-4 mb-5">
-            {/* КАРТОЧКА 1: «Текущая группа» */}
-            <div
-              onClick={() => {
-                if (targetGroup) {
-                  router.push(`/groups/${targetGroup.id}`);
-                } else {
-                  onOpenEnrollModal?.();
-                }
-              }}
-              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Текущая группа</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-              </div>
-
-              <div className="mt-3 min-w-0">
-                {firstGroup ? (
-                  <>
-                    <h3 className="text-sm font-bold text-slate-900 truncate" title={cleanGroupName}>
-                      {cleanGroupName}
-                    </h3>
-                    <p className="text-xs text-slate-500 truncate mt-0.5" title={firstGroup.courseName || cleanGroupName}>
-                      {firstGroup.courseName ? `${cleanGroupName} / ${firstGroup.courseName}` : cleanGroupName}
-                    </p>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-bold text-slate-400">Без группы</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenEnrollModal?.();
-                      }}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-                    >
-                      Зачислить
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* КАРТОЧКА 2: «Посещаемость» */}
-            <div
-              onClick={() => onSelectTab('education')}
-              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Посещаемость</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-              </div>
-
-              <div className="mt-2 flex items-center gap-3">
-                {/* Donut-индикатор (w-12 h-12) */}
-                <div className="w-12 h-12 relative flex items-center justify-center shrink-0">
-                  <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
-                    <circle
-                      cx="22"
-                      cy="22"
-                      r="17"
-                      className="stroke-slate-100"
-                      strokeWidth="4"
-                      fill="transparent"
-                    />
-                    <circle
-                      cx="22"
-                      cy="22"
-                      r="17"
-                      className={cn(
-                        'transition-all duration-500',
-                        attendanceRateNum >= 80
-                          ? 'stroke-emerald-500'
-                          : attendanceRateNum >= 60
-                          ? 'stroke-amber-500'
-                          : 'stroke-rose-500'
-                      )}
-                      strokeWidth="4"
-                      strokeDasharray={circumference}
-                      strokeDashoffset={strokeDashoffset}
-                      strokeLinecap="round"
-                      fill="transparent"
-                    />
-                  </svg>
-                  <span className="absolute text-[11px] font-extrabold text-slate-900">
-                    {attendanceRateNum}%
-                  </span>
-                </div>
-
-                <div className="min-w-0 space-y-0.5">
-                  <div className="text-xs font-bold text-slate-800 truncate">
-                    {presentLessonsCount} из {totalLessonsCount} занятий
-                  </div>
-                  <p className="text-[11px] text-slate-500 truncate">
-                    {lastAbsence ? (
-                      lastAbsence.status === 'absent'
-                        ? `${formatAbsenceDate(lastAbsence.date)} пропуск`
-                        : `${formatAbsenceDate(lastAbsence.date)} болезнь`
-                    ) : (
-                      'Все по графику'
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* КАРТОЧКА 3: «Баланс» */}
-            <div
-              onClick={() => role !== 'teacher' && onSelectTab('finance')}
-              className={cn(
-                'bg-white rounded-2xl p-4 border border-slate-100 shadow-sm transition-colors relative group flex flex-col justify-between',
-                role !== 'teacher' ? 'hover:border-slate-200 cursor-pointer' : 'cursor-default'
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-                  <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Баланс</span>
-                </div>
-                {role !== 'teacher' && (
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
-                )}
-              </div>
-
-              <div className="mt-2 min-w-0 space-y-0.5">
-                {role === 'teacher' ? (
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-slate-800">Обучение активно</span>
-                    <p className="text-[11px] text-slate-400 italic">Финансы скрыты</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className={cn(
-                          'text-xl font-bold tracking-tight',
-                          studentOverdueDebt > 0 ? 'text-rose-600' : 'text-slate-900'
-                        )}
-                      >
-                        {studentOverdueDebt > 0 ? `-${studentOverdueDebt} €` : `${studentDeposit || 0} €`}
-                      </span>
-                      {lessonsRemainingText && (
-                        <span className="text-xs font-semibold text-slate-500">
-                          {lessonsRemainingText}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 truncate">
-                      {studentOverdueDebt > 0
-                        ? 'Задолженность по оплате'
-                        : `Оплачено до ${student.finance?.activeSubscription?.renewalDate || (student as any).paidUntil || formattedPaidUntil || '28.09.2026'}`}
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* КАРТОЧКА 4: «Представитель» */}
+            {/* КАРТОЧКА 1: «Представитель» */}
             <div
               onClick={() => onSelectTab('profile')}
               className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
@@ -765,6 +601,170 @@ export function StudentProfileDesktop({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* КАРТОЧКА 2: «Текущая группа» */}
+            <div
+              onClick={() => {
+                if (targetGroup) {
+                  router.push(`/groups/${targetGroup.id}`);
+                } else {
+                  onOpenEnrollModal?.();
+                }
+              }}
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Текущая группа</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+
+              <div className="mt-3 min-w-0">
+                {firstGroup ? (
+                  <>
+                    <h3 className="text-sm font-bold text-slate-900 truncate" title={cleanGroupName}>
+                      {cleanGroupName}
+                    </h3>
+                    <p className="text-xs text-slate-500 truncate mt-0.5" title={firstGroup.courseName || cleanGroupName}>
+                      {firstGroup.courseName ? `${cleanGroupName} / ${firstGroup.courseName}` : cleanGroupName}
+                    </p>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-400">Без группы</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenEnrollModal?.();
+                      }}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+                    >
+                      Зачислить
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* КАРТОЧКА 3: «Посещаемость» */}
+            <div
+              onClick={() => onSelectTab('education')}
+              className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:border-slate-200 transition-colors cursor-pointer relative group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Посещаемость</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+              </div>
+
+              <div className="mt-2 flex items-center gap-3">
+                {/* Donut-индикатор (w-12 h-12) */}
+                <div className="w-12 h-12 relative flex items-center justify-center shrink-0">
+                  <svg className="w-12 h-12 -rotate-90" viewBox="0 0 44 44">
+                    <circle
+                      cx="22"
+                      cy="22"
+                      r="17"
+                      className="stroke-slate-100"
+                      strokeWidth="4"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="22"
+                      cy="22"
+                      r="17"
+                      className={cn(
+                        'transition-all duration-500',
+                        attendanceRateNum >= 80
+                          ? 'stroke-emerald-500'
+                          : attendanceRateNum >= 60
+                          ? 'stroke-amber-500'
+                          : 'stroke-rose-500'
+                      )}
+                      strokeWidth="4"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      strokeLinecap="round"
+                      fill="transparent"
+                    />
+                  </svg>
+                  <span className="absolute text-[11px] font-extrabold text-slate-900">
+                    {attendanceRateNum}%
+                  </span>
+                </div>
+
+                <div className="min-w-0 space-y-0.5">
+                  <div className="text-xs font-bold text-slate-800 truncate">
+                    {presentLessonsCount} из {totalLessonsCount} занятий
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {lastAbsence ? (
+                      lastAbsence.status === 'absent'
+                        ? `${formatAbsenceDate(lastAbsence.date)} пропуск`
+                        : `${formatAbsenceDate(lastAbsence.date)} болезнь`
+                    ) : (
+                      'Все по графику'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* КАРТОЧКА 4: «Баланс» */}
+            <div
+              onClick={() => role !== 'teacher' && onSelectTab('finance')}
+              className={cn(
+                'bg-white rounded-2xl p-4 border border-slate-100 shadow-sm transition-colors relative group flex flex-col justify-between',
+                role !== 'teacher' ? 'hover:border-slate-200 cursor-pointer' : 'cursor-default'
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Баланс</span>
+                </div>
+                {role !== 'teacher' && (
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                )}
+              </div>
+
+              <div className="mt-2 min-w-0 space-y-0.5">
+                {role === 'teacher' ? (
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-bold text-slate-800">Обучение активно</span>
+                    <p className="text-[11px] text-slate-400 italic">Финансы скрыты</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={cn(
+                          'text-xl font-bold tracking-tight',
+                          studentOverdueDebt > 0 ? 'text-rose-600' : 'text-slate-900'
+                        )}
+                      >
+                        {studentOverdueDebt > 0 ? `-${studentOverdueDebt} €` : `${studentDeposit || 0} €`}
+                      </span>
+                      {lessonsRemainingText && (
+                        <span className="text-xs font-semibold text-slate-500">
+                          {lessonsRemainingText}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {studentOverdueDebt > 0
+                        ? 'Задолженность по оплате'
+                        : `Оплачено до ${student.finance?.activeSubscription?.renewalDate || (student as any).paidUntil || formattedPaidUntil || '28.09.2026'}`}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>
