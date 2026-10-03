@@ -33,9 +33,10 @@ import { StudentsDesktop } from '@/features/students/components/StudentsDesktop'
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
-import { getStoredStudents, restoreStudent } from '@/lib/data/studentStorage';
+import { getStoredStudents, restoreStudent, saveStudentToStorage, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
+import { BulkChangeGroupModal, BulkChangeStatusModal, BulkDeleteModal } from '@/components/students/BulkModals';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -230,6 +231,9 @@ function StudentsContent() {
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isBulkGroupModalOpen, setIsBulkGroupModalOpen] = useState(false);
+  const [isBulkStatusModalOpen, setIsBulkStatusModalOpen] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Cyclic Sort States
@@ -524,17 +528,97 @@ function StudentsContent() {
   };
 
   // Bulk Actions Handlers
-  const handleBulkWhatsApp = () => {
+  const handleBulkSendMessage = () => {
     const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
-    const phones = selectedStudents.map((s) => s.parentPhone).filter(Boolean);
-    toast.success(`Подготовлена рассылка в WhatsApp для ${phones.length} контактов!`);
+    const phones = selectedStudents.map((s) => s.parentPhone).filter((p) => p && p !== '—');
+    if (phones.length === 0) {
+      toast.error('У выбранных учеников не указан контактный номер');
+      return;
+    }
+    toast.success(`Подготовлена рассылка для ${phones.length} контактов`);
   };
 
-  const handleBulkChangeTeacher = () => {
-    const newTeacher = prompt('Введите имя нового преподавателя (например: Денис Смирнов):');
-    if (!newTeacher) return;
-    toast.success(`Преподаватель успешно изменен на «${newTeacher}» для ${selectedIds.length} учеников!`);
+  const handleBulkChangeGroupConfirm = (groupId: string | null) => {
+    const allRawStudents = getStoredStudents();
+    const allGroups = getStoredGroups();
+    const targetGroupObj = groupId ? allGroups.find((g) => g.id === groupId) : null;
+
+    let count = 0;
+    for (const studentId of selectedIds) {
+      const raw = allRawStudents.find((s) => s.id === studentId);
+      if (!raw) continue;
+
+      const newGroups = targetGroupObj
+        ? [
+            {
+              id: targetGroupObj.id,
+              name: targetGroupObj.name,
+              courseName: (targetGroupObj as any).courseName || targetGroupObj.name,
+              teacherName: (targetGroupObj as any).teacherName || 'Мария Иванова',
+              schedule: (targetGroupObj as any).schedule || 'Пн/Чт 18:45',
+              status: 'active',
+              joinedAt: new Date().toISOString().split('T')[0],
+            },
+          ]
+        : [];
+
+      const updated: FullStudentData = {
+        ...raw,
+        groups: newGroups,
+        updatedAt: new Date().toISOString(),
+      };
+
+      saveStudentToStorage(updated);
+      count++;
+    }
+
+    refreshStudents();
+    setIsBulkGroupModalOpen(false);
     setSelectedIds([]);
+    toast.success(`Группа успешно изменена для ${count} уч.`);
+  };
+
+  const handleBulkChangeStatusConfirm = (newStatus: 'active' | 'trial' | 'paused' | 'archived') => {
+    const allRawStudents = getStoredStudents();
+    let count = 0;
+
+    for (const studentId of selectedIds) {
+      const raw = allRawStudents.find((s) => s.id === studentId);
+      if (!raw) continue;
+
+      const updated: FullStudentData = {
+        ...raw,
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
+
+      saveStudentToStorage(updated);
+      count++;
+    }
+
+    refreshStudents();
+    setIsBulkStatusModalOpen(false);
+    setSelectedIds([]);
+    const statusLabels: Record<string, string> = {
+      active: 'Активен',
+      trial: 'Пробный',
+      paused: 'Пауза',
+      archived: 'В архиве',
+    };
+    toast.success(`Статус изменен на «${statusLabels[newStatus] || newStatus}» для ${count} уч.`);
+  };
+
+  const handleBulkDeleteConfirm = () => {
+    let count = 0;
+    for (const studentId of selectedIds) {
+      softDeleteStudent(studentId);
+      count++;
+    }
+
+    refreshStudents();
+    setIsBulkDeleteModalOpen(false);
+    setSelectedIds([]);
+    toast.success(`Перемещено в удаленные: ${count} уч.`);
   };
 
   const handleBulkExport = () => {
@@ -560,7 +644,7 @@ function StudentsContent() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       {/* 1. Header & Title */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1021,10 +1105,37 @@ function StudentsContent() {
       {/* Floating Bulk Operations Bar */}
       <BulkActionsBar
         selectedCount={selectedIds.length}
-        onWhatsAppBroadcast={handleBulkWhatsApp}
-        onChangeTeacher={handleBulkChangeTeacher}
+        onSendMessage={handleBulkSendMessage}
+        onChangeGroup={() => setIsBulkGroupModalOpen(true)}
+        onChangeStatus={() => setIsBulkStatusModalOpen(true)}
         onExport={handleBulkExport}
+        onDelete={() => setIsBulkDeleteModalOpen(true)}
         onClearSelection={() => setSelectedIds([])}
+      />
+
+      {/* Bulk Change Group Modal */}
+      <BulkChangeGroupModal
+        isOpen={isBulkGroupModalOpen}
+        onClose={() => setIsBulkGroupModalOpen(false)}
+        onConfirm={handleBulkChangeGroupConfirm}
+        groups={groups}
+        selectedCount={selectedIds.length}
+      />
+
+      {/* Bulk Change Status Modal */}
+      <BulkChangeStatusModal
+        isOpen={isBulkStatusModalOpen}
+        onClose={() => setIsBulkStatusModalOpen(false)}
+        onConfirm={handleBulkChangeStatusConfirm}
+        selectedCount={selectedIds.length}
+      />
+
+      {/* Bulk Delete Modal */}
+      <BulkDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={handleBulkDeleteConfirm}
+        selectedCount={selectedIds.length}
       />
 
       {/* Create Student Modal */}
