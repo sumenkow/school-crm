@@ -26,10 +26,11 @@ import {
 import { cn, isEntityNew } from '@/lib/utils';
 import type { StudentListItem } from '@/app/students/page';
 import { restoreStudent, saveStudentToStorage } from '@/lib/data/studentStorage';
-import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import type { FullLessonData, FullStudentData } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
+import { LessonModal } from '@/components/calendar/LessonModal';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -99,6 +100,7 @@ interface UpcomingLessonInfo {
   lessonId: string;
   dateDayFormatted: string; // e.g. "Вт, 21 сен"
   timeFormatted: string;    // e.g. "18:45 – 20:15"
+  lessonObj: FullLessonData;
 }
 
 function findUpcomingLessonForStudent(
@@ -158,6 +160,7 @@ function findUpcomingLessonForStudent(
     lessonId: next.id,
     dateDayFormatted,
     timeFormatted,
+    lessonObj: next,
   };
 }
 
@@ -216,6 +219,7 @@ export function StudentsDesktop({
   const [activeTelegramStudent, setActiveTelegramStudent] = useState<StudentListItem | null>(null);
   const [activeStatusDropdownId, setActiveStatusDropdownId] = useState<string | null>(null);
   const [activeActionsRowId, setActiveActionsRowId] = useState<string | null>(null);
+  const [selectedLessonModal, setSelectedLessonModal] = useState<FullLessonData | null>(null);
 
   // Memoized lesson storage retrieval to prevent excessive re-renders
   const allLessons = useMemo(() => {
@@ -555,12 +559,20 @@ export function StudentsDesktop({
                                           <div className="text-slate-400 text-[11px]">
                                             Преподаватель: {g.teacherName}
                                           </div>
-                                          <Link
-                                            href={`/calendar/lessons/${g.nextLessonId || g.id}`}
-                                            className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs"
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setActiveCoursePopoverId(null);
+                                              const lesson = allLessons.find((l) => l.id === g.nextLessonId || l.groupId === g.id);
+                                              if (lesson) {
+                                                setSelectedLessonModal(lesson);
+                                              }
+                                            }}
+                                            className="inline-block mt-1 text-blue-400 hover:text-blue-300 font-semibold text-xs cursor-pointer text-left"
                                           >
                                             Перейти к уроку →
-                                          </Link>
+                                          </button>
                                         </div>
                                       ))}
                                     </div>
@@ -585,9 +597,16 @@ export function StudentsDesktop({
                   {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ */}
                   <td className="px-3 py-2.5 align-middle">
                     {upcomingLesson ? (
-                      <Link
-                        href={`/calendar/lessons/${upcomingLesson.lessonId}`}
-                        className="flex items-center justify-between gap-1.5 p-1 -m-1 rounded-lg hover:bg-slate-100/80 transition-colors group/lesson block"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const lesson = upcomingLesson.lessonObj || allLessons.find((l) => l.id === upcomingLesson.lessonId);
+                          if (lesson) {
+                            setSelectedLessonModal(lesson);
+                          }
+                        }}
+                        className="w-full flex items-center justify-between gap-1.5 p-1 -m-1 rounded-lg hover:bg-slate-100/80 transition-colors group/lesson cursor-pointer text-left"
+                        title="Открыть карточку урока"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center text-xs font-bold text-slate-800 group-hover/lesson:text-blue-600 transition-colors">
@@ -599,7 +618,7 @@ export function StudentsDesktop({
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover/lesson:text-blue-500 shrink-0" />
-                      </Link>
+                      </button>
                     ) : (
                       <span className="text-[11px] text-slate-400 font-normal italic select-none">
                         Нет запланированных
@@ -919,6 +938,24 @@ export function StudentsDesktop({
           </div>
         </div>
       )}
+
+      {/* In-CRM Lesson Modal (Unified with Calendar) */}
+      <LessonModal
+        isOpen={Boolean(selectedLessonModal)}
+        lesson={selectedLessonModal}
+        onClose={() => setSelectedLessonModal(null)}
+        onSave={(updatedLesson) => {
+          saveLessonToStorage(updatedLesson);
+          setSelectedLessonModal(null);
+          onRefreshStudents();
+          toast.success('Занятие успешно сохранено');
+        }}
+        onDelete={() => {
+          setSelectedLessonModal(null);
+          onRefreshStudents();
+          toast.success('Занятие удалено');
+        }}
+      />
     </div>
   );
 }

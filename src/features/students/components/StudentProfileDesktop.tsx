@@ -17,8 +17,10 @@ import {
 import { cn, isEntityNew } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
-import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { formatAgeAndGrade, formatBirthDate } from '@/lib/data/studentAgeHelper';
+import { useToast } from '@/context/ToastContext';
+import { LessonModal } from '@/components/calendar/LessonModal';
 
 function formatAbsenceDate(dStr: string): string {
   if (!dStr) return '';
@@ -123,7 +125,9 @@ export function StudentProfileDesktop({
   onOpenCreateInvoiceModal,
 }: StudentProfileDesktopProps) {
   const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const [selectedLessonModal, setSelectedLessonModal] = useState<FullLessonData | null>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -517,14 +521,15 @@ export function StudentProfileDesktop({
                     {cleanFirstGrpName}
                   </Link>
                   {upcomingLesson && upcomingLesson.date ? (
-                    <Link
-                      href={lessonHref}
-                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 max-w-full truncate bg-blue-50/60 px-2 py-0.5 rounded-md border border-blue-100/80"
-                      title="Перейти к карточке ближайшего урока"
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLessonModal(upcomingLesson)}
+                      className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 max-w-full truncate bg-blue-50/60 px-2 py-0.5 rounded-md border border-blue-100/80 cursor-pointer text-left"
+                      title="Открыть карточку ближайшего урока"
                     >
                       <Clock className="w-3 h-3 shrink-0 text-blue-500" />
                       <span className="truncate">Урок: {formatNextLessonText(upcomingLesson.date, upcomingLesson.startTime)}</span>
-                    </Link>
+                    </button>
                   ) : (
                     <span className="text-[11px] text-slate-400 block truncate pl-0.5">
                       Следующее занятие: —
@@ -729,6 +734,22 @@ export function StudentProfileDesktop({
           )}
         </div>
       </div>
+
+      {/* Lesson Modal (Unified with Calendar) */}
+      <LessonModal
+        isOpen={Boolean(selectedLessonModal)}
+        lesson={selectedLessonModal}
+        onClose={() => setSelectedLessonModal(null)}
+        onSave={(updatedLesson) => {
+          saveLessonToStorage(updatedLesson);
+          setSelectedLessonModal(null);
+          toast.success('Занятие успешно сохранено');
+        }}
+        onDelete={() => {
+          setSelectedLessonModal(null);
+          toast.success('Занятие удалено');
+        }}
+      />
     </div>
   );
 }
