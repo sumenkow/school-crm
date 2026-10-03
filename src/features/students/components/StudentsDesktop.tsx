@@ -265,17 +265,17 @@ export function StudentsDesktop({
 
   return (
     <div className="hidden md:block w-full overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-xs">
-      <table className="w-full min-w-[1050px] table-fixed border-collapse text-left text-xs">
+      <table className="w-full min-w-[1269px] table-fixed border-collapse text-left text-xs">
         <colgroup>
-          <col className="w-10" />      {/* Чекбокс 40px */}
-          <col className="w-[20%]" />   {/* Ученик ⇅ */}
-          <col className="w-[17%]" />   {/* Представитель */}
-          <col className="w-[17%]" />   {/* Обучение */}
-          <col className="w-[15%]" />   {/* Ближайшее занятие */}
-          <col className="w-[10%]" />   {/* Посещаемость ⇅ */}
-          <col className="w-[10%]" />   {/* Баланс ⇅ */}
-          <col className="w-[11%]" />   {/* Статус */}
-          <col className="w-10" />      {/* Действия ··· 40px */}
+          <col className="w-[44px]" />   {/* Чекбокс 44px */}
+          <col className="w-[210px]" />  {/* Ученик 210px */}
+          <col className="w-[250px]" />  {/* Представитель 250px */}
+          <col className="w-[180px]" />  {/* Обучение 180px */}
+          <col className="w-[170px]" />  {/* Ближайшее занятие 170px */}
+          <col className="w-[125px]" />  {/* Посещаемость 125px */}
+          <col className="w-[120px]" />  {/* Баланс 120px */}
+          <col className="w-[130px]" />  {/* Статус 130px */}
+          <col className="w-[40px]" />   {/* Действия ··· 40px */}
         </colgroup>
 
         {/* Шапка таблицы */}
@@ -478,7 +478,7 @@ export function StudentsDesktop({
                           {parentCleanName || 'Представитель'}
                         </Link>
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[11px] text-slate-400 font-mono truncate" title={formatPhone(student.parentPhone)}>
+                          <span className="text-[11px] text-slate-600 font-mono whitespace-nowrap" title={formatPhone(student.parentPhone)}>
                             {formatPhone(student.parentPhone)}
                           </span>
                           {normalizePhone(student.parentPhone) && (
@@ -635,7 +635,7 @@ export function StudentsDesktop({
                       <span className="text-xs font-bold text-slate-900 group-hover/att:text-blue-600 transition-colors">
                         {attendanceRate}%
                       </span>
-                      <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
+                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
