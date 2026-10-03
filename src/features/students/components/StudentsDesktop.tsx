@@ -272,9 +272,9 @@ export function StudentsDesktop({
           <col className="w-[175px]" />  {/* Представитель 175px (1-2 символа до значков) */}
           <col className="w-[180px]" />  {/* Обучение 180px */}
           <col className="w-[135px]" />  {/* Ближайшее занятие 135px (без ...) */}
-          <col className="w-[95px]" />   {/* Посещаемость 95px */}
-          <col className="w-[85px]" />   {/* Баланс 85px */}
-          <col className="w-[95px]" />   {/* Статус 95px */}
+          <col className="w-[118px]" />  {/* Посещаемость 118px (расширен под заголовок) */}
+          <col className="w-[70px]" />   {/* Баланс 70px (смещен вправо к статусу) */}
+          <col className="w-[90px]" />   {/* Статус 90px */}
           <col className="w-[36px]" />   {/* Действия ··· 36px */}
         </colgroup>
 
@@ -307,11 +307,11 @@ export function StudentsDesktop({
             <th className="px-2 py-2 text-left">ПРЕДСТАВИТЕЛЬ</th>
             <th className="px-2 py-2 text-left">ОБУЧЕНИЕ</th>
             <th className="px-2 py-2 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
-            <th className="px-1.5 py-2 text-center">
+            <th className="px-2 py-2 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
-                className="inline-flex items-center justify-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer mx-auto"
+                className="inline-flex items-center justify-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer mx-auto whitespace-nowrap"
               >
                 <span>ПОСЕЩАЕМОСТЬ</span>
                 {sortField === 'attendanceRate' ? (
@@ -321,11 +321,11 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-1.5 py-2 text-left">
+            <th className="px-1 py-2 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
-                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer"
+                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer whitespace-nowrap"
               >
                 <span>БАЛАНС</span>
                 {sortField === 'finance' ? (
@@ -625,7 +625,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 5. КОЛОНКА: ПОСЕЩАЕМОСТЬ */}
-                  <td className="px-1.5 py-2 text-center align-middle">
+                  <td className="px-2 py-2 text-center align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'attendance')}
                       className="flex flex-col items-center justify-center group/att cursor-pointer w-full"
@@ -652,8 +652,8 @@ export function StudentsDesktop({
                     </div>
                   </td>
 
-                  {/* 6. КОЛОНКА: БАЛАНС */}
-                  <td className="px-1.5 py-2 align-middle">
+                  {/* 6. КОЛОНКА: БАЛАНС (Смещен вправо к статусу) */}
+                  <td className="px-1 py-2 align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'finance')}
                       className="group/fin min-w-0 cursor-pointer space-y-0.5"
