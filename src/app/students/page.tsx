@@ -15,10 +15,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Info,
   ChevronDown,
   MoreHorizontal,
-  Bookmark,
   Settings2,
   Download,
   X,
@@ -376,9 +374,6 @@ function StudentsContent() {
     }
   };
 
-  const handleSaveFilters = () => {
-    toast.success('Параметры фильтрации сохранены');
-  };
 
   const filteredStudents = useMemo(() => {
     let result = students.filter((s) => {
@@ -633,15 +628,14 @@ function StudentsContent() {
   return (
     <div className="space-y-4 pb-24">
       {/* 1. Header & Title */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <span>Ученики</span>
-            <Info className="w-4 h-4 text-slate-400 cursor-help" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Ученики
           </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
+          <span className="text-xs text-slate-500 font-medium">
             Всего: {totalCount} · Активных: {activeCount} · Неактивных: {inactiveCount}
-          </p>
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -712,99 +706,6 @@ function StudentsContent() {
               </>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* 2. Status Pills Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setStatusTab('all')}
-            className={cn(
-              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
-              statusTab === 'all'
-                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            )}
-          >
-            Все ({totalCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusTab('active')}
-            className={cn(
-              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
-              statusTab === 'active'
-                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            )}
-          >
-            Активные ({activeCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusTab('inactive')}
-            className={cn(
-              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
-              statusTab === 'inactive'
-                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
-                : 'text-slate-600 hover:bg-slate-100'
-            )}
-          >
-            Неактивные ({inactiveCount})
-          </button>
-
-          {attentionCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setStatusTab('attention')}
-              className={cn(
-                'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-1.5',
-                statusTab === 'attention'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs'
-                  : 'text-slate-600 hover:bg-slate-100'
-              )}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Требуют внимания ({attentionCount})</span>
-            </button>
-          )}
-
-          {statusTab === 'deleted' && (
-            <button
-              type="button"
-              onClick={() => setStatusTab('deleted')}
-              className="h-8 px-3 text-xs font-semibold rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs cursor-pointer flex items-center gap-1.5"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-slate-500" />
-              <span>Удаленные ({deletedCount})</span>
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {hasActiveFilters ? (
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="h-8 px-3 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-              <span>Сбросить</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSaveFilters}
-              className="h-8 px-3 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Bookmark className="w-3.5 h-3.5 text-slate-400" />
-              <span>Сохранить фильтры</span>
-            </button>
-          )}
         </div>
       </div>
 
