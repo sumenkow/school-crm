@@ -2327,218 +2327,218 @@ export default function StudentDetailsPage() {
             );
           })()}
 
-          {/* БЛОК 3: ФОРМА ДОБАВЛЕНИЯ КОММЕНТАРИЯ ПРЕПОДАВАТЕЛЯ */}
-          <div className="rounded-2xl border border-purple-200/80 bg-white p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <MessageSquarePlus className="h-4 w-4 text-purple-600" />
-                Оставить отзыв или комментарий преподавателя
-              </h3>
-            </div>
-
-            <form onSubmit={handleAddTeacherComment} className="rounded-xl border border-purple-100 bg-purple-50/40 p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="text-slate-600 font-medium block mb-1">Группа / предмет:</label>
-                  <select
-                    value={newTeacherCommentGroup}
-                    onChange={(e) => setNewTeacherCommentGroup(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                  >
-                    {student.groups.map((g) => (
-                      <option key={g.id} value={g.name}>{g.name}</option>
-                    ))}
-                    <option value="Индивидуальное занятие">Индивидуальное занятие</option>
-                    <option value="Общий комментарий">Общий комментарий</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-slate-600 font-medium block mb-1">Категория отзыва:</label>
-                  <select
-                    value={newTeacherCommentCategory}
-                    onChange={(e) => setNewTeacherCommentCategory(e.target.value as any)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                  >
-                    <option value="progress">🌟 Успеваемость и прогресс</option>
-                    <option value="homework">📚 Домашнее задание</option>
-                    <option value="behavior">⚡ Поведение и дисциплина</option>
-                    <option value="general">💬 Общий комментарий</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-slate-600 font-medium block mb-1">Тема урока (необязательно):</label>
-                  <input
-                    type="text"
-                    value={newTeacherCommentTopic}
-                    onChange={(e) => setNewTeacherCommentTopic(e.target.value)}
-                    placeholder="Например: Past Simple vs Present Perfect"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-400"
-                  />
-                </div>
-              </div>
-
-              <textarea
-                rows={2}
-                value={newTeacherCommentText}
-                onChange={(e) => setNewTeacherCommentText(e.target.value)}
-                placeholder="Напишите комментарий об ученике (активность на уроке, пробелы, рекомендации)..."
-                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-purple-500 leading-relaxed"
-              />
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-                <span className="text-[11px] text-slate-500">
-                  Автор отзыва: <strong>{userName || 'Преподаватель'}</strong>
-                </span>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 transition-colors"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  Сохранить и отправить в Timeline
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* БЛОК 4: ЕДИНАЯ ЛЕНТА ЗАНЯТИЙ И ОТЗЫВОВ */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden space-y-0">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                История проведенных занятий и отзывов ({student.attendanceStats.history.length})
-              </h4>
-              <span className="text-[11px] text-slate-400">От новых к более старым</span>
-            </div>
-
-            <div className="divide-y divide-slate-100 text-xs">
-              {student.attendanceStats.history.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  История проведенных занятий пока отсутствует
-                </div>
-              ) : (
-                student.attendanceStats.history.map((item, idx) => {
-                  // Find matching teacher feedback for this lesson/date/group
-                  const matchingComments = (student.teacherComments || []).filter((tc) => {
-                    const tcDate = tc.date ? tc.date.split(',')[0].trim() : '';
-                    const itemDate = item.date ? item.date.trim() : '';
-                    return (
-                      (tc.groupName && item.groupName && tc.groupName.toLowerCase() === item.groupName.toLowerCase()) ||
-                      (tcDate && itemDate && tcDate === itemDate) ||
-                      (tc.lessonTopic && item.topic && tc.lessonTopic.toLowerCase() === item.topic.toLowerCase())
-                    );
-                  });
-
-                  // Resolve group teacher name and lesson timing for feedback author & date
-                  const groupMatch = student.groups.find((g) => g.name.toLowerCase() === (item.groupName || '').toLowerCase());
-                  const teacherNameRaw = item.teacherName || groupMatch?.teacherName || student.groups[0]?.teacherName || 'Мария Иванова';
-                  const teacherAuthor = teacherNameRaw.includes('(') ? teacherNameRaw : `${teacherNameRaw} (Преподаватель)`;
-                  const lessonTime = item.time || (groupMatch?.schedule?.includes('•') ? groupMatch.schedule.split('•')[1]?.trim()?.split('–')[1]?.trim() : '20:15');
-                  const lessonDateTimeFormatted = `${item.date}, ${lessonTime}`;
-
-                  // Collect feedbacks to render
-                  const feedbacksToRender: Array<{ id: string; author: string; date: string; content: string }> = [];
-
-                  matchingComments.forEach((tc) => {
-                    feedbacksToRender.push({
-                      id: tc.id,
-                      author: tc.author.includes('(') ? tc.author : `${tc.author} (Преподаватель)`,
-                      date: tc.date,
-                      content: tc.content,
-                    });
-                  });
-
-                  // If direct feedback exists (or notes for present status), add if not duplicate
-                  const directFeedbackText = (item.feedback || (item.status === 'present' ? item.notes : ''))?.trim();
-                  if (directFeedbackText) {
-                    const isDup = feedbacksToRender.some(
-                      (fb) => fb.content.toLowerCase().trim() === directFeedbackText.toLowerCase()
-                    );
-                    if (!isDup) {
-                      feedbacksToRender.push({
-                        id: `fb_${idx}_direct`,
-                        author: teacherAuthor,
-                        date: lessonDateTimeFormatted,
-                        content: directFeedbackText,
-                      });
+          {/* 2-КОЛОНОЧНЫЙ ГРИД: «Последний комментарий» и «Активные задачи» */}
+          {(() => {
+            // Extract latest teacher comment
+            const latestTeacherComment = (() => {
+              if (student.teacherComments && student.teacherComments.length > 0) {
+                const sorted = [...student.teacherComments].sort((a, b) => {
+                  const parseD = (dStr: string) => {
+                    if (!dStr) return 0;
+                    if (dStr.includes('.')) {
+                      const p = dStr.split('.');
+                      if (p.length >= 2) {
+                        const d = parseInt(p[0], 10);
+                        const m = parseInt(p[1], 10);
+                        const y = p[2] ? parseInt(p[2], 10) : 2026;
+                        return new Date(y < 100 ? 2000 + y : y, m - 1, d).getTime();
+                      }
                     }
-                  }
+                    return new Date(dStr).getTime() || 0;
+                  };
+                  return parseD(b.date) - parseD(a.date);
+                });
+                return sorted[0];
+              }
 
-                  const isAbsence = item.status === 'absent' || item.status === 'sick' || item.status === 'excused';
+              const historyWithFeedback = (student.attendanceStats?.history || []).find(
+                (h) => h.feedback || (h.status === 'present' && h.notes)
+              );
+              if (historyWithFeedback) {
+                const groupMatch = student.groups.find(
+                  (g) => (g.name || '').toLowerCase() === (historyWithFeedback.groupName || '').toLowerCase()
+                );
+                const teacherName =
+                  historyWithFeedback.teacherName || groupMatch?.teacherName || student.groups[0]?.teacherName || 'Мария Иванова';
+                return {
+                  id: 'hist_fb',
+                  studentId: student.id,
+                  author: teacherName,
+                  date: historyWithFeedback.date,
+                  content: historyWithFeedback.feedback || historyWithFeedback.notes || '',
+                  category: 'progress' as const,
+                  groupName: historyWithFeedback.groupName,
+                };
+              }
+              return null;
+            })();
 
-                  return (
-                    <div key={idx} className="p-4 space-y-2.5 hover:bg-slate-50/50 transition-colors">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900">{item.date}</span>
-                            <span className="text-slate-400">•</span>
-                            <span className="font-semibold text-blue-600">{item.groupName}</span>
-                          </div>
-                          <p className="text-slate-600">{item.topic || 'Занятие по расписанию'}</p>
+            const getAuthorInitials = (name?: string) => {
+              if (!name) return 'ПР';
+              const clean = name.replace(/\s*\([^)]*\)/g, '').trim();
+              const parts = clean.split(/\s+/);
+              if (parts.length >= 2) {
+                return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+              }
+              return clean.slice(0, 2).toUpperCase();
+            };
 
-                          {/* Причина отсутствия — выводится ТОЛЬКО при пропусках */}
-                          {isAbsence && (
-                            <div className="pt-1">
-                              {item.status === 'sick' || item.status === 'excused' ? (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                                  🏥 Причина: {item.reason || item.notes || 'Болезнь (справка)'}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200/80 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
-                                  ⚠ Причина: {item.reason || item.notes || 'Без предупреждения'}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
+            // Active tasks (status !== 'done')
+            const activeTasksList = (student.tasks || []).filter((t) => t.status !== 'done');
 
-                        <span
-                          className={cn(
-                            'rounded-full px-2.5 py-1 font-bold text-[11px]',
-                            item.status === 'present'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : item.status === 'rescheduled'
-                              ? 'bg-purple-100 text-purple-800'
-                              : item.status === 'cancelled'
-                              ? 'bg-slate-100 text-slate-700'
-                              : 'bg-rose-100 text-rose-800'
-                          )}
-                        >
-                          {item.status === 'present'
-                            ? 'Был'
-                            : item.status === 'rescheduled'
-                            ? 'Перенос'
-                            : item.status === 'cancelled'
-                            ? 'Отменено'
-                            : 'Пропуск'}
-                        </span>
+            return (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* КОЛОНКА 1: «Последний комментарий преподавателя» */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-purple-600" />
+                        <h3 className="text-sm font-bold text-slate-900">Последний комментарий преподавателя</h3>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('timeline');
+                          window.history.replaceState(null, '', `/students/${studentId}?tab=timeline`);
+                        }}
+                        className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        Все комментарии →
+                      </button>
+                    </div>
 
-                      {/* ЭТАЛОННЫЙ БЛОК: ОТЗЫВ ПРЕПОДАВАТЕЛЯ */}
-                      {feedbacksToRender.length > 0 && (
-                        <div className="mt-3 p-4 rounded-2xl border border-purple-100 bg-purple-50/20 space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold tracking-wider text-purple-700 uppercase">
-                            <MessageSquare className="h-3.5 w-3.5 text-purple-600" />
-                            <span>ОТЗЫВ ПРЕПОДАВАТЕЛЯ К ЭТОМУ УРОКУ:</span>
-                          </div>
-                          {feedbacksToRender.map((fb) => (
-                            <div key={fb.id} className="space-y-1 border-t border-purple-100/60 pt-2 first:border-0 first:pt-0">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-sm font-semibold text-slate-800">{fb.author}</span>
-                                <span className="text-xs text-slate-400 font-normal">{fb.date}</span>
+                    {/* Content */}
+                    <div className="pt-3">
+                      {latestTeacherComment ? (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center shrink-0 border border-purple-200/60">
+                                {getAuthorInitials(latestTeacherComment.author)}
                               </div>
-                              <p className="text-sm text-slate-700 italic leading-relaxed">«{fb.content}»</p>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900">
+                                  {latestTeacherComment.author.replace(/\s*\([^)]*\)/g, '').trim()}
+                                </h4>
+                                <p className="text-[11px] text-slate-400">
+                                  {latestTeacherComment.date}
+                                  {latestTeacherComment.groupName ? ` · ${latestTeacherComment.groupName}` : ''}
+                                </p>
+                              </div>
                             </div>
-                          ))}
+                            <span className="rounded-full bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-semibold px-2 py-0.5">
+                              Преподаватель
+                            </span>
+                          </div>
+
+                          <div className="bg-purple-50/30 rounded-xl p-3 border border-purple-100/60">
+                            <p className="text-xs text-slate-700 leading-relaxed italic">
+                              «{latestTeacherComment.content}»
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center">
+                          <p className="text-xs text-slate-400 italic">
+                            Комментарии и отзывы преподавателей пока отсутствуют
+                          </p>
                         </div>
                       )}
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                  </div>
+                </div>
+
+                {/* КОЛОНКА 2: «Активные задачи» */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-sm font-bold text-slate-900">Активные задачи</h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('tasks');
+                          window.history.replaceState(null, '', `/students/${studentId}?tab=tasks`);
+                        }}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        Все задачи →
+                      </button>
+                    </div>
+
+                    {/* Content: List of active tasks with interactive checkboxes */}
+                    <div className="pt-2 divide-y divide-slate-100">
+                      {activeTasksList.length === 0 ? (
+                        <div className="py-6 text-center">
+                          <p className="text-xs font-semibold text-slate-600">Все текущие задачи выполнены</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Новые поручения отобразятся здесь</p>
+                        </div>
+                      ) : (
+                        activeTasksList.slice(0, 3).map((task) => {
+                          const overdueDays = getOverdueDays(task.dueDate);
+                          const isOverdue = overdueDays > 0;
+                          const isToday = !isOverdue && task.dueDate ? task.dueDate.includes(new Date().toLocaleDateString('ru-RU')) || task.dueDate.toLowerCase().includes('сегодня') : false;
+                          const shortDueDate = task.dueDate ? task.dueDate.split('.').slice(0, 2).join('.') : '';
+
+                          return (
+                            <div
+                              key={task.id}
+                              className="py-2.5 flex items-center justify-between gap-3 group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {/* Interactive Checkbox */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleTask(task.id)}
+                                  className="h-4 w-4 rounded border border-slate-300 hover:border-blue-600 flex items-center justify-center transition-colors shrink-0 cursor-pointer text-transparent hover:text-blue-600"
+                                  title="Отметить как выполненную"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </button>
+
+                                <span
+                                  onClick={() => {
+                                    setSelectedTaskForModal(task);
+                                    setTaskModalTab('details');
+                                  }}
+                                  className="text-xs text-slate-800 font-medium truncate cursor-pointer hover:text-blue-600 transition-colors"
+                                  title={task.title || (task as any).text}
+                                >
+                                  {task.title || (task as any).text || 'Поручение по ученику'}
+                                </span>
+                              </div>
+
+                              {/* Due Date Badge */}
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                {isOverdue ? (
+                                  <span className="rounded-md bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                                    Просрочено
+                                  </span>
+                                ) : isToday ? (
+                                  <span className="rounded-md bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+                                    Сегодня
+                                  </span>
+                                ) : shortDueDate ? (
+                                  <span className="rounded-md bg-slate-100 text-slate-600 px-1.5 py-0.5 text-[10px] font-mono font-medium">
+                                    {shortDueDate}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
