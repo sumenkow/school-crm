@@ -46,7 +46,7 @@ import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { cn, formatPhone, normalizePhone } from '@/lib/utils';
+import { cn, formatPhone, normalizePhone, getTelLink, getWhatsAppLink } from '@/lib/utils';
 
 export const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -271,10 +271,10 @@ export function LeadDetailsModal({
   if (!isOpen || !lead) return null;
 
   const phoneClean = normalizePhone(contactPhone || lead.contact);
-  const waLink = phoneClean ? `https://wa.me/${phoneClean}` : '#';
+  const waLink = getWhatsAppLink(contactPhone || lead.contact);
   const tgLink = telegram
     ? `https://t.me/${String(telegram).replace('@', '')}`
-    : (phoneClean ? `https://wa.me/${phoneClean}` : '#');
+    : waLink;
 
   // Helper metrics
   const daysInCrm = (() => {
@@ -646,8 +646,9 @@ export function LeadDetailsModal({
 
                   <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                     <a
-                      href={phoneClean ? `tel:${phoneClean}` : '#'}
+                      href={getTelLink(lead.contact)}
                       className="font-mono text-xs font-semibold text-slate-700 hover:text-blue-600 flex items-center gap-1.5"
+                      title={formatPhone(lead.contact)}
                     >
                       <Phone className="w-3.5 h-3.5 text-slate-400" />
                       {formatPhone(lead.contact)}

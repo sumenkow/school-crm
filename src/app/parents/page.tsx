@@ -194,28 +194,8 @@ const INITIAL_PARENTS: ParentRecord[] = [
   },
 ];
 
-export function normalizePhone(phone?: string): string {
-  if (!phone) return '';
-  let clean = phone.replace(/\D/g, '');
-  if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
-    clean = '7' + clean.slice(1);
-  }
-  return clean;
-}
-
-export function formatPhone(phone?: string): string {
-  if (!phone) return '—';
-  const clean = normalizePhone(phone);
-  if (!clean) return phone;
-
-  if (clean.length === 11 && clean.startsWith('7')) {
-    return `+7 (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9, 11)}`;
-  }
-  if (clean.length > 6) {
-    return `+${clean.slice(0, 1)} (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9)}`;
-  }
-  return phone;
-}
+import { normalizePhone, formatPhone } from '@/lib/utils';
+export { normalizePhone, formatPhone };
 
 export function cleanGroupName(groupStr: string): string[] {
   if (!groupStr) return ['Основной курс'];

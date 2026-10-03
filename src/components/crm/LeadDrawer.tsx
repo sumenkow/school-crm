@@ -30,6 +30,7 @@ import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { formatPhone, getTelLink } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 interface LeadDrawerProps {
@@ -400,7 +401,7 @@ export function LeadDrawer({
                 </div>
 
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                  <span className="font-mono text-xs text-slate-700 font-semibold">{lead.contact}</span>
+                  <span className="font-mono text-xs text-slate-700 font-semibold" title={formatPhone(lead.contact)}>{formatPhone(lead.contact)}</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -443,7 +444,7 @@ export function LeadDrawer({
                       </button>
                     )}
                     <a
-                      href={`tel:${phoneDigits}`}
+                      href={getTelLink(lead.contact)}
                       className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
                       title="Позвонить"
                     >

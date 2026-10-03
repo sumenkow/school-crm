@@ -23,7 +23,7 @@ import {
   Trash2,
   ExternalLink,
 } from 'lucide-react';
-import { cn, isEntityNew } from '@/lib/utils';
+import { cn, isEntityNew, formatPhone, getWhatsAppLink, normalizePhone } from '@/lib/utils';
 import type { StudentListItem } from '@/app/students/page';
 import { restoreStudent, saveStudentToStorage } from '@/lib/data/studentStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
@@ -478,14 +478,14 @@ export function StudentsDesktop({
                           {parentCleanName || 'Представитель'}
                         </Link>
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[11px] text-slate-400 font-mono truncate">
-                            {student.parentPhone || '—'}
+                          <span className="text-[11px] text-slate-400 font-mono truncate" title={formatPhone(student.parentPhone)}>
+                            {formatPhone(student.parentPhone)}
                           </span>
-                          {phoneClean && (
+                          {normalizePhone(student.parentPhone) && (
                             <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                               {/* WhatsApp Mini Button */}
                               <a
-                                href={`https://wa.me/${phoneClean}`}
+                                href={getWhatsAppLink(student.parentPhone)}
                                 target="_blank"
                                 rel="noreferrer"
                                 title="Написать в WhatsApp"

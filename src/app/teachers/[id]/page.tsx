@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { formatPhone, getTelLink } from '@/lib/utils';
 
 export default function TeacherDetailsPage() {
   const params = useParams();
@@ -201,7 +202,7 @@ export default function TeacherDetailsPage() {
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
                   {teacher.phone && teacher.phone !== '—' ? (
-                    <a href={`tel:${teacher.phone}`} className="hover:text-blue-600 font-medium">{teacher.phone}</a>
+                    <a href={getTelLink(teacher.phone)} className="hover:text-blue-600 font-medium" title={formatPhone(teacher.phone)}>{formatPhone(teacher.phone)}</a>
                   ) : (
                     <span className="text-slate-400">Телефон не указан</span>
                   )}

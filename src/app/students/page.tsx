@@ -23,7 +23,7 @@ import {
   Download,
   X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { TeacherQuickViewModal } from '@/components/dashboard/TeacherQuickViewModal';
@@ -615,7 +615,7 @@ function StudentsContent() {
       ['ФИО,Тип,Родитель,Телефон,Группа,Посещаемость,Баланс EUR']
         .concat(
           targetStudents.map(
-            (s) => `"${s.name}","${s.studentType}","${s.parentName || '—'}","${s.parentPhone || ''}","${s.groupName || ''}","${s.attendanceRate}%","${s.netBalanceEur} €"`
+            (s) => `"${s.name}","${s.studentType}","${s.parentName || '—'}","${formatPhone(s.parentPhone)}","${s.groupName || ''}","${s.attendanceRate}%","${s.netBalanceEur} €"`
           )
         )
         .join('\n');

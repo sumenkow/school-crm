@@ -14,7 +14,7 @@ import {
   Clock,
   FileText,
 } from 'lucide-react';
-import { cn, isEntityNew } from '@/lib/utils';
+import { cn, isEntityNew, formatPhone, getWhatsAppLink, getTelLink, normalizePhone } from '@/lib/utils';
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
@@ -311,17 +311,18 @@ export function StudentProfileDesktop({
                 {student.phone && (
                   <div className="flex items-center gap-1.5 min-w-0">
                     <a
-                      href={phoneClean ? `tel:${phoneClean}` : '#'}
+                      href={getTelLink(student.phone)}
                       className="inline-flex items-center gap-1 text-slate-700 hover:text-blue-600 hover:underline font-mono text-[11px] font-semibold"
+                      title={formatPhone(student.phone)}
                     >
                       <Phone className="h-3 w-3 text-slate-400" />
-                      {student.phone}
+                      {formatPhone(student.phone)}
                     </a>
-                    {phoneClean && (
+                    {normalizePhone(student.phone) && (
                       <div className="flex items-center gap-1 shrink-0">
                         {/* WhatsApp icon button */}
                         <a
-                          href={`https://wa.me/${phoneClean}`}
+                          href={getWhatsAppLink(student.phone)}
                           target="_blank"
                           rel="noreferrer"
                           className="w-5 h-5 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-all border border-[#25D366]/20 cursor-pointer"
@@ -605,19 +606,20 @@ export function StudentProfileDesktop({
                   {cleanParentName}
                 </Link>
                 <div className="flex items-center gap-1.5">
-                  {parentPhoneClean ? (
+                  {primaryParent.phone ? (
                     <a
-                      href={`tel:${parentPhoneClean}`}
+                      href={getTelLink(primaryParent.phone)}
                       className="text-[11px] text-slate-500 hover:text-blue-600 font-mono"
+                      title={formatPhone(primaryParent.phone)}
                     >
-                      {primaryParent.phone}
+                      {formatPhone(primaryParent.phone)}
                     </a>
                   ) : (
-                    <span className="text-[11px] text-slate-400 font-mono">{primaryParent.phone || '—'}</span>
+                    <span className="text-[11px] text-slate-400 font-mono">—</span>
                   )}
-                  {parentPhoneClean && (
+                  {normalizePhone(primaryParent.phone) && (
                     <a
-                      href={`https://wa.me/${parentPhoneClean}`}
+                      href={getWhatsAppLink(primaryParent.phone)}
                       target="_blank"
                       rel="noreferrer"
                       className="w-4 h-4 rounded bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white flex items-center justify-center transition-colors shrink-0"

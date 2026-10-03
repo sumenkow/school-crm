@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Phone, MessageSquare, Mail, Calendar, GraduationCap, ChevronRight, RefreshCw, UserCheck } from 'lucide-react';
 import { INITIAL_TEACHERS, FullTeacherData } from '@/lib/data/mockData';
+import { formatPhone } from '@/lib/utils';
 
 export default function TeachersPage() {
   const router = useRouter();
@@ -129,7 +130,7 @@ export default function TeachersPage() {
                 <div className="mt-4 space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-3">
                   <div className="flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                    <span>{t.phone || '—'}</span>
+                    <span title={formatPhone(t.phone)}>{formatPhone(t.phone)}</span>
                   </div>
                   {t.email && (
                     <div className="flex items-center gap-2 text-slate-500">

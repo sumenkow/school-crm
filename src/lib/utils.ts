@@ -22,25 +22,12 @@ export function isEntityNew(createdAt?: string, isNewUntil?: string): boolean {
   return age >= 0 && age <= ONE_DAY_MS;
 }
 
-export function normalizePhone(phone?: string | number): string {
-  if (!phone) return '';
-  const str = String(phone).trim();
-  let clean = str.replace(/\D/g, '');
-  if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) {
-    clean = '7' + clean.slice(1);
-  }
-  return clean;
-}
-
-export function formatPhone(phone?: string | number): string {
-  if (!phone) return '—';
-  const clean = normalizePhone(phone);
-  if (!clean) return String(phone);
-  if (clean.length === 11 && clean.startsWith('7')) {
-    return `+7 (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9, 11)}`;
-  }
-  if (clean.length > 6) {
-    return `+${clean.slice(0, 1)} (${clean.slice(1, 4)}) ${clean.slice(4, 7)}-${clean.slice(7, 9)}-${clean.slice(9)}`;
-  }
-  return String(phone);
-}
+export {
+  normalizePhone,
+  formatPhone,
+  formatE164,
+  getCountryFromPhone,
+  getWhatsAppLink,
+  getTelLink,
+} from './phoneHelper';
+export type { CountryPhoneRule } from './phoneHelper';

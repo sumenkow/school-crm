@@ -15,6 +15,7 @@ import { getTasksForParent, updateUnifiedTaskStatus } from '@/lib/data/taskManag
 import { getParentFinancialSummary } from '@/lib/data/balanceHelper';
 import { getEurRubRate } from '@/lib/data/currencyHelper';
 import { useRole } from '@/context/RoleContext';
+import { formatPhone, getTelLink, getWhatsAppLink, normalizePhone } from '@/lib/utils';
 import {
   ArrowLeft,
   Phone,
@@ -1123,11 +1124,11 @@ export default function ParentDetailsPage() {
             const upcomingList = getUpcomingPaymentForParent(parent.id, parent.children.map((c) => c.id));
             const firstUpcoming = upcomingList[0];
             const targetPhone = parent.whatsapp || parent.phone;
-            const cleanedPhone = targetPhone.replace(/[^\d]/g, '');
+            const cleanedPhone = normalizePhone(targetPhone);
             const childName = firstUpcoming?.studentName || parent.children[0]?.name || 'ребенка';
             const text = encodeURIComponent(`Здравствуйте, ${parent.firstName}! Напоминаем об оплате обучения для ${childName}. Сумма к оплате: ${firstUpcoming?.amount || familyFinancialSummary.formattedDebt}.`);
             if (channel === 'whatsapp') {
-              window.open(`https://wa.me/${cleanedPhone}?text=${text}`, '_blank');
+              window.open(getWhatsAppLink(targetPhone) !== '#' ? `${getWhatsAppLink(targetPhone)}?text=${text}` : '#', '_blank');
             } else {
               const tgUsername = parent.telegram ? parent.telegram.replace('@', '') : '';
               if (tgUsername) {
@@ -1178,7 +1179,7 @@ export default function ParentDetailsPage() {
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-600">
                 <div className="flex items-center gap-1.5">
                   <Phone className="h-3.5 w-3.5 text-slate-400" />
-                  <a href={`tel:${parent.phone}`} className="hover:text-blue-600 font-medium">{parent.phone}</a>
+                  <a href={getTelLink(parent.phone)} className="hover:text-blue-600 font-medium">{formatPhone(parent.phone)}</a>
                 </div>
                 {parent.telegram && (
                   <div className="flex items-center gap-1.5 text-blue-600 font-medium">

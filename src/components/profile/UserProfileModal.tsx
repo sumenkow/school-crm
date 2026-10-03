@@ -25,7 +25,7 @@ import { useRole } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, formatPhone } from '@/lib/utils';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -281,7 +281,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                     <p className="text-slate-400 font-medium">Контактный телефон</p>
                     <p className="font-semibold text-slate-900 flex items-center gap-1.5">
                       <Phone className="h-3.5 w-3.5 text-slate-400" />
-                      {userPhone || '+7 (999) 123-45-67'}
+                      {userPhone ? formatPhone(userPhone) : 'Не указан'}
                     </p>
                   </div>
                   <div className="space-y-1">
