@@ -20,6 +20,9 @@ export interface SchoolProfileData {
   address: string;
   roomsDescription: string;
   workHours: string;
+  workDays?: string;
+  calendarStartHour?: number;
+  calendarEndHour?: number;
   timezone: string;
   currency?: string;
   vatNote?: string;
@@ -44,6 +47,9 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   address: 'Bratislava, Slovensko / Wien, Österreich',
   roomsDescription: 'Интерактивные онлайн-комнаты',
   workHours: 'Пн-Сб 09:00 - 21:00',
+  workDays: 'Пн-Сб',
+  calendarStartHour: 9,
+  calendarEndHour: 21,
   timezone: 'UTC+1 (Братислава / Вена)',
   currency: 'EUR',
   vatNote: 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH',
@@ -65,7 +71,16 @@ export function getSchoolSettings(): SchoolProfileData {
         parsed.email = '';
         localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(parsed));
       }
-      return { ...DEFAULT_SCHOOL_PROFILE, ...parsed };
+      return {
+        ...DEFAULT_SCHOOL_PROFILE,
+        ...parsed,
+        calendarStartHour: parsed.calendarStartHour !== undefined && !isNaN(Number(parsed.calendarStartHour))
+          ? Number(parsed.calendarStartHour)
+          : DEFAULT_SCHOOL_PROFILE.calendarStartHour,
+        calendarEndHour: parsed.calendarEndHour !== undefined && !isNaN(Number(parsed.calendarEndHour))
+          ? Number(parsed.calendarEndHour)
+          : DEFAULT_SCHOOL_PROFILE.calendarEndHour,
+      };
     }
   } catch (err) {
     console.error('Failed to parse school settings from storage:', err);

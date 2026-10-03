@@ -282,12 +282,18 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <div className="mt-4 space-y-1 text-xs text-slate-600">
+            <div className="mt-4 space-y-1.5 text-xs text-slate-600">
               <p className="font-bold text-slate-900">{schoolProfile.name}</p>
               <p className="text-[11px] text-slate-500 line-clamp-1">{schoolProfile.slogan}</p>
               <p className="pt-2 text-slate-600 border-t border-slate-100">
-                Филиал: <strong>{schoolProfile.branchName}</strong> ({schoolProfile.roomsDescription})
+                Филиал: <strong>{schoolProfile.branchName}</strong>
               </p>
+              <div className="pt-1.5 flex items-center justify-between text-[11px] border-t border-slate-100/80">
+                <span className="text-slate-500">Часы и сетка:</span>
+                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60">
+                  {String(schoolProfile.calendarStartHour ?? 9).padStart(2, '0')}:00 – {String(schoolProfile.calendarEndHour ?? 21).padStart(2, '0')}:00
+                </span>
+              </div>
             </div>
           </div>
 

@@ -155,18 +155,122 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
                     placeholder="Интерактивные онлайн-комнаты"
                   />
                 </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Режим работы</label>
-                <input
-                  type="text"
-                  value={formData.workHours}
-                  onChange={(e) => handleChange('workHours', e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="Пн-Сб 09:00 - 21:00"
-                />
               </div>
             </div>
-          </div>
+
+            {/* Режим работы и сетка календаря */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-blue-600" />
+                  Часы работы и сетка расписания календаря
+                </h3>
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  Управляет сеткой календаря
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Дни работы школы</label>
+                  <select
+                    value={formData.workDays || 'Пн-Сб'}
+                    onChange={(e) => {
+                      const newDays = e.target.value;
+                      const startH = formData.calendarStartHour ?? 9;
+                      const endH = formData.calendarEndHour ?? 21;
+                      const formattedHours = `${newDays} ${String(startH).padStart(2, '0')}:00 - ${String(endH).padStart(2, '0')}:00`;
+                      setFormData((prev) => ({
+                        ...prev,
+                        workDays: newDays,
+                        workHours: formattedHours,
+                      }));
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:border-blue-500 focus:outline-hidden font-medium text-slate-800"
+                  >
+                    <option value="Пн-Пт">Пн-Пт (Будние дни)</option>
+                    <option value="Пн-Сб">Пн-Сб (6 дней в неделю)</option>
+                    <option value="Пн-Вс">Пн-Вс (Без выходных / 7 дней)</option>
+                    <option value="Сб-Вс">Сб-Вс (Только выходные)</option>
+                    <option value="Индивидуальный">Индивидуальный график</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Начало сетки календаря
+                  </label>
+                  <select
+                    value={formData.calendarStartHour ?? 9}
+                    onChange={(e) => {
+                      const newStart = parseInt(e.target.value, 10);
+                      const currentEnd = formData.calendarEndHour ?? 21;
+                      const safeEnd = Math.max(newStart + 1, currentEnd);
+                      const days = formData.workDays || 'Пн-Сб';
+                      const formattedHours = `${days} ${String(newStart).padStart(2, '0')}:00 - ${String(safeEnd).padStart(2, '0')}:00`;
+                      setFormData((prev) => ({
+                        ...prev,
+                        calendarStartHour: newStart,
+                        calendarEndHour: safeEnd,
+                        workHours: formattedHours,
+                      }));
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
+                  >
+                    {[6, 7, 8, 9, 10, 11, 12].map((h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')}:00 {h === 9 ? '(По умолчанию)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">
+                    Окончание сетки календаря
+                  </label>
+                  <select
+                    value={formData.calendarEndHour ?? 21}
+                    onChange={(e) => {
+                      const newEnd = parseInt(e.target.value, 10);
+                      const currentStart = formData.calendarStartHour ?? 9;
+                      const safeStart = Math.min(newEnd - 1, currentStart);
+                      const days = formData.workDays || 'Пн-Сб';
+                      const formattedHours = `${days} ${String(safeStart).padStart(2, '0')}:00 - ${String(newEnd).padStart(2, '0')}:00`;
+                      setFormData((prev) => ({
+                        ...prev,
+                        calendarStartHour: safeStart,
+                        calendarEndHour: newEnd,
+                        workHours: formattedHours,
+                      }));
+                    }}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs bg-white focus:border-blue-500 focus:outline-hidden font-bold text-slate-900"
+                  >
+                    {[17, 18, 19, 20, 21, 22, 23, 24].map((h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')}:00 {h === 21 ? '(По умолчанию)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 flex items-center justify-between text-xs">
+                <div className="space-y-0.5">
+                  <span className="text-slate-500 text-[11px]">Итоговый режим для отображения и документов:</span>
+                  <p className="font-bold text-slate-900">
+                    {formData.workHours || 'Пн-Сб 09:00 - 21:00'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-slate-400">Часов в сетке календаря:</span>
+                  <p className="font-bold text-blue-600">
+                    {Math.max(1, (formData.calendarEndHour ?? 21) - (formData.calendarStartHour ?? 9) + 1)} ч.
+                    ({String(formData.calendarStartHour ?? 9).padStart(2, '0')}:00 – {String(formData.calendarEndHour ?? 21).padStart(2, '0')}:00)
+                  </p>
+                </div>
+              </div>
+            </div>
 
           {/* Юридические и банковские реквизиты (SEPA / Tatra banka) */}
           <div className="space-y-3 pt-2 border-t border-slate-100">

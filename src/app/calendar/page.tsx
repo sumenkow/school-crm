@@ -26,9 +26,8 @@ import { saveGroupToStorage } from '@/lib/data/groupStorage';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
+import { getSchoolSettings, SchoolProfileData, fetchSchoolSettingsFromCloud } from '@/lib/data/schoolSettingsStorage';
 
-const CALENDAR_START_HOUR = 9;
-const CALENDAR_HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 const HOUR_HEIGHT = 64;
 
 const SHORT_DAY_NAMES = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
@@ -59,11 +58,15 @@ interface PositionedLessonItem {
   width: string;
 }
 
-function layoutDayLessons(dayLessons: FullLessonData[]): PositionedLessonItem[] {
+function layoutDayLessons(
+  dayLessons: FullLessonData[],
+  startHour: number = 9,
+  hoursCount: number = 13
+): PositionedLessonItem[] {
   if (dayLessons.length === 0) return [];
 
-  const minGridMin = CALENDAR_START_HOUR * 60;
-  const maxGridMin = (CALENDAR_START_HOUR + CALENDAR_HOURS.length) * 60;
+  const minGridMin = startHour * 60;
+  const maxGridMin = (startHour + hoursCount) * 60;
 
   const items = dayLessons.map((lesson) => {
     const startMin = parseTimeToMinutes(lesson.startTime);
@@ -170,6 +173,37 @@ export default function CalendarPage() {
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
   const [desktopModalTab, setDesktopModalTab] = useState<'main' | 'attendance' | 'feedback' | 'history'>('main');
   const [desktopModalHighlightReschedule, setDesktopModalHighlightReschedule] = useState(false);
+
+  // 1. School Settings & Dynamic Calendar Hours
+  const [schoolSettings, setSchoolSettings] = useState<SchoolProfileData>(() => getSchoolSettings());
+
+  useEffect(() => {
+    setSchoolSettings(getSchoolSettings());
+    fetchSchoolSettingsFromCloud().then((cloudData) => {
+      if (cloudData) setSchoolSettings(cloudData);
+    });
+
+    const handleSettingsSync = (e: any) => {
+      setSchoolSettings(e?.detail || getSchoolSettings());
+    };
+
+    window.addEventListener('crm-school-settings-changed', handleSettingsSync);
+    return () => {
+      window.removeEventListener('crm-school-settings-changed', handleSettingsSync);
+    };
+  }, []);
+
+  const calendarStartHour = schoolSettings.calendarStartHour ?? 9;
+  const calendarEndHour = schoolSettings.calendarEndHour ?? 21;
+  const calendarHours = useMemo(() => {
+    const start = Math.min(calendarStartHour, calendarEndHour);
+    const end = Math.max(calendarStartHour, calendarEndHour);
+    const list: number[] = [];
+    for (let h = start; h <= end; h++) {
+      list.push(h);
+    }
+    return list.length > 0 ? list : [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+  }, [calendarStartHour, calendarEndHour]);
 
   // Sync stored lessons and subscribe to Supabase Realtime
   useEffect(() => {
@@ -554,9 +588,9 @@ export default function CalendarPage() {
   const nowMinutes = now.getMinutes();
   const nowTotalMinutes = nowHours * 60 + nowMinutes;
   const isNowInRange =
-    nowTotalMinutes >= CALENDAR_START_HOUR * 60 &&
-    nowTotalMinutes <= (CALENDAR_START_HOUR + CALENDAR_HOURS.length) * 60;
-  const nowOffsetMinutes = nowTotalMinutes - CALENDAR_START_HOUR * 60;
+    nowTotalMinutes >= calendarStartHour * 60 &&
+    nowTotalMinutes <= (calendarStartHour + calendarHours.length) * 60;
+  const nowOffsetMinutes = nowTotalMinutes - calendarStartHour * 60;
   const currentTimeTop = (nowOffsetMinutes / 60) * HOUR_HEIGHT;
   const currentTimeStr = `${String(nowHours).padStart(2, '0')}:${String(nowMinutes).padStart(2, '0')}`;
 
@@ -590,6 +624,14 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/settings"
+              title="Изменить часы работы и сетку расписания в настройках школы"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-2xs"
+            >
+              <Clock className="h-3.5 w-3.5 text-blue-600" />
+              <span>Сетка: {String(calendarStartHour).padStart(2, '0')}:00 – {String(calendarEndHour).padStart(2, '0')}:00</span>
+            </Link>
             <button
               type="button"
               onClick={() => setIsCreateGroupModalOpen(true)}
@@ -780,11 +822,11 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* 2. Scrollable Timetable Canvas (09:00 - 21:00) */}
+            {/* 2. Scrollable Timetable Canvas */}
             <div className="relative flex max-h-[720px] overflow-y-auto overflow-x-auto no-scrollbar">
               {/* Vertical Time Axis */}
               <div className="w-14 shrink-0 select-none border-r border-slate-200 bg-slate-50/30 sticky left-0 z-20">
-                {CALENDAR_HOURS.map((hour) => (
+                {calendarHours.map((hour) => (
                   <div
                     key={hour}
                     style={{ height: `${HOUR_HEIGHT}px` }}
@@ -803,7 +845,7 @@ export default function CalendarPage() {
                   const dayLessons = filteredLessons.filter(
                     (l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex)
                   );
-                  const positionedLessons = layoutDayLessons(dayLessons);
+                  const positionedLessons = layoutDayLessons(dayLessons, calendarStartHour, calendarHours.length);
 
                   return (
                     <div
@@ -812,14 +854,14 @@ export default function CalendarPage() {
                         'relative flex flex-col justify-between min-w-0 transition-colors',
                         day.isToday && 'bg-blue-50/5'
                       )}
-                      style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT + 44}px` }}
+                      style={{ height: `${calendarHours.length * HOUR_HEIGHT + 44}px` }}
                     >
                       {/* Background Horizontal Guide Lines (interactive slot clicks & DND targets) */}
                       <div
                         className="absolute inset-x-0 top-0"
-                        style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
+                        style={{ height: `${calendarHours.length * HOUR_HEIGHT}px` }}
                       >
-                        {CALENDAR_HOURS.map((hour) => {
+                        {calendarHours.map((hour) => {
                           const slotTime = `${String(hour).padStart(2, '0')}:00`;
                           return (
                             <div
@@ -856,7 +898,7 @@ export default function CalendarPage() {
                       {/* 4. Lesson Cards Container */}
                       <div
                         className="relative w-full"
-                        style={{ height: `${CALENDAR_HOURS.length * HOUR_HEIGHT}px` }}
+                        style={{ height: `${calendarHours.length * HOUR_HEIGHT}px` }}
                       >
                         {positionedLessons.map((item) => {
                           const { lesson } = item;
