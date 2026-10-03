@@ -10,7 +10,7 @@ import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTar
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent, normalizeStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
-import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
+import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
@@ -1922,7 +1922,7 @@ export default function StudentDetailsPage() {
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
           { key: 'education', label: `Обучение (${student.attendanceStats.attendanceRate})` },
-          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Оплаты и баланс')}` }] : []),
+          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Финансы')}` }] : []),
           { key: 'profile', label: `${t('students.tabFamily', 'Семья и контакты')}` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${student.tasks.filter((t) => t.status === 'open').length})` },
           { key: 'timeline', label: `Timeline (${student.interactions.length})` },
@@ -2545,139 +2545,148 @@ export default function StudentDetailsPage() {
       {/* TAB 4: ОПЛАТЫ И БАЛАНС (СТРОГО ДЛЯ DEVELOPER / OWNER / ADMIN) */}
       {activeTab === 'finance' && ['developer', 'owner', 'admin'].includes(role) && (
         <div className="space-y-6">
-          {/* БЛОК 1: ВЕРХНЯЯ ПАНЕЛЬ СТАТУСА (ДВУХКОЛОНОЧНАЯ СЕТКА) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Левая колонка — Абонементы по курсам */}
-            <div className="space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Абонементы по курсам ({student.groups.length > 0 ? student.groups.length : 1})
-              </span>
-              {student.groups.length === 0 ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center text-xs text-slate-400 space-y-1">
-                  <p className="font-semibold text-slate-700">Ученик не зачислен в группы</p>
-                  <p className="text-[11px]">Абонементы формируются при зачислении в активную группу</p>
-                </div>
-              ) : (
-                student.groups.map((grp) => (
-                  <div key={grp.id} className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/80 to-indigo-50/40 p-5 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">
-                          {grp.courseName || 'Курс обучения'}
+          {/* БЛОК 1: ВЕРХНИЙ ЯРУС (АБОНЕМЕНТЫ ПО КУРСАМ 60% И БАЛАНС УЧЕНИКА 40%) */}
+          {(() => {
+            const storedGroupsList = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+            const eurRubRate = getEurRubRate();
+            const ledgerItemsForWidget = buildChronologicalLedger(student, customPricePerLesson);
+            const currentCalculatedBalance = ledgerItemsForWidget[0]?.runningBalanceEUR ?? (student.finance?.deposit?.balance || 120);
+            const availableLessonsCount = Math.max(0, Math.floor(currentCalculatedBalance / (customPricePerLesson || 12)));
+            const lessonsWord = availableLessonsCount === 1 ? 'урок' : availableLessonsCount >= 2 && availableLessonsCount <= 4 ? 'урока' : 'уроков';
+            const rawPaidUntil = student.finance?.activeSubscription?.renewalDate || (student as any).paidUntil || '28.09.2026';
+            const paidUntilFormatted = (rawPaidUntil || '28.09.2026').includes('.') ? rawPaidUntil : '28.09.2026';
+
+            return (
+              <div className="grid grid-cols-12 gap-4 mb-4">
+                {/* ЛЕВАЯ КОЛОНКА (col-span-12 lg:col-span-7, ~60% ширины): «Абонементы по курсам ({student.groups.length})» */}
+                <div className="col-span-12 lg:col-span-7 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 mb-3">
+                      Абонементы по курсам ({student.groups.length})
+                    </h3>
+
+                    {student.groups.length === 0 ? (
+                      /* СОСТОЯНИЕ Б: Ученик НЕ зачислен (Компактный Empty State, высота до 80px) */
+                      <div className="border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50 flex items-center justify-between gap-3 min-h-[64px]">
+                        <span className="text-xs text-slate-500">
+                          Ученик не зачислен в группу. Абонементы формируются при зачислении.
                         </span>
-                        <h4 className="text-base font-bold text-slate-900 mt-0.5">{grp.name}</h4>
+                        <button
+                          type="button"
+                          onClick={() => setIsEnrollGroupModalOpen(true)}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 shadow-xs hover:border-blue-300"
+                        >
+                          Зачислить в группу
+                        </button>
                       </div>
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                        Активен
-                      </span>
-                    </div>
+                    ) : (
+                      /* СОСТОЯНИЕ А: Ученик зачислен в группы (список строк абонементов) */
+                      <div className="space-y-2">
+                        {student.groups.map((grp) => {
+                          const matchedGroup = storedGroupsList.find((g) => g.id === grp.id || g.name === grp.name);
+                          const teacherDisplayName = grp.teacherName || matchedGroup?.teacherName || 'Преподаватель не назначен';
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs border-t border-blue-200/60 pt-3">
-                      <div>
-                        <span className="text-slate-500 block">Период:</span>
-                        <span className="font-semibold text-slate-800">Сентябрь 2026</span>
+                          return (
+                            <div
+                              key={grp.id}
+                              onClick={() => router.push(`/groups/${grp.id || matchedGroup?.id || '1'}`)}
+                              className="border border-slate-100 rounded-xl p-3 bg-slate-50/50 flex items-center justify-between gap-3 text-xs hover:border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer group"
+                            >
+                              {/* Слева: Название группы + подстрочник */}
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-slate-900 truncate" title={grp.name}>
+                                  {grp.name}
+                                </div>
+                                <div className="text-slate-400 text-[11px] truncate mt-0.5" title={teacherDisplayName}>
+                                  Группа · {teacherDisplayName}
+                                </div>
+                              </div>
+
+                              {/* По центру: Метки в строку через разделители */}
+                              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 shrink-0 font-medium">
+                                <span>Осталось: <strong className="text-slate-800 font-semibold">{availableLessonsCount} {lessonsWord}</strong></span>
+                                <span className="text-slate-300">·</span>
+                                <span>Ставка: <strong className="text-slate-800 font-semibold">{customPricePerLesson} €</strong></span>
+                                <span className="text-slate-300">·</span>
+                                <span>Оплачено до: <strong className="text-slate-800 font-semibold">{paidUntilFormatted}</strong></span>
+                              </div>
+
+                              {/* Справа: стрелочка перехода */}
+                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors shrink-0" />
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div>
-                        <span className="text-slate-500 block">Пройдено / Всего:</span>
-                        <span className="font-bold text-slate-900">6 / 8 уроков</span>
-                      </div>
-                      <div className="col-span-2 sm:col-span-1">
-                        <span className="text-slate-500 block">Продление:</span>
-                        <span className="font-bold text-blue-700">28.09.2026</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                </div>
 
-            {/* Правая колонка — Лицевой счет (Депозит) */}
-            {(() => {
-              const ledgerItemsForWidget = buildChronologicalLedger(student, customPricePerLesson);
-              const currentCalculatedBalance = ledgerItemsForWidget[0]?.runningBalanceEUR ?? (student.finance?.deposit?.balance || 120);
-              const availableLessonsCount = Math.max(0, Math.floor(currentCalculatedBalance / (customPricePerLesson || 12)));
-
-              return (
-                <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/80 to-teal-50/40 p-5 shadow-xs space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
+                {/* ПРАВАЯ КОЛОНКА (col-span-12 lg:col-span-5, ~40% ширины): «Баланс ученика» */}
+                <div className="col-span-12 lg:col-span-5 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex flex-col justify-between">
+                  {/* Шапка карточки */}
+                  <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
-                        Лицевой счет (Депозит)
-                      </span>
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                        <Wallet className="text-slate-400 w-4 h-4" />
+                        <span>Баланс ученика</span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                         Базовый EUR (€)
                       </span>
                     </div>
 
-                    <div className="flex items-baseline gap-2">
-                      <h3 className="text-3xl font-black text-slate-900">
-                        {currentCalculatedBalance.toLocaleString('ru-RU')} €
-                      </h3>
-                      <span className="text-sm font-semibold text-slate-500">
-                        (~{(currentCalculatedBalance * 100).toLocaleString('ru-RU')} ₽)
+                    {/* Главная сумма (по центру) */}
+                    <div className="my-2.5 flex items-baseline gap-2">
+                      <span
+                        className={cn(
+                          'text-2xl font-bold tracking-tight',
+                          currentCalculatedBalance < 0 ? 'text-rose-600' : 'text-slate-900'
+                        )}
+                      >
+                        {currentCalculatedBalance} €
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">
+                        ≈ {(currentCalculatedBalance * eurRubRate).toLocaleString('ru-RU')} ₽
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Нижний контекстный стрип (3 показателя с вертикальными разделителями) */}
+                  <div className="border-t border-slate-50 pt-2.5 mt-2.5 grid grid-cols-3">
+                    {/* Колонка 1: СТАВКА ЗА ЗАНЯТИЕ */}
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Ставка за занятие
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-0.5 block">
+                        {customPricePerLesson} €
                       </span>
                     </div>
 
-                    {/* Per-lesson rate with inline edit */}
-                    <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 text-xs space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500 font-medium">Ставка за занятие (Руководитель):</span>
-                        {!isEditingPricePerLesson && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTempPricePerLesson(String(customPricePerLesson));
-                              setIsEditingPricePerLesson(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1 hover:underline"
-                            title="Изменить персональную ставку за урок"
-                          >
-                            <Edit className="h-3 w-3" /> Изменить
-                          </button>
-                        )}
-                      </div>
+                    {/* Колонка 2: ОСТАТОК ЗАНЯТИЙ */}
+                    <div className="border-l border-slate-100 pl-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Остаток занятий
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-0.5 block">
+                        {availableLessonsCount} {lessonsWord}
+                      </span>
+                    </div>
 
-                      {isEditingPricePerLesson ? (
-                        <div className="flex items-center gap-2 pt-1">
-                          <input
-                            type="number"
-                            value={tempPricePerLesson}
-                            onChange={(e) => setTempPricePerLesson(e.target.value)}
-                            className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            placeholder="Ставка €"
-                          />
-                          <span className="text-slate-600 font-bold">€</span>
-                          <button
-                            type="button"
-                            onClick={handleSavePricePerLesson}
-                            className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
-                          >
-                            Сохранить
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingPricePerLesson(false)}
-                            className="rounded-lg bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-300 transition-colors"
-                          >
-                            Отмена
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between pt-0.5">
-                          <span className="font-extrabold text-slate-900 text-sm">
-                            {customPricePerLesson} € <span className="text-slate-400 text-xs font-normal">(~{customPricePerLesson * 100} ₽)</span>
-                          </span>
-                          <span className="text-[11px] font-semibold text-emerald-700">
-                            Остаток: {availableLessonsCount} уроков
-                          </span>
-                        </div>
-                      )}
+                    {/* Колонка 3: ОПЛАЧЕНО ДО */}
+                    <div className="border-l border-slate-100 pl-3">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Оплачено до
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 mt-0.5 block">
+                        {paidUntilFormatted}
+                      </span>
                     </div>
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* БЛОК 2: ПАНЕЛЬ ДЕЙСТВИЙ ВЫПИСКИ */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200">
