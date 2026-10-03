@@ -24,7 +24,7 @@ import { cn, isEntityNew, formatPhone, getWhatsAppLink, getTelLink, normalizePho
 import { FullStudentData, FullLessonData, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
-import { formatAgeAndGrade, formatBirthDate } from '@/lib/data/studentAgeHelper';
+import { formatAgeAndGrade, formatBirthDate, calculateAge, formatAgeRussian, formatGradeRussian } from '@/lib/data/studentAgeHelper';
 import { useToast } from '@/context/ToastContext';
 import { LessonModal } from '@/components/calendar/LessonModal';
 
@@ -160,9 +160,13 @@ export function StudentProfileDesktop({
   // Safe initials
   const studentInitials = `${student.firstName?.[0] || (student as any).name?.[0] || 'У'}${student.lastName?.[0] || ''}`.toUpperCase();
 
-  // Age & Grade text
-  const birthDateStr = student.birthDate ? formatBirthDate(student.birthDate) : '';
-  const ageGradeStr = formatAgeAndGrade(student.birthDate, student.grade);
+  // Age & Grade & Birth date calculation
+  const studentAge = calculateAge(student.birthDate);
+  const ageText = studentAge !== null ? formatAgeRussian(studentAge) : '';
+  const gradeText = student.grade ? formatGradeRussian(student.grade) : '';
+  const birthDateFormatted = student.birthDate ? formatBirthDate(student.birthDate) : '';
+  const academicDetails = [ageText, gradeText, birthDateFormatted].filter(Boolean);
+  const studentOwnTelegram = (student.telegram || '').replace('@', '').trim();
 
   // Attendance calculation
   const attendanceRateNum = typeof student.attendanceStats?.attendanceRate === 'number'
@@ -269,9 +273,9 @@ export function StudentProfileDesktop({
             </div>
 
             <div className="min-w-0 space-y-1">
-              {/* Top line: Name + Badges */}
+              {/* Level 1: Name + Badges */}
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-slate-900">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap">
                   {student.firstName || ''} {student.lastName || ''}
                 </h1>
 
@@ -307,29 +311,27 @@ export function StudentProfileDesktop({
                 </span>
               </div>
 
-              {/* Bottom line: Age/Grade, Phone with WA/TG buttons */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
-                {(birthDateStr || ageGradeStr) && (
-                  <span className="font-semibold text-slate-800">
-                    {birthDateStr}
-                    {birthDateStr && ageGradeStr && ' · '}
-                    {ageGradeStr}
-                  </span>
-                )}
+              {/* Level 2: Academic / Age Profile */}
+              {academicDetails.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                  {academicDetails.join(' · ')}
+                </div>
+              )}
 
-                {student.phone && (
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <a
-                      href={getTelLink(student.phone)}
-                      className="inline-flex items-center gap-1 text-slate-700 hover:text-blue-600 hover:underline font-mono text-[11px] font-semibold"
-                      title={formatPhone(student.phone)}
-                    >
-                      <Phone className="h-3 w-3 text-slate-400" />
-                      {formatPhone(student.phone)}
-                    </a>
-                    {normalizePhone(student.phone) && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {/* WhatsApp icon button */}
+              {/* Level 3: Student Personal Contacts */}
+              {(student.phone || studentOwnTelegram) && (
+                <div className="flex items-center gap-2 text-xs text-slate-600 pt-0.5">
+                  {student.phone && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <a
+                        href={getTelLink(student.phone)}
+                        className="inline-flex items-center gap-1 text-slate-700 hover:text-blue-600 hover:underline font-mono text-[11px] font-medium"
+                        title={formatPhone(student.phone)}
+                      >
+                        <Phone className="h-3 w-3 text-slate-400" />
+                        <span>{formatPhone(student.phone)}</span>
+                      </a>
+                      {normalizePhone(student.phone) && (
                         <a
                           href={getWhatsAppLink(student.phone)}
                           target="_blank"
@@ -339,33 +341,27 @@ export function StudentProfileDesktop({
                         >
                           <WhatsAppIcon className="w-3 h-3" />
                         </a>
+                      )}
+                    </div>
+                  )}
 
-                        {/* Telegram icon button */}
-                        {telegramClean ? (
-                          <a
-                            href={`https://t.me/${telegramClean}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-5 h-5 rounded bg-[#229ED9]/10 hover:bg-[#229ED9] text-[#229ED9] hover:text-white flex items-center justify-center transition-all border border-[#229ED9]/20 cursor-pointer"
-                            title={`Написать в Telegram (@${telegramClean})`}
-                          >
-                            <TelegramIcon className="w-3 h-3" />
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={onOpenTelegramConnect}
-                            className="w-5 h-5 rounded bg-slate-100 hover:bg-[#229ED9] text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-200 cursor-pointer"
-                            title="Подключить Telegram-бота"
-                          >
-                            <TelegramIcon className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                  {student.phone && studentOwnTelegram && (
+                    <span className="text-slate-300">|</span>
+                  )}
+
+                  {studentOwnTelegram && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectTab('timeline')}
+                      className="inline-flex items-center gap-1 text-slate-700 hover:text-blue-600 hover:underline font-medium text-[11px] cursor-pointer"
+                      title="Открыть чат с учеником"
+                    >
+                      <TelegramIcon className="w-3.5 h-3.5 text-[#229ED9]" />
+                      <span>@{studentOwnTelegram}</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
