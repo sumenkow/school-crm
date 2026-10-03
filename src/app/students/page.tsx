@@ -662,7 +662,7 @@ function StudentsContent() {
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-medium text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>Новый ученик</span>
@@ -735,9 +735,9 @@ function StudentsContent() {
             type="button"
             onClick={() => setStatusTab('all')}
             className={cn(
-              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
               statusTab === 'all'
-                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
                 : 'text-slate-600 hover:bg-slate-100'
             )}
           >
@@ -748,9 +748,9 @@ function StudentsContent() {
             type="button"
             onClick={() => setStatusTab('active')}
             className={cn(
-              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
               statusTab === 'active'
-                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
                 : 'text-slate-600 hover:bg-slate-100'
             )}
           >
@@ -761,9 +761,9 @@ function StudentsContent() {
             type="button"
             onClick={() => setStatusTab('inactive')}
             className={cn(
-              'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer',
+              'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer',
               statusTab === 'inactive'
-                ? 'bg-blue-50 text-blue-600 font-semibold border border-blue-200/60 shadow-2xs'
+                ? 'bg-blue-50 text-blue-600 border border-blue-200/60 shadow-2xs'
                 : 'text-slate-600 hover:bg-slate-100'
             )}
           >
@@ -775,9 +775,9 @@ function StudentsContent() {
               type="button"
               onClick={() => setStatusTab('attention')}
               className={cn(
-                'h-8 px-3 text-xs font-medium rounded-xl transition-all cursor-pointer flex items-center gap-1.5',
+                'h-8 px-3 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-1.5',
                 statusTab === 'attention'
-                  ? 'bg-amber-50 text-amber-700 font-semibold border border-amber-200/80 shadow-2xs'
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-100'
               )}
             >
@@ -832,7 +832,7 @@ function StudentsContent() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Поиск по имени, родителю, телефону, группе, преподавателю..."
-              className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 h-9 w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
