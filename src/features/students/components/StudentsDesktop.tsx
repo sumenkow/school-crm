@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ArrowUpDown,
@@ -12,11 +12,21 @@ import {
   Calculator,
   BookOpen,
   ChevronRight,
+  ChevronDown,
+  Calendar,
+  MoreHorizontal,
   X,
+  User,
+  CreditCard,
+  MessageSquare,
+  Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import { cn, isEntityNew } from '@/lib/utils';
 import type { StudentListItem } from '@/app/students/page';
-import { restoreStudent } from '@/lib/data/studentStorage';
+import { restoreStudent, saveStudentToStorage } from '@/lib/data/studentStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
+import type { FullLessonData, FullStudentData } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 
@@ -84,6 +94,87 @@ function getStudentAge(birthDate?: string): number | null {
   return age > 0 && age < 100 ? age : null;
 }
 
+interface UpcomingLessonInfo {
+  lessonId: string;
+  dateDayFormatted: string; // e.g. "Вт, 21 сен"
+  timeFormatted: string;    // e.g. "18:45 – 20:15"
+}
+
+function findUpcomingLessonForStudent(
+  student: StudentListItem,
+  allLessons: FullLessonData[]
+): UpcomingLessonInfo | null {
+  const studentGroupIds = new Set((student.groups || []).map((g) => String(g.id).trim()));
+  const studentGroupNames = new Set((student.groups || []).map((g) => (g.name || '').toLowerCase().trim()));
+  const studentFullName = student.name.toLowerCase().trim();
+
+  const parseLessonDateMs = (l: FullLessonData): number => {
+    if (!l.date) return 0;
+    let isoDate = l.date;
+    if (l.date.includes('.')) {
+      const parts = l.date.split('.');
+      if (parts.length === 3) {
+        isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    const time = l.startTime && l.startTime.length >= 4 ? l.startTime : '00:00';
+    const parsed = new Date(`${isoDate}T${time.length === 5 ? time + ':00' : time}`).getTime();
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const candidates = allLessons.filter((l) => {
+    if (l.status === 'cancelled') return false;
+
+    const matchesGroupId = l.groupId && studentGroupIds.has(String(l.groupId).trim());
+    const matchesGroupName = l.groupName && studentGroupNames.has(l.groupName.toLowerCase().trim());
+    const matchesStudentList =
+      Array.isArray(l.students) &&
+      l.students.some(
+        (s) => String(s.id) === String(student.id) || (s.name && s.name.toLowerCase().trim() === studentFullName)
+      );
+
+    return Boolean(matchesGroupId || matchesGroupName || matchesStudentList);
+  });
+
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => parseLessonDateMs(a) - parseLessonDateMs(b));
+  const next = candidates[0];
+
+  const lessonMs = parseLessonDateMs(next);
+  let dateDayFormatted = next.dateFormatted || next.date;
+  if (lessonMs > 0) {
+    const d = new Date(lessonMs);
+    const weekday = d.toLocaleDateString('ru-RU', { weekday: 'short' });
+    const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    const dayMonth = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    dateDayFormatted = `${capitalizedWeekday}, ${dayMonth}`;
+  }
+
+  const timeFormatted = `${next.startTime || '18:45'} – ${next.endTime || '20:15'}`;
+
+  return {
+    lessonId: next.id,
+    dateDayFormatted,
+    timeFormatted,
+  };
+}
+
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'Активен';
+    case 'trial':
+      return 'Пробный';
+    case 'paused':
+      return 'Пауза';
+    case 'archived':
+      return 'Архив';
+    default:
+      return 'Активен';
+  }
+}
+
 type SortField = 'name' | 'attendanceRate' | 'finance';
 type SortOrder = 'default' | 'asc' | 'desc';
 
@@ -119,6 +210,13 @@ export function StudentsDesktop({
   const toast = useToast();
   const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
   const [activeTelegramStudent, setActiveTelegramStudent] = useState<StudentListItem | null>(null);
+  const [activeStatusDropdownId, setActiveStatusDropdownId] = useState<string | null>(null);
+  const [activeActionsRowId, setActiveActionsRowId] = useState<string | null>(null);
+
+  // Memoized lesson storage retrieval to prevent excessive re-renders
+  const allLessons = useMemo(() => {
+    return typeof window !== 'undefined' ? getStoredLessons() : [];
+  }, [students]);
 
   const handleStudentClick = (studentId: string, tab?: string) => {
     if (onOpenStudentDrawer) {
@@ -126,24 +224,52 @@ export function StudentsDesktop({
     }
   };
 
+  const handleStatusChange = (
+    student: StudentListItem,
+    newStatus: 'active' | 'trial' | 'paused' | 'archived'
+  ) => {
+    setActiveStatusDropdownId(null);
+    const updatedStudent: FullStudentData = {
+      ...student.rawStudentObj,
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    saveStudentToStorage(updatedStudent);
+    onRefreshStudents();
+    toast.success(`Статус ученика ${student.name} изменен на «${getStatusLabel(newStatus)}»`);
+  };
+
+  const handleDeleteStudent = (student: StudentListItem) => {
+    setActiveActionsRowId(null);
+    const updatedStudent: FullStudentData = {
+      ...student.rawStudentObj,
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+    };
+    saveStudentToStorage(updatedStudent);
+    onRefreshStudents();
+    toast.success(`Ученик ${student.name} перемещен в удаленные`);
+  };
+
   return (
     <div className="hidden md:block w-full overflow-visible bg-white rounded-2xl border border-slate-100 shadow-xs">
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
-          <col className="w-[44px]" />   {/* Чекбокс */}
+          <col className="w-[40px]" />   {/* Чекбокс */}
           <col className="w-[21%]" />    {/* Ученик ⇅ */}
-          <col className="w-[19%]" />    {/* Представитель */}
-          <col className="w-[18%]" />    {/* Обучение */}
-          <col className="w-[14%]" />    {/* Ближайшее занятие */}
+          <col className="w-[18%]" />    {/* Представитель */}
+          <col className="w-[17%]" />    {/* Обучение */}
+          <col className="w-[16%]" />    {/* Ближайшее занятие */}
           <col className="w-[10%]" />    {/* Посещаемость ⇅ */}
           <col className="w-[11%]" />    {/* Баланс ⇅ */}
-          <col className="w-[7%]" />     {/* Статус */}
+          <col className="w-[10%]" />    {/* Статус */}
+          <col className="w-[40px]" />   {/* Действия ··· */}
         </colgroup>
 
         {/* Шапка таблицы */}
         <thead className="h-10 bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none">
           <tr>
-            <th className="px-3.5 py-2.5 text-center">
+            <th className="px-3 py-2.5 text-center">
               <input
                 type="checkbox"
                 checked={allFilteredSelected}
@@ -152,7 +278,7 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-3.5 py-2.5 text-left">
+            <th className="px-3 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
@@ -166,10 +292,10 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-3.5 py-2.5 text-left">ОБУЧЕНИЕ</th>
-            <th className="px-3.5 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
-            <th className="px-3.5 py-2.5 text-center">
+            <th className="px-3 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-3 py-2.5 text-left">ОБУЧЕНИЕ</th>
+            <th className="px-3 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
+            <th className="px-3 py-2.5 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
@@ -183,7 +309,7 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-2.5 text-left">
+            <th className="px-3 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
@@ -197,8 +323,11 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3.5 py-2.5 text-center">
+            <th className="px-3 py-2.5 text-center">
               <span>СТАТУС</span>
+            </th>
+            <th className="px-2 py-2.5 text-center">
+              <span className="sr-only">Действия</span>
             </th>
           </tr>
         </thead>
@@ -206,7 +335,7 @@ export function StudentsDesktop({
         <tbody className="divide-y divide-slate-100 text-slate-700">
           {students.length === 0 ? (
             <tr>
-              <td colSpan={8} className="py-12 text-center text-xs text-slate-500 font-medium">
+              <td colSpan={9} className="py-12 text-center text-xs text-slate-500 font-medium">
                 {statusFilter === 'deleted' ? 'В списке удаленных ничего нет' : 'Ученики не найдены'}
               </td>
             </tr>
@@ -218,7 +347,7 @@ export function StudentsDesktop({
                 : '';
               const phoneClean = (student.parentPhone || '').replace(/\D/g, '');
 
-              // Student age / subtitle
+              // Student age / category
               const calculatedAge = getStudentAge(student.rawStudentObj?.birthDate);
               const ageDisplay = calculatedAge ? `${calculatedAge} лет` : student.isAdult ? 'Взрослый' : '14 лет';
               const categoryTitle = student.isAdult ? 'Студент' : 'Школьник';
@@ -229,20 +358,47 @@ export function StudentsDesktop({
               const subjectName = primaryGroup ? getCourseSubject(groupName) : 'Основной курс';
               const subjectIcon = getSubjectIcon(subjectName);
 
-              // Date formatting for paidUntil
-              const rawPaidUntil = student.paidUntil || '28.09';
-              const formattedPaidUntil = rawPaidUntil.split('.').slice(0, 2).join('.');
+              // 1. Ближайшее занятие (реальный поиск из getStoredLessons)
+              const upcomingLesson = findUpcomingLessonForStudent(student, allLessons);
+
+              // 2. Посещаемость (дробь + процент)
+              const attendanceRate = student.attendanceRate;
+              const presentCount =
+                student.rawStudentObj.attendanceStats?.presentCount ??
+                Math.round((attendanceRate / 100) * 16);
+              const totalLessonsCount =
+                student.rawStudentObj.attendanceStats?.totalLessons ||
+                (presentCount + (student.rawStudentObj.attendanceStats?.absentCount ?? (attendanceRate < 100 ? 1 : 0))) ||
+                16;
+
+              // 3. Баланс (EUR + RUB конвертация)
+              const netBalance = student.netBalanceEur;
+              const hasDebt = student.debtEur > 0 || netBalance < 0 || student.financeStatus === 'debt';
+              const hasDeposit = student.balanceEur > 0 || netBalance > 0 || student.financeStatus === 'deposit';
+
+              const rubAmount =
+                student.balanceRub ||
+                student.debtRub ||
+                Math.abs(Math.round(netBalance * 98));
+              const rubFormatted = rubAmount > 0 ? `≈ ${rubAmount.toLocaleString('ru-RU')} ₽` : '';
+
+              // 4. Статус ученика
+              const isAttention =
+                student.isChurnRisk ||
+                (student.absentLessons !== undefined && student.absentLessons >= 3) ||
+                student.debtEur > 0 ||
+                student.attendanceRate < 80;
 
               return (
                 <tr
                   key={student.id}
                   className={cn(
-                    'h-[74px] max-h-[74px] transition-colors border-b border-slate-100 group/row',
+                    'h-[74px] max-h-[74px] transition-colors border-b border-slate-100 group/row relative',
                     isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/80'
                   )}
                 >
                   {/* Чекбокс */}
-                  <td className="px-3.5 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-3 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -252,7 +408,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 1. КОЛОНКА: УЧЕНИК */}
-                  <td className="px-3.5 py-2.5 align-middle">
+                  <td className="px-3 py-2.5 align-middle">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         onClick={() => handleStudentClick(student.id)}
@@ -305,7 +461,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ */}
-                  <td className="px-3.5 py-2.5 align-middle">
+                  <td className="px-3 py-2.5 align-middle">
                     {student.parentId || student.parentName ? (
                       <div className="min-w-0 space-y-0.5">
                         <Link
@@ -351,7 +507,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 3. КОЛОНКА: ОБУЧЕНИЕ (Группа / Курс) */}
-                  <td className="px-3.5 py-2.5 align-middle">
+                  <td className="px-3 py-2.5 align-middle">
                     {student.groups.length > 0 ? (
                       <div className="flex items-center gap-2 min-w-0">
                         {/* Иконка предмета/направления */}
@@ -425,127 +581,96 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ */}
-                  <td className="px-3.5 py-2.5 align-middle">
-                    {student.groups.length > 0 ? (
-                      <div className="min-w-0 space-y-0.5">
-                        <Link
-                          href={primaryGroup ? `/calendar/lessons/${primaryGroup.nextLessonId || primaryGroup.id}` : '#'}
-                          className="text-xs font-medium text-slate-700 hover:text-blue-600 transition-colors truncate block"
-                        >
-                          {primaryGroup?.nextLessonDate || student.nextLessonDate || 'Ср 21 сен, 18:45'}
-                        </Link>
-                        <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                          {student.teacherId ? (
-                            <span
-                              onClick={() => {
-                                if (onOpenTeacherModal && student.teacherId) {
-                                  onOpenTeacherModal(student.teacherId, student.teacherName);
-                                }
-                              }}
-                              className="hover:text-blue-600 cursor-pointer"
-                            >
-                              {student.teacherName}
-                            </span>
-                          ) : (
-                            student.teacherName || 'Мария Иванова'
-                          )}
+                  <td className="px-3 py-2.5 align-middle">
+                    {upcomingLesson ? (
+                      <Link
+                        href={`/calendar/lessons/${upcomingLesson.lessonId}`}
+                        className="flex items-center justify-between gap-1.5 p-1 -m-1 rounded-lg hover:bg-slate-100/80 transition-colors group/lesson block"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center text-xs font-bold text-slate-800 group-hover/lesson:text-blue-600 transition-colors">
+                            <Calendar className="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
+                            <span className="truncate">{upcomingLesson.dateDayFormatted}</span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 truncate pl-5">
+                            {upcomingLesson.timeFormatted}
+                          </div>
                         </div>
-                      </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover/lesson:text-blue-500 shrink-0" />
+                      </Link>
                     ) : (
-                      <span className="text-xs text-slate-400 select-none">—</span>
+                      <span className="text-[11px] text-slate-400 font-normal italic select-none">
+                        Нет запланированных
+                      </span>
                     )}
                   </td>
 
                   {/* 5. КОЛОНКА: ПОСЕЩАЕМОСТЬ */}
-                  <td className="px-3.5 py-2.5 text-center align-middle">
+                  <td className="px-3 py-2.5 text-center align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'attendance')}
                       className="flex flex-col items-center justify-center group/att cursor-pointer w-full"
                     >
-                      <span
-                        className={cn(
-                          'text-xs font-bold',
-                          student.attendanceRate >= 90
-                            ? 'text-slate-800'
-                            : student.attendanceRate >= 70
-                            ? 'text-amber-600'
-                            : 'text-rose-600'
-                        )}
-                      >
-                        {student.attendanceRate}%
+                      <span className="text-xs font-bold text-slate-900 group-hover/att:text-blue-600 transition-colors">
+                        {attendanceRate}%
                       </span>
-                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200/50">
+                      <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
-                            student.attendanceRate >= 90
+                            attendanceRate >= 85
                               ? 'bg-emerald-500'
-                              : student.attendanceRate >= 70
+                              : attendanceRate >= 70
                               ? 'bg-amber-500'
                               : 'bg-rose-500'
                           )}
-                          style={{ width: `${Math.min(student.attendanceRate, 100)}%` }}
+                          style={{ width: `${Math.min(attendanceRate, 100)}%` }}
                         />
                       </div>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {presentCount} / {totalLessonsCount}
+                      </span>
                     </div>
                   </td>
 
                   {/* 6. КОЛОНКА: БАЛАНС */}
-                  <td className="px-3.5 py-2.5 align-middle">
+                  <td className="px-3 py-2.5 align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'finance')}
-                      className="group/fin min-w-0 cursor-pointer"
+                      className="group/fin min-w-0 cursor-pointer space-y-0.5"
                     >
-                      {student.financeStatus === 'active_sub' && (
-                        <div className="space-y-0.5">
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
-                            ✓ Оплачено до {formattedPaidUntil}
-                          </span>
-                          <div className="text-[11px] text-slate-400 font-normal truncate">
-                            Баланс: {student.netBalanceEur > 0 ? `+${student.netBalanceEur} €` : `${student.netBalanceEur} €`}
-                          </div>
+                      {hasDebt ? (
+                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200/60 whitespace-nowrap">
+                          -{student.debtEur || Math.abs(netBalance)} €
+                        </div>
+                      ) : hasDeposit ? (
+                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 whitespace-nowrap">
+                          +{student.balanceEur || netBalance} €
+                        </div>
+                      ) : student.status === 'trial' || student.financeStatus === 'trial' ? (
+                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200/60 whitespace-nowrap">
+                          Пробный
+                        </div>
+                      ) : (
+                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/60 whitespace-nowrap">
+                          0 €
                         </div>
                       )}
-                      {student.financeStatus === 'deposit' && (
-                        <div className="space-y-0.5">
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
-                            Депозит: +{student.balanceEur} €
-                          </span>
-                          <div className="text-[11px] font-semibold text-emerald-600 truncate">
-                            +{student.balanceEur} €
-                          </div>
-                        </div>
-                      )}
-                      {student.financeStatus === 'debt' && (
-                        <div className="space-y-0.5">
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200/60 text-[11px] font-bold px-2 py-0.5 rounded-lg whitespace-nowrap inline-block">
-                            Долг: -{student.debtEur} €
-                          </span>
-                          <div className="text-[11px] font-semibold text-rose-600 truncate">
-                            -{student.debtEur} €
-                          </div>
-                        </div>
-                      )}
-                      {student.financeStatus === 'trial' && (
-                        <div className="space-y-0.5">
-                          <span className="bg-purple-50 text-purple-700 border border-purple-200/60 text-[11px] font-semibold px-2 py-0.5 rounded-lg inline-block">
-                            Пробный
-                          </span>
-                          <div className="text-[11px] text-purple-700 font-medium truncate">
-                            0 €
-                          </div>
+
+                      {rubFormatted && (
+                        <div className="text-[10px] text-slate-400 font-normal truncate">
+                          {rubFormatted}
                         </div>
                       )}
                     </div>
                   </td>
 
-                  {/* 7. КОЛОНКА: СТАТУС */}
-                  <td className="px-3.5 py-2.5 text-center align-middle">
+                  {/* 7. КОЛОНКА: СТАТУС (Интерактивный выпадающий селектор) */}
+                  <td className="px-3 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     {student.isDeleted ? (
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           restoreStudent(student.id);
                           onRefreshStudents();
                           toast.success(`Ученик ${student.name} восстановлен`);
@@ -557,21 +682,193 @@ export function StudentsDesktop({
                         <span>Вернуть</span>
                       </button>
                     ) : (
-                      <span
-                        className={cn(
-                          'rounded-full px-2.5 py-0.5 font-semibold text-[11px] inline-block shadow-2xs',
-                          student.status === 'active' && 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
-                          student.status === 'trial' && 'bg-purple-50 text-purple-700 border border-purple-200/60',
-                          student.status === 'paused' && 'bg-amber-50 text-amber-700 border border-amber-200/60',
-                          student.status === 'archived' && 'bg-slate-100 text-slate-600 border border-slate-200'
+                      <div className="relative inline-block text-left">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveStatusDropdownId(
+                              activeStatusDropdownId === student.id ? null : student.id
+                            )
+                          }
+                          className={cn(
+                            'text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs border',
+                            isAttention && student.status === 'active'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100'
+                              : student.status === 'active'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100'
+                              : student.status === 'trial'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200/60 hover:bg-purple-100'
+                              : student.status === 'paused'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200/60 hover:bg-amber-100'
+                              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'h-1.5 w-1.5 rounded-full shrink-0',
+                              isAttention && student.status === 'active'
+                                ? 'bg-rose-500 animate-pulse'
+                                : student.status === 'active'
+                                ? 'bg-emerald-500'
+                                : student.status === 'trial'
+                                ? 'bg-purple-500'
+                                : student.status === 'paused'
+                                ? 'bg-amber-500'
+                                : 'bg-slate-400'
+                            )}
+                          />
+                          <span>
+                            {isAttention && student.status === 'active'
+                              ? 'Внимание'
+                              : getStatusLabel(student.status)}
+                          </span>
+                          <ChevronDown className="w-3 h-3 opacity-60" />
+                        </button>
+
+                        {/* Status Dropdown Menu */}
+                        {activeStatusDropdownId === student.id && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-30"
+                              onClick={() => setActiveStatusDropdownId(null)}
+                            />
+                            <div className="absolute right-0 mt-1 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-40 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Сменить статус
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student, 'active')}
+                                className={cn(
+                                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                                  student.status === 'active'
+                                    ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                )}
+                              >
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                <span>Активен</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student, 'trial')}
+                                className={cn(
+                                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                                  student.status === 'trial'
+                                    ? 'bg-purple-50 text-purple-800 font-semibold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                )}
+                              >
+                                <span className="h-2 w-2 rounded-full bg-purple-500" />
+                                <span>Пробный</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student, 'paused')}
+                                className={cn(
+                                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                                  student.status === 'paused'
+                                    ? 'bg-amber-50 text-amber-800 font-semibold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                )}
+                              >
+                                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                <span>Пауза</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(student, 'archived')}
+                                className={cn(
+                                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-lg text-left transition-colors cursor-pointer',
+                                  student.status === 'archived'
+                                    ? 'bg-slate-100 text-slate-800 font-semibold'
+                                    : 'text-slate-700 hover:bg-slate-50'
+                                )}
+                              >
+                                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                                <span>В архив</span>
+                              </button>
+                            </div>
+                          </>
                         )}
-                      >
-                        {student.status === 'active' && 'Активен'}
-                        {student.status === 'trial' && 'Пробный'}
-                        {student.status === 'paused' && 'Пауза'}
-                        {student.status === 'archived' && 'Архив'}
-                      </span>
+                      </div>
                     )}
+                  </td>
+
+                  {/* 8. ДЕЙСТВИЯ СТРОКИ «···» */}
+                  <td className="px-2 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative inline-block text-left">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveActionsRowId(
+                            activeActionsRowId === student.id ? null : student.id
+                          )
+                        }
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Действия по ученику"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+
+                      {/* Row Actions Menu */}
+                      {activeActionsRowId === student.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-30"
+                            onClick={() => setActiveActionsRowId(null)}
+                          />
+                          <div className="absolute right-0 mt-1 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-40 space-y-0.5 animate-in fade-in zoom-in-95 duration-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveActionsRowId(null);
+                                handleStudentClick(student.id, 'profile');
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                            >
+                              <User className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Открыть профиль</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveActionsRowId(null);
+                                handleStudentClick(student.id, 'finance');
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                            >
+                              <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                              <span>История оплат</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveActionsRowId(null);
+                                setActiveTelegramStudent(student);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Написать в Telegram</span>
+                            </button>
+
+                            <div className="my-1 border-t border-slate-100" />
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteStudent(student)}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg text-left transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Удалить ученика</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
