@@ -27,7 +27,6 @@ import { cn } from '@/lib/utils';
 import { CreateStudentModal } from '@/components/students/CreateStudentModal';
 import type { NewStudentData } from '@/components/students/CreateStudentModal';
 import { TeacherQuickViewModal } from '@/components/dashboard/TeacherQuickViewModal';
-import { StudentDrawer } from '@/components/students/StudentDrawer';
 import { BulkActionsBar } from '@/components/students/BulkActionsBar';
 import { StudentsDesktop } from '@/features/students/components/StudentsDesktop';
 import { useToast } from '@/context/ToastContext';
@@ -283,12 +282,6 @@ function StudentsContent() {
   };
 
   // Deep Link Modal Triggers
-  const activeDrawerStudentObj = useMemo(() => {
-    if (!activeStudentIdFromUrl) return null;
-    const found = students.find((s) => s.id === activeStudentIdFromUrl);
-    return found ? found.rawStudentObj : null;
-  }, [activeStudentIdFromUrl, students]);
-
   const activeTeacherObj = useMemo(() => {
     if (!activeTeacherIdFromUrl) return null;
     const found = students.find((s) => s.teacherId === activeTeacherIdFromUrl);
@@ -299,20 +292,8 @@ function StudentsContent() {
     };
   }, [activeTeacherIdFromUrl, students]);
 
-  const handleOpenStudentDrawer = (id: string, tab?: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('id', id);
-    if (tab) params.set('tab', tab);
-    else params.delete('tab');
-    router.push(`/students?${params.toString()}`, { scroll: false });
-  };
-
-  const handleCloseStudentDrawer = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('id');
-    params.delete('tab');
-    const newQuery = params.toString();
-    router.push(newQuery ? `/students?${newQuery}` : '/students', { scroll: false });
+  const handleSelectStudent = (id: string, tab?: string) => {
+    router.push(tab ? `/students/${id}?tab=${tab}` : `/students/${id}`);
   };
 
   const handleOpenTeacherModal = (teacherId: string, teacherName?: string) => {
@@ -999,7 +980,7 @@ function StudentsContent() {
                 key={student.id}
                 onClick={() => {
                   if (statusTab !== 'deleted') {
-                    handleOpenStudentDrawer(student.id);
+                    handleSelectStudent(student.id);
                   }
                 }}
                 className="p-3.5 space-y-2 active:bg-slate-50 transition-colors cursor-pointer"
@@ -1097,7 +1078,7 @@ function StudentsContent() {
           onSortToggle={handleSortToggle}
           statusFilter={statusTab}
           onOpenTeacherModal={handleOpenTeacherModal}
-          onOpenStudentDrawer={handleOpenStudentDrawer}
+          onSelectStudent={handleSelectStudent}
           onRefreshStudents={refreshStudents}
         />
       </div>
@@ -1143,14 +1124,6 @@ function StudentsContent() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={handleStudentCreated}
-      />
-
-      {/* Student Drawer with Deep Link & Initial Tab support */}
-      <StudentDrawer
-        isOpen={Boolean(activeStudentIdFromUrl)}
-        studentData={activeDrawerStudentObj}
-        initialTab={activeTabFromUrl}
-        onClose={handleCloseStudentDrawer}
       />
 
       {/* Teacher Quick View Modal with Deep Link support */}

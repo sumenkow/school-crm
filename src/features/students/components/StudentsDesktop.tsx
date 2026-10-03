@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowUpDown,
   ArrowUp,
@@ -189,6 +190,7 @@ interface StudentsDesktopProps {
   onSortToggle: (field: SortField) => void;
   statusFilter: string;
   onOpenTeacherModal?: (teacherId: string, teacherName?: string) => void;
+  onSelectStudent?: (id: string, tab?: string) => void;
   onOpenStudentDrawer?: (id: string, tab?: string) => void;
   onRefreshStudents: () => void;
 }
@@ -204,9 +206,11 @@ export function StudentsDesktop({
   onSortToggle,
   statusFilter,
   onOpenTeacherModal,
+  onSelectStudent,
   onOpenStudentDrawer,
   onRefreshStudents,
 }: StudentsDesktopProps) {
+  const router = useRouter();
   const toast = useToast();
   const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
   const [activeTelegramStudent, setActiveTelegramStudent] = useState<StudentListItem | null>(null);
@@ -219,8 +223,12 @@ export function StudentsDesktop({
   }, [students]);
 
   const handleStudentClick = (studentId: string, tab?: string) => {
-    if (onOpenStudentDrawer) {
+    if (onSelectStudent) {
+      onSelectStudent(studentId, tab);
+    } else if (onOpenStudentDrawer) {
       onOpenStudentDrawer(studentId, tab);
+    } else {
+      router.push(tab ? `/students/${studentId}?tab=${tab}` : `/students/${studentId}`);
     }
   };
 
@@ -439,13 +447,7 @@ export function StudentsDesktop({
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/students/${student.id}`}
-                          onClick={(e) => {
-                            if (onOpenStudentDrawer) {
-                              e.preventDefault();
-                              handleStudentClick(student.id);
-                            }
-                          }}
-                          className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block"
+                          className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline transition-colors truncate block cursor-pointer"
                           title={student.name}
                         >
                           {student.name}
@@ -518,8 +520,8 @@ export function StudentsDesktop({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1 min-w-0">
                             <Link
-                              href={primaryGroup ? `/calendar/lessons/${primaryGroup.nextLessonId || primaryGroup.id}` : '#'}
-                              className="text-xs font-bold text-slate-900 hover:text-blue-600 transition-colors truncate block"
+                              href={primaryGroup ? `/groups/${primaryGroup.id}` : '#'}
+                              className="text-xs font-bold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors truncate block"
                               title={groupName}
                             >
                               {groupName}
