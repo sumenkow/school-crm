@@ -265,23 +265,23 @@ export function StudentsDesktop({
 
   return (
     <div className="hidden md:block w-full overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-xs">
-      <table className="w-full min-w-[1269px] table-fixed border-collapse text-left text-xs">
+      <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
           <col className="w-[44px]" />   {/* Чекбокс 44px */}
-          <col className="w-[210px]" />  {/* Ученик 210px */}
-          <col className="w-[250px]" />  {/* Представитель 250px */}
-          <col className="w-[180px]" />  {/* Обучение 180px */}
-          <col className="w-[170px]" />  {/* Ближайшее занятие 170px */}
-          <col className="w-[125px]" />  {/* Посещаемость 125px */}
-          <col className="w-[120px]" />  {/* Баланс 120px */}
-          <col className="w-[130px]" />  {/* Статус 130px */}
-          <col className="w-[40px]" />   {/* Действия ··· 40px */}
+          <col className="w-[190px]" />  {/* Ученик 190px */}
+          <col className="w-[285px]" />  {/* Представитель 285px */}
+          <col className="w-[200px]" />  {/* Обучение 200px */}
+          <col className="w-[180px]" />  {/* Ближайшее занятие 180px */}
+          <col className="w-[110px]" />  {/* Посещаемость 110px */}
+          <col className="w-[110px]" />  {/* Баланс 110px */}
+          <col className="w-[120px]" />  {/* Статус 120px */}
+          <col className="w-[44px]" />   {/* Действия ··· 44px */}
         </colgroup>
 
         {/* Шапка таблицы */}
         <thead className="h-10 bg-slate-50/70 border-b border-slate-100 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none">
           <tr>
-            <th className="px-3 py-2.5 text-center">
+            <th className="px-2 py-2.5 text-center">
               <input
                 type="checkbox"
                 checked={allFilteredSelected}
@@ -290,7 +290,7 @@ export function StudentsDesktop({
                 title="Выбрать всех"
               />
             </th>
-            <th className="px-3 py-2.5 text-left">
+            <th className="px-2.5 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('name')}
@@ -304,10 +304,10 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
-            <th className="px-3 py-2.5 text-left">ОБУЧЕНИЕ</th>
-            <th className="px-3 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
-            <th className="px-3 py-2.5 text-center">
+            <th className="px-2.5 py-2.5 text-left">ПРЕДСТАВИТЕЛЬ</th>
+            <th className="px-2.5 py-2.5 text-left">ОБУЧЕНИЕ</th>
+            <th className="px-2.5 py-2.5 text-left">БЛИЖАЙШЕЕ ЗАНЯТИЕ</th>
+            <th className="px-2 py-2.5 text-center">
               <button
                 type="button"
                 onClick={() => onSortToggle('attendanceRate')}
@@ -321,7 +321,7 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3 py-2.5 text-left">
+            <th className="px-2.5 py-2.5 text-left">
               <button
                 type="button"
                 onClick={() => onSortToggle('finance')}
@@ -335,10 +335,10 @@ export function StudentsDesktop({
                 )}
               </button>
             </th>
-            <th className="px-3 py-2.5 text-center">
+            <th className="px-2 py-2.5 text-center">
               <span>СТАТУС</span>
             </th>
-            <th className="px-2 py-2.5 text-center">
+            <th className="px-1 py-2.5 text-center">
               <span className="sr-only">Действия</span>
             </th>
           </tr>
@@ -410,7 +410,7 @@ export function StudentsDesktop({
                   )}
                 >
                   {/* Чекбокс */}
-                  <td className="px-3 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-2 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -420,7 +420,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 1. КОЛОНКА: УЧЕНИК */}
-                  <td className="px-3 py-2.5 align-middle">
+                  <td className="px-2.5 py-2 align-middle">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         onClick={() => handleStudentClick(student.id)}
@@ -451,61 +451,62 @@ export function StudentsDesktop({
                       <div className="min-w-0 flex-1">
                         <Link
                           href={`/students/${student.id}`}
-                          className="text-xs font-bold text-slate-900 hover:text-blue-600 hover:underline transition-colors truncate block cursor-pointer"
+                          className="text-xs font-semibold text-slate-900 hover:text-blue-600 hover:underline transition-colors truncate block cursor-pointer"
                           title={student.name}
                         >
                           {student.name}
                         </Link>
-                        <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 truncate">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                          <span className="truncate">
-                            {categoryTitle} · {ageDisplay}
-                          </span>
+                        <div className="text-[11px] text-slate-400 mt-0.5 truncate">
+                          {categoryTitle} · {ageDisplay}
                         </div>
                       </div>
                     </div>
                   </td>
 
-                  {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ */}
-                  <td className="px-3 py-2.5 align-middle">
+                  {/* 2. КОЛОНКА: ПРЕДСТАВИТЕЛЬ И МЕССЕНДЖЕРЫ (Вертикальные кнопки WA/TG) */}
+                  <td className="px-2.5 py-2 align-middle">
                     {student.parentId || student.parentName ? (
-                      <div className="min-w-0 space-y-0.5">
-                        <Link
-                          href={student.parentId ? `/parents/${student.parentId}` : '#'}
-                          className="text-xs font-medium text-slate-800 hover:text-blue-600 truncate block"
-                          title={parentCleanName || 'Представитель'}
-                        >
-                          {parentCleanName || 'Представитель'}
-                        </Link>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[11px] text-slate-600 font-mono whitespace-nowrap" title={formatPhone(student.parentPhone)}>
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={student.parentId ? `/parents/${student.parentId}` : '#'}
+                            className="text-xs font-semibold text-slate-800 hover:text-blue-600 truncate block transition-colors"
+                            title={parentCleanName || 'Представитель'}
+                          >
+                            {parentCleanName || 'Представитель'}
+                          </Link>
+                          <div
+                            className="text-[11px] text-slate-600 font-mono whitespace-nowrap mt-0.5"
+                            title={formatPhone(student.parentPhone)}
+                          >
                             {formatPhone(student.parentPhone)}
-                          </span>
-                          {normalizePhone(student.parentPhone) && (
-                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                              {/* WhatsApp Mini Button */}
-                              <a
-                                href={getWhatsAppLink(student.parentPhone)}
-                                target="_blank"
-                                rel="noreferrer"
-                                title="Написать в WhatsApp"
-                                className="w-5 h-5 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer border border-emerald-200/60"
-                              >
-                                <WhatsAppIcon className="w-3 h-3" />
-                              </a>
-
-                              {/* Telegram Mini Button (In-CRM Integration) */}
-                              <button
-                                type="button"
-                                onClick={() => setActiveTelegramStudent(student)}
-                                title="Открыть Telegram-диалог в CRM"
-                                className="w-5 h-5 rounded bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer border border-sky-200/60"
-                              >
-                                <TelegramIcon className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
+                          </div>
                         </div>
+
+                        {normalizePhone(student.parentPhone) && (
+                          <div className="flex flex-col gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {/* WhatsApp Button (24x24) */}
+                            <a
+                              href={getWhatsAppLink(student.parentPhone)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Написать в WhatsApp"
+                              className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 hover:bg-emerald-100 flex items-center justify-center transition-colors cursor-pointer border border-emerald-200/70 shadow-2xs"
+                            >
+                              <WhatsAppIcon className="w-3.5 h-3.5" />
+                            </a>
+
+                            {/* Telegram Button (24x24) */}
+                            <button
+                              type="button"
+                              onClick={() => setActiveTelegramStudent(student)}
+                              title="Открыть Telegram-диалог в CRM"
+                              className="w-6 h-6 rounded-md bg-sky-50 text-sky-600 hover:bg-sky-100 flex items-center justify-center transition-colors cursor-pointer border border-sky-200/70 shadow-2xs"
+                            >
+                              <TelegramIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="text-[11px] text-slate-400 font-medium">— Самостоятельно</div>
@@ -513,7 +514,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 3. КОЛОНКА: ОБУЧЕНИЕ (Группа / Курс) */}
-                  <td className="px-3 py-2.5 align-middle">
+                  <td className="px-2.5 py-2 align-middle">
                     {student.groups.length > 0 ? (
                       <div className="flex items-center gap-2 min-w-0">
                         {/* Иконка предмета/направления */}
@@ -525,7 +526,7 @@ export function StudentsDesktop({
                           <div className="flex items-center gap-1 min-w-0">
                             <Link
                               href={primaryGroup ? `/groups/${primaryGroup.id}` : '#'}
-                              className="text-xs font-bold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors truncate block"
+                              className="text-xs font-semibold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors truncate block"
                               title={groupName}
                             >
                               {groupName}
@@ -595,7 +596,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 4. КОЛОНКА: БЛИЖАЙШЕЕ ЗАНЯТИЕ */}
-                  <td className="px-3 py-2.5 align-middle">
+                  <td className="px-2.5 py-2 align-middle">
                     {upcomingLesson ? (
                       <button
                         type="button"
@@ -609,7 +610,7 @@ export function StudentsDesktop({
                         title="Открыть карточку урока"
                       >
                         <div className="min-w-0">
-                          <div className="flex items-center text-xs font-bold text-slate-800 group-hover/lesson:text-blue-600 transition-colors">
+                          <div className="flex items-center text-xs font-semibold text-slate-800 group-hover/lesson:text-blue-600 transition-colors">
                             <Calendar className="w-3.5 h-3.5 text-blue-600 mr-1.5 shrink-0" />
                             <span className="truncate">{upcomingLesson.dateDayFormatted}</span>
                           </div>
@@ -627,15 +628,15 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 5. КОЛОНКА: ПОСЕЩАЕМОСТЬ */}
-                  <td className="px-3 py-2.5 text-center align-middle">
+                  <td className="px-2 py-2 text-center align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'attendance')}
                       className="flex flex-col items-center justify-center group/att cursor-pointer w-full"
                     >
-                      <span className="text-xs font-bold text-slate-900 group-hover/att:text-blue-600 transition-colors">
+                      <span className="text-xs font-bold text-slate-900 group-hover/att:text-blue-600 transition-colors leading-tight">
                         {attendanceRate}%
                       </span>
-                      <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
+                      <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden my-1 border border-slate-200/40">
                         <div
                           className={cn(
                             'h-full rounded-full transition-all',
@@ -648,32 +649,32 @@ export function StudentsDesktop({
                           style={{ width: `${Math.min(attendanceRate, 100)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-slate-400 font-medium">
+                      <span className="text-[10px] text-slate-400 font-medium leading-tight">
                         {presentCount} / {totalLessonsCount}
                       </span>
                     </div>
                   </td>
 
                   {/* 6. КОЛОНКА: БАЛАНС */}
-                  <td className="px-3 py-2.5 align-middle">
+                  <td className="px-2.5 py-2 align-middle">
                     <div
                       onClick={() => handleStudentClick(student.id, 'finance')}
                       className="group/fin min-w-0 cursor-pointer space-y-0.5"
                     >
                       {hasDebt ? (
-                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60 whitespace-nowrap">
                           -{student.debtEur || Math.abs(netBalance)} €
                         </div>
                       ) : hasDeposit ? (
-                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 whitespace-nowrap">
                           +{student.balanceEur || netBalance} €
                         </div>
                       ) : student.status === 'trial' || student.financeStatus === 'trial' ? (
-                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200/60 whitespace-nowrap">
                           Пробный
                         </div>
                       ) : (
-                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200/60 whitespace-nowrap">
+                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
                           0 €
                         </div>
                       )}
@@ -687,7 +688,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 7. КОЛОНКА: СТАТУС (Интерактивный выпадающий селектор) */}
-                  <td className="px-3 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-2 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     {student.isDeleted ? (
                       <button
                         type="button"
@@ -712,7 +713,7 @@ export function StudentsDesktop({
                             )
                           }
                           className={cn(
-                            'text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs border',
+                            'text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs border',
                             isAttention && student.status === 'active'
                               ? 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100'
                               : student.status === 'active'
@@ -817,7 +818,7 @@ export function StudentsDesktop({
                   </td>
 
                   {/* 8. ДЕЙСТВИЯ СТРОКИ «···» */}
-                  <td className="px-2 py-2.5 text-center align-middle" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-1 py-2 text-center align-middle" onClick={(e) => e.stopPropagation()}>
                     <div className="relative inline-block text-left">
                       <button
                         type="button"
@@ -826,7 +827,7 @@ export function StudentsDesktop({
                             activeActionsRowId === student.id ? null : student.id
                           )
                         }
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                         title="Действия по ученику"
                       >
                         <MoreHorizontal className="w-4 h-4" />
