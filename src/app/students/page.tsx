@@ -17,7 +17,6 @@ import {
   ArrowDown,
   ChevronDown,
   MoreHorizontal,
-  Settings2,
   Download,
   X,
 } from 'lucide-react';
@@ -224,7 +223,6 @@ function StudentsContent() {
   const [attendanceFilter, setAttendanceFilter] = useState<string>('all');
   const [balanceFilter, setBalanceFilter] = useState<string>('all');
   const [studentTypeFilter, setStudentTypeFilter] = useState<string>('all');
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -779,53 +777,7 @@ function StudentsContent() {
             <option value="active_sub">Активный абонемент</option>
             <option value="trial">Пробный урок</option>
           </select>
-
-          {/* More Filters Button */}
-          <button
-            type="button"
-            onClick={() => setShowMoreFilters(!showMoreFilters)}
-            className={cn(
-              'h-9 px-3 text-xs font-medium border rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs',
-              showMoreFilters || studentTypeFilter !== 'all'
-                ? 'bg-blue-50 border-blue-200 text-blue-700 font-semibold'
-                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            <span>Еще фильтры</span>
-          </button>
         </div>
-
-        {/* Extended Filters Drawer */}
-        {showMoreFilters && (
-          <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs animate-in fade-in duration-150">
-            <span className="text-slate-500 font-medium mr-1">Категория:</span>
-            <button
-              type="button"
-              onClick={() => setStudentTypeFilter(studentTypeFilter === 'school_student' ? 'all' : 'school_student')}
-              className={cn(
-                'px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer',
-                studentTypeFilter === 'school_student'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              )}
-            >
-              Школьники (с родителями)
-            </button>
-            <button
-              type="button"
-              onClick={() => setStudentTypeFilter(studentTypeFilter === 'adult_student' ? 'all' : 'adult_student')}
-              className={cn(
-                'px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer',
-                studentTypeFilter === 'adult_student'
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-              )}
-            >
-              Студенты (взрослые)
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Deleted Banner */}
