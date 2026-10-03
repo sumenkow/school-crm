@@ -519,6 +519,12 @@ function StudentsContent() {
     toast.success(`Подготовлена рассылка для ${phones.length} контактов`);
   };
 
+  const handleBulkSendHomework = () => {
+    const selectedStudents = students.filter((s) => selectedIds.includes(s.id));
+    if (selectedStudents.length === 0) return;
+    toast.success(`Подготовлена отправка ДЗ для ${selectedStudents.length} выбранных учеников`);
+  };
+
   const handleBulkChangeGroupConfirm = (groupId: string | null) => {
     const allRawStudents = getStoredStudents();
     const allGroups = getStoredGroups();
@@ -1087,6 +1093,7 @@ function StudentsContent() {
       <BulkActionsBar
         selectedCount={selectedIds.length}
         onSendMessage={handleBulkSendMessage}
+        onSendHomework={handleBulkSendHomework}
         onChangeGroup={() => setIsBulkGroupModalOpen(true)}
         onChangeStatus={() => setIsBulkStatusModalOpen(true)}
         onExport={handleBulkExport}
