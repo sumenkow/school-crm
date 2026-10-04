@@ -36,10 +36,11 @@ import {
   RolePermissions
 } from '@/components/settings/RolesSecurityModal';
 import { TelegramSettingsModal } from '@/components/settings/TelegramSettingsModal';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 
 export default function SettingsPage() {
   const { role } = useRole();
+  const { canManageSchoolSettings } = usePermissions();
   const [activeModal, setActiveModal] = useState<'school' | 'courses' | 'roles' | 'telegram' | null>(null);
   const [cloudSynced, setCloudSynced] = useState(true);
 
@@ -161,7 +162,7 @@ export default function SettingsPage() {
     },
   });
 
-  if (role !== 'owner' && role !== 'developer') {
+  if (!canManageSchoolSettings) {
     return (
       <div className="flex flex-col gap-6 max-w-4xl mx-auto py-8">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Настройки школы</h1>

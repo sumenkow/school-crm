@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
+import { permissions, PermissionsMap, getPermissionsForRole, AppRole } from '@/lib/auth/permissions';
 
 export interface UserProfileData {
   role: UserRole;
@@ -28,6 +29,7 @@ interface RoleContextType {
   setUserTelegram: (tg: string) => void;
   isOwner: boolean;
   ownerEmail: string;
+  permissions: PermissionsMap;
   updateProfile: (updates: Partial<UserProfileData>) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -350,6 +352,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   };
 
+  const currentPermissions = React.useMemo(() => getPermissionsForRole(role as AppRole), [role]);
+
   return (
     <RoleContext.Provider
       value={{
@@ -368,6 +372,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
         setUserTelegram,
         isOwner,
         ownerEmail,
+        permissions: currentPermissions,
         updateProfile,
         signOut,
       }}
@@ -383,4 +388,14 @@ export function useRole() {
     throw new Error('useRole must be used within a RoleProvider');
   }
   return context;
+}
+
+export function usePermissions() {
+  const { permissions: userPermissions, role } = useRole();
+  return {
+    ...userPermissions,
+    role,
+    // Direct access to functions if needed
+    permissions,
+  };
 }

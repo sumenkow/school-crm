@@ -21,7 +21,7 @@ import {
   ChevronUp,
   Trash2
 } from 'lucide-react';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 
 const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
@@ -76,6 +76,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
 
 export default function DatabaseBackupPage() {
   const { role, isOwner } = useRole();
+  const { canExportDatabase } = usePermissions();
   const [downloading, setDownloading] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [syncing, setSyncing] = useState(false);
@@ -175,6 +176,31 @@ export default function DatabaseBackupPage() {
       setSyncing(false);
     }
   };
+
+  if (!canExportDatabase) {
+    return (
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto py-8">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Резервное копирование</h1>
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-xs">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 mb-4">
+            <ShieldCheck className="h-7 w-7" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">Доступ ограничен</h2>
+          <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
+            Экспорт и резервное копирование базы данных доступны только в режиме Владельца школы.
+          </p>
+          <div className="mt-6">
+            <Link
+              href="/dashboard"
+              className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors inline-block"
+            >
+              Вернуться на главную
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
@@ -406,7 +432,7 @@ export default function DatabaseBackupPage() {
       </div>
 
       {/* Mock Data Cleanup — only for developer/owner */}
-      {(role === 'developer' || role === 'owner') && (
+      {canExportDatabase && (
         <MockDataCleanupSection />
       )}
     </div>

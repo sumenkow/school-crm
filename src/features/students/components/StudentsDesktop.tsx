@@ -29,6 +29,8 @@ import { restoreStudent, saveStudentToStorage } from '@/lib/data/studentStorage'
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import type { FullLessonData, FullStudentData } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
+import { usePermissions } from '@/context/RoleContext';
+import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { LessonModal } from '@/components/calendar/LessonModal';
 
@@ -215,6 +217,7 @@ export function StudentsDesktop({
 }: StudentsDesktopProps) {
   const router = useRouter();
   const toast = useToast();
+  const { canViewStudentFinancialAmounts } = usePermissions();
   const [activeCoursePopoverId, setActiveCoursePopoverId] = useState<string | null>(null);
   const [activeTelegramStudent, setActiveTelegramStudent] = useState<StudentListItem | null>(null);
   const [activeStatusDropdownId, setActiveStatusDropdownId] = useState<string | null>(null);
@@ -273,7 +276,11 @@ export function StudentsDesktop({
           <col className="w-[180px]" />  {/* Обучение 180px */}
           <col className="w-[135px]" />  {/* Ближайшее занятие 135px (без ...) */}
           <col className="w-[118px]" />  {/* Посещаемость 118px (расширен под заголовок) */}
-          <col className="w-[70px]" />   {/* Баланс 70px (смещен вправо к статусу) */}
+          {canViewStudentFinancialAmounts ? (
+            <col className="w-[70px]" />   /* Баланс 70px (смещен вправо к статусу) */
+          ) : (
+            <col className="w-[140px]" />  /* Статус оплаты 140px */
+          )}
           <col className="w-[90px]" />   {/* Статус 90px */}
           <col className="w-[36px]" />   {/* Действия ··· 36px */}
         </colgroup>
@@ -322,18 +329,22 @@ export function StudentsDesktop({
               </button>
             </th>
             <th className="px-1 py-2 text-left">
-              <button
-                type="button"
-                onClick={() => onSortToggle('finance')}
-                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer whitespace-nowrap"
-              >
-                <span>БАЛАНС</span>
-                {sortField === 'finance' ? (
-                  sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
-                ) : (
-                  <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                )}
-              </button>
+              {canViewStudentFinancialAmounts ? (
+                <button
+                  type="button"
+                  onClick={() => onSortToggle('finance')}
+                  className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-blue-600 cursor-pointer whitespace-nowrap"
+                >
+                  <span>БАЛАНС</span>
+                  {sortField === 'finance' ? (
+                    sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
+                  ) : (
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  )}
+                </button>
+              ) : (
+                <span className="font-semibold text-slate-600 whitespace-nowrap">ОПЛАТА</span>
+              )}
             </th>
             <th className="px-1 py-2 text-center">
               <span>СТАТУС</span>
@@ -652,36 +663,47 @@ export function StudentsDesktop({
                     </div>
                   </td>
 
-                  {/* 6. КОЛОНКА: БАЛАНС (Смещен вправо к статусу) */}
+                  {/* 6. КОЛОНКА: БАЛАНС / СТАТУС ОПЛАТЫ */}
                   <td className="px-1 py-2 align-middle">
-                    <div
-                      onClick={() => handleStudentClick(student.id, 'finance')}
-                      className="group/fin min-w-0 cursor-pointer space-y-0.5"
-                    >
-                      {hasDebt ? (
-                        <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200/60 whitespace-nowrap">
-                          -{student.debtEur || Math.abs(netBalance)} €
-                        </div>
-                      ) : hasDeposit ? (
-                        <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 whitespace-nowrap">
-                          +{student.balanceEur || netBalance} €
-                        </div>
-                      ) : student.status === 'trial' || student.financeStatus === 'trial' ? (
-                        <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200/60 whitespace-nowrap">
-                          Пробный
-                        </div>
-                      ) : (
-                        <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
-                          0 €
-                        </div>
-                      )}
+                    {canViewStudentFinancialAmounts ? (
+                      <div
+                        onClick={() => handleStudentClick(student.id, 'finance')}
+                        className="group/fin min-w-0 cursor-pointer space-y-0.5"
+                      >
+                        {hasDebt ? (
+                          <div className="inline-block text-xs font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200/60 whitespace-nowrap">
+                            -{student.debtEur || Math.abs(netBalance)} €
+                          </div>
+                        ) : hasDeposit ? (
+                          <div className="inline-block text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200/60 whitespace-nowrap">
+                            +{student.balanceEur || netBalance} €
+                          </div>
+                        ) : student.status === 'trial' || student.financeStatus === 'trial' ? (
+                          <div className="inline-block text-xs font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200/60 whitespace-nowrap">
+                            Пробный
+                          </div>
+                        ) : (
+                          <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
+                            0 €
+                          </div>
+                        )}
 
-                      {rubFormatted && (
-                        <div className="text-[10px] text-slate-400 font-normal truncate whitespace-nowrap">
-                          {rubFormatted}
-                        </div>
-                      )}
-                    </div>
+                        {rubFormatted && (
+                          <div className="text-[10px] text-slate-400 font-normal truncate whitespace-nowrap">
+                            {rubFormatted}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => handleStudentClick(student.id, 'education')}
+                        className="min-w-0 cursor-pointer"
+                      >
+                        <span className={cn('inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap', getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass)}>
+                          {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                        </span>
+                      </div>
+                    )}
                   </td>
 
                   {/* 7. КОЛОНКА: СТАТУС (Интерактивный выпадающий селектор) */}

@@ -41,7 +41,7 @@ import {
   Edit3,
   ArrowRight
 } from 'lucide-react';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
@@ -2072,15 +2072,15 @@ function TeacherDashboard() {
 // MAIN DASHBOARD DISPATCHER
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { role } = useRole();
+  const { isTeacherOnly, canViewAdminDashboard, canViewOwnerDashboard } = usePermissions();
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [executiveModalOpen, setExecutiveModalOpen] = useState(false);
 
   return (
     <>
-      {role === 'teacher' ? (
+      {isTeacherOnly ? (
         <TeacherDashboard />
-      ) : role === 'admin' ? (
+      ) : canViewAdminDashboard ? (
         <AdminDashboard onOpenReport={() => setReportModalOpen(true)} />
       ) : (
         <OwnerDashboard
@@ -2094,7 +2094,7 @@ export default function DashboardPage() {
         onClose={() => setReportModalOpen(false)}
       />
 
-      {(role === 'owner' || role === 'developer') && (
+      {canViewOwnerDashboard && (
         <ExecutiveTaskReportModal
           isOpen={executiveModalOpen}
           onClose={() => setExecutiveModalOpen(false)}

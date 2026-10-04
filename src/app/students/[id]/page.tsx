@@ -55,7 +55,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
@@ -361,6 +361,7 @@ export default function StudentDetailsPage() {
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role, userName } = useRole();
+  const { canViewStudentFinancialAmounts, canManageStudentPayments } = usePermissions();
   const { t } = useLanguage();
   const studentId = params.id as string;
   const tabParam = searchParams.get('tab');
@@ -1557,7 +1558,7 @@ export default function StudentDetailsPage() {
                 </span>
 
                 {/* Hero Balance Badge */}
-                {role === 'teacher' ? (
+                {!canViewStudentFinancialAmounts ? (
                   <span
                     className={cn(
                       'rounded-full px-2.5 py-0.5 text-xs font-bold border inline-flex items-center gap-1 shadow-2xs',
@@ -1656,7 +1657,7 @@ export default function StudentDetailsPage() {
               <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
               {t('action.addAction', 'Добавить действие')}
             </button>
-            {role !== 'teacher' && (
+            {canManageStudentPayments && (
               <button
                 onClick={() => setIsPaymentModalOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
@@ -1665,7 +1666,7 @@ export default function StudentDetailsPage() {
                 {t('action.addPayment', 'Добавить платёж')}
               </button>
             )}
-            {role !== 'teacher' && (
+            {canManageStudentPayments && (
               <button
                 onClick={() => setIsInvoiceModalOpen(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
@@ -1750,7 +1751,7 @@ export default function StudentDetailsPage() {
           )}
 
           {/* 5th Column: Payment Status Badge for teacher, Hero Balance Card for admin/owner */}
-          {role === 'teacher' ? (
+          {!canViewStudentFinancialAmounts ? (
             <div className={cn(
               "rounded-xl p-2.5 border flex flex-col justify-between",
               getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'unpaid' && "bg-rose-50/80 border-rose-200",
@@ -1906,7 +1907,7 @@ export default function StudentDetailsPage() {
       </div>
 
       {/* UPCOMING PAYMENT DEADLINE ALERT (Mobile only) */}
-      {role !== 'teacher' && (
+      {canViewStudentFinancialAmounts && (
         <div className="block md:hidden">
           <UpcomingPaymentAlert
             item={getUpcomingPaymentForStudent(student.id)}
@@ -1922,7 +1923,7 @@ export default function StudentDetailsPage() {
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto text-xs font-semibold">
         {[
           { key: 'education', label: `Обучение (${student.attendanceStats.attendanceRate})` },
-          ...(role !== 'teacher' ? [{ key: 'finance', label: `${t('students.tabFinance', 'Финансы')}` }] : []),
+          ...(canViewStudentFinancialAmounts ? [{ key: 'finance', label: `${t('students.tabFinance', 'Финансы')}` }] : []),
           { key: 'profile', label: `${t('students.tabFamily', 'Семья и контакты')}` },
           { key: 'tasks', label: `${t('nav.tasks', 'Задачи')} (${student.tasks.filter((t) => t.status === 'open').length})` },
           { key: 'timeline', label: `Timeline (${student.interactions.length})` },
@@ -2543,7 +2544,7 @@ export default function StudentDetailsPage() {
       )}
 
       {/* TAB 4: ОПЛАТЫ И БАЛАНС (СТРОГО ДЛЯ DEVELOPER / OWNER / ADMIN) */}
-      {activeTab === 'finance' && ['developer', 'owner', 'admin'].includes(role) && (
+      {activeTab === 'finance' && canViewStudentFinancialAmounts && (
         <div className="space-y-6">
           {/* БЛОК 1: ВЕРХНИЙ ЯРУС (АБОНЕМЕНТЫ ПО КУРСАМ 60% И БАЛАНС УЧЕНИКА 40%) */}
           {(() => {

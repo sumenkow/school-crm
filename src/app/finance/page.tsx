@@ -30,7 +30,7 @@ import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
 import { getStoredInvoices, EuropeanInvoiceData, markInvoiceAsPaid } from '@/lib/data/invoiceStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { useLanguage } from '@/context/LanguageContext';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 
 function getRenewalDate(endDateStr?: string): string {
   if (!endDateStr) return '—';
@@ -63,6 +63,7 @@ function getSubscriptionComputedStatus(s: FullSubscriptionData): 'active' | 'fro
 
 function FinanceContent() {
   const { role } = useRole();
+  const { canViewStudentFinancialAmounts, canViewSchoolFinances, canManageStudentPayments } = usePermissions();
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
@@ -198,7 +199,7 @@ function FinanceContent() {
 
   const aggregatedFamilyDebts = Array.from(familyDebtsMap.values());
 
-  if (role === 'teacher') {
+  if (!canViewStudentFinancialAmounts) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 bg-white rounded-2xl border border-slate-200 shadow-xs max-w-lg mx-auto my-8">
         <div className="h-14 w-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-4">
@@ -229,90 +230,97 @@ function FinanceContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsInvoiceModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
-          >
-            <Receipt className="h-4 w-4" />
-            Выставить счёт (Faktúra)
-          </button>
-          <button
-            onClick={() => setIsPaymentModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            {t('finance.recordPayment', 'Внести оплату')}
-          </button>
-          <button
-            onClick={() => setIsSubModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            {t('finance.newSubscription', 'Оформить абонемент')}
-          </button>
-        </div>
+        {canManageStudentPayments && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsInvoiceModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
+            >
+              <Receipt className="h-4 w-4" />
+              Выставить счёт (Faktúra)
+            </button>
+            <button
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              {t('finance.recordPayment', 'Внести оплату')}
+            </button>
+            <button
+              onClick={() => setIsSubModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              {t('finance.newSubscription', 'Оформить абонемент')}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* KPI Section: Mobile Horizontal Bar (< 768px) per Requirement 3.4 */}
-      <div className="sm:hidden grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-xs">
-        <div>
-          <span className="text-[10px] font-semibold text-slate-500 block">Касса</span>
-          <p className="text-sm font-extrabold text-emerald-700 mt-0.5">{paidTotals.formattedTotalEur}</p>
-          <p className="text-[9px] text-slate-400">≈ {paidTotals.formattedTotalRub}</p>
-        </div>
-        <div>
-          <span className="text-[10px] font-semibold text-slate-500 block">Ожидаем</span>
-          <p className="text-sm font-extrabold text-blue-700 mt-0.5">{expectedTotals.formattedTotalEur}</p>
-          <p className="text-[9px] text-slate-400">≈ {expectedTotals.formattedTotalRub}</p>
-        </div>
-        <div>
-          <span className="text-[10px] font-semibold text-rose-700 block">Долг</span>
-          <p className="text-sm font-extrabold text-rose-700 mt-0.5">{overdueTotals.formattedTotalEur}</p>
-          <p className="text-[9px] text-rose-500">≈ {overdueTotals.formattedTotalRub}</p>
-        </div>
-      </div>
-
-      {/* KPI Cards: Desktop (>= 768px) */}
-      <div className="hidden sm:grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">{t('finance.totalRevenue', 'Фактическая выручка (Касса)')}</span>
-            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-              <CreditCard className="h-4 w-4" />
+      {/* KPI Section: Visible only to owner/developer with canViewSchoolFinances */}
+      {canViewSchoolFinances && (
+        <>
+          {/* Mobile Horizontal Bar (< 768px) per Requirement 3.4 */}
+          <div className="sm:hidden grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-xs">
+            <div>
+              <span className="text-[10px] font-semibold text-slate-500 block">Касса</span>
+              <p className="text-sm font-extrabold text-emerald-700 mt-0.5">{paidTotals.formattedTotalEur}</p>
+              <p className="text-[9px] text-slate-400">≈ {paidTotals.formattedTotalRub}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-500 block">Ожидаем</span>
+              <p className="text-sm font-extrabold text-blue-700 mt-0.5">{expectedTotals.formattedTotalEur}</p>
+              <p className="text-[9px] text-slate-400">≈ {expectedTotals.formattedTotalRub}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-rose-700 block">Долг</span>
+              <p className="text-sm font-extrabold text-rose-700 mt-0.5">{overdueTotals.formattedTotalEur}</p>
+              <p className="text-[9px] text-rose-500">≈ {overdueTotals.formattedTotalRub}</p>
             </div>
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-slate-900">{paidTotals.formattedTotalEur}</p>
-          <p className="text-xs text-emerald-700 font-semibold mt-0.5">≈ {paidTotals.formattedTotalRub}</p>
-          <p className="text-[11px] text-slate-500 mt-1">{paidTotals.breakdownSummary}</p>
-        </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">{t('finance.expectedRevenue', 'Ожидается к поступлению')}</span>
-            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-              <Clock className="h-4 w-4" />
+          {/* KPI Cards: Desktop (>= 768px) */}
+          <div className="hidden sm:grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500">{t('finance.totalRevenue', 'Фактическая выручка (Касса)')}</span>
+                <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+                  <CreditCard className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-1 text-2xl font-extrabold text-slate-900">{paidTotals.formattedTotalEur}</p>
+              <p className="text-xs text-emerald-700 font-semibold mt-0.5">≈ {paidTotals.formattedTotalRub}</p>
+              <p className="text-[11px] text-slate-500 mt-1">{paidTotals.breakdownSummary}</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500">{t('finance.expectedRevenue', 'Ожидается к поступлению')}</span>
+                <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-1 text-2xl font-extrabold text-slate-900">{expectedTotals.formattedTotalEur}</p>
+              <p className="text-xs text-blue-700 font-semibold mt-0.5">≈ {expectedTotals.formattedTotalRub}</p>
+              <p className="text-[11px] text-slate-500 mt-1">{expectedTotals.breakdownSummary}</p>
+            </div>
+
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-rose-800">{t('finance.overdueDebt', 'Просроченная задолженность')}</span>
+                <div className="rounded-lg bg-rose-100 p-2 text-rose-700">
+                  <AlertCircle className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="mt-1 text-2xl font-extrabold text-rose-700">{overdueTotals.formattedTotalEur}</p>
+              <p className="text-xs text-rose-800 font-semibold mt-0.5">≈ {overdueTotals.formattedTotalRub}</p>
+              <p className="text-[11px] text-rose-600 mt-1 font-medium">
+                {overduePayments.length} • {overdueTotals.breakdownSummary}
+              </p>
             </div>
           </div>
-          <p className="mt-1 text-2xl font-extrabold text-slate-900">{expectedTotals.formattedTotalEur}</p>
-          <p className="text-xs text-blue-700 font-semibold mt-0.5">≈ {expectedTotals.formattedTotalRub}</p>
-          <p className="text-[11px] text-slate-500 mt-1">{expectedTotals.breakdownSummary}</p>
-        </div>
-
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-800">{t('finance.overdueDebt', 'Просроченная задолженность')}</span>
-            <div className="rounded-lg bg-rose-100 p-2 text-rose-700">
-              <AlertCircle className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-1 text-2xl font-extrabold text-rose-700">{overdueTotals.formattedTotalEur}</p>
-          <p className="text-xs text-rose-800 font-semibold mt-0.5">≈ {overdueTotals.formattedTotalRub}</p>
-          <p className="text-[11px] text-rose-600 mt-1 font-medium">
-            {overduePayments.length} • {overdueTotals.breakdownSummary}
-          </p>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
