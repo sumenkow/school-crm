@@ -69,6 +69,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
   // Modals state
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [activeTelegramLead, setActiveTelegramLead] = useState<FullLeadData | null>(null);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [selectedLessonModal, setSelectedLessonModal] = useState<FullLessonData | null>(null);
@@ -125,6 +126,11 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
       year: 'numeric',
     });
     return str.charAt(0).toUpperCase() + str.slice(1);
+  }, []);
+
+  const todayIso = useMemo(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -334,31 +340,199 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
   }, [upcomingPayments]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 6. TASKS CHECKLIST (Max 5 items with interactive checkbox)
+  // 6. TASKS CHECKLIST (Priority selection: Overdue -> Today -> High -> Owner -> Upcoming)
   // ─────────────────────────────────────────────────────────────────────────────
-  const adminTasksChecklist = useMemo(() => {
-    return kpiData.effectiveTasks.slice(0, 4);
-  }, [kpiData.effectiveTasks]);
+  const getTaskPriorityScore = useCallback((t: FullTaskData, todayIsoStr: string): number => {
+    // 1. OVERDUE
+    const isOverdue = Boolean(
+      t.isOverdue ||
+      (t.dueDate && t.dueDate < todayIsoStr) ||
+      t.dueDateFormatted?.toLowerCase().includes('просрочено')
+    );
+    if (isOverdue) return 1;
 
-  const handleToggleTaskStatus = async (task: FullTaskData) => {
-    const isDone = task.status === 'done';
-    const nextStatus = isDone ? 'open' : 'done';
+    // 2. DUE TODAY
+    const isDueToday =
+      t.dueDate === todayIsoStr ||
+      Boolean(t.dueDateFormatted && t.dueDateFormatted.toLowerCase().includes('сегодня'));
+    if (isDueToday) return 2;
 
-    // Optimistic UI update
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
+    // 3. HIGH PRIORITY
+    if (t.priority === 'high') return 3;
+
+    // 4. ASSIGNED BY OWNER
+    const isOwner = Boolean(
+      t.createdByRole === 'owner' ||
+      t.createdByRole === 'superadmin' ||
+      t.createdByName?.toLowerCase().includes('владелец') ||
+      t.createdByName?.toLowerCase().includes('руководитель') ||
+      t.description?.toLowerCase().includes('поручение владельца') ||
+      t.title?.toLowerCase().includes('владелец')
+    );
+    if (isOwner) return 4;
+
+    // 5. UPCOMING / OTHER
+    return 5;
+  }, []);
+
+  const getTaskDueTimestamp = useCallback((t: FullTaskData): number => {
+    if (!t.dueDate) return Infinity;
+    let timeStr = '23:59';
+    if (t.dueDateFormatted) {
+      const timeMatch = t.dueDateFormatted.match(/\b([01]?[0-9]|2[0-3]):[0-5][0-9]\b/);
+      if (timeMatch) timeStr = timeMatch[0];
+    }
+    const fullDateTime = `${t.dueDate}T${timeStr}:00`;
+    const time = new Date(fullDateTime).getTime();
+    return isNaN(time) ? (new Date(t.dueDate).getTime() || Infinity) : time;
+  }, []);
+
+  const getTaskContextInfo = useCallback((task: FullTaskData, todayIsoStr: string) => {
+    const isOverdue = Boolean(
+      task.isOverdue ||
+      (task.status !== 'done' && task.dueDate && task.dueDate < todayIsoStr) ||
+      task.dueDateFormatted?.toLowerCase().includes('просрочено')
     );
 
-    try {
-      await updateUnifiedTaskStatus(task.id, nextStatus, {
-        performedBy: userName || 'Администратор',
-      });
-      toast.success(nextStatus === 'done' ? `Задача выполнена` : `Задача открыта`);
-    } catch (e) {
-      console.error('Failed to toggle task status:', e);
-      toast.error('Не удалось обновить статус задачи');
-      loadData();
+    const isOwner = Boolean(
+      task.createdByRole === 'owner' ||
+      task.createdByRole === 'superadmin' ||
+      task.createdByName?.toLowerCase().includes('владелец') ||
+      task.createdByName?.toLowerCase().includes('руководитель') ||
+      task.description?.toLowerCase().includes('поручение владельца') ||
+      task.title?.toLowerCase().includes('владелец')
+    );
+
+    let shortDate = '';
+    if (task.dueDate) {
+      try {
+        const parts = task.dueDate.split('-');
+        if (parts.length === 3) {
+          shortDate = `${parts[2]}.${parts[1]}`;
+        } else {
+          const d = new Date(task.dueDate);
+          if (!isNaN(d.getTime())) {
+            shortDate = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+          }
+        }
+      } catch {
+        shortDate = task.dueDate;
+      }
     }
+
+    let timeStr = '';
+    if (task.dueDateFormatted) {
+      const timeMatch = task.dueDateFormatted.match(/\b([01]?[0-9]|2[0-3]):[0-5][0-9]\b/);
+      if (timeMatch) timeStr = timeMatch[0];
+    }
+
+    // 1. OVERDUE: e.g. "Просрочено · 02.10"
+    if (isOverdue) {
+      return {
+        label: `Просрочено · ${shortDate || 'ранее'}`,
+        timeOrDate: shortDate || 'ранее',
+        isOverdue: true,
+        isOwner: false,
+        isHighPriority: false,
+      };
+    }
+
+    const isToday =
+      task.dueDate === todayIsoStr ||
+      Boolean(task.dueDateFormatted && task.dueDateFormatted.toLowerCase().includes('сегодня'));
+
+    // 2. ASSIGNED BY OWNER: e.g. "От владельца · 14:00"
+    if (isOwner) {
+      const timeOrDate = isToday && timeStr ? timeStr : (timeStr ? `${shortDate}, ${timeStr}` : (isToday ? 'Сегодня' : shortDate || 'в срок'));
+      return {
+        label: `От владельца · ${timeOrDate}`,
+        timeOrDate,
+        isOverdue: false,
+        isOwner: true,
+        isHighPriority: task.priority === 'high',
+      };
+    }
+
+    // 3. HIGH PRIORITY: e.g. "Высокий приоритет · 18:00"
+    if (task.priority === 'high') {
+      const timeOrDate = isToday && timeStr ? timeStr : (timeStr ? `${shortDate}, ${timeStr}` : (isToday ? 'Сегодня' : shortDate));
+      return {
+        label: `Высокий приоритет · ${timeOrDate}`,
+        timeOrDate,
+        isOverdue: false,
+        isOwner: false,
+        isHighPriority: true,
+      };
+    }
+
+    // 4. DUE TODAY: e.g. "Сегодня, 18:00"
+    if (isToday) {
+      const label = timeStr ? `Сегодня, ${timeStr}` : 'Сегодня';
+      return {
+        label,
+        timeOrDate: label,
+        isOverdue: false,
+        isOwner: false,
+        isHighPriority: false,
+      };
+    }
+
+    // 5. UPCOMING
+    const timePart = timeStr ? `, ${timeStr}` : '';
+    const label = `${shortDate || task.dueDateFormatted || 'в плане'}${timePart}`;
+    return {
+      label,
+      timeOrDate: label,
+      isOverdue: false,
+      isOwner: false,
+      isHighPriority: false,
+    };
+  }, []);
+
+  const activeAdminTasks = useMemo(() => {
+    return tasks.filter((t) => t.status !== 'done' && t.status !== 'cancelled');
+  }, [tasks]);
+
+  const adminTasksChecklist = useMemo(() => {
+    return [...activeAdminTasks]
+      .sort((a, b) => {
+        const scoreA = getTaskPriorityScore(a, todayIso);
+        const scoreB = getTaskPriorityScore(b, todayIso);
+        if (scoreA !== scoreB) return scoreA - scoreB;
+
+        const timeA = getTaskDueTimestamp(a);
+        const timeB = getTaskDueTimestamp(b);
+        if (timeA !== timeB) return timeA - timeB;
+
+        return a.id.localeCompare(b.id);
+      })
+      .slice(0, 4);
+  }, [activeAdminTasks, todayIso, getTaskPriorityScore, getTaskDueTimestamp]);
+
+  const handleToggleTaskStatus = async (task: FullTaskData) => {
+    if (completingTaskId === task.id) return;
+    setCompletingTaskId(task.id);
+
+    setTimeout(async () => {
+      const nextStatus = 'done';
+
+      // Optimistic UI update: marks as done so it drops out of active tasks selection
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
+      );
+      setCompletingTaskId(null);
+
+      try {
+        await updateUnifiedTaskStatus(task.id, nextStatus, {
+          performedBy: userName || 'Администратор',
+        });
+        toast.success('Задача выполнена');
+      } catch (e) {
+        console.error('Failed to toggle task status:', e);
+        toast.error('Не удалось обновить статус задачи');
+        loadData();
+      }
+    }, 200);
   };
 
   // Helper for waiting time formatting
@@ -920,58 +1094,80 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                   <CheckSquare className="w-3.5 h-3.5" />
                 </div>
                 <h2 className="text-xs font-bold text-slate-900">
-                  Задачи администратора ({adminTasksChecklist.length})
+                  Задачи администратора
                 </h2>
+                {activeAdminTasks.length > 0 && (
+                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full leading-none">
+                    {activeAdminTasks.length}
+                  </span>
+                )}
               </div>
               <Link
                 href="/tasks"
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1 cursor-pointer"
               >
-                <span>Все задачи</span>
-                <ArrowRight className="w-3 h-3" />
+                <span>Все задачи →</span>
               </Link>
             </div>
 
             {adminTasksChecklist.length === 0 ? (
-              <div className="h-7 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50/60 rounded-lg border border-emerald-100">
+              <div className="h-8 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50/60 rounded-lg border border-emerald-100">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>✓ Все задачи на сегодня выполнены</span>
+                <span>✓ Все задачи выполнены</span>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {adminTasksChecklist.map((task) => {
-                  const isDone = task.status === 'done';
+                  const contextInfo = getTaskContextInfo(task, todayIso);
+                  const isCompleting = completingTaskId === task.id;
 
                   return (
                     <div
                       key={task.id}
                       className={cn(
-                        'h-[34px] px-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors',
-                        isDone
-                          ? 'bg-slate-50/50 border-slate-100 text-slate-400'
-                          : 'bg-white border-slate-200/80 hover:border-slate-300'
+                        'px-2.5 py-1.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-50 flex items-start gap-2.5 transition-colors group',
+                        isCompleting && 'opacity-60 bg-slate-100/70'
                       )}
                     >
-                      <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1 select-none">
-                        <input
-                          type="checkbox"
-                          checked={isDone}
-                          onChange={() => handleToggleTaskStatus(task)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
-                        />
-                        <span
+                      <input
+                        type="checkbox"
+                        checked={isCompleting}
+                        onChange={() => handleToggleTaskStatus(task)}
+                        className="mt-0.5 w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href="/tasks"
                           className={cn(
-                            'text-xs font-medium truncate',
-                            isDone && 'line-through text-slate-400 font-normal'
+                            'text-xs font-semibold text-slate-900 group-hover:text-blue-600 transition-colors block truncate leading-tight',
+                            isCompleting && 'line-through text-slate-400'
                           )}
+                          title={task.title}
                         >
                           {task.title}
-                        </span>
-                      </label>
+                        </Link>
 
-                      <span className="text-[10px] font-semibold text-slate-400 shrink-0">
-                        {task.dueDateFormatted || task.dueDate || 'сегодня'}
-                      </span>
+                        {contextInfo.isOwner ? (
+                          <div className="inline-flex items-center gap-1.5 text-[11px] leading-tight mt-0.5 truncate">
+                            <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-semibold text-[10px] leading-none border border-purple-200/60">
+                              От владельца
+                            </span>
+                            <span className="text-slate-500">{contextInfo.timeOrDate}</span>
+                          </div>
+                        ) : contextInfo.isOverdue ? (
+                          <div className="text-[11px] leading-tight mt-0.5 text-rose-600 font-semibold truncate">
+                            {contextInfo.label}
+                          </div>
+                        ) : contextInfo.isHighPriority ? (
+                          <div className="text-[11px] leading-tight mt-0.5 text-amber-700 font-medium truncate">
+                            {contextInfo.label}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] leading-tight mt-0.5 text-slate-500 truncate">
+                            {contextInfo.label}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
