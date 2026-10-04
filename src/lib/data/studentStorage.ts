@@ -114,6 +114,13 @@ export function getStoredStudents(): FullStudentData[] {
       result.push(st);
     }
 
+    for (const initSt of INITIAL_STUDENTS) {
+      if (!initSt || !initSt.id) continue;
+      if (seenIds.has(initSt.id)) continue;
+      seenIds.add(initSt.id);
+      result.push(initSt);
+    }
+
     // Hydrate all student groups to ensure bidirectional sync with groups and normalize
     return result.map((st) => normalizeStudent(hydrateStudentGroups(st)));
   } catch (err) {

@@ -45,7 +45,7 @@ import { Shield } from 'lucide-react';
 import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceReport';
 import { AnalyticsHeader } from '@/features/analytics/components/AnalyticsHeader';
 import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsNav';
-import { DiagnosticsPlaceholder } from '@/features/analytics/components/DiagnosticsPlaceholder';
+import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsCockpit';
 import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
 import { AnalyticsTabKey } from '@/features/analytics/types';
 
@@ -904,7 +904,7 @@ export default function AnalyticsPage() {
 
       {/* 3. Tab: ДИАГНОСТИКА (Active by Default) */}
       {activeTab === 'diagnostics' && (
-        <DiagnosticsPlaceholder filters={filters} />
+        <DiagnosticsCockpit filters={filters} onNavigateTab={setActiveTab} />
       )}
 
       {/* 4. Tab: ДЕТАЛЬНЫЕ ОТЧЕТЫ (Admin Performance) */}

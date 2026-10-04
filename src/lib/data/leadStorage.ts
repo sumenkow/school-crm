@@ -39,6 +39,15 @@ export function getStoredLeads(includeConverted: boolean = false, includeDeleted
           if (cleanName) seenNames.add(cleanName);
           result.push(l);
         }
+
+        for (const initLead of INITIAL_LEADS) {
+          const cleanName = (initLead.name || '').trim().toLowerCase();
+          if (!seenIds.has(initLead.id) && (!cleanName || !seenNames.has(cleanName))) {
+            seenIds.add(initLead.id);
+            if (cleanName) seenNames.add(cleanName);
+            result.push(initLead);
+          }
+        }
         leads = result;
       }
     }
