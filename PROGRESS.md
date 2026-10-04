@@ -26,6 +26,7 @@
 | **Финансы** | `/finance` | `src/app/finance/page.tsx`, `currencyHelper.ts` | ✅ Балансы, EUR/RUB, мультивалютность |
 | **Родители** | `/parents` | `src/app/parents/page.tsx`, `ParentCard.tsx` | ✅ Семейные связи, контакты |
 | **Настройки** | `/settings` | `src/app/settings/page.tsx` | ✅ Курсы, роли, интеграции |
+| **Аналитика** | `/analytics` | `RetentionAnalyticsSection.tsx`, `ActiveAndChurnedDynamicsCard.tsx`, `RenewalConversionCard.tsx` | ✅ Когортное удержание, динамика активных/ушедших, конверсия продлений, риски оттока |
 
 ---
 
