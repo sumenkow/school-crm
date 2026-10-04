@@ -267,7 +267,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       studentId: t.student_id,
       parentId: t.parent_id,
       leadId: t.lead_id,
-      assignedTo: 'Елена Менеджер',
+      assignedTo: t.assigned_to || 'Администратор',
       dueDate: t.due_date,
       dueDateFormatted: t.due_date ? new Date(t.due_date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : 'Сегодня',
       status: t.status || 'open',

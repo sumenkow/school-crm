@@ -133,9 +133,9 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
     }
   }
 
-  // 6. Notify windows
+  // 6. Additional events for timeline/notifications (crm-tasks-changed already dispatched by saveTaskToStorage)
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: newTask }));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
   }
 
   // 7. Telegram Bot notification to Staff / Administrator
@@ -200,7 +200,14 @@ export async function updateUnifiedTaskStatus(
     status: newStatus,
     dueDate: options?.newDueDate || target.dueDate,
     dueDateFormatted: options?.newDueDate
-      ? (options.newDueDate.includes('-') ? options.newDueDate.split('-').reverse().join('.') : options.newDueDate)
+      ? (() => {
+          const iso = options.newDueDate;
+          if (iso.includes('-')) {
+            const [y, m, d] = iso.slice(0, 10).split('-');
+            return `${d}.${m}.${y}`;
+          }
+          return iso;
+        })()
       : target.dueDateFormatted,
     completedAt: newStatus === 'done' ? new Date().toISOString() : (newStatus === 'open' ? undefined : target.completedAt),
     completedBy: newStatus === 'done' ? performerName : (newStatus === 'open' ? undefined : target.completedBy),
