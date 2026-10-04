@@ -457,6 +457,116 @@ export interface GroupsTabData {
   expiringStudents: GroupExpiringStudentRow[];
 }
 
+// ============================================================================
+// TEACHERS ANALYTICS TYPES (Per docs/reference_teachers.png)
+// ============================================================================
 
+export interface TeachersKpiCardData {
+  id: string;
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  previousValue: string;
+  unitText?: string;
+  iconType: 'active_teachers' | 'conducted_lessons' | 'avg_workload' | 'schedule_completion' | 'deviations';
+}
 
+export interface TeacherWorkloadItem {
+  id: string;
+  name: string;
+  initials: string;
+  avatarUrl?: string;
+  lessonsCount: number;
+  hoursCount: number;
+  groupsCount: number;
+  studentsCount: number;
+  sharePercent: number;
+}
 
+export interface TeacherWorkloadDistributionItem {
+  id: 'high' | 'normal' | 'low';
+  label: string;
+  description: string;
+  count: number;
+  sharePercent: number;
+  color: string;
+}
+
+export interface TeacherDynamicsPoint {
+  month: string;
+  conductedLessons: number;
+  activeTeachers: number;
+  avgWorkload: number;
+}
+
+export interface TeacherStabilityItem {
+  id: 'completed' | 'rescheduled' | 'cancelled';
+  label: string;
+  count: number;
+  sharePercent: number;
+  color: string;
+}
+
+export interface TeacherStaffChangeTile {
+  id: 'new' | 'left' | 'load_changed' | 'net_change';
+  label: string;
+  value: string;
+  subtext: string;
+  type: 'positive' | 'negative' | 'neutral';
+}
+
+export interface TeacherAttendanceItem {
+  id: string;
+  name: string;
+  initials: string;
+  avatarUrl?: string;
+  attendanceRate: number;
+  groupsCount: number;
+}
+
+export interface TeacherAttentionRow {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  initials: string;
+  signalText: string;
+  signalType: 'high_load' | 'reschedules' | 'low_load' | 'low_attendance';
+  valueText: string;
+  groupsCount: number;
+  priority: 'Высокий' | 'Средний';
+  badgeType: 'red' | 'amber';
+}
+
+export interface TeacherGroupRelationRow {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  initials: string;
+  direction: string;
+  groupsCount: number;
+  studentsCount: number;
+  lessonsCount: number;
+  status: string;
+}
+
+export interface TeachersTabData {
+  isLoading: boolean;
+  isEmpty: boolean;
+  kpis: TeachersKpiCardData[];
+  workloadList: TeacherWorkloadItem[];
+  distribution: {
+    totalTeachers: number;
+    items: TeacherWorkloadDistributionItem[];
+  };
+  dynamics: TeacherDynamicsPoint[];
+  stability: {
+    completionRate: string;
+    totalLessons: number;
+    items: TeacherStabilityItem[];
+  };
+  staffChanges: TeacherStaffChangeTile[];
+  attendanceList: TeacherAttendanceItem[];
+  attentionTeachers: TeacherAttentionRow[];
+  teacherGroupRelations: TeacherGroupRelationRow[];
+}
