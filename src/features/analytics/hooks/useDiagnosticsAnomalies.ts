@@ -322,7 +322,7 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
         severity: 'warning',
         title: `${pluralize(underfilled.length, 'группа', 'группы', 'групп')} недозаполнены`,
         statsText: 'Потенциальная потеря выручки',
-        deltaBadge: `≈ ${totalLostEur.toLocaleString('ru-RU')} € / ${totalLostRub.toLocaleString('ru-RU')} ₽`,
+        deltaBadge: `≈ ${totalLostRub.toLocaleString('ru-RU')} ₽`,
         deltaType: 'negative',
         scaleText: `Свободно ${totalVacant} мест из ${totalCapacity}`,
         isHealthy: false,

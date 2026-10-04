@@ -25,7 +25,7 @@ export function DiagnosticsRetentionSection({
   } = useDiagnosticsRetentionAndRisks(filters);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 mb-3">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
       {/* 1. Left Column: Cohort Retention (60%) */}
       <div className="lg:col-span-7 flex flex-col">
         <CohortRetentionCard

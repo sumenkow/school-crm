@@ -885,7 +885,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="space-y-4 w-full pb-16">
+    <div className="space-y-2.5 w-full pb-6">
       {/* 1. Page Header with Title and Global Filters Bar */}
       <AnalyticsHeader
         filters={filters}

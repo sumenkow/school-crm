@@ -71,34 +71,35 @@ export function TeacherEffectivenessCard({
           </div>
         </div>
 
-        {/* 2. Compact Table: Преподаватель | Группы | Заполнение | Посещ. | Retention | Пробные */}
+        {/* 2. Compact Table: Преподаватель | Группы | Заполнение | Посещаемость | Retention | Конверсия пробных | Динамика */}
         <div className="mt-2.5 overflow-x-auto no-scrollbar">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-1.5 pl-1 pr-2">Преподаватель</th>
-                <th className="py-1.5 px-1.5 text-center">Группы</th>
-                <th className="py-1.5 px-1.5 text-center">Заполнение</th>
-                <th className="py-1.5 px-1.5 text-center">Посещ.</th>
-                <th className="py-1.5 px-1.5 text-center">Retention</th>
-                <th className="py-1.5 pr-1 pl-1 text-right">Пробные</th>
+              <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="py-1.5 pl-1 pr-1.5">Преподаватель</th>
+                <th className="py-1.5 px-1 text-center">Группы</th>
+                <th className="py-1.5 px-1 text-center">Заполнение</th>
+                <th className="py-1.5 px-1 text-center">Посещаемость</th>
+                <th className="py-1.5 px-1 text-center">Retention</th>
+                <th className="py-1.5 px-1 text-center whitespace-nowrap">Конв. пробных</th>
+                <th className="py-1.5 pr-1 pl-1 text-right">Динамика</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {teachers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-xs text-slate-400">
+                  <td colSpan={7} className="py-6 text-center text-xs text-slate-400">
                     Нет преподавателей по выбранному фильтру
                   </td>
                 </tr>
               ) : (
                 teachers.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                    {/* Преподаватель (Аватар + ФИО + Направление) */}
-                    <td className="py-1.5 pl-1 pr-2">
+                    {/* Преподаватель (Аватар + ФИО) */}
+                    <td className="py-1.5 pl-1 pr-1.5">
                       <Link
                         href={`/teachers/${t.id}`}
-                        className="flex items-center gap-1.5 min-w-[120px] group"
+                        className="flex items-center gap-1.5 max-w-[105px] group"
                       >
                         <div
                           className={cn(
@@ -117,67 +118,78 @@ export function TeacherEffectivenessCard({
                     </td>
 
                     {/* Группы */}
-                    <td className="py-1.5 px-1.5 text-center font-semibold text-slate-700 whitespace-nowrap text-xs">
+                    <td className="py-1.5 px-0.5 text-center font-medium text-slate-700 whitespace-nowrap text-xs">
                       {t.groupsCount}
                     </td>
 
                     {/* Заполнение */}
-                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
+                    <td className="py-1.5 px-0.5 text-center whitespace-nowrap text-xs">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 font-semibold',
+                          'inline-flex items-center font-medium px-1.5 py-0.2 rounded',
                           t.occupancyRate < 70
-                            ? 'text-rose-700'
+                            ? 'text-rose-700 bg-rose-50'
                             : t.occupancyRate >= 85
                             ? 'text-emerald-700'
                             : 'text-slate-800'
                         )}
                       >
-                        {t.occupancyRate < 70 && <span>🔴</span>}
-                        {t.occupancyRate >= 85 && <span>🟢</span>}
-                        <span>{t.occupancyRate}%</span>
+                        {t.occupancyRate}%
                       </span>
                     </td>
 
-                    {/* Посещ. */}
-                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
+                    {/* Посещаемость */}
+                    <td className="py-1.5 px-0.5 text-center whitespace-nowrap text-xs">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 font-semibold',
-                          t.attendanceRate < 80
-                            ? 'text-rose-700'
-                            : t.attendanceRate >= 90
+                          'inline-flex items-center font-medium px-1.5 py-0.2 rounded',
+                          t.attendanceRate < 85
+                            ? 'text-rose-700 bg-rose-50'
+                            : t.attendanceRate >= 92
                             ? 'text-emerald-700'
                             : 'text-slate-700'
                         )}
                       >
-                        {t.attendanceRate < 80 && <span>🔴</span>}
-                        {t.attendanceRate >= 90 && <span>🟢</span>}
-                        <span>{t.attendanceRate}%</span>
+                        {t.attendanceRate}%
                       </span>
                     </td>
 
                     {/* Retention */}
-                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
+                    <td className="py-1.5 px-0.5 text-center whitespace-nowrap text-xs">
                       <span
                         className={cn(
-                          'inline-flex items-center gap-1 font-semibold',
+                          'inline-flex items-center font-medium px-1.5 py-0.2 rounded',
                           t.retentionRate < 80
-                            ? 'text-rose-700'
-                            : t.retentionRate >= 90
+                            ? 'text-rose-700 bg-rose-50'
+                            : t.retentionRate >= 92
                             ? 'text-emerald-700'
                             : 'text-slate-700'
                         )}
                       >
-                        {t.retentionRate < 80 && <span>🔴</span>}
-                        {t.retentionRate >= 90 && <span>🟢</span>}
-                        <span>{t.retentionRate}%</span>
+                        {t.retentionRate}%
                       </span>
                     </td>
 
-                    {/* Пробные */}
-                    <td className="py-1.5 pr-1 pl-1 text-right whitespace-nowrap font-medium text-slate-700 text-xs">
+                    {/* Конверсия пробных */}
+                    <td className="py-1.5 px-0.5 text-center whitespace-nowrap font-medium text-slate-700 text-xs">
                       {t.trialConversionRate}%
+                    </td>
+
+                    {/* Динамика */}
+                    <td className="py-1.5 pr-1 pl-0.5 text-right whitespace-nowrap text-xs font-bold">
+                      <span
+                        className={cn(
+                          t.dynamicsType === 'positive'
+                            ? 'text-emerald-600'
+                            : t.dynamicsType === 'negative'
+                            ? 'text-rose-600'
+                            : 'text-slate-500'
+                        )}
+                      >
+                        {t.dynamicsType === 'positive' && '↑ '}
+                        {t.dynamicsType === 'negative' && '↓ '}
+                        {t.dynamicsText || (t.hasAnomaly ? '-12%' : '+6%')}
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -185,26 +197,6 @@ export function TeacherEffectivenessCard({
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* 3. Bottom Alert / Link */}
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-2.5 flex items-center justify-between gap-2 text-xs text-slate-700">
-        <p className="leading-snug flex items-center gap-1.5 min-w-0 pr-2 truncate">
-          <span className="shrink-0 text-amber-600 font-bold text-xs">⚠️</span>
-          <span className="truncate">
-            {anomaliesCount > 0
-              ? `Выявлены отклонения у ${anomaliesCount} из ${allCount} преподавателей`
-              : `Показатели всех ${allCount} преподавателей в норме`}
-          </span>
-        </p>
-        <button
-          type="button"
-          onClick={() => onNavigateTab ? onNavigateTab('teachers') : undefined}
-          className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 whitespace-nowrap cursor-pointer text-xs"
-        >
-          <span>Посмотреть преподавателей</span>
-          <ArrowRight className="h-3 w-3" />
-        </button>
       </div>
     </div>
   );

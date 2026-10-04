@@ -56,7 +56,7 @@ export function DiagnosticsAttentionSection({
               </span>
             </div>
             <p className="text-[11.5px] text-slate-400">
-              Автоматически выявленные проблемы и отклонения за {periodLabel}
+              Автоматически выявленные проблемы и отклонения за выбранный период
             </p>
           </div>
         </div>
@@ -68,37 +68,46 @@ export function DiagnosticsAttentionSection({
               type="button"
               onClick={() => setFilterMode('all')}
               className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer inline-flex items-center',
                 filterMode === 'all'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
               )}
             >
-              Все проблемы {issues.length}
+              <span>Все проблемы</span>
+              <span className={cn('ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold', filterMode === 'all' ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-700')}>
+                {issues.length}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setFilterMode('critical')}
               className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer inline-flex items-center',
                 filterMode === 'critical'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
               )}
             >
-              Критические {criticalIssuesCount}
+              <span>Только критичные</span>
+              <span className={cn('ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold', filterMode === 'critical' ? 'bg-rose-500 text-white' : 'bg-rose-100 text-rose-700')}>
+                {criticalIssuesCount}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setFilterMode('mine')}
               className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer',
+                'rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer inline-flex items-center',
                 filterMode === 'mine'
                   ? 'bg-slate-900 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
               )}
             >
-              Только мои {mineIssuesCount}
+              <span>Только мои</span>
+              <span className={cn('ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold', filterMode === 'mine' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700')}>
+                {mineIssuesCount}
+              </span>
             </button>
           </div>
 

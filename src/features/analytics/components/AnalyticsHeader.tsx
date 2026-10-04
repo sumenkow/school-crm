@@ -30,7 +30,7 @@ export function AnalyticsHeader({
           Аналитика школы
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Поиск проблем, отклонений и точек роста
+          Глубокий анализ данных, поиск проблем и точек роста
         </p>
       </div>
 
@@ -61,13 +61,13 @@ export function AnalyticsHeader({
           <select
             value={filters.comparePeriod}
             onChange={(e) => onFilterChange('comparePeriod', e.target.value)}
-            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[146px]"
+            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[152px]"
             title="Сравнение периодов"
           >
             <option value="none">Без сравнения</option>
             {COMPARE_PERIOD_OPTIONS.filter((o) => o.value !== 'none').map((opt) => (
               <option key={opt.value} value={opt.value}>
-                Сравнить: {opt.label}
+                Сравнить с: {opt.label}
               </option>
             ))}
           </select>

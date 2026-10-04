@@ -73,69 +73,101 @@ export function StudentsAtRiskCard({
 
         {/* 2. Students List: max 5 rows, ~48-52px each */}
         <div className="mt-2.5 space-y-1.5">
-          {students.slice(0, 5).map((st) => (
-            <Link
-              key={st.id}
-              href={`/students/${st.id}`}
-              className="group flex items-center justify-between h-[48px] px-2.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60"
-            >
-              <div className="flex items-center gap-2 min-w-0 pr-2">
-                {/* Avatar */}
-                <div
-                  className={cn(
-                    'h-7 w-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0',
-                    getAvatarBg(st.initials)
-                  )}
-                >
-                  {st.initials}
-                </div>
+          {students.slice(0, 5).map((st) => {
+            const getReasonTag = () => {
+              const primary = st.primaryReason;
+              const reasonLabels = st.reasons?.map((r) => r.label).join(' ') || '';
+              const d = `${reasonLabels} ${st.details || ''}`.toLowerCase();
 
-                {/* Info */}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-xs truncate">
-                    <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                      {st.name}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-normal truncate">
-                      · {st.groupName}
-                    </span>
+              if (primary === 'package' || d.includes('пакет') || d.includes('заканч')) {
+                return { label: 'ПАКЕТ ЗАКАНЧИВАЕТСЯ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+              }
+              if (primary === 'debt' || d.includes('долг') || d.includes('платеж') || d.includes('баланс')) {
+                return { label: 'ПРОСРОЧЕН ПЛАТЕЖ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+              }
+              if (d.includes('динамик') || d.includes('снизил')) {
+                return { label: 'СНИЗИЛАСЬ АКТИВНОСТЬ', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+              }
+              if (primary === 'inactivity' || d.includes('активност') || d.includes('дней')) {
+                return { label: 'НЕТ АКТИВНОСТИ', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+              }
+              return { label: 'НИЗКАЯ ПОСЕЩАЕМОСТЬ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+            };
+
+            const tag = getReasonTag();
+
+            return (
+              <Link
+                key={st.id}
+                href={`/students/${st.id}`}
+                className="group flex items-center justify-between py-1.5 px-2 rounded-xl bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60"
+              >
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  {/* Avatar */}
+                  <div
+                    className={cn(
+                      'h-7 w-7 rounded-full flex items-center justify-center font-bold text-[10.5px] shrink-0',
+                      getAvatarBg(st.initials)
+                    )}
+                  >
+                    {st.initials}
                   </div>
 
-                  <p className="text-[11px] text-slate-500 truncate leading-tight">
-                    {st.details}
-                  </p>
-                </div>
-              </div>
+                  {/* Info */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs truncate">
+                      <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                        {st.name}
+                      </span>
+                      <span
+                        className={cn(
+                          'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border shrink-0',
+                          tag.color
+                        )}
+                      >
+                        {tag.label}
+                      </span>
+                    </div>
 
-              {/* Right: Risk Badge & Arrow */}
-              <div className="flex items-center gap-1 shrink-0 pl-1.5">
-                <span
-                  className={cn(
-                    'text-[11px] font-bold whitespace-nowrap inline-flex items-center gap-1 px-1.5 py-0.5 rounded border',
-                    st.riskLevel === 'high'
-                      ? 'text-rose-700 bg-rose-50 border-rose-200/80'
-                      : 'text-amber-700 bg-amber-50 border-amber-200/80'
-                  )}
-                >
-                  <span>{st.riskLevel === 'high' ? '🔴' : '🟠'}</span>
-                  <span>{st.riskLevel === 'high' ? 'Высокий' : 'Средний'}</span>
-                  <span className="text-slate-400">→</span>
-                </span>
-              </div>
-            </Link>
-          ))}
+                    <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">
+                      <span className="text-slate-600 font-medium">{st.groupName}</span> · {st.details}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right: Risk Level with arrow & chevron */}
+                <div className="flex items-center gap-1.5 shrink-0 pl-1.5">
+                  <div className="text-right">
+                    <span className="text-[9.5px] text-slate-400 block leading-none mb-0.5">
+                      Риск оттока
+                    </span>
+                    <span
+                      className={cn(
+                        'text-xs font-bold inline-flex items-center gap-0.5',
+                        st.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'
+                      )}
+                    >
+                      <span>↓</span>
+                      <span>{st.riskLevel === 'high' ? 'Высокий' : 'Средний'}</span>
+                    </span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
       {/* 3. Bottom Full-width Action Link */}
-      <div className="pt-1.5 border-t border-slate-100 text-center">
+      <div className="pt-2 border-t border-slate-100 text-right">
         <button
           type="button"
           onClick={() => onNavigateTab ? onNavigateTab('retention') : undefined}
-          className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline py-0.5 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors cursor-pointer"
         >
           <span>Показать всех {totalCount || 7} учеников в зоне риска</span>
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-3 w-3" />
         </button>
       </div>
     </div>

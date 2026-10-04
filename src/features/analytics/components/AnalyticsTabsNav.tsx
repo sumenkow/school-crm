@@ -2,13 +2,13 @@
 
 import React from 'react';
 import {
-  BarChart3,
-  TrendingUp,
+  LayoutDashboard,
+  Filter,
   Users,
   CreditCard,
   BookOpen,
   GraduationCap,
-  FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsTabKey } from '../types';
@@ -29,13 +29,13 @@ const TABS: TabConfig[] = [
   {
     key: 'diagnostics',
     label: 'Диагностика',
-    icon: BarChart3,
+    icon: LayoutDashboard,
     isReady: true,
   },
   {
     key: 'sales',
     label: 'Продажи и конверсия',
-    icon: TrendingUp,
+    icon: Filter,
     isReady: false,
   },
   {
@@ -65,14 +65,14 @@ const TABS: TabConfig[] = [
   {
     key: 'reports',
     label: 'Детальные отчёты',
-    icon: FileText,
+    icon: FileSpreadsheet,
     isReady: false,
   },
 ];
 
 export function AnalyticsTabsNav({ activeTab, onTabChange }: AnalyticsTabsNavProps) {
   return (
-    <div className="h-[36px] border-b border-slate-200/80 mb-3.5 flex items-center gap-1.5 text-xs font-semibold overflow-x-auto no-scrollbar">
+    <div className="h-[38px] bg-white rounded-xl p-1 border border-slate-200/70 shadow-2xs mb-3 flex items-center gap-1 text-xs font-semibold overflow-x-auto no-scrollbar">
       {TABS.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.key;
@@ -83,10 +83,10 @@ export function AnalyticsTabsNav({ activeTab, onTabChange }: AnalyticsTabsNavPro
             type="button"
             onClick={() => onTabChange(tab.key)}
             className={cn(
-              'h-[34px] rounded-xl px-3 py-1.5 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 select-none text-xs',
+              'h-[30px] rounded-lg px-3 py-1 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 select-none text-xs',
               isActive
-                ? 'bg-blue-600 text-white shadow-xs font-bold'
-                : 'bg-transparent text-slate-700 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
             )}
           >
             <Icon className={cn('h-3.5 w-3.5', isActive ? 'text-white' : 'text-slate-400')} />

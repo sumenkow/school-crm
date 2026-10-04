@@ -27,7 +27,7 @@ export function DiagnosticsBottomTierSection({
   } = useDiagnosticsTeachersAndGroups(filters);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 mb-3">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
       {/* 1. Left Column: Teacher Effectiveness (50%) */}
       <div className="lg:col-span-6 flex flex-col">
         <TeacherEffectivenessCard
