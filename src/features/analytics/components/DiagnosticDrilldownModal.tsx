@@ -24,10 +24,10 @@ export function DiagnosticDrilldownModal({
 
   const handleMainAction = () => {
     onClose();
-    if (issue.drillDownUrl) {
-      router.push(issue.drillDownUrl);
-    } else if (issue.drillDownTab && onNavigateTab) {
+    if (issue.drillDownTab && onNavigateTab) {
       onNavigateTab(issue.drillDownTab);
+    } else if (issue.drillDownUrl) {
+      router.push(issue.drillDownUrl);
     }
   };
 

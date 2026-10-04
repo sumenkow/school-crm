@@ -13,6 +13,7 @@ export interface DiagnosticsBottomTierSectionProps {
 
 export function DiagnosticsBottomTierSection({
   filters,
+  onNavigateTab,
 }: DiagnosticsBottomTierSectionProps) {
   const {
     teachers,
@@ -26,7 +27,7 @@ export function DiagnosticsBottomTierSection({
   } = useDiagnosticsTeachersAndGroups(filters);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-5">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 mb-3">
       {/* 1. Left Column: Teacher Effectiveness (50%) */}
       <div className="lg:col-span-6 flex flex-col">
         <TeacherEffectivenessCard
@@ -34,6 +35,7 @@ export function DiagnosticsBottomTierSection({
           allCount={allTeachersCount}
           filter={teacherFilter}
           onFilterChange={setTeacherFilter}
+          onNavigateTab={onNavigateTab}
         />
       </div>
 
@@ -44,6 +46,7 @@ export function DiagnosticsBottomTierSection({
           allCount={allGroupsCount}
           subjectFilter={groupSubjectFilter}
           onSubjectFilterChange={setGroupSubjectFilter}
+          onNavigateTab={onNavigateTab}
         />
       </div>
     </div>

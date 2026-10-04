@@ -23,19 +23,19 @@ export function AnalyticsHeader({
   onExport,
 }: AnalyticsHeaderProps) {
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3">
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 pb-2.5">
       {/* Page Title & Subtitle */}
       <div className="shrink-0">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900">
           Аналитика школы
         </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Глубокий анализ данных, поиск проблем и точек роста
+        <p className="text-xs text-slate-500 mt-0.5">
+          Поиск проблем, отклонений и точек роста
         </p>
       </div>
 
       {/* Global Filter Bar */}
-      <div className="h-9 flex items-center gap-1.5 text-xs flex-nowrap shrink-0">
+      <div className="h-8.5 flex items-center gap-1.5 text-xs flex-nowrap shrink-0">
         {/* 1. Current Period Selector */}
         <div className="relative flex items-center shrink-0">
           <div className="pointer-events-none absolute left-2.5 text-slate-400">

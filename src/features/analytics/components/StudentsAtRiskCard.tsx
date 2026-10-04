@@ -11,6 +11,7 @@ export interface StudentsAtRiskCardProps {
   totalCount: number;
   reasonFilter: string;
   onReasonFilterChange: (val: string) => void;
+  onNavigateTab?: (tab: any) => void;
 }
 
 export function StudentsAtRiskCard({
@@ -18,6 +19,7 @@ export function StudentsAtRiskCard({
   totalCount,
   reasonFilter,
   onReasonFilterChange,
+  onNavigateTab,
 }: StudentsAtRiskCardProps) {
   const getAvatarBg = (initials: string) => {
     const charCode = initials.charCodeAt(0) || 65;
@@ -32,33 +34,21 @@ export function StudentsAtRiskCard({
     return colors[charCode % colors.length];
   };
 
-  const getBadgeStyle = (variant: 'danger' | 'warning' | 'muted') => {
-    switch (variant) {
-      case 'danger':
-        return 'bg-rose-50 text-rose-700 border-rose-200/80';
-      case 'warning':
-        return 'bg-amber-50 text-amber-700 border-amber-200/80';
-      case 'muted':
-      default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
-    }
-  };
-
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-3">
       {/* 1. Header */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shadow-2xs">
-              <AlertTriangle className="h-4 w-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-2xs">
+              <AlertTriangle className="h-3.5 w-3.5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-sm lg:text-base font-bold text-slate-900">
                 Ученики в зоне риска
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Ученики с высокой вероятностью оттока
+              <p className="text-[11.5px] text-slate-400">
+                Высокая вероятность оттока
               </p>
             </div>
           </div>
@@ -69,7 +59,7 @@ export function StudentsAtRiskCard({
               value={reasonFilter}
               onChange={(e) => onReasonFilterChange(e.target.value)}
               aria-label="Фильтр причин риска"
-              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-3 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-2.5 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
             >
               <option value="all">Все причины</option>
               <option value="attendance">Низкая посещаемость</option>
@@ -77,23 +67,23 @@ export function StudentsAtRiskCard({
               <option value="package">Пакет заканчивается</option>
               <option value="inactivity">Нет активности &gt; 20 дней</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           </div>
         </div>
 
-        {/* 2. Students List */}
-        <div className="mt-3.5 space-y-2">
+        {/* 2. Students List: max 5 rows, ~48-52px each */}
+        <div className="mt-2.5 space-y-1.5">
           {students.slice(0, 5).map((st) => (
             <Link
               key={st.id}
               href={`/students/${st.id}`}
-              className="group flex items-center justify-between p-2 rounded-xl bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60"
+              className="group flex items-center justify-between h-[48px] px-2.5 rounded-xl bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60"
             >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+              <div className="flex items-center gap-2 min-w-0 pr-2">
                 {/* Avatar */}
                 <div
                   className={cn(
-                    'h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0',
+                    'h-7 w-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0',
                     getAvatarBg(st.initials)
                   )}
                 >
@@ -101,61 +91,52 @@ export function StudentsAtRiskCard({
                 </div>
 
                 {/* Info */}
-                <div className="min-w-0 space-y-0.5">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-bold text-xs text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs truncate">
+                    <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                       {st.name}
                     </span>
-                    <span className="text-[11px] text-slate-400 font-normal">
+                    <span className="text-[11px] text-slate-400 font-normal truncate">
                       · {st.groupName}
                     </span>
-
-                    {/* Chips */}
-                    {st.reasons.map((r, idx) => (
-                      <span
-                        key={idx}
-                        className={cn(
-                          'text-[9.5px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider',
-                          getBadgeStyle(r.variant)
-                        )}
-                      >
-                        {r.label}
-                      </span>
-                    ))}
                   </div>
 
-                  <p className="text-[11px] text-slate-500 truncate">
+                  <p className="text-[11px] text-slate-500 truncate leading-tight">
                     {st.details}
                   </p>
                 </div>
               </div>
 
-              {/* Right: Risk Level Badge & Arrow */}
-              <div className="flex items-center gap-1.5 shrink-0 pl-2">
+              {/* Right: Risk Badge & Arrow */}
+              <div className="flex items-center gap-1 shrink-0 pl-1.5">
                 <span
                   className={cn(
-                    'text-xs font-bold whitespace-nowrap',
-                    st.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'
+                    'text-[11px] font-bold whitespace-nowrap inline-flex items-center gap-1 px-1.5 py-0.5 rounded border',
+                    st.riskLevel === 'high'
+                      ? 'text-rose-700 bg-rose-50 border-rose-200/80'
+                      : 'text-amber-700 bg-amber-50 border-amber-200/80'
                   )}
                 >
-                  {st.riskLevel === 'high' ? '↓ Высокий' : '↓ Средний'}
+                  <span>{st.riskLevel === 'high' ? '🔴' : '🟠'}</span>
+                  <span>{st.riskLevel === 'high' ? 'Высокий' : 'Средний'}</span>
+                  <span className="text-slate-400">→</span>
                 </span>
-                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all" />
               </div>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* 3. Bottom Full-width Link */}
-      <div className="pt-2 border-t border-slate-100 text-center">
-        <Link
-          href="/students?filter=absences"
-          className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline py-1 transition-colors"
+      {/* 3. Bottom Full-width Action Link */}
+      <div className="pt-1.5 border-t border-slate-100 text-center">
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('retention') : undefined}
+          className="inline-flex items-center justify-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline py-0.5 transition-colors cursor-pointer"
         >
-          <span>Показать всех {totalCount} учеников в зоне риска</span>
+          <span>Показать всех {totalCount || 7} учеников в зоне риска</span>
           <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        </button>
       </div>
     </div>
   );

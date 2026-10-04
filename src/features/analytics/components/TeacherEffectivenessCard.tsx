@@ -11,6 +11,7 @@ export interface TeacherEffectivenessCardProps {
   allCount: number;
   filter: 'all' | 'anomalies' | 'high';
   onFilterChange: (val: 'all' | 'anomalies' | 'high') => void;
+  onNavigateTab?: (tab: any) => void;
 }
 
 export function TeacherEffectivenessCard({
@@ -18,6 +19,7 @@ export function TeacherEffectivenessCard({
   allCount,
   filter,
   onFilterChange,
+  onNavigateTab,
 }: TeacherEffectivenessCardProps) {
   const anomaliesCount = teachers.filter((t) => t.hasAnomaly).length;
 
@@ -35,20 +37,20 @@ export function TeacherEffectivenessCard({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-3">
       {/* 1. Header */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-2xs">
-              <GraduationCap className="h-4 w-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-2xs">
+              <GraduationCap className="h-3.5 w-3.5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-sm lg:text-base font-bold text-slate-900">
                 Эффективность преподавателей
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Анализ ключевых показателей и отклонений
+              <p className="text-[11.5px] text-slate-400">
+                Ключевые отклонения
               </p>
             </div>
           </div>
@@ -59,34 +61,33 @@ export function TeacherEffectivenessCard({
               value={filter}
               onChange={(e) => onFilterChange(e.target.value as any)}
               aria-label="Фильтр преподавателей"
-              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-3 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-2.5 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
             >
               <option value="anomalies">Показать отклонения</option>
               <option value="all">Все преподаватели</option>
               <option value="high">Высокие показатели</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           </div>
         </div>
 
-        {/* 2. Compact Table */}
-        <div className="mt-3.5 overflow-x-auto">
+        {/* 2. Compact Table: Преподаватель | Группы | Заполнение | Посещ. | Retention | Пробные */}
+        <div className="mt-2.5 overflow-x-auto no-scrollbar">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-2 pl-1 pr-2">Преподаватель</th>
-                <th className="py-2 px-1.5 text-center">Группы</th>
-                <th className="py-2 px-1.5 text-center">Заполнение</th>
-                <th className="py-2 px-1.5 text-center">Посещаемость</th>
-                <th className="py-2 px-1.5 text-center">Retention</th>
-                <th className="py-2 px-1.5 text-center">Конверсия пробных</th>
-                <th className="py-2 pr-1.5 pl-1.5 text-right">Динамика</th>
+                <th className="py-1.5 pl-1 pr-2">Преподаватель</th>
+                <th className="py-1.5 px-1.5 text-center">Группы</th>
+                <th className="py-1.5 px-1.5 text-center">Заполнение</th>
+                <th className="py-1.5 px-1.5 text-center">Посещ.</th>
+                <th className="py-1.5 px-1.5 text-center">Retention</th>
+                <th className="py-1.5 pr-1 pl-1 text-right">Пробные</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {teachers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs text-slate-400">
+                  <td colSpan={6} className="py-6 text-center text-xs text-slate-400">
                     Нет преподавателей по выбранному фильтру
                   </td>
                 </tr>
@@ -94,10 +95,10 @@ export function TeacherEffectivenessCard({
                 teachers.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Преподаватель (Аватар + ФИО + Направление) */}
-                    <td className="py-2 pl-1 pr-2">
+                    <td className="py-1.5 pl-1 pr-2">
                       <Link
                         href={`/teachers/${t.id}`}
-                        className="flex items-center gap-2 min-w-[130px] group"
+                        className="flex items-center gap-1.5 min-w-[120px] group"
                       >
                         <div
                           className={cn(
@@ -111,60 +112,72 @@ export function TeacherEffectivenessCard({
                           <p className="font-semibold text-slate-900 text-xs truncate group-hover:text-blue-600 transition-colors">
                             {t.name}
                           </p>
-                          <p className="text-[10px] text-slate-400 truncate">
-                            {t.role}
-                          </p>
                         </div>
                       </Link>
                     </td>
 
                     {/* Группы */}
-                    <td className="py-2 px-1 text-center font-semibold text-slate-700 whitespace-nowrap text-xs">
+                    <td className="py-1.5 px-1.5 text-center font-semibold text-slate-700 whitespace-nowrap text-xs">
                       {t.groupsCount}
                     </td>
 
                     {/* Заполнение */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap">
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
                       <span
                         className={cn(
-                          'inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold',
-                          t.isLowOccupancy
-                            ? 'bg-rose-50 text-rose-700 font-bold border border-rose-200/80'
+                          'inline-flex items-center gap-1 font-semibold',
+                          t.occupancyRate < 70
+                            ? 'text-rose-700'
+                            : t.occupancyRate >= 85
+                            ? 'text-emerald-700'
                             : 'text-slate-800'
                         )}
                       >
-                        {t.occupancyRate}%
+                        {t.occupancyRate < 70 && <span>🔴</span>}
+                        {t.occupancyRate >= 85 && <span>🟢</span>}
+                        <span>{t.occupancyRate}%</span>
                       </span>
                     </td>
 
-                    {/* Посещаемость */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap font-medium text-slate-700 text-xs">
-                      {t.attendanceRate}%
+                    {/* Посещ. */}
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 font-semibold',
+                          t.attendanceRate < 80
+                            ? 'text-rose-700'
+                            : t.attendanceRate >= 90
+                            ? 'text-emerald-700'
+                            : 'text-slate-700'
+                        )}
+                      >
+                        {t.attendanceRate < 80 && <span>🔴</span>}
+                        {t.attendanceRate >= 90 && <span>🟢</span>}
+                        <span>{t.attendanceRate}%</span>
+                      </span>
                     </td>
 
                     {/* Retention */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap font-medium text-slate-700 text-xs">
-                      {t.retentionRate}%
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 font-semibold',
+                          t.retentionRate < 80
+                            ? 'text-rose-700'
+                            : t.retentionRate >= 90
+                            ? 'text-emerald-700'
+                            : 'text-slate-700'
+                        )}
+                      >
+                        {t.retentionRate < 80 && <span>🔴</span>}
+                        {t.retentionRate >= 90 && <span>🟢</span>}
+                        <span>{t.retentionRate}%</span>
+                      </span>
                     </td>
 
-                    {/* Конверсия пробных */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap font-medium text-slate-700 text-xs">
+                    {/* Пробные */}
+                    <td className="py-1.5 pr-1 pl-1 text-right whitespace-nowrap font-medium text-slate-700 text-xs">
                       {t.trialConversionRate}%
-                    </td>
-
-                    {/* Динамика */}
-                    <td className="py-2 pr-1 pl-1 text-right whitespace-nowrap">
-                      {t.dynamicsType === 'positive' ? (
-                        <span className="inline-flex items-center gap-0.5 text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
-                          <ArrowUpRight className="h-3 w-3" />
-                          <span>{t.dynamicsText}</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-0.5 text-[10.5px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/60">
-                          <ArrowDownRight className="h-3 w-3" />
-                          <span>{t.dynamicsText}</span>
-                        </span>
-                      )}
                     </td>
                   </tr>
                 ))
@@ -175,22 +188,23 @@ export function TeacherEffectivenessCard({
       </div>
 
       {/* 3. Bottom Alert / Link */}
-      <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-700 mt-2">
-        <p className="leading-snug flex items-center gap-1.5 min-w-0 pr-2">
-          <span className="shrink-0 text-amber-600 font-bold">⚠️</span>
-          <span>
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-2.5 flex items-center justify-between gap-2 text-xs text-slate-700">
+        <p className="leading-snug flex items-center gap-1.5 min-w-0 pr-2 truncate">
+          <span className="shrink-0 text-amber-600 font-bold text-xs">⚠️</span>
+          <span className="truncate">
             {anomaliesCount > 0
               ? `Выявлены отклонения у ${anomaliesCount} из ${allCount} преподавателей`
-              : `Показатели всех ${allCount} преподавателей находятся в пределах нормы`}
+              : `Показатели всех ${allCount} преподавателей в норме`}
           </span>
         </p>
-        <Link
-          href="/schedule"
-          className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 whitespace-nowrap"
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('teachers') : undefined}
+          className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 whitespace-nowrap cursor-pointer text-xs"
         >
-          <span>Перейти к расписанию</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+          <span>Посмотреть преподавателей</span>
+          <ArrowRight className="h-3 w-3" />
+        </button>
       </div>
     </div>
   );

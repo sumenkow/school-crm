@@ -11,6 +11,7 @@ export interface GroupCapacityCardProps {
   allCount: number;
   subjectFilter: string;
   onSubjectFilterChange: (val: string) => void;
+  onNavigateTab?: (tab: any) => void;
 }
 
 export function GroupCapacityCard({
@@ -18,6 +19,7 @@ export function GroupCapacityCard({
   allCount,
   subjectFilter,
   onSubjectFilterChange,
+  onNavigateTab,
 }: GroupCapacityCardProps) {
   // Compute distinct subjects for dropdown
   const subjectOptions = useMemo(() => {
@@ -33,49 +35,48 @@ export function GroupCapacityCard({
     return groups.reduce((acc, g) => acc + g.potentialEur, 0);
   }, [groups]);
 
-  const totalPotentialRub = useMemo(() => {
-    return groups.reduce((acc, g) => acc + g.potentialRub, 0);
-  }, [groups]);
-
-  const getStatusBadge = (status: GroupCapacityItem['status'], label: string) => {
+  const getStatusBadge = (status: GroupCapacityItem['status']) => {
     switch (status) {
       case 'underfilled':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80 whitespace-nowrap">
-            {label}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 whitespace-nowrap">
+            <span>🔴</span>
+            <span>Недозаполнена</span>
           </span>
         );
       case 'almost_full':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
-            {label}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 whitespace-nowrap">
+            <span>🟡</span>
+            <span>Почти заполнена</span>
           </span>
         );
       case 'full':
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
-            {label}
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 whitespace-nowrap">
+            <span>🟢</span>
+            <span>Заполнена</span>
           </span>
         );
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-3">
       {/* 1. Header */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
-              <Users className="h-4 w-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
+              <Users className="h-3.5 w-3.5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-sm lg:text-base font-bold text-slate-900">
                 Загрузка групп
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Группы с низкой и высокой загрузкой
+              <p className="text-[11.5px] text-slate-400">
+                Группы с низкой загрузкой и потенциалом роста
               </p>
             </div>
           </div>
@@ -86,7 +87,7 @@ export function GroupCapacityCard({
               value={subjectFilter}
               onChange={(e) => onSubjectFilterChange(e.target.value)}
               aria-label="Фильтр по направлениям"
-              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-3 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-2.5 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             >
               <option value="all">Все направления</option>
               {subjectOptions.map((subj) => (
@@ -95,93 +96,62 @@ export function GroupCapacityCard({
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           </div>
         </div>
 
-        {/* 2. Compact Table */}
-        <div className="mt-3.5 overflow-x-auto">
+        {/* 2. Compact Table: Группа | Заполнение | Потенциал | Статус */}
+        <div className="mt-2.5 overflow-x-auto no-scrollbar">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-2 pl-1 pr-1.5">Группа</th>
-                <th className="py-2 px-1">Направление</th>
-                <th className="py-2 px-1 text-center">Заполнено</th>
-                <th className="py-2 px-1 text-right">Потенциал выручки</th>
-                <th className="py-2 pr-1 pl-1 text-right">Статус</th>
+                <th className="py-1.5 pl-1 pr-2">Группа</th>
+                <th className="py-1.5 px-1.5 text-center">Заполнение</th>
+                <th className="py-1.5 px-1.5 text-right">Потенциал</th>
+                <th className="py-1.5 pr-1 pl-1 text-right">Статус</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {groups.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                  <td colSpan={4} className="py-6 text-center text-xs text-slate-400">
                     Нет групп по выбранному фильтру
                   </td>
                 </tr>
               ) : (
-                groups.slice(0, 6).map((g) => (
+                groups.slice(0, 5).map((g) => (
                   <tr key={g.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Группа */}
-                    <td className="py-2 pl-1 pr-1.5">
+                    <td className="py-1.5 pl-1 pr-2">
                       <Link
                         href={`/groups/${g.id}`}
-                        className="group block min-w-[110px]"
+                        className="group block min-w-[120px]"
                       >
-                        <p className="font-semibold text-slate-900 text-[11.5px] group-hover:text-blue-600 transition-colors truncate">
+                        <p className="font-semibold text-slate-900 text-xs group-hover:text-blue-600 transition-colors truncate">
                           {g.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {g.teacherName}
                         </p>
                       </Link>
                     </td>
 
-                    {/* Направление */}
-                    <td className="py-2 px-1 text-slate-600 whitespace-nowrap text-[11px]">
-                      {g.courseName}
+                    {/* Заполнение */}
+                    <td className="py-1.5 px-1.5 text-center whitespace-nowrap text-xs font-semibold text-slate-800">
+                      {g.enrolled} / {g.capacity}
                     </td>
 
-                    {/* Заполнено */}
-                    <td className="py-2 px-1 text-center whitespace-nowrap">
-                      <div className="inline-flex flex-col items-center">
-                        <span className="font-semibold text-slate-800 text-[10.5px]">
-                          {g.enrolled} / {g.capacity} мест
-                        </span>
-                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden mt-0.5">
-                          <div
-                            className={cn(
-                              'h-full rounded-full',
-                              g.occupancyPercent >= 85
-                                ? 'bg-emerald-500'
-                                : g.occupancyPercent >= 50
-                                ? 'bg-amber-500'
-                                : 'bg-rose-500'
-                            )}
-                            style={{ width: `${Math.min(100, g.occupancyPercent)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Потенциал выручки */}
-                    <td className="py-2 px-1 text-right whitespace-nowrap font-mono text-[11px]">
+                    {/* Потенциал */}
+                    <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-mono text-xs">
                       {g.potentialEur > 0 ? (
-                        <div className="flex flex-col items-end">
-                          <span className="font-bold text-emerald-600">
-                            +{g.potentialEur.toLocaleString('ru-RU')} €
-                          </span>
-                          <span className="text-[9.5px] text-emerald-500 font-medium">
-                            +{g.potentialRub.toLocaleString('ru-RU')} ₽
-                          </span>
-                        </div>
+                        <span className="font-bold text-emerald-600">
+                          +{g.potentialEur.toLocaleString('ru-RU')} €
+                        </span>
                       ) : (
-                        <span className="text-slate-400 font-medium">—</span>
+                        <span className="text-slate-400 font-medium">0 €</span>
                       )}
                     </td>
 
                     {/* Статус */}
-                    <td className="py-2 pr-1 pl-1 text-right whitespace-nowrap">
-                      {getStatusBadge(g.status, g.statusLabel)}
+                    <td className="py-1.5 pr-1 pl-1 text-right whitespace-nowrap">
+                      {getStatusBadge(g.status)}
                     </td>
                   </tr>
                 ))
@@ -192,23 +162,21 @@ export function GroupCapacityCard({
       </div>
 
       {/* 3. Bottom Summary / Link */}
-      <div className="rounded-xl border border-slate-200/70 bg-slate-50/80 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-700 mt-2">
-        <p className="leading-snug flex items-center gap-1.5 min-w-0 pr-2">
-          <span className="shrink-0 text-emerald-600 font-bold">●</span>
-          <span>
-            Потенциал добора по группам:{' '}
-            <strong className="text-emerald-700 font-bold">
-              +{totalPotentialEur.toLocaleString('ru-RU')} € / +{totalPotentialRub.toLocaleString('ru-RU')} ₽
-            </strong>
-          </span>
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-2.5 flex items-center justify-between gap-2 text-xs text-slate-700">
+        <p className="leading-snug flex items-center gap-1.5 min-w-0 pr-2 truncate">
+          <span className="font-medium">Потенциал добора: </span>
+          <strong className="text-emerald-700 font-bold">
+            +{totalPotentialEur.toLocaleString('ru-RU')} €
+          </strong>
         </p>
-        <Link
-          href="/groups"
-          className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 whitespace-nowrap"
+        <button
+          type="button"
+          onClick={() => onNavigateTab ? onNavigateTab('groups') : undefined}
+          className="inline-flex items-center gap-1 font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 whitespace-nowrap cursor-pointer text-xs"
         >
           <span>Перейти к группам</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+          <ArrowRight className="h-3 w-3" />
+        </button>
       </div>
     </div>
   );
