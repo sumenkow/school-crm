@@ -4,6 +4,7 @@ import React from 'react';
 import { AnalyticsFilters, AnalyticsTabKey } from '../types';
 import { DiagnosticsAttentionSection } from './DiagnosticsAttentionSection';
 import { DiagnosticsMidTierSection } from './DiagnosticsMidTierSection';
+import { DiagnosticsRetentionSection } from './DiagnosticsRetentionSection';
 
 export interface DiagnosticsCockpitProps {
   filters: AnalyticsFilters;
@@ -24,6 +25,12 @@ export function DiagnosticsCockpit({
 
       {/* 2. Mid-Tier 50/50: «Диагностика воронки продаж» & «Потери потенциальной выручки» */}
       <DiagnosticsMidTierSection
+        filters={filters}
+        onNavigateTab={onNavigateTab}
+      />
+
+      {/* 3. Bottom-Tier 50/50: «Удержание учеников (Retention)» & «Ученики в зоне риска» */}
+      <DiagnosticsRetentionSection
         filters={filters}
         onNavigateTab={onNavigateTab}
       />
