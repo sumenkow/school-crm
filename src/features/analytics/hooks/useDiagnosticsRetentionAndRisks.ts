@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { getStoredStudents } from '@/lib/data/studentStorage';
-import { FullStudentData } from '@/lib/data/mockData';
+import { getStoredGroups } from '@/lib/data/groupStorage';
+import { FullStudentData, FullGroupData } from '@/lib/data/mockData';
 import { AnalyticsFilters } from '../types';
 
 export interface CohortRow {
@@ -44,13 +45,21 @@ export function useDiagnosticsRetentionAndRisks(filters: AnalyticsFilters) {
   const [students, setStudents] = useState<FullStudentData[]>(() =>
     typeof window !== 'undefined' ? getStoredStudents() : []
   );
+  const [groups, setGroups] = useState<FullGroupData[]>(() =>
+    typeof window !== 'undefined' ? getStoredGroups() : []
+  );
   const [reasonFilter, setReasonFilter] = useState<string>('all');
   const [retentionScope, setRetentionScope] = useState<'month' | 'quarter'>('month');
 
   useEffect(() => {
     const handleStudents = () => setStudents(getStoredStudents());
+    const handleGroups = () => setGroups(getStoredGroups());
     window.addEventListener('crm-students-changed', handleStudents);
-    return () => window.removeEventListener('crm-students-changed', handleStudents);
+    window.addEventListener('crm-groups-changed', handleGroups);
+    return () => {
+      window.removeEventListener('crm-students-changed', handleStudents);
+      window.removeEventListener('crm-groups-changed', handleGroups);
+    };
   }, []);
 
   // Filter students based on global filters
@@ -61,9 +70,25 @@ export function useDiagnosticsRetentionAndRisks(filters: AnalyticsFilters) {
         const inG = s.groups?.some((g) => g.id === filters.groupId);
         if (!inG) return false;
       }
+      if (filters.teacherId !== 'all') {
+        const hasTeacher = s.groups?.some((sg) => {
+          const matchedGroup = groups.find((g) => g.id === sg.id);
+          return matchedGroup?.teacherId === filters.teacherId;
+        });
+        if (!hasTeacher) return false;
+      }
+      if (filters.subjectId !== 'all') {
+        const filterSubj = filters.subjectId.toLowerCase();
+        const hasSubject = s.groups?.some((sg) => {
+          const matchedGroup = groups.find((g) => g.id === sg.id);
+          const cName = (matchedGroup?.courseName || '').toLowerCase();
+          return matchedGroup?.courseId === filters.subjectId || cName.includes(filterSubj);
+        });
+        if (!hasSubject) return false;
+      }
       return true;
     });
-  }, [students, filters.groupId]);
+  }, [students, groups, filters.groupId, filters.teacherId, filters.subjectId]);
 
   // ==========================================
   // 1. COHORT RETENTION DATA

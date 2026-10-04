@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters, AnalyticsTabKey, DiagnosticIssue } from '../types';
 import { useDiagnosticsAnomalies } from '../hooks/useDiagnosticsAnomalies';
+import { PERIOD_OPTIONS } from '../hooks/useAnalyticsFilters';
 import { DiagnosticIssueCard } from './DiagnosticIssueCard';
 import { DiagnosticRulesModal } from './DiagnosticRulesModal';
 import { DiagnosticDrilldownModal } from './DiagnosticDrilldownModal';
@@ -33,6 +34,9 @@ export function DiagnosticsAttentionSection({
   const [isRulesModalOpen, setIsRulesModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<DiagnosticIssue | null>(null);
 
+  const periodLabel =
+    PERIOD_OPTIONS.find((p) => p.value === filters.period)?.label || 'выбранный период';
+
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs space-y-4">
       {/* 1. Header of the Attention block */}
@@ -52,7 +56,7 @@ export function DiagnosticsAttentionSection({
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Автоматически выявленные проблемы и отклонения за выбранный период
+              Автоматически выявленные проблемы и отклонения за {periodLabel}
             </p>
           </div>
         </div>

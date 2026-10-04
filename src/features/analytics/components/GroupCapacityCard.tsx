@@ -124,7 +124,7 @@ export function GroupCapacityCard({
                     {/* Группа */}
                     <td className="py-2 pl-1 pr-1.5">
                       <Link
-                        href={`/groups?groupId=${g.id}`}
+                        href={`/groups/${g.id}`}
                         className="group block min-w-[110px]"
                       >
                         <p className="font-semibold text-slate-900 text-[11.5px] group-hover:text-blue-600 transition-colors truncate">

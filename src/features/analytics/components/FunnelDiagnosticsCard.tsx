@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Layers,
   ArrowUpRight,
@@ -17,12 +18,14 @@ import { AnalyticsTabKey } from '../types';
 export interface FunnelDiagnosticsCardProps {
   stages: FunnelStageData[];
   insight: FunnelInsightData;
+  comparePeriodLabel?: string;
   onNavigateTab?: (tab: AnalyticsTabKey) => void;
 }
 
 export function FunnelDiagnosticsCard({
   stages,
   insight,
+  comparePeriodLabel,
   onNavigateTab,
 }: FunnelDiagnosticsCardProps) {
   const [funnelView, setFunnelView] = useState<'stages' | 'channels'>('stages');
@@ -41,7 +44,7 @@ export function FunnelDiagnosticsCard({
                 Диагностика воронки продаж
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Сравнение с прошлым периодом
+                Сравнение с: {comparePeriodLabel || 'прошлым периодом'}
               </p>
             </div>
           </div>
@@ -150,14 +153,13 @@ export function FunnelDiagnosticsCard({
               Главная проблема: Конверсия «Пробный → Оплата» снизилась на {insight.dropPp} п.п. ({insight.prevRate}% → {insight.currRate}%)
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigateTab ? onNavigateTab('sales') : window.location.assign('/crm')}
+          <Link
+            href="/crm"
             className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 hover:text-rose-900 bg-white border border-rose-200/80 px-2.5 py-1 rounded-lg shadow-2xs hover:bg-rose-50 transition-all cursor-pointer"
           >
             <span>Посмотреть лиды</span>
             <ArrowRight className="h-3 w-3" />
-          </button>
+          </Link>
         </div>
 
         <p className="text-xs text-rose-800">

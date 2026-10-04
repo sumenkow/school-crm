@@ -95,7 +95,10 @@ export function TeacherEffectivenessCard({
                   <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Преподаватель (Аватар + ФИО + Направление) */}
                     <td className="py-2 pl-1 pr-2">
-                      <div className="flex items-center gap-2 min-w-[130px]">
+                      <Link
+                        href={`/teachers/${t.id}`}
+                        className="flex items-center gap-2 min-w-[130px] group"
+                      >
                         <div
                           className={cn(
                             'h-6 w-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0',
@@ -105,14 +108,14 @@ export function TeacherEffectivenessCard({
                           {t.initials}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900 text-xs truncate">
+                          <p className="font-semibold text-slate-900 text-xs truncate group-hover:text-blue-600 transition-colors">
                             {t.name}
                           </p>
                           <p className="text-[10px] text-slate-400 truncate">
                             {t.role}
                           </p>
                         </div>
-                      </div>
+                      </Link>
                     </td>
 
                     {/* Группы */}

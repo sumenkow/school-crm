@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { PieChart, ChevronDown, ArrowRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CohortRow } from '../hooks/useDiagnosticsRetentionAndRisks';
@@ -145,14 +146,13 @@ export function CohortRetentionCard({
           <span className="text-sm shrink-0">⚠️</span>
           <span>{anomalyText}</span>
         </p>
-        <button
-          type="button"
-          onClick={() => onNavigateTab ? onNavigateTab('retention') : window.location.assign('/students?filter=absences')}
+        <Link
+          href="/students?filter=absences"
           className="inline-flex items-center gap-1 font-bold text-rose-700 hover:text-rose-950 hover:underline shrink-0 cursor-pointer whitespace-nowrap"
         >
           <span>Посмотреть ушедших</span>
           <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        </Link>
       </div>
     </div>
   );

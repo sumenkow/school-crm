@@ -74,10 +74,46 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
     };
   }, []);
 
-  // Filter groups
+  // Helper to resolve meaningful academic course name
+  const resolveCourseDirection = (group: FullGroupData) => {
+    if (group.courseName && group.courseName !== 'Основной курс' && group.courseName !== 'Общий курс') {
+      return group.courseName;
+    }
+    const name = (group.name || '').toLowerCase();
+    if (name.includes('python')) {
+      return 'Программирование';
+    }
+    if (name.includes('robot') || name.includes('it')) {
+      return 'Робототехника';
+    }
+    if (name.includes('математик')) {
+      return 'Математика';
+    }
+    if (name.includes('english') || name.includes('starter') || name.includes('грамматика') || name.includes('разговорный')) {
+      return 'Английский язык';
+    }
+    if (name.includes('немецк') || name.includes('german')) {
+      return 'Немецкий язык';
+    }
+    return group.courseName || 'Английский язык';
+  };
+
+  // Filter groups with global filters
   const activeGroups = useMemo(() => {
-    return groups.filter((g) => !g.is_deleted && !g.isDeleted);
-  }, [groups]);
+    return groups.filter((g) => {
+      if (g.is_deleted || g.isDeleted) return false;
+      if (filters.groupId !== 'all' && g.id !== filters.groupId) return false;
+      if (filters.teacherId !== 'all' && g.teacherId !== filters.teacherId) return false;
+      if (filters.subjectId !== 'all') {
+        const direction = resolveCourseDirection(g).toLowerCase();
+        const filterSubj = filters.subjectId.toLowerCase();
+        if (g.courseId !== filters.subjectId && !direction.includes(filterSubj)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [groups, filters.groupId, filters.teacherId, filters.subjectId]);
 
   // ==========================================
   // 1. TEACHERS PERFORMANCE
@@ -102,7 +138,7 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
       {
         id: 't2',
         name: 'Денис Смирнов',
-        role: 'Робототехника и IT',
+        role: 'Робототехника',
         initials: 'ДС',
         groupsCount: 2,
         occupancyRate: 45,
@@ -117,7 +153,7 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
       {
         id: 't3',
         name: 'Ольга Соколова',
-        role: 'Олимпиадная математика',
+        role: 'Математика',
         initials: 'ОС',
         groupsCount: 2,
         occupancyRate: 62,
@@ -172,39 +208,28 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
   }, [activeGroups]);
 
   const filteredTeachers = useMemo(() => {
+    let result = teachersPerformance;
+
+    // Apply global teacher filter
+    if (filters.teacherId !== 'all') {
+      result = result.filter((t) => t.id === filters.teacherId);
+    }
+
+    // Apply global subject filter
+    if (filters.subjectId !== 'all') {
+      const filterSubj = filters.subjectId.toLowerCase();
+      result = result.filter((t) => t.role.toLowerCase().includes(filterSubj));
+    }
+
+    // Apply local card filter
     if (teacherFilter === 'anomalies') {
-      return teachersPerformance.filter((t) => t.hasAnomaly);
+      return result.filter((t) => t.hasAnomaly);
     }
     if (teacherFilter === 'high') {
-      return teachersPerformance.filter((t) => t.dynamicsType === 'positive');
+      return result.filter((t) => t.dynamicsType === 'positive');
     }
-    return teachersPerformance;
-  }, [teachersPerformance, teacherFilter]);
-
-  // Helper to resolve meaningful academic course name
-  const resolveCourseDirection = (group: FullGroupData) => {
-    if (group.courseName && group.courseName !== 'Основной курс' && group.courseName !== 'Общий курс') {
-      return group.courseName;
-    }
-    const name = (group.name || '').toLowerCase();
-    if (name.includes('python')) {
-      return 'Программирование';
-    }
-    if (name.includes('robot') || name.includes('it')) {
-      return 'Робототехника';
-    }
-    if (name.includes('математик')) {
-      return 'Математика';
-    }
-    if (name.includes('english') || name.includes('starter') || name.includes('грамматика') || name.includes('разговорный')) {
-      return 'Английский язык';
-    }
-    if (name.includes('немецк') || name.includes('german')) {
-      return 'Немецкий язык';
-    }
-    return group.courseName || 'Английский язык';
-  };
-
+    return result;
+  }, [teachersPerformance, teacherFilter, filters.teacherId, filters.subjectId]);
   // ==========================================
   // 2. GROUPS CAPACITY
   // ==========================================

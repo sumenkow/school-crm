@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { DollarSign, ChevronDown, HelpCircle, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RevenueLossesData } from '../hooks/useDiagnosticsMidTier';
@@ -134,14 +135,13 @@ export function RevenueLossesCard({
             ≈ {losses.potentialFromTrialEur.toLocaleString('ru-RU')} € / {losses.potentialFromTrialRub.toLocaleString('ru-RU')} ₽
           </span>.
         </p>
-        <button
-          type="button"
-          onClick={() => onNavigateTab ? onNavigateTab('sales') : window.location.assign('/crm')}
+        <Link
+          href="/crm"
           className="inline-flex items-center gap-1 font-bold text-amber-900 hover:text-amber-950 hover:underline shrink-0 cursor-pointer"
         >
           <span>Посмотреть лиды</span>
           <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        </Link>
       </div>
 
       {/* Methodology Info Modal */}

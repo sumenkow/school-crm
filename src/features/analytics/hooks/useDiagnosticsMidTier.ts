@@ -101,19 +101,36 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
         const inG = s.groups?.some((g) => g.id === filters.groupId);
         if (!inG) return false;
       }
+      if (filters.teacherId !== 'all') {
+        const hasTeacher = s.groups?.some((sg) => {
+          const matchedGroup = groups.find((g) => g.id === sg.id);
+          return matchedGroup?.teacherId === filters.teacherId;
+        });
+        if (!hasTeacher) return false;
+      }
+      if (filters.subjectId !== 'all') {
+        const filterSubj = filters.subjectId.toLowerCase();
+        const hasSubject = s.groups?.some((sg) => {
+          const matchedGroup = groups.find((g) => g.id === sg.id);
+          const cName = (matchedGroup?.courseName || '').toLowerCase();
+          return matchedGroup?.courseId === filters.subjectId || cName.includes(filterSubj);
+        });
+        if (!hasSubject) return false;
+      }
       return true;
     });
-  }, [students, filters.groupId]);
+  }, [students, groups, filters.groupId, filters.teacherId, filters.subjectId]);
 
   // Filtered groups
   const activeGroups = useMemo(() => {
     return groups.filter((g) => {
       if (g.is_deleted || g.isDeleted) return false;
       if (filters.groupId !== 'all' && g.id !== filters.groupId) return false;
+      if (filters.teacherId !== 'all' && g.teacherId !== filters.teacherId) return false;
       if (filters.subjectId !== 'all' && g.courseId !== filters.subjectId && !g.courseName?.toLowerCase().includes(filters.subjectId.toLowerCase())) return false;
       return true;
     });
-  }, [groups, filters.groupId, filters.subjectId]);
+  }, [groups, filters.groupId, filters.teacherId, filters.subjectId]);
 
   // =========================================================================
   // 1. SALES FUNNEL DIAGNOSTICS
