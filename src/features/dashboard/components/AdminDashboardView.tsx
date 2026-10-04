@@ -15,6 +15,8 @@ import {
   Sparkles,
   Plus,
   FileText,
+  Send,
+  X,
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
@@ -41,6 +43,8 @@ import { parsePaymentAmountEUR, getEurRubRate, formatDualCurrency } from '@/lib/
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { LessonQuickViewModal } from '@/components/calendar/LessonQuickViewModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
+import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { WidgetErrorBoundary } from '@/features/dashboard/components/WidgetErrorBoundary';
 
 interface AdminDashboardViewProps {
@@ -65,6 +69,8 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
   // Modals state
   const [isCreateLeadOpen, setIsCreateLeadOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [activeTelegramLead, setActiveTelegramLead] = useState<FullLeadData | null>(null);
+  const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [selectedLessonModal, setSelectedLessonModal] = useState<FullLessonData | null>(null);
 
   // Load all existing data
@@ -377,9 +383,6 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
             <h1 className="text-lg font-bold tracking-tight text-slate-900 leading-none">
               Мой день
             </h1>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 leading-none">
-              Администратор
-            </span>
           </div>
           <p className="text-[11px] font-medium text-slate-500 mt-1 capitalize leading-none">
             {todayFormatted}
@@ -388,15 +391,6 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setIsCreateLeadOpen(true)}
-            className="h-7.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Новый лид</span>
-          </button>
-
           <Link
             href="/calendar"
             className="h-7.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
@@ -702,7 +696,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                         </div>
                       </div>
 
-                      {/* Right: Enrolled & Actions */}
+                      {/* Right: Enrolled & Status */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-[11px] font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 leading-none">
                           {enrolledCount}/{capacity}
@@ -710,30 +704,6 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                         <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none', statusColor)}>
                           {statusLabel}
                         </span>
-
-                        {isOnline && lesson.onlineMeetingUrl ? (
-                          <a
-                            href={lesson.onlineMeetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-6 px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition-colors"
-                          >
-                            <Video className="w-3 h-3" />
-                            <span>Zoom</span>
-                          </a>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedLessonModal(lesson);
-                            }}
-                            className="h-6 px-2 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] transition-colors cursor-pointer"
-                          >
-                            Открыть
-                          </button>
-                        )}
                       </div>
                     </div>
                   );
@@ -777,10 +747,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                   return (
                     <div
                       key={lead.id}
-                      onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                      className="h-[50px] px-2.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer group"
+                      className="h-[50px] px-2.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors group"
                     >
-                      <div className="min-w-0">
+                      <Link href={`/crm/leads/${lead.id}`} className="min-w-0 flex-1 cursor-pointer">
                         <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-tight">
                           {lead.name}
                         </div>
@@ -791,10 +760,19 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             Ожидание: {waitingTime}
                           </span>
                         </div>
-                      </div>
+                      </Link>
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTelegramLead(lead)}
+                          className="h-6 px-1.5 rounded-md bg-sky-50 hover:bg-sky-100 text-sky-700 text-[10px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                          title="Написать в Telegram через мессенджер CRM"
+                        >
+                          <Send className="w-2.5 h-2.5" />
+                          <span>TG</span>
+                        </button>
                         {cleanPhone && (
                           <a
                             href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Здравствуйте, ${lead.name}! Пишу из школы.`)}`}
@@ -815,13 +793,13 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             <Phone className="w-3 h-3" />
                           </a>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/crm/leads/${lead.id}`)}
+                        <Link
+                          href={`/crm/leads/${lead.id}`}
                           className="h-6 w-6 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer inline-flex items-center justify-center"
+                          title="Открыть карточку лида"
                         >
                           →
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   );
@@ -992,15 +970,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
             )}
           </div>
 
-          {/* Bottom Action: + Новая задача */}
-          <button
-            type="button"
-            onClick={() => setIsCreateTaskOpen(true)}
-            className="w-full mt-1.5 h-6 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Новая задача</span>
-          </button>
+
         </div>
       </div>
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -1023,6 +993,64 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           setIsCreateTaskOpen(false);
         }}
       />
+
+      {/* Telegram CRM Messenger Modal */}
+      {activeTelegramLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Мессенджер CRM: {activeTelegramLead.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    {activeTelegramLead.telegram ? (activeTelegramLead.telegram.startsWith('@') ? activeTelegramLead.telegram : '@' + activeTelegramLead.telegram) : activeTelegramLead.contact || 'Чат Telegram'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTelegramLead(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <TelegramChatBox
+                recipientType="lead"
+                recipientId={activeTelegramLead.id}
+                recipientName={activeTelegramLead.name}
+                telegramHandle={activeTelegramLead.telegram}
+                telegramChatId={activeTelegramLead.telegramChatId}
+                onOpenConnectModal={() => setIsTelegramConnectOpen(true)}
+                onMessageSent={() => {
+                  toast.success('Сообщение отправлено в Telegram');
+                  loadData();
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTelegramConnectOpen && activeTelegramLead && (
+        <TelegramConnectModal
+          isOpen={isTelegramConnectOpen}
+          onClose={() => setIsTelegramConnectOpen(false)}
+          targetType="lead"
+          targetId={activeTelegramLead.id}
+          targetName={activeTelegramLead.name}
+          currentTelegram={activeTelegramLead.telegram}
+          onSaveManualTelegram={(handle) => {
+            setActiveTelegramLead((prev) => prev ? { ...prev, telegram: handle } : null);
+          }}
+        />
+      )}
 
       {selectedLessonModal && (
         <LessonQuickViewModal

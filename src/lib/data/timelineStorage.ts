@@ -188,7 +188,8 @@ export function parseInteractionTimestamp(item: TimelineInteraction): number {
  * Intelligent deduplication of timeline interactions.
  * Combines items sharing identical ID or same recipient + channel + normalized text within 5 mins.
  */
-export function deduplicateTimelineInteractions(interactions: TimelineInteraction[]): TimelineInteraction[] {
+export function deduplicateTimelineInteractions(interactions: TimelineInteraction[] = []): TimelineInteraction[] {
+  if (!interactions || !Array.isArray(interactions)) return [];
   const result: TimelineInteraction[] = [];
 
   for (const item of interactions) {
@@ -242,7 +243,8 @@ export function deduplicateTimelineInteractions(interactions: TimelineInteractio
 /**
  * Sorts interactions in strictly chronological descending order (newest first, oldest last).
  */
-export function sortTimelineChronologicalDesc(interactions: TimelineInteraction[]): TimelineInteraction[] {
+export function sortTimelineChronologicalDesc(interactions: TimelineInteraction[] = []): TimelineInteraction[] {
+  if (!interactions || !Array.isArray(interactions)) return [];
   return [...interactions].sort((a, b) => {
     const timeA = parseInteractionTimestamp(a);
     const timeB = parseInteractionTimestamp(b);
@@ -329,7 +331,7 @@ export function getCombinedLeadTimeline(
   convertedStudentId?: string
 ): TimelineInteraction[] {
   const stored = getStoredInteractions();
-  const list: TimelineInteraction[] = [...baseInteractions];
+  const list: TimelineInteraction[] = Array.isArray(baseInteractions) ? [...baseInteractions] : [];
 
   const leadIdSet = getEquivalentIds(leadId);
   const studentIdSet = convertedStudentId ? getEquivalentIds(convertedStudentId) : new Set<string>();

@@ -58,20 +58,38 @@ export default function LeadDetailsPage() {
   const toast = useToast();
 
   const [lead, setLead] = useState<FullLeadData>(() => {
-    const fromMem = INITIAL_LEADS.find((l) => l.id === leadId);
-    if (fromMem) return fromMem;
     try {
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('crm_leads_v2');
         if (stored) {
           const list: FullLeadData[] = JSON.parse(stored);
           const found = list.find((l) => l.id === leadId);
-          if (found) return found;
+          if (found) return { ...found, interactions: Array.isArray(found.interactions) ? found.interactions : [] };
         }
       }
     } catch {}
-    return INITIAL_LEADS[0];
+    const fromMem = INITIAL_LEADS.find((l) => l.id === leadId);
+    if (fromMem) return { ...fromMem, interactions: Array.isArray(fromMem.interactions) ? fromMem.interactions : [] };
+    return { ...INITIAL_LEADS[0], interactions: [] };
   });
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('crm_leads_v2');
+        if (stored) {
+          const list: FullLeadData[] = JSON.parse(stored);
+          const found = list.find((l) => l.id === leadId);
+          if (found) {
+            setLead((prev) => ({
+              ...found,
+              interactions: Array.isArray(found.interactions) ? found.interactions : (prev.interactions || []),
+            }));
+          }
+        }
+      }
+    } catch {}
+  }, [leadId]);
 
   const [leadTasks, setLeadTasks] = useState<FullTaskData[]>([]);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
@@ -82,8 +100,9 @@ export default function LeadDetailsPage() {
       const tasks = await getTasksForLead(leadId);
       setLeadTasks(tasks);
 
-      const combinedTimeline = getCombinedLeadTimeline(leadId, lead.interactions, lead.convertedStudentId);
-      if (combinedTimeline.length !== lead.interactions.length) {
+      const baseInteractions = Array.isArray(lead?.interactions) ? lead.interactions : [];
+      const combinedTimeline = getCombinedLeadTimeline(leadId, baseInteractions, lead?.convertedStudentId);
+      if (combinedTimeline.length !== baseInteractions.length) {
         setLead((prev) => ({
           ...prev,
           interactions: combinedTimeline,
@@ -330,7 +349,7 @@ export default function LeadDetailsPage() {
       result: `Этап воронки: ${newStatusObj?.label || newStatus}`,
     };
 
-    const updatedInteractions = [statusChangeInteraction, ...lead.interactions];
+    const updatedInteractions = [statusChangeInteraction, ...(lead.interactions || [])];
 
     setLead((prev) => ({
       ...prev,
@@ -384,7 +403,7 @@ export default function LeadDetailsPage() {
       followUpDate: resolvedDate || undefined,
     };
 
-    const updatedInteractions = [newInteraction, ...lead.interactions];
+    const updatedInteractions = [newInteraction, ...(lead.interactions || [])];
 
     setLead((prev) => ({
       ...prev,
@@ -498,7 +517,7 @@ export default function LeadDetailsPage() {
     const updatedInteractions = [
       ...statusInteractions,
       paymentInteraction,
-      ...lead.interactions,
+      ...(lead.interactions || []),
     ];
 
     const updatedLead: FullLeadData = {
@@ -610,7 +629,7 @@ export default function LeadDetailsPage() {
       result: 'Списание с баланса лида',
     };
 
-    const updatedInteractions = [deductionInteraction, ...lead.interactions];
+    const updatedInteractions = [deductionInteraction, ...(lead.interactions || [])];
 
     const updatedLead: FullLeadData = {
       ...lead,
@@ -741,7 +760,7 @@ export default function LeadDetailsPage() {
       result: outcomeType === 'trial' ? 'Пробное назначено' : outcomeType === 'thinking' ? 'Думают' : outcomeType === 'no_response' ? 'Не ответил' : 'Отказ',
     };
 
-    const updatedInteractions = [newInteraction, ...lead.interactions];
+    const updatedInteractions = [newInteraction, ...(lead.interactions || [])];
     const nextDate = new Date(Date.now() + taskDueDays * 24 * 60 * 60 * 1000);
     const nextDateFormatted = nextDate.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 
@@ -853,7 +872,7 @@ export default function LeadDetailsPage() {
       notes: [lead.studentNotes, lead.parentNotes, lead.comment].filter(Boolean).join('\n\n'),
       sourceLeadId: lead.id,
       sourceLeadName: lead.name,
-      leadInteractions: lead.interactions,
+      leadInteractions: lead.interactions || [],
       leadFinance: lead.finance,
     };
   };
@@ -875,7 +894,7 @@ export default function LeadDetailsPage() {
       result: 'Конверсия завершена',
     };
 
-    const updatedInteractions = [enrollmentInteraction, ...lead.interactions];
+    const updatedInteractions = [enrollmentInteraction, ...(lead.interactions || [])];
 
     const updatedLead: FullLeadData = {
       ...lead,
@@ -1581,7 +1600,7 @@ export default function LeadDetailsPage() {
 
         {/* Timeline Records */}
         <div className="space-y-3 pt-2">
-          {sortTimelineChronologicalDesc(lead.interactions).map((int) => {
+          {sortTimelineChronologicalDesc(lead.interactions || []).map((int) => {
             if (int.type === 'status_change') {
               return (
                 <div
