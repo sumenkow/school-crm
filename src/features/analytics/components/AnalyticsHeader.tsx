@@ -1,0 +1,144 @@
+'use client';
+
+import React from 'react';
+import { Calendar, ChevronDown, Download } from 'lucide-react';
+import { AnalyticsFilters } from '../types';
+import { PERIOD_OPTIONS, COMPARE_PERIOD_OPTIONS } from '../hooks/useAnalyticsFilters';
+
+export interface AnalyticsHeaderProps {
+  filters: AnalyticsFilters;
+  onFilterChange: <K extends keyof AnalyticsFilters>(key: K, value: AnalyticsFilters[K]) => void;
+  courses: Array<{ id: string; name: string }>;
+  groups: Array<{ id: string; name: string }>;
+  teachers: Array<{ id: string; name: string }>;
+  onExport: () => void;
+}
+
+export function AnalyticsHeader({
+  filters,
+  onFilterChange,
+  courses,
+  groups,
+  teachers,
+  onExport,
+}: AnalyticsHeaderProps) {
+  return (
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pb-3">
+      {/* Page Title & Subtitle */}
+      <div className="shrink-0">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Аналитика школы
+        </h1>
+        <p className="text-xs text-slate-500 mt-1">
+          Глубокий анализ данных, поиск проблем и точек роста
+        </p>
+      </div>
+
+      {/* Global Filter Bar */}
+      <div className="h-9 flex items-center gap-1.5 text-xs flex-nowrap shrink-0">
+        {/* 1. Current Period Selector */}
+        <div className="relative flex items-center shrink-0">
+          <div className="pointer-events-none absolute left-2.5 text-slate-400">
+            <Calendar className="h-3.5 w-3.5" />
+          </div>
+          <select
+            value={filters.period}
+            onChange={(e) => onFilterChange('period', e.target.value)}
+            className="h-9 pl-7.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[142px]"
+            title="Выбор текущего периода"
+          >
+            {PERIOD_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+
+        {/* 2. Compare Period Selector */}
+        <div className="relative flex items-center shrink-0">
+          <select
+            value={filters.comparePeriod}
+            onChange={(e) => onFilterChange('comparePeriod', e.target.value)}
+            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[146px]"
+            title="Сравнение периодов"
+          >
+            <option value="none">Без сравнения</option>
+            {COMPARE_PERIOD_OPTIONS.filter((o) => o.value !== 'none').map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                Сравнить: {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+
+        {/* 3. Subject / Course Selector */}
+        <div className="relative flex items-center shrink-0">
+          <select
+            value={filters.subjectId}
+            onChange={(e) => onFilterChange('subjectId', e.target.value)}
+            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[142px] truncate transition-colors"
+            title="Фильтр по направлениям"
+          >
+            <option value="all">Все направления</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+
+        {/* 4. Group Selector */}
+        <div className="relative flex items-center shrink-0">
+          <select
+            value={filters.groupId}
+            onChange={(e) => onFilterChange('groupId', e.target.value)}
+            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[110px] truncate transition-colors"
+            title="Фильтр по группам"
+          >
+            <option value="all">Все группы</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+
+        {/* 5. Teacher Selector */}
+        <div className="relative flex items-center shrink-0">
+          <select
+            value={filters.teacherId}
+            onChange={(e) => onFilterChange('teacherId', e.target.value)}
+            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[156px] truncate transition-colors"
+            title="Фильтр по преподавателям"
+          >
+            <option value="all">Все преподаватели</option>
+            {teachers.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+        </div>
+
+        {/* 6. Export Report Button */}
+        <button
+          type="button"
+          onClick={onExport}
+          className="h-9 inline-flex items-center gap-1.5 shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
+          title="Выгрузить сводный отчет в CSV"
+        >
+          <Download className="h-3.5 w-3.5 text-slate-500" />
+          <span>Экспорт отчёта</span>
+        </button>
+      </div>
+    </div>
+  );
+}

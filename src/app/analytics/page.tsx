@@ -36,12 +36,18 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LEADS, FullLeadData } from '@/lib/data/mockData';
+import { INITIAL_LEADS, FullLeadData, INITIAL_COURSES, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredLeads } from '@/lib/data/leadStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { Shield } from 'lucide-react';
 import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceReport';
+import { AnalyticsHeader } from '@/features/analytics/components/AnalyticsHeader';
+import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsNav';
+import { DiagnosticsPlaceholder } from '@/features/analytics/components/DiagnosticsPlaceholder';
+import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
+import { AnalyticsTabKey } from '@/features/analytics/types';
 
 type FunnelStageKey = 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost';
 
@@ -49,7 +55,12 @@ export default function AnalyticsPage() {
   const { role } = useRole();
   const router = useRouter();
   const toast = useToast();
-  const [analyticsTab, setAnalyticsTab] = useState<'school' | 'admins'>('school');
+  const [activeTab, setActiveTab] = useState<AnalyticsTabKey>('diagnostics');
+  const { filters, setFilter } = useAnalyticsFilters();
+  const [groups] = useState(() => (typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS));
+  const courses = INITIAL_COURSES;
+  const teachers = INITIAL_TEACHERS;
+
   const [timeRange, setTimeRange] = useState<'month' | 'quarter' | 'year'>('month');
   const [teacherViewMode, setTeacherViewMode] = useState<'chart' | 'table' | 'cards'>('chart');
   const [selectedFunnelStage, setSelectedFunnelStage] = useState<FunnelStageKey | 'all' | null>(null);
@@ -443,7 +454,7 @@ export default function AnalyticsPage() {
   };
 
   const currentTeacherData = teacherRevenueByRange[timeRange];
-  const courses = coursesByRange[timeRange];
+  const mockCoursesStats = coursesByRange[timeRange];
   const [hoveredTeacherId, setHoveredTeacherId] = useState<string | null>(null);
 
   // Calculate pie chart donut slices
@@ -464,7 +475,7 @@ export default function AnalyticsPage() {
   const handleExport = () => {
     try {
       const periodLabel =
-        timeRange === 'month' ? 'Сентябрь 2026' : timeRange === 'quarter' ? '3-й квартал 2026' : '2026 год';
+        PERIOD_OPTIONS.find((p) => p.value === filters.period)?.label || filters.period;
       const nowStr = new Date().toLocaleString('ru-RU');
 
       const csvRows: string[] = [];
@@ -480,7 +491,7 @@ export default function AnalyticsPage() {
       csvRows.push('Сквозная конверсия CRM;35.7%;10 оплат из 28 обращений');
       csvRows.push('Средний LTV ученика;45 600 ₽;+5.4%');
       csvRows.push(`Совокупная выручка за период;${currentTeacherData.total};100% от плана`);
-      csvRows.push(`Учеников в активных группах;${courses.reduce((acc, c) => acc + c.students, 0)};чел.`);
+      csvRows.push(`Учеников в активных группах;${mockCoursesStats.reduce((acc, c) => acc + c.students, 0)};чел.`);
       csvRows.push('');
 
       // 2. Funnel
@@ -502,7 +513,7 @@ export default function AnalyticsPage() {
       // 4. Courses
       csvRows.push('=== 4. НАПРАВЛЕНИЯ ОБУЧЕНИЯ И КУРСЫ ===');
       csvRows.push('Курс;Учеников;Выручка;Доля выручки');
-      courses.forEach((c) => {
+      mockCoursesStats.forEach((c) => {
         csvRows.push(`"${c.name}";${c.students};${c.revenue};${c.share}%`);
       });
       csvRows.push('');
@@ -874,83 +885,36 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16">
-      {/* Role Navigation Tabs for Owner */}
-      <div className="flex border-b border-slate-200 gap-2">
-        <button
-          onClick={() => setAnalyticsTab('school')}
-          className={cn(
-            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2',
-            analyticsTab === 'school'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          )}
-        >
-          <BarChart3 size={15} />
-          Сквозная аналитика школы
-        </button>
-        <button
-          onClick={() => setAnalyticsTab('admins')}
-          className={cn(
-            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2',
-            analyticsTab === 'admins'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          )}
-        >
-          <Award size={15} />
-          Эффективность администраторов
-          <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 font-bold">
-            KPI 94%
-          </span>
-        </button>
-      </div>
+    <div className="space-y-4 w-full pb-16">
+      {/* 1. Page Header with Title and Global Filters Bar */}
+      <AnalyticsHeader
+        filters={filters}
+        onFilterChange={setFilter}
+        courses={courses}
+        groups={groups}
+        teachers={teachers}
+        onExport={handleExport}
+      />
 
-      {analyticsTab === 'admins' ? (
+      {/* 2. Horizontal Navigation Tab Bar */}
+      <AnalyticsTabsNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      {/* 3. Tab: ДИАГНОСТИКА (Active by Default) */}
+      {activeTab === 'diagnostics' && (
+        <DiagnosticsPlaceholder filters={filters} />
+      )}
+
+      {/* 4. Tab: ДЕТАЛЬНЫЕ ОТЧЕТЫ (Admin Performance) */}
+      {activeTab === 'reports' && (
         <AdminPerformanceReport />
-      ) : (
-        <>
-          {/* Header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">Сквозная аналитика школы</h1>
-              <p className="text-sm text-slate-500">
-                Воронка продаж, когортное удержание (retention), доходы по направлениям и эффективность педагогов
-              </p>
-            </div>
+      )}
 
-        <div className="flex items-center gap-2">
-          {/* Time range selector */}
-          <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
-            <button
-              onClick={() => setTimeRange('month')}
-              className={cn('rounded px-2.5 py-1 transition-all', timeRange === 'month' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600')}
-            >
-              Сентябрь
-            </button>
-            <button
-              onClick={() => setTimeRange('quarter')}
-              className={cn('rounded px-2.5 py-1 transition-all', timeRange === 'quarter' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600')}
-            >
-              3-й квартал
-            </button>
-            <button
-              onClick={() => setTimeRange('year')}
-              className={cn('rounded px-2.5 py-1 transition-all', timeRange === 'year' ? 'bg-white shadow-xs text-slate-900' : 'text-slate-600')}
-            >
-              2026 год
-            </button>
-          </div>
-
-          <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
-          >
-            <Download className="h-3.5 w-3.5 text-slate-500" />
-            Экспорт отчета
-          </button>
-        </div>
-      </div>
+      {/* 5. Tab: ПРОДАЖИ И КОНВЕРСИЯ */}
+      {activeTab === 'sales' && (
+        <div className="space-y-6">
 
       {/* Top 4 KPI Metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1112,8 +1076,11 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+      </div>
+      )}
 
-      {/* Section 2: КОГОРТНЫЙ АНАЛИЗ УДЕРЖАНИЯ (COHORT RETENTION) */}
+      {/* 6. Tab: УЧЕНИКИ И УДЕРЖАНИЕ */}
+      {activeTab === 'retention' && (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1152,8 +1119,10 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
+      )}
 
-      {/* Section 3: ВЫРУЧКА ПО ПРЕПОДАВАТЕЛЯМ */}
+      {/* 7. Tab: ПРЕПОДАВАТЕЛИ */}
+      {activeTab === 'teachers' && (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3">
           <div>
@@ -1463,8 +1432,10 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+      )}
 
-      {/* Section 4: ВЫРУЧКА ПО УЧЕБНЫМ НАПРАВЛЕНИЯМ (ОНЛАЙН-КУРСЫ) */}
+      {/* 8. Tab: ФИНАНСЫ И ДОХОДНОСТЬ */}
+      {activeTab === 'finance' && (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-2">
           <div>
@@ -1477,13 +1448,13 @@ export default function AnalyticsPage() {
             </p>
           </div>
           <div className="text-xs font-semibold text-slate-500">
-            Всего активных учеников: <span className="text-slate-900 font-extrabold">{courses.reduce((acc, c) => acc + c.students, 0)}</span>
+            Всего активных учеников: <span className="text-slate-900 font-extrabold">{mockCoursesStats.reduce((acc, c) => acc + c.students, 0)}</span>
           </div>
         </div>
 
         {/* Direction Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {courses.map((course, idx) => (
+          {mockCoursesStats.map((course, idx) => (
             <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-900 text-sm">{course.name}</span>
@@ -1502,7 +1473,26 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
-        </>
+      )}
+
+      {/* 9. Tab: ГРУППЫ */}
+      {activeTab === 'groups' && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center space-y-3 shadow-2xs">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+            <BookOpen className="h-6 w-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-900">Аналитика по группам</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Раздел наполняемости групп и свободных мест. На текущем этапе доступен в экране «Диагностика».
+          </p>
+          <button
+            type="button"
+            onClick={() => setActiveTab('diagnostics')}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+          >
+            Перейти к диагностике
+          </button>
+        </div>
       )}
     </div>
   );
