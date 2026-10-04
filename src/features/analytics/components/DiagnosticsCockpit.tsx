@@ -5,6 +5,7 @@ import { AnalyticsFilters, AnalyticsTabKey } from '../types';
 import { DiagnosticsAttentionSection } from './DiagnosticsAttentionSection';
 import { DiagnosticsMidTierSection } from './DiagnosticsMidTierSection';
 import { DiagnosticsRetentionSection } from './DiagnosticsRetentionSection';
+import { DiagnosticsBottomTierSection } from './DiagnosticsBottomTierSection';
 
 export interface DiagnosticsCockpitProps {
   filters: AnalyticsFilters;
@@ -29,8 +30,14 @@ export function DiagnosticsCockpit({
         onNavigateTab={onNavigateTab}
       />
 
-      {/* 3. Bottom-Tier 50/50: «Удержание учеников (Retention)» & «Ученики в зоне риска» */}
+      {/* 3. Tier 3 50/50: «Удержание учеников (Retention)» & «Ученики в зоне риска» */}
       <DiagnosticsRetentionSection
+        filters={filters}
+        onNavigateTab={onNavigateTab}
+      />
+
+      {/* 4. Bottom-Tier 50/50: «Эффективность преподавателей» & «Загрузка групп» */}
+      <DiagnosticsBottomTierSection
         filters={filters}
         onNavigateTab={onNavigateTab}
       />
