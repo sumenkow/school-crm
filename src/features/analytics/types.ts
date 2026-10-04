@@ -211,4 +211,136 @@ export interface SalesTabData {
   detailedLeads: SalesDetailedLeadRow[];
 }
 
+// ============================================================================
+// FINANCE & PROFITABILITY TAB TYPES
+// ============================================================================
+
+export interface FinanceKpiCardData {
+  id: string;
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  previousValue: string;
+  iconType: 'revenue' | 'paid' | 'debt' | 'avg_check' | 'ltv' | 'overdue';
+}
+
+export interface FinanceMonthlyAccrualPoint {
+  month: string;
+  accruedEur: number;
+  accruedFormatted: string;
+  paidEur: number;
+  paidFormatted: string;
+  debtEur: number;
+  debtFormatted: string;
+  trendFormatted: string;
+  isPositiveTrend: boolean;
+}
+
+export interface FinanceDirectionMetric {
+  id: string;
+  name: string;
+  badgeBg: string;
+  badgeText: string;
+  studentsCount: number;
+  revenueEur: number;
+  revenueFormatted: string;
+  avgCheckEur: number;
+  avgCheckFormatted: string;
+  debtEur: number;
+  debtFormatted: string;
+}
+
+export interface FinanceRevenueDynamicsPoint {
+  month: string;
+  currentEur: number;
+  previousEur: number;
+}
+
+export interface FinanceRevenueStructureItem {
+  id: string;
+  name: string;
+  color: string;
+  sharePercent: number;
+  revenueEur: number;
+}
+
+export interface FinanceLossCategoryItem {
+  id: string;
+  title: string;
+  count: number;
+  amountEur: number;
+  amountFormatted: string;
+  sharePercent: number;
+  color: string;
+}
+
+export interface FinanceDebtorStudentRow {
+  id: string;
+  studentId: string;
+  studentName: string;
+  groupName: string;
+  debtEur: number;
+  debtFormatted: string;
+  overdueDate: string;
+  daysOverdue: number;
+  riskLevel: 'Высокий' | 'Средний';
+}
+
+export interface FinanceStudentRiskRow {
+  id: string;
+  studentId: string;
+  studentName: string;
+  groupName: string;
+  lessonsRemaining: number;
+  lessonsRemainingColor: 'red' | 'orange' | 'green';
+  endDate: string;
+  statusText: 'Пакет заканчивается' | 'Низкий баланс' | 'Нет продления' | 'Ожидает оплаты' | 'Просрочен платеж';
+  riskLevel: 'Высокий' | 'Средний';
+}
+
+export interface FinanceGroupRiskRow {
+  id: string;
+  groupId: string;
+  groupName: string;
+  totalStudents: number;
+  debtStudentsCount: number;
+  debtSharePercent: number;
+  debtAmountEur: number;
+  debtAmountFormatted: string;
+}
+
+export interface FinanceTabData {
+  isLoading: boolean;
+  isEmpty: boolean;
+  kpis: FinanceKpiCardData[];
+  monthlyAccruals: FinanceMonthlyAccrualPoint[];
+  directions: FinanceDirectionMetric[];
+  dynamics: FinanceRevenueDynamicsPoint[];
+  structure: {
+    items: FinanceRevenueStructureItem[];
+    totalRevenueFormatted: string;
+  };
+  lossAnalysis: {
+    items: FinanceLossCategoryItem[];
+    potentialLossFormatted: string;
+    potentialLossDelta: string;
+    potentialLossShareText: string;
+  };
+  debtsSummary: {
+    totalDebtFormatted: string;
+    totalDebtDelta: string;
+    overdueDebtFormatted: string;
+    overdueDebtDelta: string;
+    debtorsCount: number;
+    debtorsCountDelta: string;
+    debtorsList: FinanceDebtorStudentRow[];
+  };
+  riskTabs: {
+    students: FinanceStudentRiskRow[];
+    groups: FinanceGroupRiskRow[];
+  };
+}
+
+
 

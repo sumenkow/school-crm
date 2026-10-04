@@ -48,6 +48,7 @@ import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsN
 import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsCockpit';
 import { RetentionAnalyticsSection } from '@/features/analytics/components/RetentionAnalyticsSection';
 import { SalesAnalyticsSection } from '@/features/analytics/components/SalesAnalyticsSection';
+import { FinanceAnalyticsSection } from '@/features/analytics/components/FinanceAnalyticsSection';
 import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
 import { AnalyticsTabKey } from '@/features/analytics/types';
 
@@ -895,6 +896,8 @@ export default function AnalyticsPage() {
             ? 'Продажи и конверсия — анализ воронки, каналов и причин потери лидов'
             : activeTab === 'retention'
             ? 'Ученики и удержание — анализ активностей, продлений и причин ухода'
+            : activeTab === 'finance'
+            ? 'Финансы и доходность — выручка, оплаты, задолженности и финансовые риски'
             : undefined
         }
         filters={filters}
@@ -1246,43 +1249,7 @@ export default function AnalyticsPage() {
 
       {/* 8. Tab: ФИНАНСЫ И ДОХОДНОСТЬ */}
       {activeTab === 'finance' && (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-2">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-indigo-600" />
-              Выручка по учебным направлениям (онлайн-курсы)
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Распределение дохода и активных учеников по направлениям школы
-            </p>
-          </div>
-          <div className="text-xs font-semibold text-slate-500">
-            Всего активных учеников: <span className="text-slate-900 font-extrabold">{mockCoursesStats.reduce((acc, c) => acc + c.students, 0)}</span>
-          </div>
-        </div>
-
-        {/* Direction Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {mockCoursesStats.map((course, idx) => (
-            <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900 text-sm">{course.name}</span>
-                <span className="rounded-full bg-slate-200/80 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
-                  {course.share}%
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-xs text-slate-500">{course.students} учеников</span>
-                <span className="text-base font-extrabold text-slate-900">{course.revenue}</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                <div className={cn('h-full rounded-full', course.color)} style={{ width: `${course.share}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+        <FinanceAnalyticsSection filters={filters} courses={courses} />
       )}
 
       {/* 9. Tab: ГРУППЫ */}
