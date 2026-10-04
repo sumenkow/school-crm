@@ -22,6 +22,8 @@ import {
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters } from '../types';
 import { useRetentionTabData } from '../hooks/useRetentionTabData';
+import { ActiveAndChurnedDynamicsCard } from './ActiveAndChurnedDynamicsCard';
+import { RenewalConversionCard } from './RenewalConversionCard';
 import {
   getChurnEvents,
   getChurnEventsByPeriod,
@@ -42,6 +44,8 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
     totalRisksCount,
     churnAnalysis,
     upcomingRenewals,
+    activeAndChurnedDynamics,
+    renewalConversion,
   } = useRetentionTabData(filters);
 
   const [isChurnedModalOpen, setIsChurnedModalOpen] = useState(false);
@@ -201,13 +205,13 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
       </div>
 
       {/* ========================================================= */}
-      {/* 2. MAIN 2x2 ANALYTICS GRID                                */}
+      {/* 2. UPPER TIER (3-COLUMN LAYOUT)                           */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[4.6fr_3.8fr_3.6fr] gap-2.5">
         {/* ========================================================= */}
-        {/* CARD 1: Удержание учеников (Retention) (h-[310px])        */}
+        {/* CARD 1: Удержание учеников (Retention) (h-[325px])        */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[310px]">
+        <div className="lg:col-span-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[325px]">
           <div>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -345,9 +349,9 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         </div>
 
         {/* ========================================================= */}
-        {/* CARD 2: Ученики в зоне риска (h-[310px])                   */}
+        {/* CARD 2: Ученики в зоне риска (h-[325px])                   */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[310px]">
+        <div className="lg:col-span-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[325px]">
           <div>
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -363,7 +367,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                     </span>
                   </h3>
                   <p className="text-[10px] text-slate-500 truncate">
-                    Активные ученики с объективными признаками угрозы оттока
+                    Ученики, которые могут прекратить обучение
                   </p>
                 </div>
               </div>
@@ -442,9 +446,22 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         </div>
 
         {/* ========================================================= */}
-        {/* CARD 3: Почему уходят ученики (h-[280px])                  */}
+        {/* RIGHT COLUMN: ДИНАМИКА И КОНВЕРСИЯ (2 КАРТОЧКИ)           */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[280px]">
+        <div className="lg:col-span-2 xl:col-span-1 flex flex-col gap-2.5 h-[325px]">
+          <ActiveAndChurnedDynamicsCard data={activeAndChurnedDynamics} />
+          <RenewalConversionCard data={renewalConversion} />
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 3. BOTTOM TIER (2-COLUMN LAYOUT)                          */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+        {/* ========================================================= */}
+        {/* CARD 3: Причины ухода учеников (h-[275px])                */}
+        {/* ========================================================= */}
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px]">
           <div>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -454,13 +471,13 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-xs lg:text-sm font-bold text-slate-900 flex items-center gap-1 leading-tight truncate">
-                    Почему уходят ученики
+                    Причины ухода учеников
                     <span className="text-slate-400 text-[10px] cursor-help font-normal" title="Статистика прекращения обучения">
                       ⓘ
                     </span>
                   </h3>
                   <p className="text-[10px] text-slate-500 truncate">
-                    Анализ причин прекращения обучения по структурированным фактам
+                    На основе фактических завершений обучения
                   </p>
                 </div>
               </div>
@@ -630,9 +647,9 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         </div>
 
         {/* ========================================================= */}
-        {/* CARD 4: Ближайшие продления (h-[280px])                    */}
+        {/* CARD 4: Ближайшие продления (h-[275px])                    */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[280px]">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px]">
           <div>
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
