@@ -35,7 +35,7 @@ export function TeacherEffectivenessCard({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
       {/* 1. Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
@@ -75,12 +75,12 @@ export function TeacherEffectivenessCard({
             <thead>
               <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
                 <th className="py-2 pl-1 pr-2">Преподаватель</th>
-                <th className="py-2 px-1 text-center">Группы</th>
-                <th className="py-2 px-1 text-center">Заполнение</th>
-                <th className="py-2 px-1 text-center">Посещ.</th>
-                <th className="py-2 px-1 text-center">Retention</th>
-                <th className="py-2 px-1 text-center">Конверсия</th>
-                <th className="py-2 pr-1 pl-1 text-right">Динамика</th>
+                <th className="py-2 px-1.5 text-center">Группы</th>
+                <th className="py-2 px-1.5 text-center">Заполнение</th>
+                <th className="py-2 px-1.5 text-center">Посещаемость</th>
+                <th className="py-2 px-1.5 text-center">Retention</th>
+                <th className="py-2 px-1.5 text-center">Конверсия пробных</th>
+                <th className="py-2 pr-1.5 pl-1.5 text-right">Динамика</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

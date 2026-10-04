@@ -41,20 +41,20 @@ export function GroupCapacityCard({
     switch (status) {
       case 'underfilled':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200/80 whitespace-nowrap">
             {label}
           </span>
         );
       case 'almost_full':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80 whitespace-nowrap">
             {label}
           </span>
         );
       case 'full':
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 whitespace-nowrap">
             {label}
           </span>
         );
@@ -62,7 +62,7 @@ export function GroupCapacityCard({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
       {/* 1. Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3.5">
@@ -103,11 +103,11 @@ export function GroupCapacityCard({
         <div className="mt-3.5 overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">
                 <th className="py-2 pl-1 pr-1.5">Группа</th>
                 <th className="py-2 px-1">Направление</th>
                 <th className="py-2 px-1 text-center">Заполнено</th>
-                <th className="py-2 px-1 text-right">Потенциал</th>
+                <th className="py-2 px-1 text-right">Потенциал выручки</th>
                 <th className="py-2 pr-1 pl-1 text-right">Статус</th>
               </tr>
             </thead>
@@ -145,7 +145,7 @@ export function GroupCapacityCard({
                     <td className="py-2 px-1 text-center whitespace-nowrap">
                       <div className="inline-flex flex-col items-center">
                         <span className="font-semibold text-slate-800 text-[10.5px]">
-                          {g.enrolled} / {g.capacity}
+                          {g.enrolled} / {g.capacity} мест
                         </span>
                         <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden mt-0.5">
                           <div

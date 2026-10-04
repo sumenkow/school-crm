@@ -187,14 +187,17 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
       return group.courseName;
     }
     const name = (group.name || '').toLowerCase();
-    if (name.includes('english') || name.includes('starter') || name.includes('грамматика') || name.includes('разговорный')) {
-      return 'Английский язык';
+    if (name.includes('python')) {
+      return 'Программирование';
+    }
+    if (name.includes('robot') || name.includes('it')) {
+      return 'Робототехника';
     }
     if (name.includes('математик')) {
-      return 'Олимпиадная математика';
+      return 'Математика';
     }
-    if (name.includes('python') || name.includes('robot') || name.includes('it')) {
-      return 'Робототехника и IT';
+    if (name.includes('english') || name.includes('starter') || name.includes('грамматика') || name.includes('разговорный')) {
+      return 'Английский язык';
     }
     if (name.includes('немецк') || name.includes('german')) {
       return 'Немецкий язык';
