@@ -9,12 +9,6 @@ import {
   Search,
   Edit3,
   X,
-  SlidersHorizontal,
-  ArrowUpDown,
-  ChevronRight,
-  User,
-  Calendar,
-  AlertTriangle,
   ListTodo,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -86,7 +80,7 @@ function getHumanDate(task: FullTaskData, todayIso: string): { label: string; is
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TasksPage() {
-  const { userName, role } = useRole();
+  const { userName } = useRole();
   const toast = useToast();
   const { t } = useLanguage();
 
