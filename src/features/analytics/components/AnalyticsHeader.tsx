@@ -6,6 +6,7 @@ import { AnalyticsFilters } from '../types';
 import { PERIOD_OPTIONS, COMPARE_PERIOD_OPTIONS } from '../hooks/useAnalyticsFilters';
 
 export interface AnalyticsHeaderProps {
+  subtitle?: string;
   filters: AnalyticsFilters;
   onFilterChange: <K extends keyof AnalyticsFilters>(key: K, value: AnalyticsFilters[K]) => void;
   courses: Array<{ id: string; name: string }>;
@@ -15,6 +16,7 @@ export interface AnalyticsHeaderProps {
 }
 
 export function AnalyticsHeader({
+  subtitle,
   filters,
   onFilterChange,
   courses,
@@ -23,11 +25,18 @@ export function AnalyticsHeader({
   onExport,
 }: AnalyticsHeaderProps) {
   return (
-    <div className="h-8 flex items-center justify-between gap-2 flex-nowrap shrink-0">
-      {/* Page Title */}
-      <h1 className="text-base lg:text-lg font-bold tracking-tight text-slate-900 leading-none shrink-0">
-        Аналитика школы
-      </h1>
+    <div className="min-h-9 flex items-center justify-between gap-2 flex-nowrap shrink-0">
+      {/* Page Title & Dynamic Subtitle */}
+      <div className="flex flex-col justify-center shrink-0 min-w-0">
+        <h1 className="text-base lg:text-lg font-bold tracking-tight text-slate-900 leading-tight shrink-0">
+          Аналитика школы
+        </h1>
+        {subtitle && (
+          <p className="text-[10.5px] lg:text-[11px] text-slate-500 font-normal truncate leading-tight mt-0.5">
+            {subtitle}
+          </p>
+        )}
+      </div>
 
       {/* Global Filter Bar */}
       <div className="h-8 flex items-center gap-1 text-[11px] flex-nowrap shrink-0">

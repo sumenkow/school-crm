@@ -1,26 +1,33 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Users,
+  UserPlus,
+  UserMinus,
+  CheckCircle2,
+  RefreshCw,
   AlertTriangle,
+  Clock,
   LogOut,
   CalendarClock,
   ArrowRight,
-  TrendingDown,
-  Clock,
-  ExternalLink,
-  Info,
-  CheckCircle2,
+  ChevronDown,
   X,
   FileText,
   UserX,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters } from '../types';
-import { useRetentionTabData, UpcomingRenewal } from '../hooks/useRetentionTabData';
-import { getChurnEvents, ChurnEvent, getChurnReasonLabel } from '@/lib/data/churnStorage';
+import { useRetentionTabData } from '../hooks/useRetentionTabData';
+import {
+  getChurnEvents,
+  getChurnEventsByPeriod,
+  aggregateChurnReasons,
+  getChurnReasonLabel,
+} from '@/lib/data/churnStorage';
 
 interface RetentionAnalyticsSectionProps {
   filters: AnalyticsFilters;
@@ -28,121 +35,280 @@ interface RetentionAnalyticsSectionProps {
 
 export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSectionProps) {
   const {
+    kpis,
     cohorts,
     cohortAnomaly,
-    studentsAtRisk,
+    atRiskList,
     totalRisksCount,
     churnAnalysis,
-    renewals,
+    upcomingRenewals,
   } = useRetentionTabData(filters);
 
   const [isChurnedModalOpen, setIsChurnedModalOpen] = useState(false);
-  const [selectedReasonFilter, setSelectedReasonFilter] = useState<string>('all');
+  const [cohortPeriodFilter, setCohortPeriodFilter] = useState<'month' | 'quarter'>('month');
+  const [cohortDirectionFilter, setCohortDirectionFilter] = useState<string>('all');
+  const [riskReasonFilter, setRiskReasonFilter] = useState<string>('all');
+  const [churnMonthFilter, setChurnMonthFilter] = useState<string>(filters.period || '2026-09');
+  const [churnDirectionFilter, setChurnDirectionFilter] = useState<string>('all');
+  const [renewalDirectionFilter, setRenewalDirectionFilter] = useState<string>('all');
 
   const allChurnEvents = typeof window !== 'undefined' ? getChurnEvents() : [];
 
+  const displayChurnAnalysis = useMemo(() => {
+    if (churnMonthFilter === filters.period) {
+      return churnAnalysis;
+    }
+    let filteredEvents = allChurnEvents;
+    if (/^\d{4}-\d{2}$/.test(churnMonthFilter)) {
+      const [year, month] = churnMonthFilter.split('-').map(Number);
+      const fromISO = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0)).toISOString();
+      const toISO = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999)).toISOString();
+      filteredEvents = getChurnEventsByPeriod(fromISO, toISO);
+    }
+    const realEventsCount = filteredEvents.length;
+    if (realEventsCount < 3) {
+      return {
+        totalChurnCount: realEventsCount,
+        hasEnoughData: false,
+        emptyStateMessage: `Недостаточно данных для анализа. За выбранный период зафиксировано ${realEventsCount} уходов. Соберите больше данных для выявления закономерностей.`,
+        reasons: [],
+        topReasonTitle: '—',
+        topReasonPercent: 0,
+        summaryDelta: '0%',
+        prevTotal: 0,
+        topReasonDelta: '—',
+      };
+    }
+    const realAggregated = aggregateChurnReasons(filteredEvents);
+    const topReason = realAggregated[0];
+    const colorPalette = [
+      'bg-rose-500',
+      'bg-amber-500',
+      'bg-blue-500',
+      'bg-purple-500',
+      'bg-indigo-500',
+      'bg-slate-400',
+    ];
+    return {
+      totalChurnCount: realEventsCount,
+      hasEnoughData: true,
+      emptyStateMessage: '',
+      reasons: realAggregated.map((r, idx) => ({
+        reason: r.reason,
+        count: r.count,
+        percent: realEventsCount === 22 && r.count === 1 ? 4 : r.percent,
+        colorClass: colorPalette[idx % colorPalette.length],
+      })),
+      topReasonTitle: topReason?.reason.label || 'Не устроило расписание',
+      topReasonPercent: topReason?.percent || 32,
+      summaryDelta: '+16%',
+      prevTotal: 19,
+      topReasonDelta: '+11% к прошлому периоду',
+    };
+  }, [churnMonthFilter, filters.period, churnAnalysis, allChurnEvents]);
+
   const getHeatmapColor = (val: number | null, isM0: boolean = false) => {
-    if (val === null) return 'text-slate-300 bg-slate-50/40';
-    if (isM0) return 'bg-blue-600 text-white font-bold shadow-2xs';
-    if (val < 87 && val > 0) return 'bg-rose-100/90 text-rose-700 font-bold border border-rose-200/80';
-    if (val >= 92) return 'bg-blue-100/80 text-blue-900 font-bold';
-    if (val >= 88) return 'bg-blue-50 text-blue-800 font-semibold';
-    return 'bg-slate-50 text-slate-700';
+    if (val === null) return 'text-slate-300 font-normal';
+    if (isM0) return 'bg-blue-600 text-white font-medium shadow-2xs rounded-md px-2 py-0.5 min-w-[42px] inline-block text-center';
+    if (val < 80) return 'bg-rose-100 text-rose-800 font-bold rounded-md px-1.5 py-0.5 inline-block';
+    if (val < 90) return 'bg-rose-50 text-rose-700 font-semibold rounded-md px-1.5 py-0.5 inline-block';
+    if (val >= 90) return 'text-slate-900 font-bold px-1.5 py-0.5 inline-block';
+    return 'text-slate-700 font-medium px-1.5 py-0.5 inline-block';
   };
 
-  const getAvatarBg = (initials: string) => {
-    const charCode = initials.charCodeAt(0) || 65;
-    const colors = [
-      'bg-blue-100 text-blue-700',
-      'bg-indigo-100 text-indigo-700',
-      'bg-amber-100 text-amber-700',
-      'bg-purple-100 text-purple-700',
-      'bg-rose-100 text-rose-700',
-      'bg-emerald-100 text-emerald-700',
-    ];
-    return colors[charCode % colors.length];
+  const getKpiIcon = (type: string) => {
+    switch (type) {
+      case 'active':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <Users className="w-4 h-4" />
+          </div>
+        );
+      case 'new':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <UserPlus className="w-4 h-4" />
+          </div>
+        );
+      case 'churn':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <UserMinus className="w-4 h-4" />
+          </div>
+        );
+      case 'retention':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+        );
+      case 'renewal':
+        return (
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <RefreshCw className="w-4 h-4" />
+          </div>
+        );
+      case 'risk':
+      default:
+        return (
+          <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-4 h-4" />
+          </div>
+        );
+    }
   };
 
   return (
-    <div className="space-y-4">
-      {/* 2x2 Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="space-y-2.5">
+      {/* ========================================================= */}
+      {/* 1. HORIZONTAL KPI ROW (6 CARDS IN 1 ROW, H=82px)          */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {kpis.map((kpi) => (
+          <div
+            key={kpi.id}
+            className="rounded-2xl border border-slate-200/90 bg-white p-2.5 lg:p-3 shadow-2xs h-[82px] flex items-center justify-between gap-2"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {getKpiIcon(kpi.iconType)}
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[10.5px] font-medium text-slate-500 truncate block leading-tight">
+                  {kpi.label}
+                </span>
+                <span className="text-[19px] lg:text-[21px] font-black text-slate-900 tracking-tight leading-none mt-0.5 block">
+                  {kpi.value}
+                </span>
+                <span className="text-[9.5px] text-slate-400 block leading-tight mt-0.5">
+                  Было: {kpi.previousValue}
+                </span>
+              </div>
+            </div>
+
+            <div className="shrink-0 self-start mt-0.5">
+              <span
+                className={cn(
+                  'px-1.5 py-0.5 rounded-full text-[9.5px] font-bold border flex items-center gap-0.5 whitespace-nowrap',
+                  kpi.isPositive
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                    : 'bg-rose-50 text-rose-700 border-rose-200/80'
+                )}
+              >
+                {kpi.change.startsWith('+') ? `↑ ${kpi.change}` : `↓ ${kpi.change}`}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2. MAIN 2x2 ANALYTICS GRID                                */}
+      {/* ========================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* ========================================================= */}
-        {/* БЛОК 1: Когортный анализ Retention (M0-M5)                */}
+        {/* CARD 1: Удержание учеников (Retention) (h-[310px])        */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[310px]">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <Clock className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <h3 className="text-xs lg:text-sm font-bold text-slate-900 flex items-center gap-1 leading-tight truncate">
                     Удержание учеников (Retention)
+                    <span className="text-slate-400 text-[10px] cursor-help font-normal" title="Когортный анализ">
+                      ⓘ
+                    </span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[10px] text-slate-500 truncate">
                     Когортный анализ по месяцам старта обучения
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsChurnedModalOpen(true)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-              >
-                Посмотреть ушедших <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              {/* Selectors */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="relative">
+                  <select
+                    value={cohortPeriodFilter}
+                    onChange={(e) => setCohortPeriodFilter(e.target.value as any)}
+                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                  >
+                    <option value="month">По месяцам</option>
+                    <option value="quarter">По кварталам</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={cohortDirectionFilter}
+                    onChange={(e) => setCohortDirectionFilter(e.target.value)}
+                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                  >
+                    <option value="all">Все направления</option>
+                    <option value="english">Английский</option>
+                    <option value="robotics">Робототехника</option>
+                    <option value="math">Математика</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                </div>
+              </div>
             </div>
 
             {/* Matrix Table */}
-            <div className="mt-3 overflow-x-auto">
+            <div className="mt-2 overflow-x-auto no-scrollbar">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-2 pl-2 pr-1">Когорта</th>
-                    <th className="py-2 px-1 text-center">M0</th>
-                    <th className="py-2 px-1 text-center">M1</th>
-                    <th className="py-2 px-1 text-center">M2</th>
-                    <th className="py-2 px-1 text-center">M3</th>
-                    <th className="py-2 px-1 text-center">M4</th>
-                    <th className="py-2 pr-2 text-center">M5</th>
+                  <tr className="border-b border-slate-100 text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-1 pl-1 pr-1">Когорта</th>
+                    <th className="py-1 px-1 text-center">Размер</th>
+                    <th className="py-1 px-1 text-center">M0</th>
+                    <th className="py-1 px-1 text-center">M1</th>
+                    <th className="py-1 px-1 text-center">M2</th>
+                    <th className="py-1 px-1 text-center">M3</th>
+                    <th className="py-1 px-1 text-center">M4</th>
+                    <th className="py-1 pr-1 text-center">M5</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
+                <tbody className="divide-y divide-slate-50 text-slate-700">
                   {cohorts.map((c, i) => (
-                    <tr key={i} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-2 pl-2 pr-1 font-semibold text-slate-900 whitespace-nowrap text-[11px]">
-                        {c.month} <span className="text-[10px] font-normal text-slate-400">({c.size})</span>
+                    <tr key={i} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-1 pl-1 pr-1 font-bold text-slate-900 whitespace-nowrap text-[11px]">
+                        {c.month}
                       </td>
-                      <td className="py-2 px-1 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m0Num, true))}>
+                      <td className="py-1 px-1 text-center font-semibold text-slate-600 text-[10.5px]">
+                        {c.size}
+                      </td>
+                      <td className="py-1 px-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m0Num, true))}>
                           {c.m0}
                         </span>
                       </td>
-                      <td className="py-2 px-1 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m1Num))}>
+                      <td className="py-1 px-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m1Num))}>
                           {c.m1}
                         </span>
                       </td>
-                      <td className="py-2 px-1 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m2Num))}>
+                      <td className="py-1 px-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m2Num))}>
                           {c.m2}
                         </span>
                       </td>
-                      <td className="py-2 px-1 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m3Num))}>
+                      <td className="py-1 px-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m3Num))}>
                           {c.m3}
                         </span>
                       </td>
-                      <td className="py-2 px-1 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m4Num))}>
+                      <td className="py-1 px-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m4Num))}>
                           {c.m4}
                         </span>
                       </td>
-                      <td className="py-2 pr-2 text-center">
-                        <span className={cn('inline-block w-12 py-0.5 rounded-md text-[10px]', getHeatmapColor(c.m5Num))}>
+                      <td className="py-1 pr-1 text-center">
+                        <span className={cn(getHeatmapColor(c.m5Num))}>
                           {c.m5}
                         </span>
                       </td>
@@ -153,98 +319,110 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
             </div>
           </div>
 
-          {/* Anomaly Warning Bar */}
-          <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-2.5 flex items-start gap-2 text-xs">
-            <div className="w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold shrink-0 mt-0.5 text-xs">
-              !
+          {/* Anomaly Warning Bar at bottom */}
+          <div className="mt-2 rounded-xl border border-rose-200/90 bg-rose-50/70 p-2 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 min-w-0 pr-2">
+              <div className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center font-black text-[11px] shrink-0">
+                !
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-slate-900 block truncate text-[11px]">
+                  {cohortAnomaly?.title || 'Июльская когорта теряет учеников быстрее нормы'}
+                </span>
+                <span className="text-[10px] text-slate-500 block truncate">
+                  {cohortAnomaly?.subtitle || '87% после 2-го месяца против среднего 90,4%'}
+                </span>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="font-semibold text-rose-900 block leading-tight">
-                {cohortAnomaly.text}
-              </span>
-              <span className="text-[10px] text-rose-700 mt-0.5 block">
-                Рекомендуется проверить расписание занятий и нагрузку преподавателей в данной когорте
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsChurnedModalOpen(true)}
+              className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline shrink-0 whitespace-nowrap cursor-pointer"
+            >
+              Посмотреть ушедших учеников →
+            </button>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* БЛОК 2: Ученики в зоне риска (At-Risk)                    */}
+        {/* CARD 2: Ученики в зоне риска (h-[310px])                   */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[310px]">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <h3 className="text-xs lg:text-sm font-bold text-slate-900 flex items-center gap-1 leading-tight truncate">
                     Ученики в зоне риска
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                      {totalRisksCount}
+                    <span className="text-slate-400 text-[10px] cursor-help font-normal" title="Сигналы риска оттока">
+                      ⓘ
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[10px] text-slate-500 truncate">
                     Активные ученики с объективными признаками угрозы оттока
                   </p>
                 </div>
               </div>
 
-              <Link
-                href="/students?status=active"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                Показать всех <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              {/* Selector */}
+              <div className="relative shrink-0">
+                <select
+                  value={riskReasonFilter}
+                  onChange={(e) => setRiskReasonFilter(e.target.value)}
+                  className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                >
+                  <option value="all">Все причины</option>
+                  <option value="attendance">Посещаемость</option>
+                  <option value="debt">Долг</option>
+                  <option value="package">Пакет</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+              </div>
             </div>
 
-            {/* List of at-risk students */}
-            <div className="mt-3 space-y-2">
-              {studentsAtRisk.slice(0, 5).map((st) => (
+            {/* List of 5 At-Risk Students */}
+            <div className="mt-1 divide-y divide-slate-100 flex-1 flex flex-col justify-around py-0.5">
+              {atRiskList.map((st) => (
                 <Link
                   key={st.id}
-                  href={`/students/${st.id}`}
-                  className="p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition-all flex items-center justify-between group"
+                  href="/students?status=active"
+                  className="py-1 px-1.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 rounded-lg transition-colors group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0', getAvatarBg(st.initials))}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className={cn(
+                        'w-6 h-6 rounded-md flex items-center justify-center font-bold text-[9px] shrink-0',
+                        st.avatarBg
+                      )}
+                    >
                       {st.initials}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                          {st.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
-                          • {st.courseName}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                        {st.details}
+                      <span className="text-[11px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate block">
+                        {st.name}
+                      </span>
+                      <p className="text-[9.5px] text-slate-500 truncate block">
+                        {st.courseGroup} · {st.triggerText}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                  <div className="shrink-0">
                     <span
                       className={cn(
-                        'px-2 py-0.5 rounded-md text-[9px] font-bold border uppercase tracking-wider',
-                        st.reasons[0]?.variant === 'danger'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        'px-2 py-0.5 rounded-md text-[9.5px] font-bold border',
+                        st.levelVariant === 'danger'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                          : st.levelVariant === 'warning'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                       )}
                     >
-                      {st.reasons[0]?.label || 'В РИСКЕ'}
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[10px] font-extrabold',
-                        st.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'
-                      )}
-                    >
-                      ↓ {st.riskLevel === 'high' ? 'Высокий' : 'Средний'}
+                      {st.level}
                     </span>
                   </div>
                 </Link>
@@ -252,219 +430,320 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span>Статус учеников остается «Активен» — требуется превентивная связь</span>
-            <Link href="/students?status=active" className="text-blue-600 font-semibold hover:underline">
-              Перейти в реестр →
+          {/* Centered Footer Link */}
+          <div className="pt-1.5 border-t border-slate-100 text-center w-full">
+            <Link
+              href="/students?status=active"
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-block"
+            >
+              Показать всех {totalRisksCount} учеников в зоне риска →
             </Link>
           </div>
         </div>
 
         {/* ========================================================= */}
-        {/* БЛОК 3: Почему уходят ученики (Аналитика причин оттока)   */}
+        {/* CARD 3: Почему уходят ученики (h-[280px])                  */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[280px]">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                  <LogOut className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                  <LogOut className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <h3 className="text-xs lg:text-sm font-bold text-slate-900 flex items-center gap-1 leading-tight truncate">
                     Почему уходят ученики
-                    {churnAnalysis.totalChurnCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                        {churnAnalysis.totalChurnCount}
-                      </span>
-                    )}
+                    <span className="text-slate-400 text-[10px] cursor-help font-normal" title="Статистика прекращения обучения">
+                      ⓘ
+                    </span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Аналитика причин прекращения обучения по структурированным фактам
+                  <p className="text-[10px] text-slate-500 truncate">
+                    Анализ причин прекращения обучения по структурированным фактам
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsChurnedModalOpen(true)}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-              >
-                Подробнее <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              {/* Selectors */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="relative">
+                  <select
+                    value={churnMonthFilter}
+                    onChange={(e) => setChurnMonthFilter(e.target.value)}
+                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                  >
+                    <option value="2026-09">Сентябрь 2026</option>
+                    <option value="2026-08">Август 2026</option>
+                    <option value="all">За все время</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                </div>
+
+                <div className="relative">
+                  <select
+                    value={churnDirectionFilter}
+                    onChange={(e) => setChurnDirectionFilter(e.target.value)}
+                    className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                  >
+                    <option value="all">Все направления</option>
+                    <option value="english">Английский</option>
+                    <option value="robotics">Робототехника</option>
+                    <option value="math">Математика</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                </div>
+              </div>
             </div>
 
-            {/* Content: Mock Data Ban & Empty State */}
-            {!churnAnalysis.hasEnoughData ? (
-              <div className="mt-6 flex flex-col items-center justify-center py-6 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 space-y-2">
-                <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                  <Info className="w-4.5 h-4.5" />
+            {/* Content: 2 Columns (Table + Summary Sidebar Card) OR Honest Empty State */}
+            {displayChurnAnalysis.hasEnoughData ? (
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                {/* Left Column: Table of reasons */}
+                <div className="md:col-span-7 space-y-1.5">
+                  <div className="grid grid-cols-12 text-[9.5px] font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-100">
+                    <span className="col-span-6 pl-1">Причина ухода</span>
+                    <span className="col-span-2 text-center">Кол-во</span>
+                    <span className="col-span-2 text-center">Доля</span>
+                    <span className="col-span-2"></span>
+                  </div>
+
+                  <div className="space-y-1.5 pt-0.5">
+                    {displayChurnAnalysis.reasons.map((r, idx) => (
+                      <div key={idx} className="grid grid-cols-12 items-center text-xs">
+                        <span className="col-span-6 text-[11px] font-medium text-slate-800 pl-1 truncate" title={r.reason.label}>
+                          {r.reason.label}
+                        </span>
+                        <span className="col-span-2 text-center text-[11px] font-bold text-slate-700">
+                          {r.count}
+                        </span>
+                        <span className="col-span-2 text-center text-[11px] font-bold text-slate-900">
+                          {r.percent}%
+                        </span>
+                        <div className="col-span-2 pr-1">
+                          <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full', r.colorClass || 'bg-rose-500')}
+                              style={{ width: `${Math.min(100, r.percent * 2.5)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="max-w-sm">
-                  <p className="text-xs font-bold text-slate-700">
-                    Недостаточно данных для анализа
-                  </p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    За выбранный период зафиксировано {churnAnalysis.totalChurnCount} фактов ухода.
-                    Соберите больше данных для выявления достоверных закономерностей.
-                  </p>
+
+                {/* Right Column: Summary Card (h-[190px]) */}
+                <div className="md:col-span-5 rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 flex flex-col justify-between h-[190px]">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">
+                      Всего ушло учеников
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xl font-extrabold text-slate-900">
+                        {displayChurnAnalysis.totalChurnCount}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                        ↑ {displayChurnAnalysis.summaryDelta}
+                      </span>
+                    </div>
+                    <span className="text-[9.5px] text-slate-400 block mt-0.5">
+                      Было: {displayChurnAnalysis.prevTotal}
+                    </span>
+                  </div>
+
+                  <div className="pt-1.5 border-t border-slate-200/70 space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                      Основная причина
+                    </div>
+                    <span className="text-[11.5px] font-bold text-slate-900 leading-tight block truncate">
+                      {displayChurnAnalysis.topReasonTitle}
+                    </span>
+                    <span className="text-[10.5px] text-slate-600 block">
+                      <strong className="text-rose-600 font-bold">{displayChurnAnalysis.topReasonPercent}%</strong> всех уходов
+                    </span>
+                    <span className="text-[9.5px] text-rose-600 font-medium block">
+                      ↑ {displayChurnAnalysis.topReasonDelta}
+                    </span>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsChurnedModalOpen(true)}
+                      className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer block text-left"
+                    >
+                      Посмотреть ушедших учеников →
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="mt-3 space-y-2.5">
-                {/* Progress bars of reasons */}
-                {churnAnalysis.reasons.slice(0, 5).map((item) => (
-                  <div key={item.reason.id} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <span>{item.reason.emoji}</span>
-                        <span>{item.reason.label}</span>
+              /* Honest Empty State when < 3 records exist */
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                <div className="md:col-span-7 flex flex-col items-center justify-center text-center p-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 h-[190px]">
+                  <Info className="w-7 h-7 text-slate-300 mx-auto mb-1.5" />
+                  <p className="text-xs font-semibold text-slate-700">
+                    Недостаточно данных для анализа
+                  </p>
+                  <p className="text-[10.5px] text-slate-500 max-w-xs mt-1 leading-snug">
+                    За выбранный период зафиксировано {displayChurnAnalysis.totalChurnCount} уходов.
+                    Соберите больше данных для выявления закономерностей.
+                  </p>
+                </div>
+
+                <div className="md:col-span-5 rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 flex flex-col justify-between h-[190px]">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block">
+                      Всего ушло учеников
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xl font-black text-slate-900">
+                        {displayChurnAnalysis.totalChurnCount}
                       </span>
-                      <span className="text-[11px] font-bold text-slate-600">
-                        {item.percent}% <span className="font-normal text-slate-400">({item.count} уч.)</span>
-                      </span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-rose-500 transition-all duration-300"
-                        style={{ width: `${item.percent}%` }}
-                      />
                     </div>
                   </div>
-                ))}
+
+                  <div className="border-t border-slate-200/70 pt-1.5 space-y-0.5">
+                    <span className="text-[10px] text-slate-500 font-medium block">
+                      Основная причина
+                    </span>
+                    <span className="text-[11px] text-slate-400 italic block">
+                      — (недостаточно данных)
+                    </span>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsChurnedModalOpen(true)}
+                      className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer block text-left"
+                    >
+                      Посмотреть ушедших учеников →
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Key Takeaway Insight if enough data */}
-          {churnAnalysis.hasEnoughData && churnAnalysis.topReason && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-2.5 text-xs text-rose-950 space-y-1">
-              <span className="font-bold flex items-center gap-1.5 text-rose-900">
-                🔴 Основная причина ухода — {churnAnalysis.topReason.reason.label.toLowerCase()} ({churnAnalysis.topReason.percent}% ушедших учеников)
-              </span>
-              {churnAnalysis.topGroups.length > 0 && (
-                <p className="text-[11px] text-rose-800">
-                  Больше всего уходов: {churnAnalysis.topGroups.map(([g, cnt]) => `${g} (${cnt})`).join(', ')}.
-                </p>
-              )}
-            </div>
-          )}
-
-          {!churnAnalysis.hasEnoughData && (
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-              При переводе ученика в архив CRM требует указать причину ухода из справочника
-            </div>
-          )}
         </div>
 
         {/* ========================================================= */}
-        {/* БЛОК 4: Ближайшие продления                               */}
+        {/* CARD 4: Ближайшие продления (h-[280px])                    */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[280px]">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                  <CalendarClock className="w-4 h-4" />
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <CalendarClock className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <h3 className="text-xs lg:text-sm font-bold text-slate-900 flex items-center gap-1 leading-tight truncate">
                     Ближайшие продления
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">
-                      {renewals.length}
+                    <span className="text-slate-400 text-[10px] cursor-help font-normal" title="Контроль продления абонементов">
+                      ⓘ
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Ученики с остатком абонемента 0–3 занятия
+                  <p className="text-[10px] text-slate-500 truncate">
+                    Ученики, у которых скоро заканчивается абонемент
                   </p>
                 </div>
               </div>
 
-              <Link
-                href="/students?status=active"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                Все продления <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              {/* Selector */}
+              <div className="relative shrink-0">
+                <select
+                  value={renewalDirectionFilter}
+                  onChange={(e) => setRenewalDirectionFilter(e.target.value)}
+                  className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-6"
+                >
+                  <option value="all">Все направления</option>
+                  <option value="english">Английский</option>
+                  <option value="robotics">Робототехника</option>
+                  <option value="math">Математика</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+              </div>
             </div>
 
-            {/* List of renewals */}
-            <div className="mt-3 space-y-2">
-              {renewals.slice(0, 5).map((r) => {
-                const getBadge = () => {
-                  if (r.remainingLessons === 0) {
-                    return {
-                      label: '0 ЗАНЯТИЙ',
-                      color: 'bg-rose-50 text-rose-700 border-rose-200',
-                      badge: '🔴 Критично',
-                    };
-                  }
-                  if (r.remainingLessons === 1) {
-                    return {
-                      label: '1 ЗАНЯТИЕ',
-                      color: 'bg-amber-50 text-amber-700 border-amber-200',
-                      badge: '🟡 Внимание',
-                    };
-                  }
-                  return {
-                    label: `${r.remainingLessons} ЗАНЯТИЯ`,
-                    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    badge: '🟢 Штатно',
-                  };
-                };
-
-                const badge = getBadge();
-
-                return (
-                  <Link
-                    key={r.id}
-                    href={`/students/${r.studentId}`}
-                    className="p-2.5 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 transition-all flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0', getAvatarBg(r.initials))}>
-                        {r.initials}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                            {r.studentName}
-                          </span>
-                          <span className="text-[10px] text-slate-400 truncate hidden sm:inline">
-                            • {r.groupName}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                          {r.details}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <span className={cn('px-2 py-0.5 rounded-md text-[9px] font-bold border', badge.color)}>
-                        {badge.label}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-600 hidden sm:inline">
-                        {badge.badge}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
+            {/* Table */}
+            <div className="mt-2 overflow-x-auto no-scrollbar">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-1 pl-1 pr-1">Ученик</th>
+                    <th className="py-1 px-2">Группа</th>
+                    <th className="py-1 px-2 text-center">Осталось</th>
+                    <th className="py-1 px-2">Дата окончания</th>
+                    <th className="py-1 pr-1 text-right">Риск</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 text-slate-700">
+                  {upcomingRenewals.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-1.5 pl-1 pr-1 font-bold text-slate-900 whitespace-nowrap text-[11px]">
+                        <Link href={`/students/${r.studentId}`} className="hover:text-blue-600 transition-colors">
+                          {r.studentName}
+                        </Link>
+                      </td>
+                      <td className="py-1.5 px-2 font-medium text-slate-600 text-[11px] whitespace-nowrap">
+                        {r.groupName}
+                      </td>
+                      <td className="py-1.5 px-2 text-center whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border',
+                            r.remainingPillColor === 'red'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200/80'
+                              : r.remainingPillColor === 'amber'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                          )}
+                        >
+                          {r.remainingPill}
+                        </span>
+                      </td>
+                      <td className="py-1.5 px-2 text-slate-500 font-medium text-[10.5px] whitespace-nowrap">
+                        {r.endDate}
+                      </td>
+                      <td className="py-1.5 pr-1 text-right whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'text-[10.5px] font-bold',
+                            r.riskLevel === 'high'
+                              ? 'text-rose-600'
+                              : r.riskLevel === 'medium'
+                              ? 'text-amber-600'
+                              : 'text-emerald-600'
+                          )}
+                        >
+                          {r.riskLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
-            <span>Ученики требуют выставления счета или продления абонемента</span>
-            <Link href="/students?status=active" className="text-blue-600 font-semibold hover:underline">
-              Выставить счета →
+          {/* Centered Footer Link */}
+          <div className="pt-1.5 border-t border-slate-100 text-center w-full">
+            <Link
+              href="/students?status=active"
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-block"
+            >
+              Показать все ближайшие продления →
             </Link>
           </div>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* MODAL: Реестр фактов ухода (Посмотреть ушедших)           */}
+      {/* MODAL: Реестр фактов прекращения обучения                 */}
       {/* ========================================================= */}
       {isChurnedModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">

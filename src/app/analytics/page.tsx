@@ -889,6 +889,7 @@ export default function AnalyticsPage() {
     <div className="w-full flex flex-col space-y-1.5">
       {/* 1. Page Header with Title and Global Filters Bar */}
       <AnalyticsHeader
+        subtitle={activeTab === 'retention' ? 'Ученики и удержание — анализ активностей, продлений и причин ухода' : undefined}
         filters={filters}
         onFilterChange={setFilter}
         courses={courses}
