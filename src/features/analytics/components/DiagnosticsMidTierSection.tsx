@@ -23,9 +23,9 @@ export function DiagnosticsMidTierSection({
     COMPARE_PERIOD_OPTIONS.find((p) => p.value === filters.comparePeriod)?.label || 'прошлым периодом';
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 h-[188px] shrink-0">
       {/* 1. Left Column: Funnel Diagnostics (60%) */}
-      <div className="lg:col-span-7 flex flex-col">
+      <div className="lg:col-span-7 flex flex-col h-full min-h-0 min-w-0">
         <FunnelDiagnosticsCard
           stages={funnelData.stages}
           insight={funnelData.insight}
@@ -37,7 +37,7 @@ export function DiagnosticsMidTierSection({
       </div>
 
       {/* 2. Right Column: Potential Revenue Losses (40%) */}
-      <div className="lg:col-span-5 flex flex-col">
+      <div className="lg:col-span-5 flex flex-col h-full min-h-0 min-w-0">
         <RevenueLossesCard
           losses={revenueLosses}
           onNavigateTab={onNavigateTab}

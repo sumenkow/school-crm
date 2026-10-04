@@ -35,139 +35,121 @@ export function StudentsAtRiskCard({
   };
 
   return (
-    <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between space-y-3">
+    <div className="bg-white rounded-xl p-2.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full min-h-0 min-w-0 overflow-hidden">
       {/* 1. Header */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 shadow-2xs">
-              <AlertTriangle className="h-3.5 w-3.5" />
-            </div>
-            <div>
-              <h3 className="text-sm lg:text-base font-bold text-slate-900">
-                Ученики в зоне риска
-              </h3>
-              <p className="text-[11.5px] text-slate-400">
-                Высокая вероятность оттока
-              </p>
-            </div>
+      <div className="h-[20px] flex items-center justify-between pb-1 border-b border-slate-100 shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex h-4.5 w-4.5 items-center justify-center rounded bg-amber-50 text-amber-600 shrink-0">
+            <AlertTriangle className="h-3 w-3" />
           </div>
-
-          {/* Right: Selector */}
-          <div className="relative">
-            <select
-              value={reasonFilter}
-              onChange={(e) => onReasonFilterChange(e.target.value)}
-              aria-label="Фильтр причин риска"
-              className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs rounded-xl pl-2.5 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
-            >
-              <option value="all">Все причины</option>
-              <option value="attendance">Низкая посещаемость</option>
-              <option value="debt">Просрочен платеж</option>
-              <option value="package">Пакет заканчивается</option>
-              <option value="inactivity">Нет активности &gt; 20 дней</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          </div>
+          <h3 className="text-xs font-bold text-slate-900 leading-none truncate">
+            Ученики в зоне риска
+          </h3>
         </div>
 
-        {/* 2. Students List: max 5 rows, ~48-52px each */}
-        <div className="mt-2.5 space-y-1.5">
-          {students.slice(0, 5).map((st) => {
-            const getReasonTag = () => {
-              const primary = st.primaryReason;
-              const reasonLabels = st.reasons?.map((r) => r.label).join(' ') || '';
-              const d = `${reasonLabels} ${st.details || ''}`.toLowerCase();
-
-              if (primary === 'package' || d.includes('пакет') || d.includes('заканч')) {
-                return { label: 'ПАКЕТ ЗАКАНЧИВАЕТСЯ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-              }
-              if (primary === 'debt' || d.includes('долг') || d.includes('платеж') || d.includes('баланс')) {
-                return { label: 'ПРОСРОЧЕН ПЛАТЕЖ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-              }
-              if (d.includes('динамик') || d.includes('снизил')) {
-                return { label: 'СНИЗИЛАСЬ АКТИВНОСТЬ', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
-              }
-              if (primary === 'inactivity' || d.includes('активност') || d.includes('дней')) {
-                return { label: 'НЕТ АКТИВНОСТИ', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
-              }
-              return { label: 'НИЗКАЯ ПОСЕЩАЕМОСТЬ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-            };
-
-            const tag = getReasonTag();
-
-            return (
-              <Link
-                key={st.id}
-                href={`/students/${st.id}`}
-                className="group flex items-center justify-between py-1.5 px-2 rounded-xl bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60"
-              >
-                <div className="flex items-center gap-2 min-w-0 pr-2">
-                  {/* Avatar */}
-                  <div
-                    className={cn(
-                      'h-7 w-7 rounded-full flex items-center justify-center font-bold text-[10.5px] shrink-0',
-                      getAvatarBg(st.initials)
-                    )}
-                  >
-                    {st.initials}
-                  </div>
-
-                  {/* Info */}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs truncate">
-                      <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                        {st.name}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border shrink-0',
-                          tag.color
-                        )}
-                      >
-                        {tag.label}
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-400 truncate leading-tight mt-0.5">
-                      <span className="text-slate-600 font-medium">{st.groupName}</span> · {st.details}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Right: Risk Level with arrow & chevron */}
-                <div className="flex items-center gap-1.5 shrink-0 pl-1.5">
-                  <div className="text-right">
-                    <span className="text-[9.5px] text-slate-400 block leading-none mb-0.5">
-                      Риск оттока
-                    </span>
-                    <span
-                      className={cn(
-                        'text-xs font-bold inline-flex items-center gap-0.5',
-                        st.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'
-                      )}
-                    >
-                      <span>↓</span>
-                      <span>{st.riskLevel === 'high' ? 'Высокий' : 'Средний'}</span>
-                    </span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                </div>
-              </Link>
-            );
-          })}
+        {/* Right: Selector */}
+        <div className="relative shrink-0">
+          <select
+            value={reasonFilter}
+            onChange={(e) => onReasonFilterChange(e.target.value)}
+            aria-label="Фильтр причин риска"
+            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-md pl-1.5 pr-4 py-0 h-5 focus:outline-hidden focus:ring-1 focus:ring-amber-500 cursor-pointer"
+          >
+            <option value="all">Все причины</option>
+            <option value="attendance">Низкая посещаемость</option>
+            <option value="debt">Просрочен платеж</option>
+            <option value="package">Пакет заканчивается</option>
+            <option value="inactivity">Нет активности &gt; 20 дней</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
         </div>
       </div>
 
+      {/* 2. Students List: 5 single-line rows */}
+      <div className="space-y-0.5 mt-1 flex-1 min-h-0 flex flex-col justify-between">
+        {students.slice(0, 5).map((st) => {
+          const getReasonTag = () => {
+            const primary = st.primaryReason;
+            const reasonLabels = st.reasons?.map((r) => r.label).join(' ') || '';
+            const d = `${reasonLabels} ${st.details || ''}`.toLowerCase();
+
+            if (primary === 'package' || d.includes('пакет') || d.includes('заканч')) {
+              return { label: 'ПАКЕТ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+            }
+            if (primary === 'debt' || d.includes('долг') || d.includes('платеж') || d.includes('баланс')) {
+              return { label: 'ДОЛГ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+            }
+            if (d.includes('динамик') || d.includes('снизил')) {
+              return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+            }
+            if (primary === 'inactivity' || d.includes('активност') || d.includes('дней')) {
+              return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+            }
+            return { label: 'ПОСЕЩ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+          };
+
+          const tag = getReasonTag();
+
+          return (
+            <Link
+              key={st.id}
+              href={`/students/${st.id}`}
+              className="h-[21px] flex items-center justify-between py-0 px-1.5 rounded-md bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60 group text-[10.5px]"
+            >
+              <div className="flex items-center min-w-0 pr-1">
+                {/* Micro avatar */}
+                <div
+                  className={cn(
+                    'h-4 w-4 rounded-full flex items-center justify-center font-bold text-[8.5px] shrink-0 mr-1.5',
+                    getAvatarBg(st.initials)
+                  )}
+                >
+                  {st.initials}
+                </div>
+
+                {/* Info */}
+                <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors text-[10.5px] truncate max-w-[95px]">
+                  {st.name}
+                </span>
+                <span className="text-[9.5px] text-slate-400 truncate max-w-[100px] hidden sm:inline ml-1">
+                  {st.groupName}
+                </span>
+                <span
+                  className={cn(
+                    'text-[8px] font-bold uppercase tracking-wider px-1 py-0 rounded border shrink-0 ml-1',
+                    tag.color
+                  )}
+                >
+                  {tag.label}
+                </span>
+              </div>
+
+              {/* Right: Risk indicator */}
+              <div className="flex items-center gap-0.5 shrink-0 pl-1">
+                <span
+                  className={cn(
+                    'text-[9.5px] font-bold inline-flex items-center gap-0.5',
+                    st.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'
+                  )}
+                >
+                  <span>↓</span>
+                  <span>{st.riskLevel === 'high' ? 'Высокий' : 'Средний'}</span>
+                </span>
+                <ChevronRight className="h-2.5 w-2.5 text-slate-300 group-hover:text-slate-500 shrink-0 ml-0.5" />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
       {/* 3. Bottom Full-width Action Link */}
-      <div className="pt-2 border-t border-slate-100 text-right">
+      <div className="pt-0.5 border-t border-slate-100 flex items-center justify-end text-[9.5px] text-blue-600 font-semibold h-[16px] shrink-0">
         <button
           type="button"
           onClick={() => onNavigateTab ? onNavigateTab('retention') : undefined}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline transition-colors cursor-pointer"
+          className="hover:underline cursor-pointer inline-flex items-center gap-0.5"
         >
-          <span>Показать всех {totalCount || 7} учеников в зоне риска</span>
-          <ArrowRight className="h-3 w-3" />
+          <span>Показать всех {totalCount || 7} учеников в зоне риска →</span>
         </button>
       </div>
     </div>

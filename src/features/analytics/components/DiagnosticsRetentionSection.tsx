@@ -25,9 +25,9 @@ export function DiagnosticsRetentionSection({
   } = useDiagnosticsRetentionAndRisks(filters);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 h-[188px] shrink-0">
       {/* 1. Left Column: Cohort Retention (60%) */}
-      <div className="lg:col-span-7 flex flex-col">
+      <div className="lg:col-span-7 flex flex-col h-full min-h-0 min-w-0">
         <CohortRetentionCard
           cohorts={cohorts}
           anomalyText={cohortAnomaly.text}
@@ -36,7 +36,7 @@ export function DiagnosticsRetentionSection({
       </div>
 
       {/* 2. Right Column: Students at Risk (40%) */}
-      <div className="lg:col-span-5 flex flex-col">
+      <div className="lg:col-span-5 flex flex-col h-full min-h-0 min-w-0">
         <StudentsAtRiskCard
           students={studentsAtRisk}
           totalCount={totalRisksCount}

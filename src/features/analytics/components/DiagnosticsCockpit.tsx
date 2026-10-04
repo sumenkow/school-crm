@@ -17,7 +17,7 @@ export function DiagnosticsCockpit({
   onNavigateTab,
 }: DiagnosticsCockpitProps) {
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col space-y-1.5 w-full">
       {/* 1. Main Diagnostic Block: «Что требует внимания» */}
       <DiagnosticsAttentionSection
         filters={filters}

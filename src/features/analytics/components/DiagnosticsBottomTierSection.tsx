@@ -27,9 +27,9 @@ export function DiagnosticsBottomTierSection({
   } = useDiagnosticsTeachersAndGroups(filters);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-1.5 h-[188px] shrink-0">
       {/* 1. Left Column: Teacher Effectiveness (50%) */}
-      <div className="lg:col-span-6 flex flex-col">
+      <div className="lg:col-span-6 flex flex-col h-full min-h-0 min-w-0">
         <TeacherEffectivenessCard
           teachers={teachers}
           allCount={allTeachersCount}
@@ -40,7 +40,7 @@ export function DiagnosticsBottomTierSection({
       </div>
 
       {/* 2. Right Column: Group Capacity (50%) */}
-      <div className="lg:col-span-6 flex flex-col">
+      <div className="lg:col-span-6 flex flex-col h-full min-h-0 min-w-0">
         <GroupCapacityCard
           groups={groups}
           allCount={allGroupsCount}
