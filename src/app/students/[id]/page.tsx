@@ -8,6 +8,7 @@ import { StudentProfileDesktop } from '@/features/students/components/StudentPro
 import { INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_TEACHERS, INITIAL_LESSONS, FullStudentData, TimelineInteraction, TeacherComment, FullLessonData, FullTeacherData } from '@/lib/data/mockData';
 import { getCombinedStudentTimeline, saveInteractionToStorage, getInteractionTargetInfo, getEquivalentIds } from '@/lib/data/timelineStorage';
 import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcileAllStudentDepositsAndDebts, softDeleteStudent, normalizeStudent } from '@/lib/data/studentStorage';
+import { addChurnEvent, getChurnReasonLabel, CHURN_REASONS, ChurnReasonId } from '@/lib/data/churnStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
@@ -586,6 +587,8 @@ export default function StudentDetailsPage() {
 
   // Edit student modal state
   const [isEditStudentModalOpen, setIsEditStudentModalOpen] = useState(false);
+  const [editChurnReasonId, setEditChurnReasonId] = useState<ChurnReasonId | null>(null);
+  const [editChurnComment, setEditChurnComment] = useState('');
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
@@ -765,6 +768,8 @@ export default function StudentDetailsPage() {
       notes: student.notes || '',
       groups: [...student.groups],
     });
+    setEditChurnReasonId(null);
+    setEditChurnComment('');
     setIsEditStudentModalOpen(true);
   };
 
@@ -780,6 +785,11 @@ export default function StudentDetailsPage() {
     const newStudentType = editStudentForm.studentType as any;
     const newNotes = editStudentForm.notes.trim() || undefined;
     const newGroups = editStudentForm.groups;
+
+    if (newStatus === 'archived' && !editChurnReasonId) {
+      toast.error('При переводе в архив необходимо выбрать причину ухода');
+      return;
+    }
 
     const changes: string[] = [];
     if (newFirstName !== student.firstName || newLastName !== student.lastName) {
@@ -798,7 +808,11 @@ export default function StudentDetailsPage() {
       changes.push(`Класс: ${student.grade || 'не указан'} → ${newGrade || 'не указан'}`);
     }
     if (newStatus !== student.status) {
-      changes.push(`Статус: ${student.status} → ${newStatus}`);
+      if (newStatus === 'archived' && editChurnReasonId) {
+        changes.push(`Статус: ${student.status} → В архиве (Причина: ${getChurnReasonLabel(editChurnReasonId)}${editChurnComment ? `, коммент: ${editChurnComment}` : ''})`);
+      } else {
+        changes.push(`Статус: ${student.status} → ${newStatus}`);
+      }
     }
     if (newStudentType !== student.studentType) {
       changes.push(`Тип: ${student.studentType === 'adult_student' ? 'Студент' : 'Школьник'} → ${newStudentType === 'adult_student' ? 'Студент' : 'Школьник'}`);
@@ -816,6 +830,20 @@ export default function StudentDetailsPage() {
     const pad = (n: number) => String(n).padStart(2, '0');
     const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
+    // If student status changed to archived, record structured churn event
+    if (newStatus === 'archived' && editChurnReasonId) {
+      addChurnEvent({
+        studentId: student.id,
+        studentName: `${newFirstName} ${newLastName}`.trim(),
+        occurredAt: now.toISOString(),
+        previousStatus: student.status,
+        newStatus: 'archived',
+        churnReasonId: editChurnReasonId,
+        churnComment: editChurnComment || undefined,
+        author: userName || 'Администратор школы',
+      });
+    }
+
     const editInteraction: TimelineInteraction = {
       id: `int_${Date.now()}`,
       studentId: student.id,
@@ -830,7 +858,7 @@ export default function StudentDetailsPage() {
       content: changes.length > 0
         ? `Изменение личных данных: ${changes.join('; ')}`
         : 'Изменение личных данных: карточка обновлена администратором',
-      result: 'Изменение личных данных',
+      result: newStatus === 'archived' ? 'Прекращение обучения' : 'Изменение личных данных',
       targetType: newStudentType === 'adult_student' ? 'student' : 'student',
       targetName: `${newFirstName} ${newLastName}`,
       targetRole: newStudentType === 'adult_student' ? 'Студент' : 'Ученик',
@@ -862,7 +890,7 @@ export default function StudentDetailsPage() {
       INITIAL_STUDENTS[idx] = updated;
     }
 
-    toast.success('Данные сохранены и зафиксированы в таймлайне ("Изменение личных данных")');
+    toast.success('Данные сохранены и зафиксированы в таймлайне');
     setIsEditStudentModalOpen(false);
   };
 
@@ -3269,12 +3297,20 @@ export default function StudentDetailsPage() {
                   <label className="block font-semibold text-slate-700 mb-1">Статус обучения</label>
                   <select
                     value={editStudentForm.status}
-                    onChange={(e) => setEditStudentForm({ ...editStudentForm, status: e.target.value as any })}
+                    onChange={(e) => {
+                      const st = e.target.value as any;
+                      setEditStudentForm({ ...editStudentForm, status: st });
+                      if (st !== 'archived') {
+                        setEditChurnReasonId(null);
+                        setEditChurnComment('');
+                      }
+                    }}
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden bg-white"
                   >
                     <option value="active">Активен</option>
                     <option value="trial">Пробный</option>
                     <option value="paused">На паузе</option>
+                    <option value="archived">В архиве (Выбыл)</option>
                   </select>
                 </div>
                 <div>
@@ -3298,6 +3334,52 @@ export default function StudentDetailsPage() {
                   />
                 </div>
               </div>
+
+              {/* Churn reason selection block when status is archived */}
+              {editStudentForm.status === 'archived' && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50/30 p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-rose-900 flex items-center gap-1.5">
+                      <span className="text-sm">⚠️</span> Причина ухода <span className="text-rose-600">*</span>
+                    </span>
+                    <span className="text-[10px] text-rose-600 font-medium">Обязательно для архива</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                    {CHURN_REASONS.map((reason) => {
+                      const isSelected = editChurnReasonId === reason.id;
+                      return (
+                        <button
+                          key={reason.id}
+                          type="button"
+                          onClick={() => setEditChurnReasonId(reason.id)}
+                          className={cn(
+                            'flex items-center gap-2 p-2 rounded-lg border text-left transition-all cursor-pointer',
+                            isSelected
+                              ? 'border-rose-400 bg-rose-100/70 text-rose-950 font-bold shadow-2xs'
+                              : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                          )}
+                        >
+                          <span className="text-sm shrink-0">{reason.emoji}</span>
+                          <span className="text-[11px] leading-snug line-clamp-1">{reason.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-rose-600 ml-auto shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                      Комментарий к уходу (необязательно)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editChurnComment}
+                      onChange={(e) => setEditChurnComment(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs focus:border-rose-400 focus:outline-hidden resize-none"
+                      placeholder="Уточните причину или детали..."
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3419,10 +3501,16 @@ export default function StudentDetailsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
+                  disabled={editStudentForm.status === 'archived' && !editChurnReasonId}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors',
+                    editStudentForm.status === 'archived' && !editChurnReasonId
+                      ? 'bg-slate-300 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  )}
                 >
                   <Check className="h-3.5 w-3.5" />
-                  Сохранить изменения
+                  {editStudentForm.status === 'archived' && !editChurnReasonId ? 'Выберите причину' : 'Сохранить изменения'}
                 </button>
               </div>
             </form>

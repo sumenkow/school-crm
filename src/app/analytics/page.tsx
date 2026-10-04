@@ -46,6 +46,7 @@ import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceR
 import { AnalyticsHeader } from '@/features/analytics/components/AnalyticsHeader';
 import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsNav';
 import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsCockpit';
+import { RetentionAnalyticsSection } from '@/features/analytics/components/RetentionAnalyticsSection';
 import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
 import { AnalyticsTabKey } from '@/features/analytics/types';
 
@@ -1081,44 +1082,7 @@ export default function AnalyticsPage() {
 
       {/* 6. Tab: УЧЕНИКИ И УДЕРЖАНИЕ */}
       {activeTab === 'retention' && (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            Когортный анализ удержания учеников (Retention Rate)
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Процент учеников, продолжающих обучение в школе месяц за месяцем
-          </p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
-              <tr>
-                <th className="py-3 pl-4 pr-3">Когорта (Месяц старта)</th>
-                <th className="px-3 py-3 text-center">Стартовый набор</th>
-                <th className="px-3 py-3 text-center">M0 (Старт)</th>
-                <th className="px-3 py-3 text-center">M1 (2-й мес)</th>
-                <th className="px-3 py-3 text-center">M2 (3-й мес)</th>
-                <th className="py-3 pl-3 pr-4 text-center">M3 (4-й мес)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {cohorts.map((c, i) => (
-                <tr key={i} className="hover:bg-slate-50/70">
-                  <td className="py-3 pl-4 pr-3 font-bold text-slate-900">{c.cohort}</td>
-                  <td className="px-3 py-3 text-center font-semibold text-slate-800">{c.startStudents} чел.</td>
-                  <td className="px-3 py-3 text-center bg-blue-50/60 font-bold text-blue-900">{c.m0}</td>
-                  <td className="px-3 py-3 text-center font-bold text-emerald-700 bg-emerald-50/40">{c.m1}</td>
-                  <td className="px-3 py-3 text-center font-bold text-emerald-700 bg-emerald-50/30">{c.m2}</td>
-                  <td className="py-3 pl-3 pr-4 text-center font-bold text-slate-600">{c.m3}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <RetentionAnalyticsSection filters={filters} />
       )}
 
       {/* 7. Tab: ПРЕПОДАВАТЕЛИ */}

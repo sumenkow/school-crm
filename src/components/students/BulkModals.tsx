@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Users, Tag, AlertTriangle, Check, Trash2 } from 'lucide-react';
+import { X, Users, Tag, AlertTriangle, Check, Trash2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CHURN_REASONS, ChurnReasonId } from '@/lib/data/churnStorage';
+
 
 interface BulkChangeGroupModalProps {
   isOpen: boolean;
@@ -130,7 +132,11 @@ export function BulkChangeGroupModal({
 interface BulkChangeStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (status: 'active' | 'trial' | 'paused' | 'archived') => void;
+  onConfirm: (
+    status: 'active' | 'trial' | 'paused' | 'archived',
+    churnReasonId?: ChurnReasonId,
+    churnComment?: string
+  ) => void;
   selectedCount: number;
 }
 
@@ -173,14 +179,19 @@ export function BulkChangeStatusModal({
   selectedCount,
 }: BulkChangeStatusModalProps) {
   const [selectedStatus, setSelectedStatus] = useState<'active' | 'trial' | 'paused' | 'archived'>('active');
+  const [churnReasonId, setChurnReasonId] = useState<ChurnReasonId | null>(null);
+  const [churnComment, setChurnComment] = useState('');
+
+  const isArchiving = selectedStatus === 'archived';
+  const canSave = !isArchiving || churnReasonId !== null;
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Tag className="w-4 h-4" />
@@ -207,7 +218,7 @@ export function BulkChangeStatusModal({
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => setSelectedStatus(opt.id)}
+                onClick={() => { setSelectedStatus(opt.id); setChurnReasonId(null); setChurnComment(''); }}
                 className={cn(
                   'w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer',
                   isSelected
@@ -229,10 +240,59 @@ export function BulkChangeStatusModal({
               </button>
             );
           })}
+
+          {/* Churn reason section — shown only when archiving */}
+          {isArchiving && (
+            <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                Причина ухода <span className="text-rose-500">*</span>
+              </div>
+              <div className="space-y-1.5">
+                {CHURN_REASONS.map((reason) => (
+                  <label
+                    key={reason.id}
+                    className={cn(
+                      'flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all',
+                      churnReasonId === reason.id
+                        ? 'border-rose-400 bg-rose-50/50 ring-1 ring-rose-400'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="churn_reason_bulk"
+                      value={reason.id}
+                      checked={churnReasonId === reason.id}
+                      onChange={() => setChurnReasonId(reason.id)}
+                      className="sr-only"
+                    />
+                    <span className="text-base leading-none">{reason.emoji}</span>
+                    <span className="text-xs text-slate-800">{reason.label}</span>
+                    {churnReasonId === reason.id && (
+                      <Check className="w-3.5 h-3.5 text-rose-500 ml-auto shrink-0" />
+                    )}
+                  </label>
+                ))}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Комментарий (необязательно)
+                </label>
+                <textarea
+                  value={churnComment}
+                  onChange={(e) => setChurnComment(e.target.value)}
+                  rows={2}
+                  placeholder="Уточните причину ухода..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 bg-slate-50/60 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2 px-6 py-4 bg-slate-50/60 border-t border-slate-100 sticky bottom-0">
           <button
             type="button"
             onClick={onClose}
@@ -242,16 +302,23 @@ export function BulkChangeStatusModal({
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(selectedStatus)}
-            className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+            onClick={() => onConfirm(selectedStatus, churnReasonId ?? undefined, churnComment || undefined)}
+            disabled={!canSave}
+            className={cn(
+              'px-4 py-2 text-xs font-semibold text-white rounded-xl shadow-xs transition-colors cursor-pointer',
+              canSave
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-slate-300 cursor-not-allowed'
+            )}
           >
-            Применить статус
+            {isArchiving && !canSave ? 'Выберите причину' : 'Применить статус'}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 interface BulkDeleteModalProps {
   isOpen: boolean;

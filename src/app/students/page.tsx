@@ -35,6 +35,8 @@ import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { BulkChangeGroupModal, BulkChangeStatusModal, BulkDeleteModal } from '@/components/students/BulkModals';
 import { usePermissions } from '@/context/RoleContext';
 import { getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
+import { addChurnEvent, getChurnReasonLabel, ChurnReasonId } from '@/lib/data/churnStorage';
+import { saveInteractionToStorage, TimelineInteraction } from '@/lib/data/timelineStorage';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -561,18 +563,60 @@ function StudentsContent() {
     toast.success(`Группа успешно изменена для ${count} уч.`);
   };
 
-  const handleBulkChangeStatusConfirm = (newStatus: 'active' | 'trial' | 'paused' | 'archived') => {
+  const handleBulkChangeStatusConfirm = (
+    newStatus: 'active' | 'trial' | 'paused' | 'archived',
+    churnReasonId?: ChurnReasonId,
+    churnComment?: string
+  ) => {
     const allRawStudents = getStoredStudents();
     let count = 0;
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const nowFormatted = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}, ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
     for (const studentId of selectedIds) {
       const raw = allRawStudents.find((s) => s.id === studentId);
       if (!raw) continue;
 
+      const previousStatus = raw.status;
+
+      // If status is changed to archived, record structured churn event
+      if (newStatus === 'archived' && churnReasonId) {
+        addChurnEvent({
+          studentId: raw.id,
+          studentName: `${raw.firstName} ${raw.lastName}`.trim(),
+          occurredAt: now.toISOString(),
+          previousStatus,
+          newStatus: 'archived',
+          churnReasonId,
+          churnComment,
+          author: 'Администратор школы',
+        });
+
+        // Also add human-readable entry to timeline
+        const reasonLabel = getChurnReasonLabel(churnReasonId);
+        const editInteraction: TimelineInteraction = {
+          id: `int_${Date.now()}_${raw.id}`,
+          studentId: raw.id,
+          studentName: `${raw.firstName} ${raw.lastName}`.trim(),
+          occurredAt: nowFormatted,
+          createdAt: now.toISOString(),
+          channel: 'other',
+          type: 'status_change',
+          author: 'Администратор школы',
+          content: `Статус изменен: ${previousStatus} → В архиве. Причина ухода: ${reasonLabel}${churnComment ? `. Комментарий: ${churnComment}` : ''}`,
+          result: 'Прекращение обучения',
+          targetType: 'student',
+          targetName: `${raw.firstName} ${raw.lastName}`.trim(),
+          targetRole: 'Ученик',
+        };
+        saveInteractionToStorage(editInteraction);
+      }
+
       const updated: FullStudentData = {
         ...raw,
         status: newStatus,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now.toISOString(),
       };
 
       saveStudentToStorage(updated);
