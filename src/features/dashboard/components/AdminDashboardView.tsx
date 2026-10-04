@@ -331,7 +331,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
   // 6. TASKS CHECKLIST (Max 5 items with interactive checkbox)
   // ─────────────────────────────────────────────────────────────────────────────
   const adminTasksChecklist = useMemo(() => {
-    return kpiData.effectiveTasks.slice(0, 5);
+    return kpiData.effectiveTasks.slice(0, 4);
   }, [kpiData.effectiveTasks]);
 
   const handleToggleTaskStatus = async (task: FullTaskData) => {
@@ -367,39 +367,39 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
   };
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto space-y-3.5 pb-2 text-slate-800 antialiased">
+    <div className="w-full max-w-[1600px] mx-auto space-y-2.5 pb-0 text-slate-800 antialiased">
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 5. HEADER                                                          */}
+      {/* 5. HEADER (Target: 64–68 px)                                        */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200/80 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 bg-white px-4 py-2 rounded-xl border border-slate-200/80 shadow-2xs">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-none">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight text-slate-900 leading-none">
               Мой день
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 leading-none">
               Администратор
             </span>
           </div>
-          <p className="text-xs font-medium text-slate-500 mt-1 capitalize leading-none">
+          <p className="text-[11px] font-medium text-slate-500 mt-1 capitalize leading-none">
             {todayFormatted}
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => setIsCreateLeadOpen(true)}
-            className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="h-7.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             <span>+ Новый лид</span>
           </button>
 
           <Link
             href="/calendar"
-            className="h-8 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors"
+            className="h-7.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
           >
             <Calendar className="w-3.5 h-3.5 text-slate-500" />
             <span>Расписание</span>
@@ -407,7 +407,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
 
           <Link
             href="/tasks"
-            className="h-8 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors"
+            className="h-7.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
           >
             <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
             <span>Задачи</span>
@@ -416,7 +416,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           <button
             type="button"
             onClick={onOpenReport}
-            className="h-8 px-3 rounded-xl bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-semibold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="h-7.5 px-2.5 rounded-lg bg-blue-50/80 hover:bg-blue-100 text-blue-700 border border-blue-200/80 font-semibold text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-blue-600" />
             <span>Отчёт за день</span>
@@ -425,26 +425,26 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 6. KPI ROW (4 Compact Cards)                                       */}
+      {/* 6. KPI ROW (Target: 90–100 px)                                      */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <WidgetErrorBoundary widgetName="KPI Сводка" onRetry={loadData}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {/* 1. Занятия сегодня */}
           <Link
             href="/calendar"
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Занятия сегодня</span>
-              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Calendar className="w-4 h-4" />
+              <span className="text-[11px] font-semibold text-slate-500">Занятия сегодня</span>
+              <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Calendar className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-1">
-              <div className="text-2xl font-black text-slate-900 leading-tight">
+              <div className="text-xl font-black text-slate-900 leading-tight">
                 {kpiData.todayLessonsCount}
               </div>
-              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate leading-tight">
                 {kpiData.onlineCount} онлайн · {kpiData.offlineCount} в школе
               </p>
             </div>
@@ -453,26 +453,26 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           {/* 2. Новые заявки */}
           <Link
             href="/crm"
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Новые заявки</span>
-              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                <UserCheck className="w-4 h-4" />
+              <span className="text-[11px] font-semibold text-slate-500">Новые заявки</span>
+              <div className="w-6 h-6 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center">
+                <UserCheck className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-1">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-slate-900 leading-tight">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl font-black text-slate-900 leading-tight">
                   {kpiData.newLeadsCount}
                 </span>
                 {kpiData.requireContactCount > 0 && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                    {kpiData.requireContactCount} требуют контакта
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-amber-50 text-amber-800 border border-amber-200 leading-tight">
+                    {kpiData.requireContactCount} требуют звонка
                   </span>
                 )}
               </div>
-              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate leading-tight">
                 ждут первого контакта
               </p>
             </div>
@@ -481,19 +481,19 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           {/* 3. Оплаты сегодня */}
           <Link
             href="/finance"
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Оплаты сегодня</span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <CreditCard className="w-4 h-4" />
+              <span className="text-[11px] font-semibold text-slate-500">Оплаты сегодня</span>
+              <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CreditCard className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-1">
-              <div className="text-2xl font-black text-emerald-600 leading-tight">
+              <div className="text-xl font-black text-emerald-600 leading-tight">
                 {kpiData.todayPaymentsSum > 0 ? `${kpiData.todayPaymentsSum.toLocaleString('ru-RU')} €` : '0 €'}
               </div>
-              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate">
+              <p className="text-[11px] font-medium text-slate-500 mt-0.5 truncate leading-tight">
                 {kpiData.todayPaymentsCount} {kpiData.todayPaymentsCount === 1 ? 'платеж принят' : 'платежей принято'}
               </p>
             </div>
@@ -502,24 +502,23 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           {/* 4. Задачи на сегодня */}
           <Link
             href="/tasks"
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-white px-3.5 py-2.5 rounded-xl border border-slate-200/80 shadow-2xs hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer group flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500">Задачи на сегодня</span>
-              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
-                <CheckSquare className="w-4 h-4" />
+              <span className="text-[11px] font-semibold text-slate-500">Задачи на сегодня</span>
+              <div className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center">
+                <CheckSquare className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-1">
               <div className="flex items-center justify-between">
-                <span className="text-2xl font-black text-slate-900 leading-tight">
+                <span className="text-xl font-black text-slate-900 leading-tight">
                   {kpiData.tasksTotal}
                 </span>
                 <span className="text-[11px] font-semibold text-slate-500">
                   {kpiData.tasksCompleted} из {kpiData.tasksTotal}
                 </span>
               </div>
-              {/* Compact Progress Bar */}
               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1.5">
                 <div
                   className="bg-blue-600 h-full transition-all duration-300 rounded-full"
@@ -534,64 +533,64 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
       </WidgetErrorBoundary>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 7 & 8. ТРЕБУЮТ ВНИМАНИЯ (Главный операционный блок)                 */}
+      {/* 7 & 8. ТРЕБУЮТ ВНИМАНИЯ (Target: 100–110 px with items, 56–64 px 0) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       <WidgetErrorBoundary widgetName="Требуют внимания" onRetry={loadData}>
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                <AlertCircle className="w-4 h-4" />
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs px-3.5 py-2">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center">
+                <AlertCircle className="w-3.5 h-3.5" />
               </div>
-              <h2 className="text-sm font-bold text-slate-900">
+              <h2 className="text-xs font-bold text-slate-900">
                 Требуют внимания ({attentionList.length})
               </h2>
             </div>
             <Link
               href="/tasks"
-              className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
             >
               <span>Все задачи</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 
           {/* List or Compact Empty State */}
           {attentionList.length === 0 ? (
-            <div className="h-12 flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50/60 rounded-xl border border-emerald-100">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>✓ Всё под контролем. Срочных действий не требуется</span>
+            <div className="h-7 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50/60 rounded-lg border border-emerald-100">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>✓ Всё под контролем · срочных действий нет</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
               {attentionList.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-2.5 flex flex-col justify-between hover:bg-slate-50 transition-colors"
+                  className="bg-slate-50/70 border border-slate-200/80 rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors"
                 >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full border', item.badgeStyle)}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn('text-[9px] font-bold px-1.5 py-0.2 rounded border leading-tight shrink-0', item.badgeStyle)}>
                         {item.badge}
                       </span>
+                      <span className="text-xs font-bold text-slate-900 truncate leading-tight">
+                        {item.title}
+                      </span>
                     </div>
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {item.title}
-                    </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={item.description}>
+                    <p className="text-[11px] text-slate-500 truncate mt-0.5 leading-tight" title={item.description}>
                       {item.description}
                     </p>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center gap-1 shrink-0">
                     {item.waUrl && (
                       <a
                         href={item.waUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
-                        title="Написать в WhatsApp"
+                        className="h-6 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold inline-flex items-center transition-colors"
+                        title="WhatsApp"
                       >
                         WA
                       </a>
@@ -599,7 +598,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     {item.phone && (
                       <a
                         href={`tel:${item.phone.replace(/[^\d+]/g, '')}`}
-                        className="h-6 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                        className="h-6 w-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold inline-flex items-center justify-center transition-colors"
                         title={`Позвонить ${item.phone}`}
                       >
                         <Phone className="w-3 h-3" />
@@ -608,9 +607,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     <button
                       type="button"
                       onClick={() => router.push(item.profileUrl)}
-                      className="h-6 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold ml-auto transition-colors cursor-pointer"
+                      className="h-6 px-2 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer"
                     >
-                      Карточка
+                      Карта
                     </button>
                   </div>
                 </div>
@@ -621,37 +620,37 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
       </WidgetErrorBoundary>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 9 & 10. РАСПИСАНИЕ (60%) И НОВЫЕ ЗАЯВКИ (40%)                       */}
+      {/* 9 & 10. ОСНОВНОЙ РЯД: РАСПИСАНИЕ (60%) И ЛИДЫ (40%) (Target: 280–300 px) */}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch">
         {/* 9. Расписание сегодня (60% -> col-span-7) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 flex flex-col justify-between min-h-[220px]">
+        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/80 shadow-2xs px-3.5 py-2 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Calendar className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Calendar className="w-3.5 h-3.5" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-xs font-bold text-slate-900">
                   Расписание сегодня ({scheduleTodayList.length})
                 </h2>
               </div>
               <Link
                 href="/calendar"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
               >
-                <span>Открыть в календаре</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>В календарь</span>
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {/* List */}
             {scheduleTodayList.length === 0 ? (
-              <div className="h-14 flex items-center justify-center text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl">
-                На сегодня занятий нет
+              <div className="h-10 flex items-center justify-center text-xs font-medium text-slate-500 bg-slate-50 rounded-lg">
+                ✓ На сегодня занятий нет
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {scheduleTodayList.map((lesson) => {
                   const isOnline =
                     !lesson.room ||
@@ -682,33 +681,33 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     <div
                       key={lesson.id}
                       onClick={() => setSelectedLessonModal(lesson)}
-                      className="px-3 py-2 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors cursor-pointer group"
+                      className="h-[50px] px-2.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer group"
                     >
                       {/* Left: Time & Indicator */}
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-1.5 h-7 rounded-full bg-blue-500 shrink-0" />
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                            {lesson.groupName || lesson.courseName || 'Урок робототехники'}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-1 h-6 rounded-full bg-blue-500 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-tight">
+                            {lesson.groupName || lesson.courseName || 'Занятие'}
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5 truncate leading-tight">
                             <span className="font-semibold text-slate-700">{timeFormatted}</span>
                             <span>•</span>
                             <span className="truncate">{lesson.teacherName || 'Преподаватель'}</span>
                             <span>•</span>
-                            <span className="text-[10px] font-medium bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                              {isOnline ? 'Онлайн (Zoom)' : lesson.room || 'В школе'}
+                            <span className="text-[10px] font-medium bg-white px-1.5 py-0.2 rounded border border-slate-200 shrink-0">
+                              {isOnline ? 'Онлайн' : lesson.room || 'В школе'}
                             </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Right: Enrolled & Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/80">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[11px] font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200/80 leading-none">
                           {enrolledCount}/{capacity}
                         </span>
-                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', statusColor)}>
+                        <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none', statusColor)}>
                           {statusLabel}
                         </span>
 
@@ -718,9 +717,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1 transition-colors"
+                            className="h-6 px-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] inline-flex items-center gap-1 transition-colors"
                           >
-                            <Video className="w-3.5 h-3.5" />
+                            <Video className="w-3 h-3" />
                             <span>Zoom</span>
                           </a>
                         ) : (
@@ -730,7 +729,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                               e.stopPropagation();
                               setSelectedLessonModal(lesson);
                             }}
-                            className="h-7 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                            className="h-6 px-2 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] transition-colors cursor-pointer"
                           >
                             Открыть
                           </button>
@@ -745,32 +744,32 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
         </div>
 
         {/* 10. Новые заявки и пробные (40% -> col-span-5) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 flex flex-col justify-between min-h-[220px]">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 shadow-2xs px-3.5 py-2 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                  <UserCheck className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <UserCheck className="w-3.5 h-3.5" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-xs font-bold text-slate-900">
                   Новые заявки и пробные ({operationalLeadsQueue.length})
                 </h2>
               </div>
               <Link
                 href="/crm"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
               >
                 <span>Все лиды</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {operationalLeadsQueue.length === 0 ? (
-              <div className="h-14 flex items-center justify-center text-xs font-semibold text-slate-500 bg-slate-50 rounded-xl">
-                Новых заявок в очереди нет
+              <div className="h-10 flex items-center justify-center text-xs font-medium text-slate-500 bg-slate-50 rounded-lg">
+                ✓ Новых необработанных заявок нет
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {operationalLeadsQueue.map((lead) => {
                   const cleanPhone = lead.contact ? lead.contact.replace(/\D/g, '') : '';
                   const waitingTime = getWaitingTime(lead);
@@ -779,16 +778,16 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     <div
                       key={lead.id}
                       onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                      className="px-3 py-2 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between gap-2.5 transition-colors cursor-pointer group"
+                      className="h-[50px] px-2.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer group"
                     >
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                        <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-tight">
                           {lead.name}
                         </div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5 truncate">
+                        <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5 truncate leading-tight">
                           <span className="font-medium text-slate-700">{lead.directionOrCourse || 'Заявка'}</span>
                           <span>•</span>
-                          <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
                             Ожидание: {waitingTime}
                           </span>
                         </div>
@@ -801,7 +800,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Здравствуйте, ${lead.name}! Пишу из школы.`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold transition-colors inline-flex items-center"
+                            className="h-6 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold transition-colors inline-flex items-center"
                             title="WhatsApp"
                           >
                             WA
@@ -810,7 +809,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                         {lead.contact && (
                           <a
                             href={`tel:${cleanPhone}`}
-                            className="h-6 px-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold transition-colors inline-flex items-center"
+                            className="h-6 w-6 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold transition-colors inline-flex items-center justify-center"
                             title="Позвонить"
                           >
                             <Phone className="w-3 h-3" />
@@ -819,7 +818,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                         <button
                           type="button"
                           onClick={() => router.push(`/crm/leads/${lead.id}`)}
-                          className="h-6 px-2 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer"
+                          className="h-6 w-6 rounded-md bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold transition-colors cursor-pointer inline-flex items-center justify-center"
                         >
                           →
                         </button>
@@ -834,37 +833,37 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* 11 & 12. ОПЛАТЫ (60%) И ЗАДАЧИ АДМИНИСТРАТОРА (40%)                 */}
+      {/* 11 & 12. НИЖНИЙ РЯД: ОПЛАТЫ (60%) И ЗАДАЧИ (40%) (Target: 160–180 px)*/}
       {/* ─────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-stretch">
         {/* 11. Оплаты и продления (60% -> col-span-7) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 flex flex-col justify-between min-h-[200px]">
+        <div className="lg:col-span-7 bg-white rounded-xl border border-slate-200/80 shadow-2xs px-3.5 py-2 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <CreditCard className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CreditCard className="w-3.5 h-3.5" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-xs font-bold text-slate-900">
                   Оплаты и продления ({actionPaymentsList.length})
                 </h2>
               </div>
               <Link
                 href="/finance"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
               >
                 <span>Все оплаты</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {actionPaymentsList.length === 0 ? (
-              <div className="h-12 flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>✓ Задолженностей и срочных счетов нет</span>
+              <div className="h-7 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50/60 rounded-lg border border-emerald-100">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>✓ Все счета оплачены вовремя · задолженностей нет</span>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {actionPaymentsList.map((item) => {
                   const cleanPhone = item.parentWhatsapp || item.parentPhone ? (item.parentWhatsapp || item.parentPhone)!.replace(/\D/g, '') : '';
 
@@ -872,20 +871,20 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     <div
                       key={item.id}
                       onClick={() => item.studentId && router.push(`/students/${item.studentId}?tab=finance`)}
-                      className="px-3 py-2 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between gap-3 transition-colors cursor-pointer group"
+                      className="h-[36px] px-2.5 rounded-lg border border-slate-100 hover:border-slate-200 bg-slate-50/60 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors cursor-pointer group"
                     >
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                        <div className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate leading-tight">
                           {item.studentName}
                         </div>
-                        <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5 truncate">
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1.5 truncate leading-tight">
                           <span className="font-semibold text-slate-700">{item.courseName}</span>
                           <span>•</span>
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                          <span className="font-bold text-amber-800">
                             {item.statusLabel}
                           </span>
                           <span>•</span>
-                          <span className="text-[10px] text-slate-400">до {item.dueDate}</span>
+                          <span className="text-slate-400">до {item.dueDate}</span>
                         </div>
                       </div>
 
@@ -900,9 +899,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Здравствуйте! Напоминаем об оплате занятий (${item.courseName}). Сумма: ${item.amountFormatted}.`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-6 px-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold inline-flex items-center gap-1 transition-colors"
+                            className="h-6 px-1.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-bold inline-flex items-center transition-colors"
                           >
-                            Напомнить в WA
+                            WA
                           </a>
                         )}
 
@@ -912,7 +911,7 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                             if (item.studentId) router.push(`/students/${item.studentId}?tab=finance`);
                             else router.push('/finance');
                           }}
-                          className="h-6 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold transition-colors cursor-pointer"
+                          className="h-6 px-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-bold transition-colors cursor-pointer"
                         >
                           Счёт
                         </button>
@@ -926,33 +925,33 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
         </div>
 
         {/* 12. Задачи администратора (40% -> col-span-5) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-3.5 flex flex-col justify-between min-h-[200px]">
+        <div className="lg:col-span-5 bg-white rounded-xl border border-slate-200/80 shadow-2xs px-3.5 py-2 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
-                  <CheckSquare className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center">
+                  <CheckSquare className="w-3.5 h-3.5" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-xs font-bold text-slate-900">
                   Задачи администратора ({adminTasksChecklist.length})
                 </h2>
               </div>
               <Link
                 href="/tasks"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 transition-colors inline-flex items-center gap-1"
               >
                 <span>Все задачи</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
 
             {adminTasksChecklist.length === 0 ? (
-              <div className="h-12 flex items-center justify-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50/60 rounded-xl border border-emerald-100">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>✓ Все задачи выполнены</span>
+              <div className="h-7 flex items-center justify-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50/60 rounded-lg border border-emerald-100">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>✓ Все задачи на сегодня выполнены</span>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {adminTasksChecklist.map((task) => {
                   const isDone = task.status === 'done';
 
@@ -960,18 +959,18 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                     <div
                       key={task.id}
                       className={cn(
-                        'px-3 py-1.5 rounded-xl border flex items-center justify-between gap-2.5 transition-colors',
+                        'h-[34px] px-2.5 rounded-lg border flex items-center justify-between gap-2 transition-colors',
                         isDone
                           ? 'bg-slate-50/50 border-slate-100 text-slate-400'
                           : 'bg-white border-slate-200/80 hover:border-slate-300'
                       )}
                     >
-                      <label className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1 select-none">
+                      <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1 select-none">
                         <input
                           type="checkbox"
                           checked={isDone}
                           onChange={() => handleToggleTaskStatus(task)}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
                         />
                         <span
                           className={cn(
@@ -997,14 +996,13 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           <button
             type="button"
             onClick={() => setIsCreateTaskOpen(true)}
-            className="w-full mt-2.5 h-7 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="w-full mt-1.5 h-6 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>+ Новая задача</span>
           </button>
         </div>
       </div>
-
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* EXISTING MODALS REUSED AT ROOT                                      */}
       {/* ─────────────────────────────────────────────────────────────────── */}
