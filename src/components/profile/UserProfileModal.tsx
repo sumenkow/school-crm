@@ -26,6 +26,7 @@ import { useToast } from '@/context/ToastContext';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { cn, formatPhone } from '@/lib/utils';
+import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -226,7 +227,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                   <p className="text-xs text-slate-600 font-medium mt-0.5">{userEmail || 'Почта не указана'}</p>
                   <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                    <span>Smart Academy • Центральный филиал</span>
+                    <span>{getSchoolSettings().name} • {getSchoolSettings().branchName || 'Основной филиал'}</span>
                   </p>
                 </div>
               </div>
@@ -288,7 +289,7 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                     <p className="text-slate-400 font-medium">Telegram для уведомлений</p>
                     <p className="font-semibold text-slate-900 flex items-center gap-1.5">
                       <Send className="h-3.5 w-3.5 text-blue-500" />
-                      {userTelegram || '@alex_smart'}
+                      {userTelegram ? (userTelegram.startsWith('@') ? userTelegram : '@' + userTelegram) : 'Не указан'}
                     </p>
                   </div>
                 </div>
@@ -382,11 +383,11 @@ export function UserProfileModal({ isOpen, onClose }: UserProfileModalProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                       <div>
                         <p className="text-slate-400 font-medium">Школа</p>
-                        <p className="font-semibold text-slate-900">Smart Academy</p>
+                        <p className="font-semibold text-slate-900">{getSchoolSettings().name}</p>
                       </div>
                       <div>
                         <p className="text-slate-400 font-medium">Филиал</p>
-                        <p className="font-semibold text-slate-900">Центральный</p>
+                        <p className="font-semibold text-slate-900">{getSchoolSettings().branchName || 'Центральный'}</p>
                       </div>
                       <div>
                         <p className="text-slate-400 font-medium">Статус учетной записи</p>

@@ -104,9 +104,6 @@ export async function fetchSchoolSettingsFromCloud(): Promise<SchoolProfileData>
         window.dispatchEvent(new CustomEvent('crm-school-settings-changed', { detail: merged }));
         return merged;
       }
-      if (json.ownerProfile?.email) {
-        localStorage.setItem('crm_owner_email', json.ownerProfile.email);
-      }
     }
   } catch (err) {
     console.warn('Cloud school settings fetch warning:', err);
@@ -126,34 +123,14 @@ export function saveSchoolSettings(data: SchoolProfileData): void {
     localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new CustomEvent('crm-school-settings-changed', { detail: data }));
 
-    // 1. Send to cloud API route (service role admin upsert)
+    // 1. Send to cloud API route
     fetch('/api/school/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schoolSettings: data,
-        ownerProfile: {
-          email: data.email,
-          fullName: data.legalEntity || data.name,
-          phone: data.phone,
-        },
       }),
     }).catch((err) => console.warn('Cloud API save error:', err));
-
-    // 2. Supabase client dual-write (fire and forget)
-    import('@/lib/supabase/client').then(({ createClient }) => {
-      try {
-        const supabase = createClient();
-        supabase.from('profiles').upsert({
-          id: '00000000-0000-0000-0000-000000000001',
-          full_name: data.legalEntity || data.name,
-          email: data.email,
-          phone: data.phone,
-          role: 'owner',
-          updated_at: new Date().toISOString(),
-        }).then(() => {}, () => {});
-      } catch {}
-    }).catch(() => {});
 
   } catch (err) {
     console.error('Failed to save school settings:', err);

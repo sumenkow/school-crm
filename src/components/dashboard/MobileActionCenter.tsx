@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { FullLeadData, FullPaymentData, FullLessonData } from '@/lib/data/mockData';
 import { triggerWhatsAppContact } from '@/lib/data/contactWorkflows';
+import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
 
 interface MobileActionCenterProps {
   rate: number;
@@ -133,7 +134,7 @@ export function MobileActionCenter({
         phone: task.phone,
         clientName: task.title,
         studentId: task.studentId,
-        template: `Здравствуйте! Напоминаем об оплате обучения в школе Smart Academy. Сумма задолженности: ${task.debtAmount || 'по счету'}.`,
+        template: `Здравствуйте! Напоминаем об оплате обучения в школе ${getSchoolSettings().name || 'You Europe'}. Сумма задолженности: ${task.debtAmount || 'по счету'}.`,
       });
     } else if (task.studentId) {
       router.push(`/students/${task.studentId}`);
@@ -147,7 +148,7 @@ export function MobileActionCenter({
       {/* Компактная шапка */}
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Smart Academy</h1>
+          <h1 className="text-xl font-bold text-slate-900">{getSchoolSettings().name || 'You Europe'}</h1>
           <p className="text-xs text-slate-500">{capitalizedMonth} • 1 € = {rate} ₽</p>
         </div>
         <button
@@ -244,7 +245,7 @@ export function MobileActionCenter({
                         phone: cleanPhone,
                         clientName: task.title,
                         leadId: task.leadId,
-                        template: `Здравствуйте, ${task.title}! На связи онлайн-школа Smart Academy.`,
+                        template: `Здравствуйте, ${task.title}! На связи онлайн-школа ${getSchoolSettings().name || 'You Europe'}.`,
                       });
                     } else if (task.leadId) {
                       router.push(`/crm/leads/${task.leadId}`);

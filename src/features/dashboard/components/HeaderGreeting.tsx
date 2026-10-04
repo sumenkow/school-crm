@@ -36,7 +36,7 @@ export function HeaderGreeting({
   };
 
   const getCleanName = () => {
-    if (!userName) return role === 'owner' ? 'Андрей' : 'Администратор';
+    if (!userName) return role === 'owner' ? 'Владелец' : role === 'developer' ? 'Разработчик' : role === 'teacher' ? 'Преподаватель' : 'Администратор';
     const cleaned = userName
       .replace(/\s*(Разработчик|Руководитель|Администратор|Владелец|Учитель|Педагог|Manager|Admin|Developer|Owner)\b/gi, '')
       .trim();

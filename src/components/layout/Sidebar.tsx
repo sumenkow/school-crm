@@ -42,6 +42,7 @@ import { CommandPalette } from '@/components/common/CommandPalette';
 import { CountryFlag } from '@/components/common/CountryFlag';
 import { LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
 import { NotificationCenter } from '@/components/layout/NotificationCenter';
+import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -313,6 +314,20 @@ function SidebarPanel({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [schoolName, setSchoolName] = useState(() => getSchoolSettings().name || 'You Europe');
+
+  useEffect(() => {
+    const handleSettingsChanged = (e: any) => {
+      if (e?.detail?.name) {
+        setSchoolName(e.detail.name);
+      } else {
+        setSchoolName(getSchoolSettings().name || 'You Europe');
+      }
+    };
+    window.addEventListener('crm-school-settings-changed', handleSettingsChanged);
+    return () => window.removeEventListener('crm-school-settings-changed', handleSettingsChanged);
+  }, []);
+
   const displayName = userName || userEmail || '?';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
@@ -329,8 +344,8 @@ function SidebarPanel({
               <School size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-bold text-sm truncate text-slate-800">
-                YouEurope CRM
+              <p className="font-bold text-sm truncate text-slate-800" title={schoolName}>
+                {schoolName}
               </p>
             </div>
           </div>

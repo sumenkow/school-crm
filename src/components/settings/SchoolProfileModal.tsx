@@ -69,7 +69,7 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="Smart Academy"
+                  placeholder="You Europe"
                   required
                 />
               </div>
