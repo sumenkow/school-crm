@@ -310,7 +310,19 @@ export async function POST(request: NextRequest) {
         const validStatuses = ['open', 'in_progress', 'done', 'cancelled'];
         const validPriorities = ['low', 'medium', 'high'];
 
-        const taskRow = {
+        let taskDescription = data.description || '';
+        if (data.createdByRole && !taskDescription.includes('<!--meta:')) {
+          taskDescription = (taskDescription ? taskDescription + '\n' : '') + `<!--meta:createdByRole=${data.createdByRole};createdByName=${data.createdByName || ''}-->`;
+        }
+
+        // assigned_to in Supabase is a Foreign Key to profiles.id (UUID).
+        // If data.assignedTo is already a UUID, keep it; otherwise leave null so DB doesn't reject non-UUID string
+        let dbAssignedTo: string | null = null;
+        if (data.assignedTo && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.assignedTo)) {
+          dbAssignedTo = data.assignedTo;
+        }
+
+        const taskRow: Record<string, unknown> = {
           id: taskId,
           title: data.title || 'Задача',
           task_type: data.taskType || 'Retention',
@@ -320,7 +332,8 @@ export async function POST(request: NextRequest) {
           due_date: data.dueDate ? (data.dueDate.includes('T') ? data.dueDate.slice(0, 10) : data.dueDate) : new Date().toISOString().slice(0, 10),
           status: validStatuses.includes(data.status) ? data.status : 'open',
           priority: validPriorities.includes(data.priority) ? data.priority : 'medium',
-          description: data.description || null,
+          description: taskDescription || null,
+          assigned_to: dbAssignedTo,
           updated_at: new Date().toISOString(),
           is_mock_data: false,
         };
