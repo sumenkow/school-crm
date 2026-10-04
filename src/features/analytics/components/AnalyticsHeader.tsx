@@ -23,16 +23,11 @@ export function AnalyticsHeader({
   onExport,
 }: AnalyticsHeaderProps) {
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 pb-2.5">
-      {/* Page Title & Subtitle */}
-      <div className="shrink-0">
-        <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900">
-          Аналитика школы
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Глубокий анализ данных, поиск проблем и точек роста
-        </p>
-      </div>
+    <div className="flex items-center justify-between gap-2.5 pb-2.5 flex-nowrap">
+      {/* Page Title */}
+      <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 shrink-0">
+        Аналитика школы
+      </h1>
 
       {/* Global Filter Bar */}
       <div className="h-8.5 flex items-center gap-1.5 text-xs flex-nowrap shrink-0">
@@ -44,7 +39,7 @@ export function AnalyticsHeader({
           <select
             value={filters.period}
             onChange={(e) => onFilterChange('period', e.target.value)}
-            className="h-9 pl-7.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[142px]"
+            className="h-8.5 pl-7.5 pr-5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[134px]"
             title="Выбор текущего периода"
           >
             {PERIOD_OPTIONS.map((opt) => (
@@ -61,7 +56,7 @@ export function AnalyticsHeader({
           <select
             value={filters.comparePeriod}
             onChange={(e) => onFilterChange('comparePeriod', e.target.value)}
-            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[152px]"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[138px]"
             title="Сравнение периодов"
           >
             <option value="none">Без сравнения</option>
@@ -79,7 +74,7 @@ export function AnalyticsHeader({
           <select
             value={filters.subjectId}
             onChange={(e) => onFilterChange('subjectId', e.target.value)}
-            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[142px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[124px] truncate transition-colors"
             title="Фильтр по направлениям"
           >
             <option value="all">Все направления</option>
@@ -97,7 +92,7 @@ export function AnalyticsHeader({
           <select
             value={filters.groupId}
             onChange={(e) => onFilterChange('groupId', e.target.value)}
-            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[110px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[96px] truncate transition-colors"
             title="Фильтр по группам"
           >
             <option value="all">Все группы</option>
@@ -115,7 +110,7 @@ export function AnalyticsHeader({
           <select
             value={filters.teacherId}
             onChange={(e) => onFilterChange('teacherId', e.target.value)}
-            className="h-9 pl-2.5 pr-6 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[156px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[136px] truncate transition-colors"
             title="Фильтр по преподавателям"
           >
             <option value="all">Все преподаватели</option>
@@ -132,10 +127,10 @@ export function AnalyticsHeader({
         <button
           type="button"
           onClick={onExport}
-          className="h-9 inline-flex items-center gap-1.5 shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
+          className="h-8.5 inline-flex items-center gap-1.5 shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer whitespace-nowrap"
           title="Выгрузить сводный отчет в CSV"
         >
-          <Download className="h-3.5 w-3.5 text-slate-500" />
+          <Download className="h-3.5 w-3.5 text-slate-500 shrink-0" />
           <span>Экспорт отчёта</span>
         </button>
       </div>
