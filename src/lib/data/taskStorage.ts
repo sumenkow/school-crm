@@ -35,10 +35,10 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
         const initialMatch = INITIAL_TASKS.find(it => it.id === task.id);
         const fallback = localMatch || initialMatch;
 
-        // Parse creator metadata from description if present
+        // Parse creator metadata from direct column or description meta
         let rawDescription = task.description || fallback?.description || '';
-        let extractedCreatedByRole = fallback?.createdByRole;
-        let extractedCreatedByName = fallback?.createdByName;
+        let extractedCreatedByRole = task.created_by_role || fallback?.createdByRole;
+        let extractedCreatedByName = task.created_by_name || fallback?.createdByName;
 
         if (rawDescription && rawDescription.includes('<!--meta:')) {
           const metaMatch = rawDescription.match(/<!--meta:createdByRole=([^;]+);createdByName=([^>]*)-->/);

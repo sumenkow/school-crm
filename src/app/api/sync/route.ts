@@ -338,8 +338,24 @@ export async function POST(request: NextRequest) {
           is_mock_data: false,
         };
 
-        const { error: taskErr } = await supabase.from('tasks').upsert(taskRow, { onConflict: 'id' });
-        if (taskErr) throw taskErr;
+        // Try direct column write first (for when columns exist in Supabase)
+        const rowWithColumns = {
+          ...taskRow,
+          ...(data.createdByRole ? { created_by_role: data.createdByRole } : {}),
+          ...(data.createdByName ? { created_by_name: data.createdByName } : {}),
+        };
+
+        const { error: primaryErr } = await supabase.from('tasks').upsert(rowWithColumns, { onConflict: 'id' });
+
+        if (primaryErr) {
+          if (primaryErr.message?.includes('created_by_role') || (primaryErr as any).code === 'PGRST204') {
+            // Column does not exist in Supabase yet — fallback to standard taskRow
+            const { error: fallbackErr } = await supabase.from('tasks').upsert(taskRow, { onConflict: 'id' });
+            if (fallbackErr) throw fallbackErr;
+          } else {
+            throw primaryErr;
+          }
+        }
 
         return NextResponse.json({ success: true, id: taskId });
       }
