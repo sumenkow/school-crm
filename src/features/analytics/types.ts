@@ -72,3 +72,143 @@ export const DEFAULT_DIAGNOSTIC_RULES: DiagnosticRules = {
   minTeacherAttendanceRate: 80,
 };
 
+// ============================================================================
+// SALES & CONVERSION ANALYTICS TYPES
+// ============================================================================
+
+export type LeadChannelKey = 'website' | 'instagram' | 'referral' | 'telegram' | 'offline';
+
+export interface SalesKpiCardData {
+  id: string;
+  label: string;
+  value: string;
+  previousValue: string;
+  change: string;
+  isPositive: boolean;
+  isNeutral?: boolean;
+  iconType: 'leads' | 'trials' | 'trials_held' | 'paid' | 'conversion' | 'revenue';
+}
+
+export interface SalesFunnelStage {
+  id: 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid';
+  label: string;
+  countCurrent: number;
+  countPrevious: number;
+  conversionRate: string;
+  conversionRateNum: number;
+  changeText: string;
+  changeType: 'positive' | 'negative' | 'neutral';
+  barPercentageCurrent: number;
+  barPercentagePrevious: number;
+}
+
+export interface SalesFunnelAnomaly {
+  hasAnomaly: boolean;
+  stageFrom: string;
+  stageTo: string;
+  dropPp: number;
+  alertText: string;
+  subText: string;
+}
+
+export interface SalesChannelMetric {
+  id: LeadChannelKey;
+  label: string;
+  colorDot: string;
+  leadsCount: number;
+  trialsCount: number;
+  paidCount: number;
+  conversionRate: string;
+  conversionType: 'positive' | 'negative' | 'neutral';
+  shareRate: string;
+}
+
+export interface SalesDynamicsPoint {
+  label: string;
+  leadsCount: number;
+  trialsCount: number;
+  paidCount: number;
+}
+
+export interface SalesSpeedMetrics {
+  avgFirstContactTime: string;
+  avgFirstContactDelta: string;
+  avgFirstContactPositive: boolean;
+
+  leadsOver24hCount: number;
+  leadsOver24hDelta: string;
+
+  leadsNoContactCount: number;
+  leadsNoContactDelta: string;
+}
+
+export interface SalesLossReasonItem {
+  id: string;
+  label: string;
+  color: string;
+  count: number;
+  sharePercentage: number;
+  potentialRevenueRub: number;
+  potentialRevenueFormatted: string;
+}
+
+export interface SalesManagerMetric {
+  id: string;
+  name: string;
+  initials: string;
+  badgeBg: string;
+  badgeText: string;
+  leadsCount: number;
+  trialsCount: number;
+  paidCount: number;
+  conversionRate: string;
+  conversionType: 'positive' | 'warning' | 'negative';
+  avgContactTime: string;
+  revenueRub: number;
+  revenueFormatted: string;
+}
+
+export interface SalesDetailedLeadRow {
+  id: string;
+  date: string;
+  leadName: string;
+  contact: string;
+  channel: string;
+  channelKey: LeadChannelKey;
+  stageLabel: string;
+  stageDotColor: string;
+  managerName: string;
+  lossReasonText: string;
+  offerAmountText: string;
+  statusBadge: {
+    label: 'Успешный' | 'Неуспешный' | 'В работе';
+    variant: 'success' | 'danger' | 'info';
+  };
+}
+
+export interface SalesTabData {
+  isLoading: boolean;
+  isEmpty: boolean;
+  kpis: SalesKpiCardData[];
+  funnelStages: SalesFunnelStage[];
+  funnelAnomaly: SalesFunnelAnomaly;
+  channels: SalesChannelMetric[];
+  dynamics: {
+    byMonth: SalesDynamicsPoint[];
+    byWeek: SalesDynamicsPoint[];
+  };
+  speedMetrics: SalesSpeedMetrics;
+  lossReasons: {
+    items: SalesLossReasonItem[];
+    totalLostCount: number;
+    totalLostRevenueFormatted: string;
+    isInsufficientData: boolean;
+  };
+  managers: {
+    items: SalesManagerMetric[];
+    belowAverageAlert: string | null;
+  };
+  detailedLeads: SalesDetailedLeadRow[];
+}
+
+

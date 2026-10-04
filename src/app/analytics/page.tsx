@@ -47,6 +47,7 @@ import { AnalyticsHeader } from '@/features/analytics/components/AnalyticsHeader
 import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsNav';
 import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsCockpit';
 import { RetentionAnalyticsSection } from '@/features/analytics/components/RetentionAnalyticsSection';
+import { SalesAnalyticsSection } from '@/features/analytics/components/SalesAnalyticsSection';
 import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
 import { AnalyticsTabKey } from '@/features/analytics/types';
 
@@ -889,7 +890,13 @@ export default function AnalyticsPage() {
     <div className="w-full flex flex-col space-y-1.5">
       {/* 1. Page Header with Title and Global Filters Bar */}
       <AnalyticsHeader
-        subtitle={activeTab === 'retention' ? 'Ученики и удержание — анализ активностей, продлений и причин ухода' : undefined}
+        subtitle={
+          activeTab === 'sales'
+            ? 'Продажи и конверсия — анализ воронки, каналов и причин потери лидов'
+            : activeTab === 'retention'
+            ? 'Ученики и удержание — анализ активностей, продлений и причин ухода'
+            : undefined
+        }
         filters={filters}
         onFilterChange={setFilter}
         courses={courses}
@@ -916,169 +923,7 @@ export default function AnalyticsPage() {
 
       {/* 5. Tab: ПРОДАЖИ И КОНВЕРСИЯ */}
       {activeTab === 'sales' && (
-        <div className="space-y-6">
-
-      {/* Top 4 KPI Metrics */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Удержание (Retention)</p>
-          <p className="mt-1 text-3xl font-extrabold text-slate-900">91.4%</p>
-          <p className="mt-1 text-xs font-medium text-emerald-600 flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" /> +2.1% к прошлому месяцу
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Сквозная конверсия CRM</p>
-          <p className="mt-1 text-3xl font-extrabold text-purple-700">35.7%</p>
-          <p className="mt-1 text-xs font-medium text-emerald-600">
-            10 оплат из 28 обращений
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Посещаемость по школе</p>
-          <p className="mt-1 text-3xl font-extrabold text-blue-600">92.8%</p>
-          <p className="mt-1 text-xs text-slate-500">Норма &gt; 85%</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">LTV Ученика</p>
-          <p className="mt-1 text-3xl font-extrabold text-emerald-600">54 200 ₽</p>
-          <p className="mt-1 text-xs text-slate-500">~7.2 месяцев цикл жизни</p>
-        </div>
-      </div>
-
-      {/* Section 1: ВОРОНКА ПРОДАЖ (FUNNEL WATERFALL) С ТАБЛИЦЕЙ ЛИДОВ ПО ЭТАПАМ */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 gap-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="h-5 w-5 text-purple-600" />
-              Воронка конверсии из заявки в оплаченного ученика
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Нажмите на любой этап конверсии, чтобы развернуть список лидов прямо под ним
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedFunnelStage ? (
-              <button
-                onClick={() => setSelectedFunnelStage(null)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-2xs"
-              >
-                <X className="h-3.5 w-3.5" />
-                Свернуть таблицу
-              </button>
-            ) : (
-              <button
-                onClick={() => setSelectedFunnelStage('all')}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-purple-50 border border-purple-200 px-3 py-1.5 text-xs font-bold text-purple-700 hover:bg-purple-100 transition-colors shadow-2xs"
-              >
-                <Table className="h-3.5 w-3.5" />
-                Показать все лиды воронки
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Funnel Steps (Interactive clickable bars with in-place accordion tables) */}
-        <div className="space-y-3 pt-1">
-          {funnelSteps.map((step, idx) => {
-            const isSelected = selectedFunnelStage === step.id;
-            const stageLeadsCount = leads.filter((l) => step.leadStatuses.includes(l.status)).length;
-
-            return (
-              <div key={step.id} className="space-y-2">
-                <div
-                  onClick={() => setSelectedFunnelStage(isSelected ? null : step.id)}
-                  className={cn(
-                    'group rounded-xl border p-3 transition-all cursor-pointer select-none',
-                    isSelected
-                      ? 'border-purple-500 bg-purple-50/70 shadow-sm ring-2 ring-purple-300'
-                      : 'border-slate-200 bg-white hover:border-purple-300 hover:bg-slate-50/80 hover:shadow-2xs'
-                  )}
-                  title={isSelected ? 'Нажмите, чтобы свернуть таблицу лидов' : 'Нажмите, чтобы открыть таблицу лидов прямо под этим этапом'}
-                >
-                  <div className="flex items-center justify-between text-xs mb-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold',
-                          isSelected
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-slate-100 text-slate-700 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors'
-                        )}
-                      >
-                        {step.stepNumber}
-                      </span>
-                      <div>
-                        <span className={cn('font-bold', step.isGoal ? 'text-emerald-700' : 'text-slate-900')}>
-                          {step.label}
-                        </span>
-                        <span className="hidden md:inline-block text-[11px] text-slate-400 ml-2">
-                          — {step.description}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {step.drop && (
-                        <span className="text-[11px] text-rose-500 font-semibold">{step.drop}</span>
-                      )}
-                      <span className="font-extrabold text-slate-900 text-sm">
-                        {stageLeadsCount} лид.
-                      </span>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-600">
-                        {step.rate}
-                      </span>
-                      <span
-                        className={cn(
-                          'text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 transition-all',
-                          isSelected
-                            ? 'bg-purple-600 text-white shadow-xs'
-                            : 'bg-purple-50 text-purple-700 border border-purple-200 group-hover:bg-purple-100'
-                        )}
-                      >
-                        {isSelected ? 'Свернуть таблицу ▲' : 'Лиды этапа ▼'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress bar visual */}
-                  <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-500',
-                        step.isGoal
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                          : 'bg-gradient-to-r from-purple-500 to-indigo-500'
-                      )}
-                      style={{ width: step.rate }}
-                    />
-                  </div>
-                </div>
-
-                {/* Direct inline table right below this stage */}
-                {isSelected && (
-                  <div className="pt-1 pb-1">
-                    {renderFunnelTable(step.id)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* DETAILED LEADS TABLE WHEN "ALL" IS SELECTED */}
-        {selectedFunnelStage === 'all' && (
-          <div className="pt-2">
-            {renderFunnelTable('all')}
-          </div>
-        )}
-      </div>
-      </div>
+        <SalesAnalyticsSection filters={filters} courses={courses} />
       )}
 
       {/* 6. Tab: УЧЕНИКИ И УДЕРЖАНИЕ */}
