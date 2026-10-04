@@ -33,6 +33,8 @@ import { saveLessonToStorage, deleteLessonFromStorage, recordLessonAttendanceBat
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { usePermissions } from '@/context/RoleContext';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
 
 export interface LessonDetailsDrawerProps {
@@ -87,6 +89,7 @@ export function LessonDetailsDrawer({
 }: LessonDetailsDrawerProps) {
   const toast = useToast();
   const { t } = useLanguage();
+  const { canViewStudentFinancialAmounts } = usePermissions();
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'notes'>('overview');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
@@ -997,13 +1000,28 @@ export function LessonDetailsDrawer({
                           <p className="font-semibold text-slate-900 group-hover:text-blue-600 truncate transition-colors">
                             {st.name}
                           </p>
-                          {st.isTrial && (
-                            <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1 py-0.2 rounded">
-                              Пробное
-                            </span>
-                          )}
                         </div>
                       </Link>
+
+                      {/* Payment Status Badge */}
+                      <div className="shrink-0">
+                        {(() => {
+                          if (!canViewStudentFinancialAmounts) {
+                            const teacherBadge = getTeacherAdmissionBadge(st.id, st.isTrial);
+                            return (
+                              <span className={cn('whitespace-nowrap inline-block', teacherBadge.badgeClass)}>
+                                {teacherBadge.label}
+                              </span>
+                            );
+                          }
+                          const payStatus = getStudentLessonPaymentStatus(st.id, st.isTrial);
+                          return (
+                            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0', payStatus.badgeClass)}>
+                              {payStatus.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
 
                       {/* Кнопки отметки присутствия */}
                       <div className="flex items-center gap-1 shrink-0">

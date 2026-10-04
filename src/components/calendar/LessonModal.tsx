@@ -45,9 +45,9 @@ import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
-import { useRole } from '@/context/RoleContext';
+import { useRole, usePermissions } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
@@ -127,6 +127,7 @@ export function LessonModal({
 }: LessonModalProps) {
   const toast = useToast();
   const { role, userName } = useRole();
+  const { canViewStudentFinancialAmounts } = usePermissions();
   const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
@@ -1389,6 +1390,7 @@ export function LessonModal({
                 ) : (
                   attendance.map((st) => {
                     const payStatus = getStudentLessonPaymentStatus(st.studentId);
+                    const teacherBadge = getTeacherAdmissionBadge(st.studentId);
                     const isEditingComment = editingCommentStudentId === st.studentId;
                     const hasComment = Boolean(st.feedback && st.feedback.trim().length > 0);
 
@@ -1407,7 +1409,7 @@ export function LessonModal({
                               <span className="text-xs font-semibold text-slate-800 truncate block">
                                 {st.name}
                               </span>
-                              {st.status === 'absent' && (
+                              {canViewStudentFinancialAmounts && st.status === 'absent' && (
                                 <label className="mt-0.5 flex items-center gap-1 text-[10px] text-rose-700 cursor-pointer select-none">
                                   <input
                                     type="checkbox"
@@ -1423,14 +1425,25 @@ export function LessonModal({
 
                           {/* 2. Payment Badge */}
                           <div className="col-span-2 flex justify-center">
-                            <span
-                              className={cn(
-                                'rounded-full px-2 py-0.5 text-[10px] font-bold border text-center shadow-2xs',
-                                payStatus.badgeClass
-                              )}
-                            >
-                              {payStatus.label}
-                            </span>
+                            {!canViewStudentFinancialAmounts ? (
+                              <span
+                                className={cn(
+                                  'whitespace-nowrap text-center shadow-2xs inline-block',
+                                  teacherBadge.badgeClass
+                                )}
+                              >
+                                {teacherBadge.label}
+                              </span>
+                            ) : (
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-[10px] font-bold border text-center shadow-2xs',
+                                  payStatus.badgeClass
+                                )}
+                              >
+                                {payStatus.label}
+                              </span>
+                            )}
                           </div>
 
                           {/* 3. Status Switcher Buttons */}

@@ -33,6 +33,8 @@ import { getStoredStudents, restoreStudent, saveStudentToStorage, softDeleteStud
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { BulkChangeGroupModal, BulkChangeStatusModal, BulkDeleteModal } from '@/components/students/BulkModals';
+import { usePermissions } from '@/context/RoleContext';
+import { getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 
 const WhatsAppIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
   <svg className={cn('fill-current', className)} viewBox="0 0 24 24">
@@ -207,6 +209,7 @@ function StudentsContent() {
   const searchParams = useSearchParams();
   const toast = useToast();
   const { t } = useLanguage();
+  const { canViewStudentFinancialAmounts } = usePermissions();
 
   const activeStudentIdFromUrl = searchParams.get('id');
   const activeTabFromUrl = (searchParams.get('tab') as 'profile' | 'learning' | 'finance' | 'attendance') || 'profile';
@@ -766,17 +769,19 @@ function StudentsContent() {
           </select>
 
           {/* Balance Select Filter */}
-          <select
-            value={balanceFilter}
-            onChange={(e) => setBalanceFilter(e.target.value)}
-            className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
-          >
-            <option value="all">Баланс: Все</option>
-            <option value="debt">Есть задолженность</option>
-            <option value="deposit">Депозит / Предоплата</option>
-            <option value="active_sub">Активный абонемент</option>
-            <option value="trial">Пробный урок</option>
-          </select>
+          {canViewStudentFinancialAmounts && (
+            <select
+              value={balanceFilter}
+              onChange={(e) => setBalanceFilter(e.target.value)}
+              className="h-9 px-3 text-xs font-medium bg-white border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs"
+            >
+              <option value="all">Баланс: Все</option>
+              <option value="debt">Есть задолженность</option>
+              <option value="deposit">Депозит / Предоплата</option>
+              <option value="active_sub">Активный абонемент</option>
+              <option value="trial">Пробный урок</option>
+            </select>
+          )}
         </div>
       </div>
 
@@ -888,7 +893,16 @@ function StudentsContent() {
                     </span>
                   </div>
                   <div className="shrink-0 text-right">
-                    {student.financeStatus === 'debt' ? (
+                    {!canViewStudentFinancialAmounts ? (
+                      (() => {
+                        const badge = getTeacherAdmissionBadge(student.id, student.status === 'trial');
+                        return (
+                          <span className={badge.className}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()
+                    ) : student.financeStatus === 'debt' ? (
                       <span className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
                         Долг: -{student.debtEur} €
                       </span>

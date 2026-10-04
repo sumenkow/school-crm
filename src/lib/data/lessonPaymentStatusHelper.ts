@@ -61,3 +61,53 @@ export function getStudentLessonPaymentStatus(
     badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
   };
 }
+
+export interface TeacherAdmissionBadge {
+  label: string;
+  badgeClass: string;
+  className: string;
+  isTrial: boolean;
+  isPaid: boolean;
+}
+
+/**
+ * Returns exact admission status badge for teachers according to UI security defense:
+ * - "● Оплачено" (bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full)
+ * - "● Не оплачено" (bg-rose-50 text-rose-700 text-xs font-semibold px-2.5 py-0.5 rounded-full)
+ * - "🎯 Пробное занятие" (bg-purple-50 text-purple-700 text-xs font-semibold px-2.5 py-0.5 rounded-full)
+ */
+export function getTeacherAdmissionBadge(
+  studentId: string,
+  isTrialStudent?: boolean,
+  studentsList?: FullStudentData[]
+): TeacherAdmissionBadge {
+  const payStatus = getStudentLessonPaymentStatus(studentId, isTrialStudent, studentsList);
+  if (payStatus.status === 'trial_paid' || payStatus.status === 'trial_unpaid') {
+    const cls = 'bg-purple-50 text-purple-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-purple-200';
+    return {
+      label: '🎯 Пробное занятие',
+      badgeClass: cls,
+      className: cls,
+      isTrial: true,
+      isPaid: payStatus.status === 'trial_paid',
+    };
+  }
+  if (payStatus.status === 'paid') {
+    const cls = 'bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200';
+    return {
+      label: '● Оплачено',
+      badgeClass: cls,
+      className: cls,
+      isTrial: false,
+      isPaid: true,
+    };
+  }
+  const cls = 'bg-rose-50 text-rose-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-rose-200';
+  return {
+    label: '● Не оплачено',
+    badgeClass: cls,
+    className: cls,
+    isTrial: false,
+    isPaid: false,
+  };
+}

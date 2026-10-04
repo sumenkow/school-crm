@@ -61,7 +61,7 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { getTasksForStudent, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { formatAgeAndGrade, formatGradeRussian, formatBirthDate } from '@/lib/data/studentAgeHelper';
 import { DatePicker } from '@/components/common/DatePicker';
@@ -1561,11 +1561,11 @@ export default function StudentDetailsPage() {
                 {!canViewStudentFinancialAmounts ? (
                   <span
                     className={cn(
-                      'rounded-full px-2.5 py-0.5 text-xs font-bold border inline-flex items-center gap-1 shadow-2xs',
-                      getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass
+                      'inline-flex items-center gap-1 shadow-2xs',
+                      getTeacherAdmissionBadge(student.id, student.status === 'trial').badgeClass
                     )}
                   >
-                    {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                    {getTeacherAdmissionBadge(student.id, student.status === 'trial').label}
                   </span>
                 ) : studentDeposit > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1 shadow-2xs">
@@ -1752,20 +1752,14 @@ export default function StudentDetailsPage() {
 
           {/* 5th Column: Payment Status Badge for teacher, Hero Balance Card for admin/owner */}
           {!canViewStudentFinancialAmounts ? (
-            <div className={cn(
-              "rounded-xl p-2.5 border flex flex-col justify-between",
-              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'unpaid' && "bg-rose-50/80 border-rose-200",
-              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'trial_unpaid' && "bg-amber-50/70 border-amber-200",
-              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'paid' && "bg-emerald-50/70 border-emerald-200",
-              getStudentLessonPaymentStatus(student.id, student.status === 'trial').status === 'trial_paid' && "bg-purple-50/70 border-purple-200"
-            )}>
+            <div className="rounded-xl p-2.5 border border-slate-200 bg-slate-50 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-blue-600" />
                 {t('students.colBalance', 'Статус оплаты')}:
               </span>
               <p className="font-extrabold text-xs mt-1">
-                <span className={cn('px-2 py-0.5 rounded-md text-[11px] border font-bold inline-block', getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass)}>
-                  {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                <span className={cn('inline-block', getTeacherAdmissionBadge(student.id, student.status === 'trial').badgeClass)}>
+                  {getTeacherAdmissionBadge(student.id, student.status === 'trial').label}
                 </span>
               </p>
               <p className="text-[10px] text-slate-500 mt-0.5">
@@ -2311,9 +2305,11 @@ export default function StudentDetailsPage() {
                                   {isPresent ? '✓ Был' : isAbsence ? '✕ Пропуск' : 'Перенос'}
                                 </span>
 
-                                <span className="text-xs font-bold text-slate-700 font-mono w-12 text-right">
-                                  {chargeText}
-                                </span>
+                                {canViewStudentFinancialAmounts && (
+                                  <span className="text-xs font-bold text-slate-700 font-mono w-12 text-right">
+                                    {chargeText}
+                                  </span>
+                                )}
 
                                 <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
                               </div>

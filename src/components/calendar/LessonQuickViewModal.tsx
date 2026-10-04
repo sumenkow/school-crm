@@ -20,9 +20,10 @@ import {
   Edit3,
 } from 'lucide-react';
 import { FullLessonData } from '@/lib/data/mockData';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
+import { usePermissions } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
 import { EditLessonModal } from '@/components/calendar/EditLessonModal';
@@ -46,6 +47,7 @@ export function LessonQuickViewModal({
 }: LessonQuickViewModalProps) {
   const { t } = useLanguage();
   const toast = useToast();
+  const { canViewStudentFinancialAmounts } = usePermissions();
   const [copiedLink, setCopiedLink] = useState(false);
   const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -240,6 +242,14 @@ export function LessonQuickViewModal({
                         <ExternalLink className="w-2.5 h-2.5 opacity-40 hover:opacity-100" />
                       </Link>
                       {(() => {
+                        if (!canViewStudentFinancialAmounts) {
+                          const teacherBadge = getTeacherAdmissionBadge(student.id, student.isTrial);
+                          return (
+                            <span className={cn('whitespace-nowrap shrink-0 inline-block', teacherBadge.badgeClass)}>
+                              {teacherBadge.label}
+                            </span>
+                          );
+                        }
                         const payStatus = getStudentLessonPaymentStatus(student.id, student.isTrial);
                         return (
                           <span

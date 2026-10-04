@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import { FullLessonData } from '@/lib/data/mockData';
 import { saveLessonToStorage, recordLessonAttendanceBatch } from '@/lib/data/lessonStorage';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { useToast } from '@/context/ToastContext';
+import { usePermissions } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 
@@ -46,6 +47,7 @@ export function LessonBottomSheet({
   const [mounted, setMounted] = useState(false);
   const [topic, setTopic] = useState('');
   const [homework, setHomework] = useState('');
+  const { canViewStudentFinancialAmounts } = usePermissions();
   const [attendance, setAttendance] = useState<MobileAttendanceItem[]>([]);
   const [copiedZoom, setCopiedZoom] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -298,21 +300,28 @@ export function LessonBottomSheet({
               ) : (
                 attendance.map((st) => {
                   const payStatus = getStudentLessonPaymentStatus(st.studentId);
+                  const teacherBadge = getTeacherAdmissionBadge(st.studentId);
                   return (
                     <div
                       key={st.studentId}
                       className="p-3 rounded-xl border border-slate-200 bg-white space-y-2 shadow-2xs"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 font-bold text-xs flex items-center justify-center shrink-0">
                             {st.name.charAt(0)}
                           </div>
                           <span className="text-xs font-bold text-slate-900 truncate">{st.name}</span>
                         </div>
-                        <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0', payStatus.badgeClass)}>
-                          {payStatus.label}
-                        </span>
+                        {!canViewStudentFinancialAmounts ? (
+                          <span className={cn('whitespace-nowrap shrink-0 inline-block', teacherBadge.badgeClass)}>
+                            {teacherBadge.label}
+                          </span>
+                        ) : (
+                          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border shrink-0', payStatus.badgeClass)}>
+                            {payStatus.label}
+                          </span>
+                        )}
                       </div>
 
                       {/* 3 Status Buttons */}

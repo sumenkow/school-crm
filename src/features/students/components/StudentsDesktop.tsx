@@ -30,7 +30,7 @@ import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage'
 import type { FullLessonData, FullStudentData } from '@/lib/data/mockData';
 import { useToast } from '@/context/ToastContext';
 import { usePermissions } from '@/context/RoleContext';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { LessonModal } from '@/components/calendar/LessonModal';
 
@@ -699,8 +699,8 @@ export function StudentsDesktop({
                         onClick={() => handleStudentClick(student.id, 'education')}
                         className="min-w-0 cursor-pointer"
                       >
-                        <span className={cn('inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border whitespace-nowrap', getStudentLessonPaymentStatus(student.id, student.status === 'trial').badgeClass)}>
-                          {getStudentLessonPaymentStatus(student.id, student.status === 'trial').label}
+                        <span className={cn('whitespace-nowrap inline-block', getTeacherAdmissionBadge(student.id, student.status === 'trial').badgeClass)}>
+                          {getTeacherAdmissionBadge(student.id, student.status === 'trial').label}
                         </span>
                       </div>
                     )}
@@ -872,17 +872,19 @@ export function StudentsDesktop({
                               <span>Открыть профиль</span>
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveActionsRowId(null);
-                                handleStudentClick(student.id, 'finance');
-                              }}
-                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
-                            >
-                              <CreditCard className="w-3.5 h-3.5 text-slate-400" />
-                              <span>История оплат</span>
-                            </button>
+                            {canViewStudentFinancialAmounts && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveActionsRowId(null);
+                                  handleStudentClick(student.id, 'finance');
+                                }}
+                                className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded-lg text-left transition-colors cursor-pointer"
+                              >
+                                <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                                <span>История оплат</span>
+                              </button>
+                            )}
 
                             <button
                               type="button"
