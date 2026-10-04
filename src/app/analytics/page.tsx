@@ -34,6 +34,7 @@ import {
   Filter,
   MessageSquare,
   Check,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, INITIAL_COURSES, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
@@ -41,8 +42,7 @@ import { getStoredLeads } from '@/lib/data/leadStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
-import { Shield } from 'lucide-react';
-import { AdminPerformanceReport } from '@/components/analytics/AdminPerformanceReport';
+import { DetailedReportsSection } from '@/features/analytics/components/DetailedReportsSection';
 import { AnalyticsHeader } from '@/features/analytics/components/AnalyticsHeader';
 import { AnalyticsTabsNav } from '@/features/analytics/components/AnalyticsTabsNav';
 import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsCockpit';
@@ -877,7 +877,9 @@ export default function AnalyticsPage() {
       {/* 1. Page Header with Title and Global Filters Bar */}
       <AnalyticsHeader
         subtitle={
-          activeTab === 'sales'
+          activeTab === 'reports'
+            ? 'Детальные отчёты — Операционная работа команды: администраторы, задачи, обращения, оплаты и сопровождение'
+            : activeTab === 'sales'
             ? 'Продажи и конверсия — анализ воронки, каналов и причин потери лидов'
             : activeTab === 'retention'
             ? 'Ученики и удержание — анализ активностей, продлений и причин ухода'
@@ -908,9 +910,9 @@ export default function AnalyticsPage() {
         <DiagnosticsCockpit filters={filters} onNavigateTab={setActiveTab} />
       )}
 
-      {/* 4. Tab: ДЕТАЛЬНЫЕ ОТЧЕТЫ (Admin Performance) */}
+      {/* 4. Tab: ДЕТАЛЬНЫЕ ОТЧЕТЫ (Operational Reports per Reference) */}
       {activeTab === 'reports' && (
-        <AdminPerformanceReport />
+        <DetailedReportsSection filters={filters} courses={courses} />
       )}
 
       {/* 5. Tab: ПРОДАЖИ И КОНВЕРСИЯ */}

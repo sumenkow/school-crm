@@ -570,3 +570,151 @@ export interface TeachersTabData {
   attentionTeachers: TeacherAttentionRow[];
   teacherGroupRelations: TeacherGroupRelationRow[];
 }
+
+// ============================================================================
+// DETAILED REPORTS ANALYTICS TYPES (Per docs/reference_reports.png)
+// ============================================================================
+
+export type DetailedReportsSubTabKey =
+  | 'admin_efficiency'
+  | 'tasks_sla'
+  | 'communications'
+  | 'payments'
+  | 'renewals'
+  | 'operations_log';
+
+export interface AdminHeroKpiData {
+  integralKpi: {
+    score: number;
+    maxScore: number;
+    change: string;
+    subtext: string;
+  };
+  taskCompletion: {
+    percent: number;
+    change: string;
+    completed: number;
+    total: number;
+  };
+  collectedPayments: {
+    amountEur: number;
+    amountFormatted: string;
+    change: string;
+    paidCount: number;
+    totalInvoices: number;
+    conversionPercent: number;
+  };
+  contactSla: {
+    minutes: number;
+    change: string;
+    targetMinutes: number;
+    csat: number;
+  };
+}
+
+export interface AdminEfficiencySummaryRow {
+  id: string;
+  name: string;
+  initials: string;
+  avatarUrl?: string;
+  kpiScore: number;
+  tasksRatePercent: number;
+  slaMinutes: number;
+  paymentsPercent: number;
+  renewalsPercent: number;
+}
+
+export interface TaskStatusDistributionItem {
+  id: string;
+  label: string;
+  count: number;
+  sharePercent: number;
+  color: string;
+}
+
+export interface ReactionSpeedDistributionItem {
+  id: string;
+  label: string;
+  sharePercent: number;
+}
+
+export interface PaymentStatusDistributionItem {
+  id: string;
+  label: string;
+  count: number;
+  sharePercent: number;
+  color: string;
+}
+
+export interface RenewalStatusDistributionItem {
+  id: string;
+  label: string;
+  count: number;
+  sharePercent: number;
+  color: string;
+}
+
+export interface AdminTaskDistributionRow {
+  id: string;
+  adminName: string;
+  initials: string;
+  avatarUrl?: string;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  overduePercent: number;
+  avgHours: number;
+}
+
+export interface RecentCommunicationRow {
+  id: string;
+  date: string;
+  clientName: string;
+  channel: 'WhatsApp' | 'Telegram' | 'Телефон' | 'Сайт';
+  subject: string;
+  reactionTime: string;
+  isOverdueSla: boolean;
+  responsibleName: string;
+  status: 'Обработано' | 'Просрочено';
+}
+
+export interface PaymentAttentionRow {
+  id: string;
+  invoiceDate: string;
+  studentName: string;
+  amountEur: number;
+  amountFormatted: string;
+  deadline: string;
+  statusText: string;
+  isOverdue: boolean;
+  responsibleName: string;
+}
+
+export interface DetailedReportsData {
+  isLoading: boolean;
+  heroKpis: AdminHeroKpiData;
+  adminSummaryTable: AdminEfficiencySummaryRow[];
+  taskStatusDonut: {
+    total: number;
+    items: TaskStatusDistributionItem[];
+  };
+  reactionSpeedBars: ReactionSpeedDistributionItem[];
+  paymentStatusDonut: {
+    total: number;
+    items: PaymentStatusDistributionItem[];
+  };
+  renewalStatusDonut: {
+    total: number;
+    items: RenewalStatusDistributionItem[];
+  };
+  dynamicsTimeline: Array<{
+    month: string;
+    kpi: number;
+    tasks: number;
+    payments: number;
+    renewals: number;
+  }>;
+  adminTasksList: AdminTaskDistributionRow[];
+  recentCommunications: RecentCommunicationRow[];
+  attentionPayments: PaymentAttentionRow[];
+}
