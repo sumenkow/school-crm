@@ -391,6 +391,15 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsCreateLeadOpen(true)}
+            className="h-7.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Новый лид</span>
+          </button>
+
           <Link
             href="/calendar"
             className="h-7.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs inline-flex items-center gap-1 transition-colors"
@@ -970,7 +979,15 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
             )}
           </div>
 
-
+          {/* Bottom Action: Новая задача */}
+          <button
+            type="button"
+            onClick={() => setIsCreateTaskOpen(true)}
+            className="w-full mt-1.5 h-6 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] inline-flex items-center justify-center gap-1 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Новая задача</span>
+          </button>
         </div>
       </div>
       {/* ─────────────────────────────────────────────────────────────────── */}
