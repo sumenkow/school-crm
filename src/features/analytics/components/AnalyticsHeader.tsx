@@ -33,13 +33,13 @@ export function AnalyticsHeader({
       <div className="h-8.5 flex items-center gap-1.5 text-xs flex-nowrap shrink-0">
         {/* 1. Current Period Selector */}
         <div className="relative flex items-center shrink-0">
-          <div className="pointer-events-none absolute left-2.5 text-slate-400">
+          <div className="pointer-events-none absolute left-2 text-slate-400">
             <Calendar className="h-3.5 w-3.5" />
           </div>
           <select
             value={filters.period}
             onChange={(e) => onFilterChange('period', e.target.value)}
-            className="h-8.5 pl-7.5 pr-5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[134px]"
+            className="h-8.5 pl-6.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[148px]"
             title="Выбор текущего периода"
           >
             {PERIOD_OPTIONS.map((opt) => (
@@ -48,7 +48,7 @@ export function AnalyticsHeader({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-slate-400" />
         </div>
 
         {/* 2. Compare Period Selector */}
@@ -56,7 +56,7 @@ export function AnalyticsHeader({
           <select
             value={filters.comparePeriod}
             onChange={(e) => onFilterChange('comparePeriod', e.target.value)}
-            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[138px]"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none transition-colors w-[172px]"
             title="Сравнение периодов"
           >
             <option value="none">Без сравнения</option>
@@ -66,7 +66,7 @@ export function AnalyticsHeader({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-slate-400" />
         </div>
 
         {/* 3. Subject / Course Selector */}
@@ -74,7 +74,7 @@ export function AnalyticsHeader({
           <select
             value={filters.subjectId}
             onChange={(e) => onFilterChange('subjectId', e.target.value)}
-            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[124px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[138px] truncate transition-colors"
             title="Фильтр по направлениям"
           >
             <option value="all">Все направления</option>
@@ -84,7 +84,7 @@ export function AnalyticsHeader({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-slate-400" />
         </div>
 
         {/* 4. Group Selector */}
@@ -92,7 +92,7 @@ export function AnalyticsHeader({
           <select
             value={filters.groupId}
             onChange={(e) => onFilterChange('groupId', e.target.value)}
-            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[96px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[104px] truncate transition-colors"
             title="Фильтр по группам"
           >
             <option value="all">Все группы</option>
@@ -102,7 +102,7 @@ export function AnalyticsHeader({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-slate-400" />
         </div>
 
         {/* 5. Teacher Selector */}
@@ -110,7 +110,7 @@ export function AnalyticsHeader({
           <select
             value={filters.teacherId}
             onChange={(e) => onFilterChange('teacherId', e.target.value)}
-            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[136px] truncate transition-colors"
+            className="h-8.5 pl-2.5 pr-5.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer appearance-none w-[152px] truncate transition-colors"
             title="Фильтр по преподавателям"
           >
             <option value="all">Все преподаватели</option>
@@ -120,7 +120,7 @@ export function AnalyticsHeader({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1.5 h-3.5 w-3.5 text-slate-400" />
         </div>
 
         {/* 6. Export Report Button */}
