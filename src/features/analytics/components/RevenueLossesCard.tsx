@@ -20,6 +20,11 @@ export function RevenueLossesCard({
   const [lossView, setLossView] = useState<'categories' | 'channels'>('categories');
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
+  const isChannels = lossView === 'channels';
+  const activeItems = (isChannels && losses.channels && losses.channels.length > 0)
+    ? losses.channels
+    : losses.categories;
+
   return (
     <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full">
       {/* 1. Header */}
@@ -83,7 +88,7 @@ export function RevenueLossesCard({
 
         {/* 3. Compact Stacked Bar */}
         <div className="h-2 rounded-full overflow-hidden flex gap-0.5 my-2.5 bg-slate-100 p-0.5 border border-slate-200/50">
-          {losses.categories.map((cat) => {
+          {activeItems.map((cat) => {
             if (cat.percent <= 0) return null;
             return (
               <div
@@ -98,7 +103,7 @@ export function RevenueLossesCard({
 
         {/* 4. List of Loss Categories: категория | сумма | мини-бар | % */}
         <div className="space-y-1.5 mt-2">
-          {losses.categories.map((cat) => (
+          {activeItems.map((cat) => (
             <div
               key={cat.id}
               className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-slate-50/80 transition-colors"
@@ -133,7 +138,9 @@ export function RevenueLossesCard({
             !
           </div>
           <span className="truncate">
-            Из 6 оплаченных пробных уроков потенциальная недополученная выручка — 84 000 ₽
+            {isChannels
+              ? `Наибольшие потери в канале «${losses.topLossChannel || 'Сайт школы'}» — ${(losses.topLossChannelRub || 84000).toLocaleString('ru-RU')} ₽`
+              : 'Из 6 оплаченных пробных уроков потенциальная недополученная выручка — 84 000 ₽'}
           </span>
         </div>
         <button
@@ -141,7 +148,7 @@ export function RevenueLossesCard({
           onClick={() => onNavigateTab ? onNavigateTab('sales') : undefined}
           className="font-bold text-blue-600 hover:text-blue-800 hover:underline shrink-0 cursor-pointer text-xs whitespace-nowrap"
         >
-          Посмотреть лиды →
+          {isChannels ? 'Посмотреть лиды канала →' : 'Посмотреть лиды →'}
         </button>
       </div>
 

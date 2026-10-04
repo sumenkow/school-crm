@@ -29,6 +29,8 @@ export function DiagnosticsMidTierSection({
         <FunnelDiagnosticsCard
           stages={funnelData.stages}
           insight={funnelData.insight}
+          channels={funnelData.channels}
+          channelInsight={funnelData.channelInsight}
           comparePeriodLabel={comparePeriodLabel}
           onNavigateTab={onNavigateTab}
         />

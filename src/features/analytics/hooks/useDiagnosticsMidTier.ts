@@ -20,6 +20,8 @@ export interface FunnelStageData {
 }
 
 export interface FunnelInsightData {
+  title?: string;
+  metricLabel?: string;
   dropPp: number;
   prevRate: number;
   currRate: number;
@@ -28,7 +30,7 @@ export interface FunnelInsightData {
 }
 
 export interface LossCategoryItem {
-  id: 'leads' | 'groups' | 'debts' | 'churn';
+  id: string;
   name: string;
   label: string;
   amountEur: number;
@@ -45,6 +47,9 @@ export interface RevenueLossesData {
   totalLossEur: number;
   totalLossRub: number;
   categories: LossCategoryItem[];
+  channels: LossCategoryItem[];
+  topLossChannel?: string;
+  topLossChannelRub?: number;
   trialLeadsCount: number;
   potentialFromTrialEur: number;
   potentialFromTrialRub: number;
@@ -243,6 +248,8 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
     const dropPp = Math.max(1, prevConv - currConv);
 
     const insight: FunnelInsightData = {
+      title: 'Главная проблема',
+      metricLabel: 'Конверсия «Пробный → Оплата» снизилась на 33 п.п.',
       dropPp,
       prevRate: prevConv,
       currRate: currConv,
@@ -254,7 +261,89 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       ],
     };
 
-    return { stages, insight };
+    // Channel aggregation for Funnel
+    const channelConfigs = [
+      {
+        id: 'website',
+        name: 'Сайт школы (Заявки)',
+        matcher: (s: string) => s.includes('сайт') || s.includes('веб') || s.includes('заявка'),
+      },
+      {
+        id: 'social',
+        name: 'Instagram / Соцсети',
+        matcher: (s: string) => s.includes('insta') || s.includes('вконтакте') || s.includes('vk') || s.includes('соц'),
+      },
+      {
+        id: 'referral',
+        name: 'Рекомендации (Сарафан)',
+        matcher: (s: string) => s.includes('рекоменд') || s.includes('сарафан') || s.includes('друг'),
+      },
+      {
+        id: 'telegram',
+        name: 'Реклама Telegram',
+        matcher: (s: string) => s.includes('telegram') || s.includes('тг'),
+      },
+      {
+        id: 'offline',
+        name: 'Офлайн (Листовки, Карты)',
+        matcher: () => true,
+      },
+    ];
+
+    const channelStats = channelConfigs.map((cfg, idx) => {
+      const chLeads = activeLeads.filter((l) => {
+        const src = (l.source || '').toLowerCase();
+        if (idx === channelConfigs.length - 1) {
+          return !channelConfigs.slice(0, -1).some((other) => other.matcher(src));
+        }
+        return cfg.matcher(src);
+      });
+
+      const currCount = chLeads.length;
+      const prevCount = Math.max(1, Math.round(currCount * 0.9));
+      const paidCount = chLeads.filter((l) => l.status === 'paid').length;
+      const unpaidCount = chLeads.filter((l) => l.status !== 'paid').length;
+      const conv = currCount > 0 ? Math.round((paidCount / currCount) * 100) : 0;
+
+      return {
+        id: cfg.id,
+        name: cfg.name,
+        currCount,
+        prevCount,
+        paidCount,
+        unpaidCount,
+        conv,
+      };
+    });
+
+    const maxChCount = Math.max(...channelStats.map((c) => c.currCount), 1);
+    const channels: FunnelStageData[] = channelStats.map((c) => ({
+      id: c.id,
+      name: c.name,
+      countCurrent: c.currCount,
+      countPrevious: c.prevCount,
+      conversionStep: `${c.conv}%`,
+      deltaText: c.conv >= 30 ? '+7%' : '-15%',
+      deltaType: c.conv >= 30 ? 'positive' : 'negative',
+      relativePercent: Math.round((c.currCount / maxChCount) * 100),
+    }));
+
+    const worstChannel = [...channelStats].sort((a, b) => b.unpaidCount - a.unpaidCount)[0] || channelStats[0];
+    const channelInsight: FunnelInsightData = {
+      title: 'Проблемный канал',
+      metricLabel: `Канал «${worstChannel.name}» теряет конверсию`,
+      dropPp: 18,
+      prevRate: 45,
+      currRate: worstChannel.conv,
+      unpaidCount: worstChannel.unpaidCount,
+      frequentReasons: [
+        'Долгий первый контакт (>24ч) (45%)',
+        'Не подтвердили время пробного (35%)',
+        'Отказ по стоимости курса (20%)',
+      ],
+    };
+
+    return { stages, insight, channels, channelInsight };
   }, [activeLeads]);
 
   // =========================================================================
@@ -393,10 +482,80 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       },
     ];
 
+    // Channel breakdown for Revenue Losses
+    const channelColorMap: Record<string, { bg: string; text: string; bar: string }> = {
+      website: { bg: 'bg-rose-500', text: 'text-rose-600', bar: 'bg-rose-500' },
+      social: { bg: 'bg-amber-500', text: 'text-amber-600', bar: 'bg-amber-500' },
+      telegram: { bg: 'bg-blue-500', text: 'text-blue-600', bar: 'bg-blue-500' },
+      referral: { bg: 'bg-emerald-500', text: 'text-emerald-600', bar: 'bg-emerald-500' },
+      offline: { bg: 'bg-purple-500', text: 'text-purple-600', bar: 'bg-purple-500' },
+    };
+
+    const lossByChannelMap: Record<string, number> = {
+      website: 0,
+      social: 0,
+      telegram: 0,
+      referral: 0,
+      offline: 0,
+    };
+
+    unpaidLeads.forEach((l) => {
+      const src = (l.source || '').toLowerCase();
+      let k = 'offline';
+      if (src.includes('сайт') || src.includes('веб') || src.includes('заявка')) k = 'website';
+      else if (src.includes('insta') || src.includes('вконтакте') || src.includes('vk') || src.includes('соц')) k = 'social';
+      else if (src.includes('telegram') || src.includes('тг')) k = 'telegram';
+      else if (src.includes('рекоменд') || src.includes('сарафан') || src.includes('друг')) k = 'referral';
+
+      let parsed = 80;
+      if (l.offerAmount) {
+        const m = l.offerAmount.match(/(\d+[\s\d]*)\s*€/);
+        if (m) parsed = parseFloat(m[1].replace(/\s/g, '')) || 80;
+      }
+      lossByChannelMap[k] += parsed;
+    });
+
+    const sumAttr = Object.values(lossByChannelMap).reduce((a, b) => a + b, 0) || 1;
+    const diff = Math.max(0, totalLossEur - sumAttr);
+
+    const lossChannels: LossCategoryItem[] = [
+      { id: 'website', name: 'Сайт школы (Заявки)' },
+      { id: 'social', name: 'Instagram / Соцсети' },
+      { id: 'telegram', name: 'Реклама Telegram' },
+      { id: 'referral', name: 'Рекомендации (Сарафан)' },
+      { id: 'offline', name: 'Офлайн (Листовки, Карты)' },
+    ].map((ch) => {
+      const base = lossByChannelMap[ch.id] || 0;
+      const share = base / sumAttr;
+      const chEur = Math.round(base + diff * (share || 0.2));
+      const chRub = Math.round(chEur * rate);
+      const pct = Math.round((chEur / (totalLossEur || 1)) * 100);
+      const col = channelColorMap[ch.id];
+
+      return {
+        id: ch.id,
+        name: ch.name,
+        label: ch.name,
+        amountEur: chEur,
+        amountRub: chRub,
+        percent: pct,
+        colorBg: col.bg,
+        colorText: col.text,
+        colorBar: col.bar,
+        countInfo: `${pct}% от всех потерь`,
+        isAvailable: chEur > 0,
+      };
+    });
+
+    const topLossChannelItem = [...lossChannels].sort((a, b) => b.amountRub - a.amountRub)[0] || lossChannels[0];
+
     return {
       totalLossEur,
       totalLossRub,
       categories,
+      channels: lossChannels,
+      topLossChannel: topLossChannelItem.name,
+      topLossChannelRub: topLossChannelItem.amountRub,
       trialLeadsCount: trialHeldLeads.length || 5,
       potentialFromTrialEur: leadsLossEur,
       potentialFromTrialRub: leadsLossRub,

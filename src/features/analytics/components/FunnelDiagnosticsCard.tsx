@@ -18,6 +18,8 @@ import { AnalyticsTabKey } from '../types';
 export interface FunnelDiagnosticsCardProps {
   stages: FunnelStageData[];
   insight: FunnelInsightData;
+  channels?: FunnelStageData[];
+  channelInsight?: FunnelInsightData;
   comparePeriodLabel?: string;
   onNavigateTab?: (tab: AnalyticsTabKey) => void;
 }
@@ -25,10 +27,16 @@ export interface FunnelDiagnosticsCardProps {
 export function FunnelDiagnosticsCard({
   stages,
   insight,
+  channels,
+  channelInsight,
   comparePeriodLabel,
   onNavigateTab,
 }: FunnelDiagnosticsCardProps) {
   const [funnelView, setFunnelView] = useState<'stages' | 'channels'>('stages');
+
+  const isChannels = funnelView === 'channels';
+  const displayItems = isChannels && channels && channels.length > 0 ? channels : stages;
+  const activeInsight = isChannels && channelInsight ? channelInsight : insight;
 
   return (
     <div className="bg-white rounded-2xl p-3.5 lg:p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full">
@@ -82,20 +90,22 @@ export function FunnelDiagnosticsCard({
 
         {/* 2. Side-by-side: Stages Table (left) and Highlight Alert Box (right) */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mt-3 items-stretch">
-          {/* Left: Stages Table (~58%) */}
+          {/* Left: Stages or Channels Table (~58%) */}
           <div className="md:col-span-7 flex flex-col justify-between">
             {/* Table Header */}
             <div className="grid grid-cols-12 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider px-1 pb-1 border-b border-slate-100">
-              <span className="col-span-5">Этап</span>
-              <span className="col-span-2 text-center">Сейчас</span>
+              <span className="col-span-5">{isChannels ? 'Канал' : 'Этап'}</span>
+              <span className="col-span-2 text-center">{isChannels ? 'Лиды' : 'Сейчас'}</span>
               <span className="col-span-2 text-center">Было</span>
-              <span className="col-span-3 text-right">Конверсия / Изм.</span>
+              <span className="col-span-3 text-right">{isChannels ? 'Конв. в оплату' : 'Конверсия / Изм.'}</span>
             </div>
 
             {/* Table Rows */}
             <div className="space-y-1 mt-1">
-              {stages.map((st) => {
-                const isProblemRow = st.id === 'paid' || st.name.toLowerCase().includes('оплат');
+              {displayItems.map((st) => {
+                const isProblemRow = isChannels
+                  ? st.deltaType === 'negative' || st.id === 'website'
+                  : st.id === 'paid' || st.name.toLowerCase().includes('оплат');
                 return (
                   <div
                     key={st.id}
@@ -106,7 +116,7 @@ export function FunnelDiagnosticsCard({
                         : 'hover:bg-slate-50'
                     )}
                   >
-                    {/* Stage Name & Visual Volume Bar */}
+                    {/* Stage / Channel Name & Visual Volume Bar */}
                     <div className="col-span-5 pr-1 min-w-0">
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-800 mb-0.5 truncate">
                         <span className="truncate">{st.name}</span>
@@ -165,21 +175,24 @@ export function FunnelDiagnosticsCard({
                 <div className="h-4 w-4 rounded-full bg-rose-100 flex items-center justify-center text-[10px] font-bold">
                   !
                 </div>
-                <span>Главная проблема</span>
+                <span>{activeInsight.title || (isChannels ? 'Проблемный канал' : 'Главная проблема')}</span>
               </div>
 
               <h4 className="font-bold text-xs text-slate-900 mt-2 leading-tight">
-                Конверсия «Пробный → Оплата» снизилась на {insight.dropPp || 18} п.п.
+                {activeInsight.metricLabel ||
+                  `Конверсия «Пробный → Оплата» снизилась на ${activeInsight.dropPp || 18} п.п.`}
               </h4>
 
               <div className="mt-1.5">
                 <span className="inline-block bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded text-xs">
-                  {insight.prevRate || 58}% → {insight.currRate || 40}%
+                  {activeInsight.prevRate || 58}% → {activeInsight.currRate || 40}%
                 </span>
               </div>
 
               <p className="text-[11px] text-slate-500 mt-1.5 leading-snug">
-                {insight.unpaidCount || 6} лидов не дошли до оплаты после пробного урока
+                {isChannels
+                  ? `${activeInsight.unpaidCount || 4} заявок с канала не дошли до оплаты`
+                  : `${activeInsight.unpaidCount || 6} лидов не дошли до оплаты после пробного урока`}
               </p>
 
               <button
@@ -187,15 +200,15 @@ export function FunnelDiagnosticsCard({
                 onClick={() => onNavigateTab ? onNavigateTab('sales') : undefined}
                 className="w-full mt-2.5 py-1.5 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition-colors cursor-pointer text-center"
               >
-                Посмотреть лиды →
+                {isChannels ? 'Посмотреть лиды канала →' : 'Посмотреть лиды →'}
               </button>
             </div>
 
             <div className="pt-2 mt-2 border-t border-rose-100 text-[11px] space-y-0.5 text-slate-600">
               <p className="font-semibold text-slate-700 mb-1">Частые причины:</p>
-              <p className="text-slate-500">• Нет последующего контакта (5)</p>
-              <p className="text-slate-500">• Не устроил график (3)</p>
-              <p className="text-slate-500">• Высокая стоимость (2)</p>
+              {activeInsight.frequentReasons.map((r, i) => (
+                <p key={i} className="text-slate-500">• {r}</p>
+              ))}
             </div>
           </div>
         </div>
