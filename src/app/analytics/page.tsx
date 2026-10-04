@@ -49,6 +49,7 @@ import { DiagnosticsCockpit } from '@/features/analytics/components/DiagnosticsC
 import { RetentionAnalyticsSection } from '@/features/analytics/components/RetentionAnalyticsSection';
 import { SalesAnalyticsSection } from '@/features/analytics/components/SalesAnalyticsSection';
 import { FinanceAnalyticsSection } from '@/features/analytics/components/FinanceAnalyticsSection';
+import { GroupsAnalyticsSection } from '@/features/analytics/components/GroupsAnalyticsSection';
 import { useAnalyticsFilters, PERIOD_OPTIONS } from '@/features/analytics/hooks/useAnalyticsFilters';
 import { AnalyticsTabKey } from '@/features/analytics/types';
 
@@ -898,6 +899,8 @@ export default function AnalyticsPage() {
             ? 'Ученики и удержание — анализ активностей, продлений и причин ухода'
             : activeTab === 'finance'
             ? 'Финансы и доходность — выручка, оплаты, задолженности и финансовые риски'
+            : activeTab === 'groups'
+            ? 'Группы — состав, стабильность и операционные проблемы'
             : undefined
         }
         filters={filters}
@@ -1254,22 +1257,7 @@ export default function AnalyticsPage() {
 
       {/* 9. Tab: ГРУППЫ */}
       {activeTab === 'groups' && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center space-y-3 shadow-2xs">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <BookOpen className="h-6 w-6" />
-          </div>
-          <h3 className="text-base font-bold text-slate-900">Аналитика по группам</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Раздел наполняемости групп и свободных мест. На текущем этапе доступен в экране «Диагностика».
-          </p>
-          <button
-            type="button"
-            onClick={() => setActiveTab('diagnostics')}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-          >
-            Перейти к диагностике
-          </button>
-        </div>
+        <GroupsAnalyticsSection filters={filters} courses={courses} />
       )}
     </div>
   );

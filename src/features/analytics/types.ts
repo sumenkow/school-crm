@@ -342,5 +342,121 @@ export interface FinanceTabData {
   };
 }
 
+// ============================================================================
+// GROUPS TAB TYPES
+// ============================================================================
+
+export interface GroupsKpiCardData {
+  id: string;
+  label: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+  previousValue: string;
+  iconType: 'active_groups' | 'active_students' | 'avg_size' | 'underfilled' | 'operational_issues';
+}
+
+export interface GroupSizeDistributionItem {
+  id: string;
+  label: string;
+  count: number;
+  sharePercent: number;
+}
+
+export interface GroupDirectionItem {
+  id: string;
+  name: string;
+  badgeLetter: string;
+  badgeBg: string;
+  badgeText: string;
+  barColor: string;
+  count: number;
+  sharePercent: number;
+}
+
+export interface GroupDynamicsPoint {
+  month: string;
+  activeGroups: number;
+  avgSize: number;
+}
+
+export interface GroupStabilityItem {
+  id: 'stable' | 'attention' | 'unstable';
+  label: string;
+  count: number;
+  sharePercent: number;
+  description: string;
+  color: string;
+}
+
+export interface GroupFlowsSummary {
+  newStudentsCount: number;
+  newStudentsDelta: string;
+  churnStudentsCount: number;
+  churnStudentsDelta: string;
+  transferredCount: number;
+  transferredDelta: string;
+  netChangeCount: number;
+  netChangeDelta: string;
+  topChangedGroups: Array<{
+    id: string;
+    groupId: string;
+    groupName: string;
+    prevCount: number;
+    currentCount: number;
+    change: number;
+    changeFormatted: string;
+  }>;
+}
+
+export interface GroupAttendanceDirectionItem {
+  id: string;
+  name: string;
+  badgeLetter: string;
+  badgeBg: string;
+  badgeText: string;
+  ratePercent: number;
+  barColor: string;
+}
+
+export interface GroupAttentionRow {
+  id: string;
+  groupId: string;
+  groupName: string;
+  directionName: string;
+  teacherName: string;
+  signalText: string;
+  valueText: string;
+  priority: 'Высокий' | 'Средний';
+  badgeType: 'red' | 'amber';
+}
+
+export interface GroupExpiringStudentRow {
+  id: string;
+  studentId: string;
+  studentName: string;
+  groupName: string;
+  endDate: string;
+  statusText: string;
+}
+
+export interface GroupsTabData {
+  isLoading: boolean;
+  isEmpty: boolean;
+  kpis: GroupsKpiCardData[];
+  sizeDistribution: GroupSizeDistributionItem[];
+  directions: GroupDirectionItem[];
+  dynamics: GroupDynamicsPoint[];
+  stability: {
+    totalGroups: number;
+    items: GroupStabilityItem[];
+  };
+  flows: GroupFlowsSummary;
+  attendanceDirections: GroupAttendanceDirectionItem[];
+  attentionGroups: GroupAttentionRow[];
+  expiringStudents: GroupExpiringStudentRow[];
+}
+
+
 
 
