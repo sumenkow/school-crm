@@ -163,15 +163,15 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 w-full min-w-0">
       {/* ========================================================= */}
       {/* 1. HORIZONTAL KPI ROW (6 CARDS IN 1 ROW, H=82px)          */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 min-w-0">
         {kpis.map((kpi) => (
           <div
             key={kpi.id}
-            className="rounded-2xl border border-slate-200/90 bg-white p-2.5 lg:p-3 shadow-2xs h-[82px] flex items-center justify-between gap-2"
+            className="rounded-2xl border border-slate-200/90 bg-white p-2.5 lg:p-3 shadow-2xs h-[82px] flex items-center justify-between gap-2 min-w-0"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               {getKpiIcon(kpi.iconType)}
@@ -207,11 +207,11 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
       {/* ========================================================= */}
       {/* 2. UPPER TIER (3-COLUMN LAYOUT)                           */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[4.6fr_3.8fr_3.6fr] gap-2.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-2.5 min-w-0 w-full">
         {/* ========================================================= */}
         {/* CARD 1: Удержание учеников (Retention) (h-[325px])        */}
         {/* ========================================================= */}
-        <div className="lg:col-span-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[325px]">
+        <div className="lg:col-span-1 xl:col-span-5 rounded-2xl border border-slate-200/90 bg-white p-3 lg:p-3.5 shadow-2xs flex flex-col justify-between h-[325px] min-w-0">
           <div>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -351,10 +351,10 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         {/* ========================================================= */}
         {/* CARD 2: Ученики в зоне риска (h-[325px])                   */}
         {/* ========================================================= */}
-        <div className="lg:col-span-1 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[325px]">
+        <div className="lg:col-span-1 xl:col-span-4 rounded-2xl border border-slate-200/90 bg-white p-3 lg:p-3.5 shadow-2xs flex flex-col justify-between h-[325px] min-w-0">
           <div>
             {/* Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-3.5 h-3.5" />
@@ -389,14 +389,14 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
             </div>
 
             {/* List of 5 At-Risk Students */}
-            <div className="mt-1 divide-y divide-slate-100 flex-1 flex flex-col justify-around py-0.5">
+            <div className="mt-1 divide-y divide-slate-100 flex-1 flex flex-col justify-around py-0.5 min-w-0">
               {atRiskList.map((st) => (
                 <Link
                   key={st.id}
                   href="/students?status=active"
-                  className="py-1 px-1.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 rounded-lg transition-colors group"
+                  className="py-1 px-1.5 flex items-center justify-between gap-2 hover:bg-slate-50/80 rounded-lg transition-colors group min-w-0"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div
                       className={cn(
                         'w-6 h-6 rounded-md flex items-center justify-center font-bold text-[9px] shrink-0',
@@ -405,7 +405,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                     >
                       {st.initials}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <span className="text-[11px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate block">
                         {st.name}
                       </span>
@@ -435,7 +435,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
           </div>
 
           {/* Centered Footer Link */}
-          <div className="pt-1.5 border-t border-slate-100 text-center w-full">
+          <div className="pt-1.5 border-t border-slate-100 text-center w-full min-w-0">
             <Link
               href="/students?status=active"
               className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline inline-block"
@@ -448,7 +448,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         {/* ========================================================= */}
         {/* RIGHT COLUMN: ДИНАМИКА И КОНВЕРСИЯ (2 КАРТОЧКИ)           */}
         {/* ========================================================= */}
-        <div className="lg:col-span-2 xl:col-span-1 flex flex-col gap-2.5 h-[325px]">
+        <div className="lg:col-span-2 xl:col-span-3 flex flex-col gap-2.5 h-[325px] min-w-0">
           <ActiveAndChurnedDynamicsCard data={activeAndChurnedDynamics} />
           <RenewalConversionCard data={renewalConversion} />
         </div>
@@ -457,11 +457,11 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
       {/* ========================================================= */}
       {/* 3. BOTTOM TIER (2-COLUMN LAYOUT)                          */}
       {/* ========================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 min-w-0 w-full">
         {/* ========================================================= */}
         {/* CARD 3: Причины ухода учеников (h-[275px])                */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px]">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px] min-w-0">
           <div>
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -649,7 +649,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
         {/* ========================================================= */}
         {/* CARD 4: Ближайшие продления (h-[275px])                    */}
         {/* ========================================================= */}
-        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px]">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs flex flex-col justify-between h-[275px] min-w-0">
           <div>
             {/* Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">

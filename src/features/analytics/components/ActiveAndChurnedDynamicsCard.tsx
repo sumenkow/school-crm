@@ -12,7 +12,8 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
   const [periodMode, setPeriodMode] = useState<'month' | 'quarter'>('month');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const items: ActiveAndChurnedItem[] = periodMode === 'month' ? data.monthly : data.quarterly;
+  const rawItems = periodMode === 'month' ? data.monthly : data.quarterly;
+  const items: ActiveAndChurnedItem[] = rawItems.slice(-6);
 
   // Chart dimensions inside SVG viewBox="0 0 320 98"
   // Y range: 0 to 250
@@ -28,15 +29,15 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
 
   const yTicks = [250, 200, 150, 100, 50, 0];
 
-  // X range: x from 26 to 312
-  const plotLeft = 26;
-  const plotRight = 312;
-  const plotWidth = plotRight - plotLeft; // 286px
+  // X range: x from 24 to 314
+  const plotLeft = 24;
+  const plotRight = 314;
+  const plotWidth = plotRight - plotLeft; // 290px
 
   const count = items.length;
   const slotWidth = plotWidth / count;
-  const barWidth = periodMode === 'month' ? 4.5 : 7;
-  const barGap = periodMode === 'month' ? 1.5 : 2.5;
+  const barWidth = periodMode === 'month' ? 4 : 6.5;
+  const barGap = periodMode === 'month' ? 1.5 : 2;
 
   // Calculate coordinates for bars and trend points
   const points = items.map((item, i) => {
@@ -71,10 +72,10 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
   }, '');
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs flex flex-col justify-between h-[162px] min-w-0">
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-2xs flex flex-col justify-between h-[162px] min-w-0 w-full overflow-hidden">
       {/* 1. Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className="flex items-center justify-between pb-1 border-b border-slate-100 gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           <h3 className="text-xs font-bold text-slate-900 truncate leading-tight">
             Динамика активных и ушедших
           </h3>
@@ -95,37 +96,37 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
               setHoveredIndex(null);
             }}
             aria-label="Период динамики"
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-5.5"
+            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-1.5 pr-4 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-5 leading-none"
           >
             <option value="month">По месяцам</option>
             <option value="quarter">По кварталам</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-slate-400" />
         </div>
       </div>
 
       {/* 2. Legend */}
-      <div className="flex items-center gap-3 pt-0.5 text-[9.5px] font-medium text-slate-600">
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-blue-600 inline-block shrink-0" />
+      <div className="flex items-center gap-2 pt-0.5 text-[9px] font-medium text-slate-600 shrink-0 min-w-0">
+        <span className="flex items-center gap-1 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block shrink-0" />
           Активные
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" />
+        <span className="flex items-center gap-1 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
           Новые
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-rose-500 inline-block shrink-0" />
+        <span className="flex items-center gap-1 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block shrink-0" />
           Ушли
         </span>
       </div>
 
       {/* 3. SVG Bar Chart with Trend Line */}
-      <div className="relative flex-1 w-full min-h-0 pt-0.5">
+      <div className="relative flex-1 w-full min-h-0 pt-0.5 overflow-hidden">
         <svg
           viewBox="0 0 320 98"
-          className="w-full h-full overflow-visible select-none"
-          preserveAspectRatio="none"
+          className="w-full h-full select-none"
+          preserveAspectRatio="xMidYMid meet"
         >
           {/* Horizontal Grid lines & Y-axis labels */}
           {yTicks.map((val) => {
@@ -133,10 +134,10 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
             return (
               <g key={val}>
                 <text
-                  x="20"
+                  x="19"
                   y={y + 3}
                   textAnchor="end"
-                  className="text-[8px] fill-slate-400 font-medium"
+                  className="text-[7.5px] fill-slate-400 font-medium"
                 >
                   {val}
                 </text>
@@ -256,15 +257,15 @@ export function ActiveAndChurnedDynamicsCard({ data }: ActiveAndChurnedDynamicsC
         {/* Hover Tooltip Overlay */}
         {hoveredIndex !== null && points[hoveredIndex] && (
           <div
-            className="absolute z-20 pointer-events-none -top-1 transform -translate-x-1/2 bg-slate-900/90 text-white rounded-md px-2 py-1 text-[9.5px] shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+            className="absolute z-20 pointer-events-none -top-1 transform -translate-x-1/2 bg-slate-900/90 text-white rounded-md px-2 py-0.5 text-[9px] shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
             style={{
-              left: `${(points[hoveredIndex].cx / 320) * 100}%`,
+              left: `${Math.max(20, Math.min(80, (points[hoveredIndex].cx / 320) * 100))}%`,
             }}
           >
-            <div className="font-bold text-[10px] text-slate-200 mb-0.5">
+            <div className="font-bold text-[9.5px] text-slate-200 mb-0.5">
               {points[hoveredIndex].item.fullLabel}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-blue-300">Акт: {points[hoveredIndex].item.active}</span>
               <span className="text-emerald-300">Нов: +{points[hoveredIndex].item.newCount}</span>
               <span className="text-rose-300">Ушли: {points[hoveredIndex].item.churnedCount}</span>

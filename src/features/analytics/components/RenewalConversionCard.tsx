@@ -12,7 +12,8 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
   const [periodMode, setPeriodMode] = useState<'month' | 'quarter'>('month');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const items: RenewalConversionPoint[] = periodMode === 'month' ? data.monthly : data.quarterly;
+  const rawItems = periodMode === 'month' ? data.monthly : data.quarterly;
+  const items: RenewalConversionPoint[] = rawItems.slice(-6);
 
   // Chart dimensions inside SVG viewBox="0 0 320 66"
   // Y range: 0% to 100%
@@ -31,10 +32,10 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
     { label: '0%', val: 0 },
   ];
 
-  // X range: x from 28 to 312
-  const plotLeft = 28;
-  const plotRight = 312;
-  const plotWidth = plotRight - plotLeft; // 284px
+  // X range: x from 24 to 314
+  const plotLeft = 24;
+  const plotRight = 314;
+  const plotWidth = plotRight - plotLeft; // 290px
 
   const count = items.length;
   const slotWidth = plotWidth / count;
@@ -58,10 +59,10 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
     : '';
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white p-3 shadow-2xs flex flex-col justify-between h-[153px] min-w-0">
+    <div className="rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-2xs flex flex-col justify-between h-[153px] min-w-0 w-full overflow-hidden">
       {/* 1. Header */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-        <div className="flex items-center gap-1 min-w-0">
+      <div className="flex items-center justify-between pb-1 border-b border-slate-100 gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 min-w-0 flex-1">
           <h3 className="text-xs font-bold text-slate-900 truncate leading-tight">
             Конверсия продлений
           </h3>
@@ -82,36 +83,36 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
               setHoveredIndex(null);
             }}
             aria-label="Период конверсии"
-            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-2 pr-5 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-5.5"
+            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-[10px] rounded-lg pl-1.5 pr-4 py-0.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500 cursor-pointer h-5 leading-none"
           >
             <option value="month">По месяцам</option>
             <option value="quarter">По кварталам</option>
           </select>
-          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 h-2.5 w-2.5 text-slate-400" />
         </div>
       </div>
 
       {/* 2. Big KPI Metric & Delta */}
-      <div className="flex items-baseline justify-between pt-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl font-black text-slate-900 tracking-tight leading-none">
+      <div className="flex items-baseline justify-between pt-0.5 min-w-0">
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          <span className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight leading-none shrink-0">
             {data.currentRate}%
           </span>
-          <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 leading-none">
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 leading-none shrink-0 whitespace-nowrap">
             ↑ {data.change}
           </span>
         </div>
-        <span className="text-[10px] text-slate-400 font-normal">
+        <span className="text-[9.5px] text-slate-400 font-normal shrink-0 truncate ml-1">
           Было: {data.previousRate}%
         </span>
       </div>
 
       {/* 3. Vector Sparkline Chart */}
-      <div className="relative flex-1 w-full min-h-0 pt-0.5">
+      <div className="relative flex-1 w-full min-h-0 pt-0.5 overflow-hidden">
         <svg
           viewBox="0 0 320 66"
-          className="w-full h-full overflow-visible select-none"
-          preserveAspectRatio="none"
+          className="w-full h-full select-none"
+          preserveAspectRatio="xMidYMid meet"
         >
           <defs>
             <linearGradient id="renewalAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -126,7 +127,7 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
             return (
               <g key={tick.val}>
                 <text
-                  x="24"
+                  x="20"
                   y={y + 3}
                   textAnchor="end"
                   className="text-[7.5px] fill-slate-400 font-medium"
@@ -221,9 +222,9 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
         {/* Hover Tooltip Overlay */}
         {hoveredIndex !== null && points[hoveredIndex] && (
           <div
-            className="absolute z-20 pointer-events-none -top-1 transform -translate-x-1/2 bg-slate-900/90 text-white rounded-md px-2 py-0.5 text-[9.5px] shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+            className="absolute z-20 pointer-events-none -top-1 transform -translate-x-1/2 bg-slate-900/90 text-white rounded-md px-2 py-0.5 text-[9px] shadow-md whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
             style={{
-              left: `${(points[hoveredIndex].cx / 320) * 100}%`,
+              left: `${Math.max(20, Math.min(80, (points[hoveredIndex].cx / 320) * 100))}%`,
             }}
           >
             <span className="font-semibold text-slate-200">
