@@ -16,7 +16,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth');
   const isInvoicePage = pathname.startsWith('/invoices');
-  const isStandalonePage = isAuthPage || isInvoicePage;
+  const isMiniAppPage = pathname.startsWith('/mini-app');
+  const isStandalonePage = isAuthPage || isInvoicePage || isMiniAppPage;
 
   useEffect(() => {
     if (isStandalonePage) {

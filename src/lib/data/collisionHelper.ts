@@ -509,3 +509,55 @@ export function detectLessonCollisions(
 ): CollisionResult {
   return checkThreeWayCollision(existingLessons, candidate);
 }
+
+export interface TeacherTimeSlot {
+  startTime: string;
+  endTime: string;
+  label: string;
+  isAvailable: boolean;
+  reason?: string;
+}
+
+/**
+ * Calculates time slots for an individual teacher on a specific date,
+ * checking overlaps against existing teacher lessons within working hours.
+ */
+export function getTeacherDayScheduleSlots(
+  existingLessons: FullLessonData[],
+  teacherId: string,
+  date: string,
+  durationMinutes: number = 60,
+  startHour: number = 10,
+  endHour: number = 21
+): TeacherTimeSlot[] {
+  const slots: TeacherTimeSlot[] = [];
+  const startMin = Math.max(9 * 60, startHour * 60);
+  const endMin = Math.min(21 * 60, endHour * 60);
+
+  // Active lessons for this teacher on this date
+  const teacherLessonsOnDate = existingLessons.filter((l) => {
+    if (l.teacherId !== teacherId) return false;
+    if (l.date !== date) return false;
+    if (l.status === 'cancelled' || (l.status as string) === 'rejected') return false;
+    return true;
+  });
+
+  for (let m = startMin; m + durationMinutes <= endMin; m += durationMinutes) {
+    const sTime = minutesToTime(m);
+    const eTime = minutesToTime(m + durationMinutes);
+
+    const isBusy = teacherLessonsOnDate.some((l) =>
+      isTimeOverlapping(l.startTime, l.endTime, sTime, eTime)
+    );
+
+    slots.push({
+      startTime: sTime,
+      endTime: eTime,
+      label: `${sTime} – ${eTime}`,
+      isAvailable: !isBusy,
+      reason: isBusy ? 'Занято' : 'Свободно',
+    });
+  }
+
+  return slots;
+}

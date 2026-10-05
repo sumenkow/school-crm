@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/login', '/mini-app'];
 
 // Routes restricted to owner / developer only
 const OWNER_ONLY_ROUTES = ['/analytics', '/settings'];

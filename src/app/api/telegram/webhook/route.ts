@@ -87,13 +87,23 @@ export async function POST(request: NextRequest) {
         console.warn('DB logging error during /start in Telegram webhook:', dbErr);
       }
 
-      // Send greeting response to the user in Telegram
+      // Send greeting response to the user in Telegram with Reply Keyboard menu (Screen 11)
       if (botToken) {
+        const replyKeyboard = {
+          keyboard: [
+            [{ text: '📅 Записаться на занятие' }],
+            [{ text: '📆 Мои занятия' }, { text: '👨‍👩‍👧 Мои дети' }],
+            [{ text: '💳 Оплаты' }, { text: '💬 Написать администратору' }],
+          ],
+          resize_keyboard: true,
+        };
+
         await sendTelegramDirectMessage({
           token: botToken,
           chatId,
-          text: `👋 *Здравствуйте, ${fromUser?.first_name || 'дорогой друг'}!*\n\nВы успешно подключились к чату нашей школы.\n\nЗдесь вы будете получать важные уведомления о расписании, занятиях и оплатах. Также вы можете задавать любые вопросы прямо в этом чате — администратор ответит вам в рабочее время.`,
+          text: `👋 *Здравствуйте, ${fromUser?.first_name || 'дорогой друг'}!*\n\nВы успешно подключились к чату нашей школы.\n\nЗдесь вы можете записаться на занятия через мини-приложение, просматривать расписание и задавать любые вопросы — администратор ответит вам в рабочее время.`,
           parseMode: 'Markdown',
+          replyMarkup: replyKeyboard,
         });
       }
 
@@ -106,7 +116,58 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Handle normal incoming client message
+    // 2. Handle interactive menu commands from Telegram Reply Keyboard (Screen 11)
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://youeurope-crm.vercel.app');
+    const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
+
+    if (text === '📅 Записаться на занятие' || text.startsWith('/book')) {
+      if (botToken) {
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId,
+          text: `Отлично! Открываю запись на занятия 👇`,
+          parseMode: 'Markdown',
+          replyMarkup: {
+            inline_keyboard: [
+              [{ text: 'Открыть расписание', web_app: { url: miniAppUrl } }],
+            ],
+          },
+        });
+      }
+      return NextResponse.json({ ok: true, action: 'opened_mini_app_booking', chatId });
+    }
+
+    if (text === '📆 Мои занятия' || text === '👨‍👩‍👧 Мои дети' || text === '💳 Оплаты') {
+      const tabParam = text.includes('занятия') ? 'lessons' : text.includes('дети') ? 'children' : 'payments';
+      if (botToken) {
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId,
+          text: `Ваш раздел *«${text}»* доступен в мини-приложении:`,
+          parseMode: 'Markdown',
+          replyMarkup: {
+            inline_keyboard: [
+              [{ text: 'Открыть в приложении', web_app: { url: `${miniAppUrl}&tab=${tabParam}` } }],
+            ],
+          },
+        });
+      }
+      return NextResponse.json({ ok: true, action: 'opened_mini_app_tab', tab: tabParam, chatId });
+    }
+
+    if (text === '💬 Написать администратору') {
+      if (botToken) {
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId,
+          text: `Пожалуйста, напишите ваш вопрос прямо здесь в чате. Администратор ответит вам в ближайшее время!`,
+          parseMode: 'Markdown',
+        });
+      }
+      return NextResponse.json({ ok: true, action: 'prompt_chat_with_admin', chatId });
+    }
+
+    // 3. Handle normal incoming client message (Existing Chat Pipeline Preserved)
     let matchedStudentId: string | null = null;
     let matchedLeadId: string | null = null;
     let matchedParentId: string | null = null;

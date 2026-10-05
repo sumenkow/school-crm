@@ -119,22 +119,28 @@ export async function sendTelegramDirectMessage(params: {
   chatId: string | number;
   text: string;
   parseMode?: 'Markdown' | 'HTML';
+  replyMarkup?: any;
 }): Promise<{ success: boolean; messageId?: number; error?: string }> {
   try {
-    const { token, chatId, text, parseMode = 'Markdown' } = params;
+    const { token, chatId, text, parseMode = 'Markdown', replyMarkup } = params;
     const cleanToken = token.trim();
     if (!cleanToken) return { success: false, error: 'Bot token not provided' };
     if (!chatId) return { success: false, error: 'Chat ID is required' };
     if (!text || !text.trim()) return { success: false, error: 'Message text is empty' };
 
+    const payload: any = {
+      chat_id: chatId,
+      text: text,
+      parse_mode: parseMode,
+    };
+    if (replyMarkup) {
+      payload.reply_markup = replyMarkup;
+    }
+
     const res = await fetch(`https://api.telegram.org/bot${cleanToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: parseMode,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();

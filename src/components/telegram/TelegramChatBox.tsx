@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { saveInteractionToStorage, TimelineInteraction } from '@/lib/data/timelineStorage';
 import { TelegramSettingsModal } from '@/components/settings/TelegramSettingsModal';
+import { OfferLessonModal } from '@/components/telegram/OfferLessonModal';
 import { cn } from '@/lib/utils';
 
 interface ChatMessage {
@@ -93,6 +94,7 @@ export function TelegramChatBox({
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [hasBotToken, setHasBotToken] = useState<boolean>(true);
   const [botActivationWarning, setBotActivationWarning] = useState<string | null>(null);
 
@@ -191,10 +193,10 @@ export function TelegramChatBox({
     return () => clearInterval(interval);
   }, [fetchMessages, hasTelegram]);
 
-  // Send message handler
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!messageText.trim()) return;
+  // Unified send message handler
+  const sendCustomMessage = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
 
     const savedBotToken = typeof window !== 'undefined'
       ? (localStorage.getItem('crm_tg_bot_token') || '').trim()
@@ -228,7 +230,7 @@ export function TelegramChatBox({
           recipientId,
           recipientName,
           chatId: telegramChatId || telegramHandle,
-          message: messageText.trim(),
+          message: trimmed,
           authorName: userName || 'Администратор школы',
           customBotToken: savedBotToken || undefined,
         }),
@@ -261,7 +263,7 @@ export function TelegramChatBox({
         channel: 'telegram',
         type: 'follow_up',
         author: userName || 'Администратор школы',
-        content: `✈️ Сообщение в Telegram: «${messageText.trim()}»`,
+        content: `✈️ Сообщение в Telegram: «${trimmed}»`,
         result: 'Отправлено в Telegram-чат',
       };
 
@@ -273,7 +275,7 @@ export function TelegramChatBox({
         ...prev,
         {
           id: newInteraction.id,
-          text: messageText.trim(),
+          text: trimmed,
           direction: 'outgoing' as const,
           occurredAt: now.toISOString(),
         },
@@ -289,6 +291,11 @@ export function TelegramChatBox({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    await sendCustomMessage(messageText);
   };
 
   const handleOpenDirectTelegram = () => {
@@ -508,7 +515,16 @@ export function TelegramChatBox({
 
           {/* Quick Templates */}
           <div className="px-4 py-2 border-t border-slate-100 bg-white">
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsOfferModalOpen(true)}
+                className="text-[10px] font-bold rounded-lg border border-blue-200 bg-blue-50/90 hover:bg-blue-100 text-blue-700 px-2.5 py-0.5 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Предложить занятие со свободными местами"
+              >
+                <span>📅</span> Предложить занятие
+              </button>
+              <div className="h-3 w-px bg-slate-200 mx-0.5" />
               {TEMPLATES.map((tpl, idx) => (
                 <button
                   key={idx}
@@ -566,6 +582,14 @@ export function TelegramChatBox({
           setIsSettingsModalOpen(false);
           checkToken();
         }}
+      />
+
+      {/* Offer Lesson Modal (Screen 12) */}
+      <OfferLessonModal
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        recipientName={recipientName}
+        onSendOffer={(text) => sendCustomMessage(text)}
       />
     </div>
   );

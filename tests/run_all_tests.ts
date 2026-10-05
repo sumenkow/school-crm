@@ -12,16 +12,17 @@ import { runReviewer1CollisionStressTests } from './reviewer1_m1_collision_stres
 import { runM1Challenger1StressTests } from './stress_m1_challenger1';
 import { runM2LessonModalTests } from './m2_lesson_modal_creation_workflow.test';
 import { runM3CalendarDrawerNotificationTests } from './m3_calendar_drawer_notifications.test';
+import { runPhase10TelegramMiniAppTests } from './phase10_telegram_mini_app.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
-  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8 & 9   ');
+  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 14;
+  const totalSuites = 15;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -95,6 +96,13 @@ async function main() {
     const m3Result = await runM3CalendarDrawerNotificationTests();
     if (m3Result.failed > 0) {
       throw new Error(`Milestone 3 suite failed with ${m3Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 15: Phase 10 Telegram Mini App for Self-Booking by Parents (Tiers 1–4)
+    const phase10Result = await runPhase10TelegramMiniAppTests();
+    if (phase10Result.failed > 0) {
+      throw new Error(`Phase 10 suite failed with ${phase10Result.failed} failures`);
     }
     passedSuites++;
 

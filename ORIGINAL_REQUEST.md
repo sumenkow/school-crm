@@ -981,3 +981,75 @@ Integrity mode: development
 - [ ] `npm run check` passes with 0 errors.
 - [ ] `npm test` passes all automated tests.
 - [ ] `npm run build` compiles cleanly.
+
+
+## 2026-10-05T17:34:31Z
+
+# PHASE 10 — TELEGRAM MINI APP FOR SELF-BOOKING BY PARENTS (WITH 12-SCREEN REFERENCE)
+
+Implement the **Telegram Mini App for Self-Booking by Parents** (Phase 10) in **You Europe / Smart Academy CRM**, matching the 12-screen visual reference (`media_1791220560990.jpg`), operating over existing CRM entities (`Lesson`, `Student`, `Parent`, `Group`, `CourseDirection`) with Zero New Entities, completely preserving the existing Telegram Bot Chat and message pipeline between parents and administrators.
+
+Working directory: `/Users/andreysumenkov/Documents/crm test antigravity`
+Branch: `feature/phase-10-telegram-mini-app`
+Integrity mode: `development`
+
+---
+
+## Requirements
+
+### R1. Telegram Mini App Client Interface (12 Reference Screens)
+Implement the mobile SPA interface under route `/mini-app` matching `media_1791220560990.jpg`:
+- **Screen 1 (Home Menu)**: Personalized greeting (`Здравствуйте, Ольга!`), avatar, 5 quick-action cards (`📅 Записаться на занятие`, `📚 Мои занятия`, `👨👩👧 Мои дети`, `💳 Оплаты`, `💬 Написать администратору`), and 4-tab mobile bottom nav (`Главная`, `Занятия`, `Оплаты`, `Профиль`).
+- **Screen 2 (Format Selection)**: Format selector cards (`👥 Групповое занятие`, `👤 Индивидуальное занятие`, `🎯 Пробное занятие`).
+- **Screen 3 (Direction Selection)**: Course directions list with flags/icons (🇩🇪 Немецкий, 🇬🇧 Английский, 🇫🇷 Французский, 🧮 Математика, 🎓 Подготовка к экзаменам).
+- **Screen 4 (Group Selection)**: Tabs `Группы` | `Открытые занятия`, group cards with schedule, age bracket, teacher, occupancy progress bar, and available seats badge.
+- **Screen 5 (Date & Lesson Selection)**: Horizontal date picker pills, real group lessons with seat status badges (`🟢 Есть места (N места)`, `🟡 1 место`, `⚪ Мест нет`).
+- **Screen 6 (Child Selection)**: Radio selection of parent's verified children with name and age, `+ Добавить ребёнка` button.
+- **Screen 7 (Booking Confirmation)**: Review card (group/subject, date, time, teacher, Zoom room, seat availability, selected child), Telegram reminder switch.
+- **Screen 8 (Success State)**: Confirmation checkmark (`Вы записаны!`), lesson summary with Zoom details, `📅 Добавить в календарь` (.ics export), `Мои занятия` and `На главную` buttons.
+- **Screen 9 (Individual Teacher Selection)**: Teacher cards with rating, review count (★ 4.9, 24 отзыва), and subject.
+- **Screen 10 (Individual Slots Selection)**: 60-minute time slots (16:00–17:00 `🟢 Свободно`, 18:00–19:00 `🔴 Занято`).
+
+### R2. Zero New Entities & Existing Domain Model Reuse
+- Categorical ban on creating new database tables or isolated booking entities (`TelegramBooking`, `ParentBooking`, `BookingSlot`).
+- Group booking directly enrolls student into existing `lesson.students` of the target `Lesson`.
+- Individual booking creates a standard `Lesson` with `isIndividual: true`, `studentId`, `date`, `startTime`, `endTime`, `teacherId`, using existing `saveLessonToStorage`.
+- Trial booking reuses existing `isTrial: boolean` flag on `Lesson` and `Student`.
+
+### R3. Strict Zero Premature Billing Invariant
+- Booking creation strictly incurs **zero billing debits** on student deposit or subscription.
+- Debits occur exclusively upon actual lesson attendance/completion (`conducted` status / attendance logging).
+
+### R4. Preservation of Existing Telegram Bot & Message Pipeline
+- The existing communication pipeline (`Родитель ↔ Telegram Bot ↔ Webhook ↔ CRM ChatBox ↔ Администратор`) must remain 100% operational.
+- Existing webhook (`POST /api/telegram/webhook`), parent identification (Tiers 1–3), interactions logging, and admin reply via `POST /api/telegram/send` must not be broken or altered.
+- **Screen 11 (Bot Integration)**: Reply Keyboard (`📅 Записаться на занятие`, `📆 Мои занятия`, `👨👩👧 Мои дети`, `💳 Оплаты`, `💬 Написать администратору`) with `web_app` inline button (`Открыть расписание`) launching `/mini-app`.
+
+### R5. Admin CRM Chat "Предложить занятие" (Screen 12)
+- In `src/components/telegram/TelegramChatBox.tsx`:
+- Add a button `Предложить занятие` allowing administrators to choose an open group lesson or individual slot and send an interactive booking card to the parent in Telegram with a direct link/button to book.
+
+### R6. Security, IDOR Protection & Race Condition Prevention
+- Never trust client-supplied `parentId` or `studentId`: verify that the student belongs to the parent in `student.parents`.
+- Server-side atomic validation of group capacity (`currentEnrolled < maxCapacity`) before enrollment.
+- Prevent double-booking if student is already enrolled in the lesson.
+- Individual slots collision checking using `collisionHelper.ts` within school hours (09:00–21:00).
+
+---
+
+## Acceptance Criteria
+
+### Telegram Chat Preservation
+- [ ] Parent can continue sending normal text messages to the bot.
+- [ ] Administrator continues receiving incoming messages in CRM `TelegramChatBox.tsx`.
+- [ ] Administrator can reply from CRM to Telegram.
+- [ ] Webhook route handles both standard text messages and bot keyboard commands.
+
+### Mini App Functionality
+- [ ] Opens seamlessly on mobile viewports (375–430px) without desktop CRM chrome.
+- [ ] Correctly resolves authenticated parent and shows only their children.
+- [ ] Allows booking group, individual, and trial lessons across active directions.
+- [ ] Shows real-time available capacity and blocks overbooking on the last seat.
+- [ ] Detects schedule conflicts for individual lessons using `collisionHelper.ts`.
+- [ ] Creates/updates standard `Lesson` without modifying student balances or deposits.
+- [ ] Successfully compiles with `npm run check` and `npm run build` (32+ routes clean).

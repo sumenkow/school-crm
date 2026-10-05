@@ -1008,3 +1008,224 @@ export function generateLessonsForGroupSchedule(params: GenerateGroupLessonsPara
 
   return { createdCount: createdLessons.length, lessons: createdLessons };
 }
+
+export interface BookGroupLessonParams {
+  lessonId: string;
+  studentId: string;
+  parentId: string;
+  isTrial?: boolean;
+}
+
+export interface BookIndividualLessonParams {
+  teacherId: string;
+  studentId: string;
+  parentId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  courseName: string;
+  topic?: string;
+  isTrial?: boolean;
+}
+
+export interface BookingResult {
+  success: boolean;
+  lesson?: FullLessonData;
+  error?: string;
+  code?: 'NOT_FOUND' | 'FULL' | 'ALREADY_BOOKED' | 'UNAUTHORIZED' | 'CONFLICT' | 'INTERNAL_ERROR';
+}
+
+/**
+ * Books a seat in an existing group lesson for a parent's child via Telegram Mini App.
+ * Strictly verifies parent-student relationship (IDOR guard), checks capacity,
+ * prevents double bookings, records timeline, and guarantees zero premature billing.
+ */
+export function bookGroupLesson(params: BookGroupLessonParams): BookingResult {
+  const { lessonId, studentId, parentId, isTrial } = params;
+
+  // 1. Parent -> Student ownership validation
+  const allStudents = getStoredStudents();
+  const student = allStudents.find((s) => s.id === studentId);
+  if (!student) {
+    return { success: false, error: 'Ученик не найден в системе', code: 'NOT_FOUND' };
+  }
+
+  const isParentAuthorized = student.parents?.some((p) => {
+    if (p.id === parentId) return true;
+    if (p.telegram && (p.telegram === parentId || p.telegram.replace(/^@/, '') === parentId.replace(/^@/, ''))) return true;
+    if (p.phone && p.phone === parentId) return true;
+    return false;
+  });
+
+  if (!isParentAuthorized) {
+    return { success: false, error: 'Доступ запрещен: ученик не привязан к вашему профилю', code: 'UNAUTHORIZED' };
+  }
+
+  // 2. Lesson existence and state validation
+  const lesson = getStoredLessonById(lessonId);
+  if (!lesson || lesson.status === 'cancelled' || (lesson.status as string) === 'rejected') {
+    return { success: false, error: 'Занятие не найдено или было отменено', code: 'NOT_FOUND' };
+  }
+
+  // 3. Double-booking check
+  const alreadyEnrolled = lesson.students?.some((s) => s.id === studentId);
+  if (alreadyEnrolled) {
+    return { success: false, error: 'Ученик уже записан на это занятие', code: 'ALREADY_BOOKED' };
+  }
+
+  // 4. Capacity validation (atomic)
+  let maxCapacity = (lesson as any).capacity;
+  if (!maxCapacity) {
+    try {
+      const { getStoredGroups } = require('./groupStorage');
+      const group = getStoredGroups().find((g: any) => g.id === lesson.groupId);
+      maxCapacity = group?.capacity || 8;
+    } catch {
+      maxCapacity = 8;
+    }
+  }
+
+  const currentCount = lesson.students?.length || 0;
+  if (currentCount >= maxCapacity) {
+    return { success: false, error: 'К сожалению, все места на это занятие уже заняты', code: 'FULL' };
+  }
+
+  // 5. Atomic enrollment mutation
+  const studentFullName = `${student.firstName} ${student.lastName}`.trim();
+  const updatedStudents = [
+    ...(lesson.students || []),
+    {
+      id: student.id,
+      name: studentFullName,
+      attendanceStatus: 'not_marked' as const,
+      isTrial: Boolean(isTrial),
+    },
+  ];
+
+  const parentName = student.parents?.find((p) => p.id === parentId || p.telegram === parentId)?.firstName || 'Родитель';
+
+  const updatedLesson: FullLessonData = {
+    ...lesson,
+    students: updatedStudents,
+    isBilled: false, // Strict zero premature billing invariant
+    timelineEvents: [
+      ...(lesson.timelineEvents || []),
+      {
+        id: `evt_book_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        author: `${parentName} (Telegram)`,
+        role: 'parent',
+        type: 'created',
+        comment: `Самостоятельная запись ученика ${studentFullName}${isTrial ? ' (пробное)' : ''} через Telegram Mini App`,
+      },
+    ],
+  };
+
+  saveLessonToStorage(updatedLesson, { bypassCollisionCheck: true });
+  return { success: true, lesson: updatedLesson };
+}
+
+/**
+ * Books an individual lesson slot with a selected teacher for a parent's child via Telegram Mini App.
+ * Validates availability using collisionHelper, prevents double bookings, and maintains zero billing.
+ */
+export function bookIndividualLesson(params: BookIndividualLessonParams): BookingResult {
+  const { teacherId, studentId, parentId, date, startTime, endTime, courseName, topic, isTrial } = params;
+
+  // 1. Parent -> Student ownership validation
+  const allStudents = getStoredStudents();
+  const student = allStudents.find((s) => s.id === studentId);
+  if (!student) {
+    return { success: false, error: 'Ученик не найден в системе', code: 'NOT_FOUND' };
+  }
+
+  const isParentAuthorized = student.parents?.some((p) => {
+    if (p.id === parentId) return true;
+    if (p.telegram && (p.telegram === parentId || p.telegram.replace(/^@/, '') === parentId.replace(/^@/, ''))) return true;
+    if (p.phone && p.phone === parentId) return true;
+    return false;
+  });
+
+  if (!isParentAuthorized) {
+    return { success: false, error: 'Доступ запрещен: ученик не привязан к вашему профилю', code: 'UNAUTHORIZED' };
+  }
+
+  // 2. Collision check for teacher and student
+  const existingLessons = getStoredLessons();
+  const collision = checkThreeWayCollision(existingLessons, {
+    teacherId,
+    studentId,
+    isIndividual: true,
+    date,
+    startTime,
+    endTime,
+  });
+
+  if (collision.hasConflict) {
+    return { success: false, error: collision.reason || 'Выбранное время уже занято', code: 'CONFLICT' };
+  }
+
+  // 3. Resolve teacher name
+  let teacherName = 'Преподаватель';
+  try {
+    const { INITIAL_TEACHERS } = require('./mockData');
+    const teacher = INITIAL_TEACHERS.find((t: any) => t.id === teacherId);
+    if (teacher) teacherName = teacher.name;
+  } catch {
+    // fallback
+  }
+
+  const studentFullName = `${student.firstName} ${student.lastName}`.trim();
+  const parentName = student.parents?.find((p) => p.id === parentId || p.telegram === parentId)?.firstName || 'Родитель';
+
+  const dateObj = new Date(date);
+  const crmDay = isNaN(dateObj.getTime()) ? 0 : (dateObj.getDay() + 6) % 7;
+  const dateFormatted = !isNaN(dateObj.getTime())
+    ? dateObj.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })
+    : date;
+
+  const newLessonId = `l_indiv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const newLesson: FullLessonData = {
+    id: newLessonId,
+    groupId: `indiv_${student.id}`,
+    groupName: `Индивидуально: ${studentFullName}`,
+    courseName,
+    teacherId,
+    teacherName,
+    date,
+    dateFormatted,
+    dayOfWeek: crmDay,
+    startTime,
+    endTime,
+    room: 'Онлайн (Zoom)',
+    onlineMeetingUrl: 'https://zoom.us/j/youeurope_school',
+    topic: topic || (isTrial ? 'Пробное индивидуальное занятие' : 'Индивидуальное занятие'),
+    status: 'planned',
+    isIndividual: true,
+    studentId: student.id,
+    isTrial: Boolean(isTrial),
+    isBilled: false,
+    students: [
+      {
+        id: student.id,
+        name: studentFullName,
+        attendanceStatus: 'not_marked',
+        isTrial: Boolean(isTrial),
+      },
+    ],
+    timelineEvents: [
+      {
+        id: `evt_book_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        author: `${parentName} (Telegram)`,
+        role: 'parent',
+        type: 'created',
+        comment: `Бронирование индивидуального слота ${date} ${startTime}–${endTime}${isTrial ? ' (пробное)' : ''} через Telegram Mini App`,
+      },
+    ],
+  };
+
+  saveLessonToStorage(newLesson, { bypassCollisionCheck: true });
+  return { success: true, lesson: newLesson };
+}
+
