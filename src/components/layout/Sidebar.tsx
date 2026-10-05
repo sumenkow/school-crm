@@ -198,6 +198,7 @@ const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: a
   const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    if (href === "/settings") return pathname === "/settings";
     return pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
   };
   const hasActive = section.items.some((i: any) => isActive(i.href));

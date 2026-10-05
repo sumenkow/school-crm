@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, School, Building2, Phone, Mail, MapPin, Clock, Check } from 'lucide-react';
+import { X, School, Building2, Phone, Mail, Clock, Check, Globe, Euro, FileText } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
 import { SchoolProfileData } from '@/lib/data/schoolSettingsStorage';
@@ -26,7 +26,15 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const cleanData: SchoolProfileData = {
+      ...formData,
+      schoolFormat: 'online',
+      currency: 'EUR',
+      branchName: 'Онлайн-школа',
+      address: 'Онлайн-обучение (дистанционно)',
+      roomsDescription: 'Интерактивные онлайн-комнаты',
+    };
+    onSave(cleanData);
     success('Данные профиля школы успешно обновлены');
     onClose();
   };
@@ -42,7 +50,7 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">Профиль школы и реквизиты</h2>
-              <p className="text-xs text-slate-500">Название, юридические данные, адреса и филиалы</p>
+              <p className="text-xs text-slate-500">Название, реквизиты, контакты и параметры Faktura</p>
             </div>
           </div>
           <button
@@ -55,6 +63,43 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs">
+          {/* Section: Онлайн-формат и валюта (Read-only System Badges) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700 shrink-0">
+                <Globe className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-900 text-xs">Формат:</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-blue-700 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-full">
+                    Онлайн-школа
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  Все занятия проводятся дистанционно (Zoom, Google Meet, интерактивные комнаты)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                <Euro className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-900 text-xs">Валюта системы:</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    EUR (€)
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  Все расчеты, тарифы и счета формируются строго в евро (€)
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Section: Основное */}
           <div className="space-y-3">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -80,7 +125,7 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
                   value={formData.slogan}
                   onChange={(e) => handleChange('slogan', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="Центр детского развития и робототехники"
+                  placeholder="Центр европейского образования и подготовки"
                 />
               </div>
             </div>
@@ -111,52 +156,12 @@ export function SchoolProfileModal({ isOpen, onClose, data, onSave }: SchoolProf
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                  placeholder="info@school.ru"
+                  placeholder="info@youeurope.eu"
                   required
                 />
               </div>
             </div>
           </div>
-
-            {/* Филиалы и помещения */}
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5 text-blue-600" />
-                Формат обучения и онлайн-классы
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Название филиала / платформы</label>
-                  <input
-                    type="text"
-                    value={formData.branchName}
-                    onChange={(e) => handleChange('branchName', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    placeholder="Онлайн-школа (Основной аккаунт)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Формат занятий</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    placeholder="Онлайн (Zoom, Google Meet, Miro)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Онлайн-комнаты / Классы</label>
-                  <input
-                    type="text"
-                    value={formData.roomsDescription}
-                    onChange={(e) => handleChange('roomsDescription', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-hidden"
-                    placeholder="Интерактивные онлайн-комнаты"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Режим работы и сетка календаря */}
             <div className="space-y-3 pt-2 border-t border-slate-100">

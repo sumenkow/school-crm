@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   FileSpreadsheet,
   Upload,
+  Download,
   CheckCircle2,
   AlertTriangle,
   Users,
@@ -36,6 +37,40 @@ export default function ExcelMigrationPage() {
     { row: 5, rawStudent: 'Попов Сергей', birth: '18.01.2010', rawParent: 'Попова Татьяна', phone: '+7 (999) 456-78-90', rawCourse: 'English Teens', group: 'Пн/Чт 18:45', pay: '7600', status: 'Оплачено', note: 'Хочет сдать ОГЭ' },
     { row: 6, rawStudent: 'Морозова Екатерина', birth: '04.09.2015', rawParent: 'Морозов Игорь', phone: '+7 (999) 567-89-01', rawCourse: 'Олимп. Математика', group: 'Чт 16:00', pay: '6800', status: 'Оплачено', note: 'Победитель олимпиады' },
   ];
+
+  const handleDownloadTemplate = () => {
+    const headers = [
+      'ФИО ребенка',
+      'Дата рождения',
+      'ФИО родителя',
+      'Телефон родителя',
+      'Курс / Направление',
+      'Группа',
+      'Оплата за месяц',
+      'Статус оплаты',
+      'Примечания',
+    ];
+    const rows = [
+      ['Смирнов Иван', '15.05.2010', 'Смирнова Ольга', '+7 (999) 123-45-67', 'Английский B1 Teens', 'Пн/Чт 18:45', '7600 руб', 'Оплачено', 'Цель — сдать B2'],
+      ['Смирнова Анна', '02.11.2014', 'Смирнова Ольга', '+7 (999) 123-45-67', 'Kids English', 'Вт/Пт 15:00', '7200 руб', 'Оплачено', 'Младшая сестра Ивана'],
+      ['Кузнецова Мария', '22.08.2011', 'Кузнецов Дмитрий', '+7 (999) 234-56-78', 'Робототехника Junior', 'Ср/Сб 15:00', '8400 руб', 'Долг', 'Обещал перевести в пятницу'],
+    ];
+
+    const csvContent = '\uFEFF' + [
+      headers.join(';'),
+      ...rows.map(r => r.join(';'))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'shablon_uchebnoi_bazy_shkoly.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const handleLoadDemoData = () => {
     setFileName('Школа_База_Учеников_2026_Legacy.xlsx');
@@ -115,19 +150,29 @@ export default function ExcelMigrationPage() {
             </p>
           </div>
 
-          <div className="max-w-md mx-auto border-2 border-dashed border-slate-200 rounded-2xl p-8 hover:border-blue-400 transition-colors cursor-pointer bg-slate-50/50">
+          <div
+            onClick={handleLoadDemoData}
+            className="max-w-md mx-auto border-2 border-dashed border-slate-200 rounded-2xl p-8 hover:border-blue-400 transition-colors cursor-pointer bg-slate-50/50"
+          >
             <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
             <p className="text-xs font-semibold text-slate-700">Перетащите Excel файл сюда или нажмите для выбора</p>
             <p className="text-[11px] text-slate-400 mt-1">До 50 МБ</p>
           </div>
 
-          <div className="pt-2">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              onClick={handleDownloadTemplate}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Скачать шаблон Excel
+            </button>
             <button
               onClick={handleLoadDemoData}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-all active:scale-98"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-blue-600 transition-all active:scale-98 cursor-pointer"
             >
-              <Sparkles className="h-4 w-4" />
-              Загрузить демонстрационную таблицу Excel школы →
+              <Sparkles className="h-4 w-4 text-blue-600" />
+              Загрузить демонстрационную таблицу школы →
             </button>
           </div>
         </div>

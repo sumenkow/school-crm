@@ -16,9 +16,9 @@ export interface SchoolProfileData {
   bik: string;
   phone: string;
   email: string;
-  branchName: string;
-  address: string;
-  roomsDescription: string;
+  branchName?: string;
+  address?: string;
+  roomsDescription?: string;
   workHours: string;
   workDays?: string;
   calendarStartHour?: number;
@@ -27,6 +27,7 @@ export interface SchoolProfileData {
   currency?: string;
   vatNote?: string;
   nextInvoiceNumber?: number;
+  schoolFormat?: 'online' | string;
 }
 
 export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
@@ -43,8 +44,8 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   bik: '1100',
   phone: '+7 9817155337',
   email: 'info@youeurope.eu',
-  branchName: 'Онлайн-школа (Основной аккаунт)',
-  address: 'Bratislava, Slovensko / Wien, Österreich',
+  branchName: 'Онлайн-школа',
+  address: 'Онлайн-обучение (дистанционно)',
   roomsDescription: 'Интерактивные онлайн-комнаты',
   workHours: 'Пн-Сб 09:00 - 21:00',
   workDays: 'Пн-Сб',
@@ -54,6 +55,7 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   currency: 'EUR',
   vatNote: 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH',
   nextInvoiceNumber: 20260342,
+  schoolFormat: 'online',
 };
 
 const SCHOOL_SETTINGS_STORAGE_KEY = 'crm_school_profile_v1';
@@ -74,10 +76,12 @@ export function getSchoolSettings(): SchoolProfileData {
       return {
         ...DEFAULT_SCHOOL_PROFILE,
         ...parsed,
-        calendarStartHour: parsed.calendarStartHour !== undefined && !isNaN(Number(parsed.calendarStartHour))
+        schoolFormat: 'online',
+        currency: 'EUR',
+        calendarStartHour: parsed.calendarStartHour != null && !isNaN(Number(parsed.calendarStartHour)) && Number(parsed.calendarStartHour) > 0
           ? Number(parsed.calendarStartHour)
           : DEFAULT_SCHOOL_PROFILE.calendarStartHour,
-        calendarEndHour: parsed.calendarEndHour !== undefined && !isNaN(Number(parsed.calendarEndHour))
+        calendarEndHour: parsed.calendarEndHour != null && !isNaN(Number(parsed.calendarEndHour)) && Number(parsed.calendarEndHour) > 0
           ? Number(parsed.calendarEndHour)
           : DEFAULT_SCHOOL_PROFILE.calendarEndHour,
       };

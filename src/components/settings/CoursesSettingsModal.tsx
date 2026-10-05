@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Plus, Check } from 'lucide-react';
+import Link from 'next/link';
+import { X, BookOpen, Plus, Check, ExternalLink } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { CourseDirectionRow } from '@/components/settings/CourseDirectionRow';
@@ -51,13 +52,21 @@ export function deduplicateCourseItems<T extends { id?: string; name?: string }>
 }
 
 function normalizeCourse(c: any): CourseSettingItem {
+  const eurPrice = c.monthlyPrice && String(c.monthlyPrice).includes('€')
+    ? c.monthlyPrice
+    : c.price_monthly
+    ? `${c.price_monthly} €`
+    : c.tariffs && c.tariffs[1]?.packagePrice
+    ? `${c.tariffs[1].packagePrice} €`
+    : '110 €';
+
   return {
     id: c.id || `course_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     name: c.name ?? '',
     ageGroup: c.ageGroup ?? c.target_age ?? '7-14 лет',
-    monthlyPrice: c.monthlyPrice ?? (c.price_monthly ? `${c.price_monthly} ₽` : '7 600 ₽'),
+    monthlyPrice: eurPrice,
     lessonDuration: c.lessonDuration ?? (c.lesson_duration_minutes ? `${c.lesson_duration_minutes} мин` : '60 мин'),
-    maxStudents: typeof c.maxStudents === 'number' ? c.maxStudents : (typeof c.max_students === 'number' ? c.max_students : 8),
+    maxStudents: typeof c.maxStudents === 'number' ? c.maxStudents : (typeof c.max_students === 'number' ? c.max_students : (typeof c.capacity === 'number' ? c.capacity : 8)),
     status: c.status === 'paused' || c.status === 'archived' || c.is_active === false || c.isActive === false ? 'paused' : 'active',
     color: c.color || '#4f46e5',
     is_active: c.status !== 'paused' && c.status !== 'archived' && c.is_active !== false && c.isActive !== false,
@@ -139,7 +148,7 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
       id: uniqueId,
       name: 'Новое направление',
       ageGroup: '7-14 лет',
-      monthlyPrice: '6 500 ₽',
+      monthlyPrice: '120 €',
       lessonDuration: '60 мин',
       maxStudents: 8,
       status: 'active',
@@ -256,20 +265,30 @@ export function CoursesSettingsModal({ isOpen, onClose, courses, onSave }: Cours
             <span className="text-xs font-semibold text-slate-600">
               Всего направлений: <strong>{displayCourses.length}</strong>
             </span>
-            {canManageCourses ? (
-              <button
-                type="button"
-                onClick={handleAddCourse}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+            <div className="flex items-center gap-2">
+              <Link
+                href="/admin/courses"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
-                <Plus className="h-3.5 w-3.5" />
-                Добавить направление
-              </button>
-            ) : (
-              <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                🔒 Добавление доступно только владельцу
-              </span>
-            )}
+                <span>Табличный реестр</span>
+                <ExternalLink className="h-3 w-3 text-slate-400" />
+              </Link>
+              {canManageCourses ? (
+                <button
+                  type="button"
+                  onClick={handleAddCourse}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Добавить направление
+                </button>
+              ) : (
+                <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                  🔒 Добавление доступно только владельцу
+                </span>
+              )}
+            </div>
           </div>
 
           {/* List of Courses */}

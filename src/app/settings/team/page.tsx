@@ -44,10 +44,10 @@ interface TeamMember {
 
 const ROLES_INFO = {
   owner: {
-    label: 'Владелец',
+    label: 'Владелец (Суперпользователь)',
     bg: 'var(--md-tertiary-container, #EEDCFF)',
     color: 'var(--md-on-tertiary-container, #28123C)',
-    desc: 'Полный доступ ко всем разделам, аналитике школы, настройкам и управлению сотрудниками.',
+    desc: 'Главный системный аккаунт школы. Полный доступ ко всем разделам, аналитике, настройкам и сотрудникам. Неотзываемые критические права доступа.',
   },
   admin: {
     label: 'Администратор',
@@ -555,6 +555,64 @@ function TeamContent() {
         </div>
       </div>
 
+      {/* Security Architecture: Application UI Roles vs PostgreSQL RLS Policies */}
+      <div
+        className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/60 via-purple-50/40 to-slate-50/70 p-4 sm:p-5 text-slate-800 shadow-xs"
+      >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="mt-0.5 rounded-xl bg-purple-600/10 p-2 text-purple-700 flex-shrink-0">
+              <Shield size={20} />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-sm text-slate-900">
+                  Архитектура безопасности: Разграничение прав UI и политик PostgreSQL RLS
+                </h3>
+                <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] font-medium text-purple-800">
+                  Безопасность данных
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed max-w-4xl">
+                В CRM действует двухуровневая модель безопасности: <strong>права прикладного интерфейса (UI Permissions)</strong> управляют доступностью разделов, форм и кнопок в CRM, а <strong>политики PostgreSQL RLS (Row-Level Security)</strong> непрерывно изолируют данные на уровне базы данных на сервере.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-indigo-100/70 pt-3">
+          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-900">
+              <Key size={14} className="text-purple-600" />
+              <span>Владелец (Суперпользователь)</span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
+              Системно защищенный superuser. Неотзываемые критические права: аккаунт невозможно заблокировать, понизить или удалить ни через UI, ни через API.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-900">
+              <Shield size={14} className="text-blue-600" />
+              <span>Прикладные роли UI (App Roles)</span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
+              Определяют доступ сотрудников к разделам: касса, лиды, аналитика, журнал групп. Настраиваются оперативно без пересборки схемы БД.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
+              <CheckCircle2 size={14} className="text-emerald-600" />
+              <span>Политики PostgreSQL RLS</span>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
+              Жесткий барьер на стороне СУБД: учителя физически изолированы от чужих учеников, финансовых проводок и системных настроек на уровне SQL-запросов.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Toolbar: Tabs, Search & View Switcher */}
       <div
         className="flex flex-col md:flex-row md:items-center justify-between gap-3 md-card-outlined"
@@ -766,8 +824,9 @@ function TeamContent() {
                                 {tData.role.split('(')[0]}
                               </p>
                             ) : isCurrent ? (
-                              <span className="md-label-small" style={{ color: 'var(--md-primary)' }}>
-                                Вы (Владелец)
+                              <span className="md-label-small flex items-center gap-1" style={{ color: 'var(--md-primary)' }}>
+                                <Shield size={12} className="text-purple-700" />
+                                <span>Вы (Владелец • Superuser)</span>
                               </span>
                             ) : (
                               <span className="md-body-small text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
@@ -780,6 +839,7 @@ function TeamContent() {
                       <td style={{ padding: '14px 20px' }}>
                         <span
                           className="md-label-small"
+                          title={m.role === 'owner' ? 'Главный системный аккаунт. Неотзываемые критические права доступа.' : undefined}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -793,7 +853,8 @@ function TeamContent() {
                         >
                           {m.role === 'teacher' && <GraduationCap size={12} />}
                           {m.role === 'admin' && <Shield size={12} />}
-                          {rInfo.label}
+                          {m.role === 'owner' && <Shield size={12} />}
+                          {m.role === 'owner' ? 'Владелец • Superuser' : rInfo.label}
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
@@ -932,7 +993,7 @@ function TeamContent() {
                           {m.full_name || 'Без имени'}
                         </h3>
                         <p className="text-xs text-slate-500 line-clamp-1">
-                          {m.role === 'teacher' ? (tData?.role ? tData.role.split('(')[0] : 'Преподаватель') : rInfo.label}
+                          {m.role === 'teacher' ? (tData?.role ? tData.role.split('(')[0] : 'Преподаватель') : (m.role === 'owner' ? 'Владелец • Суперпользователь' : rInfo.label)}
                         </p>
                       </div>
                     </div>
@@ -1285,14 +1346,20 @@ function TeamContent() {
               ) : (
                 <div
                   style={{
-                    padding: '10px 14px',
-                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '14px',
                     backgroundColor: 'var(--md-tertiary-container, #EEDCFF)',
                     color: 'var(--md-on-tertiary-container, #28123C)',
+                    border: '1px solid #d8b4fe',
                   }}
                 >
-                  <p className="md-label-medium">Роль: Владелец школы</p>
-                  <p className="md-body-small">Главный системный аккаунт. Роль владельца неизменна.</p>
+                  <div className="flex items-center gap-2">
+                    <Shield size={16} className="text-purple-700" />
+                    <p className="md-label-large font-bold">Роль: Владелец школы (Суперпользователь)</p>
+                  </div>
+                  <p className="md-body-small mt-1 text-xs leading-relaxed">
+                    Главный защищенный системный аккаунт. Неотзываемые критические права доступа: роль владельца неизменна, аккаунт не может быть заблокирован, понижен в правах или удален.
+                  </p>
                 </div>
               )}
 
@@ -1424,7 +1491,12 @@ function TeamContent() {
                     <Trash2 size={16} />
                     Удалить сотрудника
                   </button>
-                ) : <div />}
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-purple-800 font-medium bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
+                    <Shield size={14} className="text-purple-600" />
+                    <span>Аккаунт системно защищен от удаления</span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2">
                   <button

@@ -280,6 +280,20 @@ export async function DELETE(request: NextRequest) {
 
     const admin = createAdminClient();
 
+    // Verify target profile role to protect Owner from deletion
+    const { data: targetProfile } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', targetUserId)
+      .single();
+
+    if (targetProfile?.role === 'owner') {
+      return NextResponse.json(
+        { error: 'Невозможно удалить системный аккаунт Владельца школы' },
+        { status: 403 }
+      );
+    }
+
     // 1. Delete from auth.users (cascades)
     const { error: deleteAuthError } = await admin.auth.admin.deleteUser(targetUserId);
     if (deleteAuthError) {

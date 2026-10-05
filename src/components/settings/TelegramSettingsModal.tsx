@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   X,
   Send,
@@ -17,7 +18,10 @@ import {
   AlertTriangle,
   Globe,
   RefreshCw,
-  Zap
+  Zap,
+  Lock,
+  Key,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
@@ -36,6 +40,11 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [testSending, setTestSending] = useState(false);
   const [testStatus, setTestStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Dedicated token edit modal & backup state
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [newTokenInput, setNewTokenInput] = useState('');
+  const [lastBackupTime, setLastBackupTime] = useState('');
 
   // Webhook & Bot Identity
   const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string } | null>(null);
@@ -81,6 +90,7 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
       setAdminChatId(localStorage.getItem('crm_tg_admin_chat_id') || localStorage.getItem('crm_tg_chat_id') || '');
       setOwnerChatId(localStorage.getItem('crm_tg_owner_chat_id') || '');
       setNotificationsEnabled(localStorage.getItem('crm_tg_notifications_enabled') !== 'false');
+      setLastBackupTime(localStorage.getItem('school_crm_last_backup_time') || '');
       setTestStatus(null);
 
       const defaultWebhook = `${window.location.origin}/api/telegram/webhook`;
@@ -89,6 +99,45 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
       fetchBotSetupInfo(savedToken);
     }
   }, [isOpen]);
+
+  const getIntegrationStatus = () => {
+    if (!botToken.trim()) {
+      return {
+        status: 'not_configured',
+        icon: '🟠',
+        label: 'Не настроен',
+        desc: 'Токен Telegram-бота не указан. Уведомления и двусторонняя связь отключены.',
+        badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+      };
+    }
+    if (botInfo?.username) {
+      return {
+        status: 'connected',
+        icon: '🟢',
+        label: 'Подключён',
+        desc: `Бот @${botInfo.username} (${botInfo.first_name || 'Бот'}) успешно авторизован и готов к работе.`,
+        badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      };
+    }
+    if (testStatus?.type === 'error' || (!isCheckingBot && !botInfo && botToken.trim())) {
+      return {
+        status: 'error',
+        icon: '🔴',
+        label: 'Ошибка',
+        desc: 'Не удалось авторизовать бота. Проверьте правильность токена и доступность Telegram API.',
+        badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
+      };
+    }
+    return {
+      status: 'checking',
+      icon: '🟠',
+      label: 'Проверка...',
+      desc: 'Проверка подключения к Telegram Bot API...',
+      badgeClass: 'bg-slate-100 text-slate-800 border-slate-200',
+    };
+  };
+
+  const currentStatus = getIntegrationStatus();
 
   if (!isOpen) return null;
 
@@ -220,6 +269,31 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
 
         {/* Body */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1 text-xs">
+          {/* Integration Status Card: 🟢 Подключён / 🟠 Не настроен / 🔴 Ошибка */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/80">
+            <div className="flex items-center gap-3">
+              <div className="text-xl shrink-0 select-none">{currentStatus.icon}</div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900 text-xs">Статус интеграции:</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${currentStatus.badgeClass}`}>
+                    {currentStatus.label}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">{currentStatus.desc}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchBotSetupInfo(botToken)}
+              disabled={isCheckingBot}
+              className="text-[11px] text-slate-500 hover:text-blue-600 inline-flex items-center gap-1 cursor-pointer shrink-0 ml-2"
+            >
+              <RefreshCw size={11} className={isCheckingBot ? 'animate-spin' : ''} />
+              Обновить
+            </button>
+          </div>
+
           {/* Active Notifications Toggle */}
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50">
             <div className="flex items-center gap-3">
@@ -242,11 +316,12 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
             </label>
           </div>
 
-          {/* Bot Token Field */}
+          {/* Bot Token Field with Masking */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700">
-                Telegram Bot Token:
+              <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                <Lock size={13} className="text-slate-500" />
+                <span>Telegram Bot Token:</span>
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -268,16 +343,44 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
                 </a>
               </div>
             </div>
-            <input
-              type="text"
-              placeholder="Например: 789123456:AAFlk9-dK3j8X..."
-              value={botToken}
-              onChange={(e) => {
-                setBotToken(e.target.value);
-              }}
-              onBlur={() => fetchBotSetupInfo(botToken)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
-            />
+
+            {botToken ? (
+              <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white font-mono text-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="font-bold tracking-widest text-slate-800 text-sm">••••••••</span>
+                  <span className="text-[11px] font-sans text-slate-400">
+                    (Токен скрыт в целях безопасности)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTokenInput(botToken);
+                    setShowTokenModal(true);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Key size={13} />
+                  Изменить токен
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-xs">
+                <span className="text-slate-400">Токен не задан</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTokenInput('');
+                    setShowTokenModal(true);
+                  }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Key size={13} />
+                  Ввести токен
+                </button>
+              </div>
+            )}
+
             {botInfo?.username && (
               <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
                 <Bot size={13} className="text-emerald-600 shrink-0" />
@@ -487,6 +590,38 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
             </div>
           )}
 
+          {/* Google Sheets Synchronization Card */}
+          <div className="p-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet size={16} className="text-emerald-700 shrink-0" />
+                <span className="font-bold text-slate-900 text-xs">
+                  Синхронизация с Google Sheets & Резервные копии
+                </span>
+              </div>
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                Активно (03:00 UTC)
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-normal">
+              {lastBackupTime
+                ? `Последняя выгрузка данных школы: ${lastBackupTime}. Автоматическая архивация базы выполняется ежедневно.`
+                : 'Автоматическая синхронизация всех таблиц школы (ученики, группы, платежи) выполняется ежедневно в 03:00 UTC.'}
+            </p>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-slate-500">
+                Экспорт Excel и подключение Google Apps Script Webhook
+              </span>
+              <Link
+                href="/settings/backup"
+                onClick={onClose}
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Управление в Бэкапе →
+              </Link>
+            </div>
+          </div>
+
           {/* Help Box */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2 text-[11px] text-slate-600">
             <p className="font-bold text-slate-800 flex items-center gap-1.5">
@@ -533,6 +668,73 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
           </button>
         </div>
       </div>
+
+      {/* Dedicated "Изменить токен" Modal */}
+      {showTokenModal && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setShowTokenModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl border border-slate-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Key size={16} className="text-blue-600" />
+                Изменить токен Telegram-бота
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTokenModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Введите API токен бота, полученный у официального сервисного бота <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-blue-600 font-semibold underline">@BotFather</a> в Telegram.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700">API токен:</label>
+              <input
+                type="text"
+                placeholder="Например: 789123456:AAFlk9-dK3j8X..."
+                value={newTokenInput}
+                onChange={(e) => setNewTokenInput(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowTokenModal(false)}
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const trimmed = newTokenInput.trim();
+                  setBotToken(trimmed);
+                  localStorage.setItem('crm_tg_bot_token', trimmed);
+                  setShowTokenModal(false);
+                  fetchBotSetupInfo(trimmed);
+                  toast.success('Токен успешно обновлен');
+                }}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors cursor-pointer"
+              >
+                Сохранить токен
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

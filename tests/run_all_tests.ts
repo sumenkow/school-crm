@@ -3,16 +3,17 @@ import { runSyncAndDomainTests } from './ts06_to_ts09_sync_and_domain.test';
 import { runAnalyticsAndSecurityTests } from './ts10_to_ts15_analytics_and_security.test';
 import { runCoreAndSecurityTests } from './ts16_to_ts20_core_and_security.test';
 import { runAnalyticsAndE2ETests } from './ts21_to_ts26_analytics_and_e2e.test';
+import { runPhase8SettingsAdminTests } from '../src/__tests__/phase8_settings_admin.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
-  console.log('   Validating P0 & P1 Production Hardening (TS-01 through TS-26)');
+  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8 Tiers ');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 5;
+  const totalSuites = 6;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -35,9 +36,13 @@ async function main() {
     await runAnalyticsAndE2ETests();
     passedSuites++;
 
+    // Suite 6: Phase 8 Settings & Administration (Tiers 1–4)
+    await runPhase8SettingsAdminTests();
+    passedSuites++;
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log('\n===============================================================');
-    console.log(`✅ ALL 26 AUTOMATED TESTS PASSED SUCCESSFULLY (${passedSuites}/${totalSuites} suites in ${duration}s)`);
+    console.log(`✅ ALL TEST SUITES EXECUTED SUCCESSFULLY (${passedSuites}/${totalSuites} suites in ${duration}s)`);
     console.log('===============================================================');
     process.exit(0);
   } catch (error: any) {
