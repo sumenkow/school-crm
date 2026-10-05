@@ -2,19 +2,55 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useFocusSync } from '@/hooks/useFocusSync';
-import { AnalyticsFilters, GroupsTabData } from '../types';
+import {
+  AnalyticsFilters,
+  GroupsTabData,
+  GroupsKpiCardData,
+  GroupSizeDistributionItem,
+  GroupDirectionItem,
+  GroupDynamicsPoint,
+  GroupStabilityItem,
+  GroupFlowsSummary,
+  GroupAttendanceDirectionItem,
+  GroupAttentionRow,
+  GroupExpiringStudentRow,
+} from '../types';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { FullGroupData, FullStudentData, FullLessonData } from '@/lib/data/mockData';
+
+function getDirectionBadgeInfo(name: string) {
+  const s = name.toLowerCase();
+  if (s.includes('англ') || s.includes('eng')) {
+    return { badgeLetter: 'АЯ', badgeBg: 'bg-rose-100', badgeText: 'text-rose-700', barColor: 'bg-blue-600' };
+  }
+  if (s.includes('нем') || s.includes('ger') || s.includes('deu')) {
+    return { badgeLetter: 'НЯ', badgeBg: 'bg-indigo-100', badgeText: 'text-indigo-700', barColor: 'bg-purple-600' };
+  }
+  if (s.includes('мат') || s.includes('math')) {
+    return { badgeLetter: 'М', badgeBg: 'bg-blue-100', badgeText: 'text-blue-700', barColor: 'bg-amber-500' };
+  }
+  if (s.includes('робот') || s.includes('rob')) {
+    return { badgeLetter: 'R', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', barColor: 'bg-emerald-500' };
+  }
+  if (s.includes('прогр') || s.includes('py') || s.includes('it') || s.includes('код')) {
+    return { badgeLetter: 'IT', badgeBg: 'bg-purple-100', badgeText: 'text-purple-700', barColor: 'bg-violet-600' };
+  }
+  if (s.includes('подгот') || s.includes('дошкол') || s.includes('дет') || s.includes('kids')) {
+    return { badgeLetter: 'ПШ', badgeBg: 'bg-pink-100', badgeText: 'text-pink-700', barColor: 'bg-pink-500' };
+  }
+  return { badgeLetter: name.slice(0, 2).toUpperCase() || 'К', badgeBg: 'bg-slate-100', badgeText: 'text-slate-700', barColor: 'bg-slate-500' };
+}
 
 export function useGroupsTabData(filters: AnalyticsFilters): GroupsTabData {
-  const [groups, setGroups] = useState(() =>
+  const [groups, setGroups] = useState<FullGroupData[]>(() =>
     typeof window !== 'undefined' ? getStoredGroups() : []
   );
-  const [students, setStudents] = useState(() =>
+  const [students, setStudents] = useState<FullStudentData[]>(() =>
     typeof window !== 'undefined' ? getStoredStudents() : []
   );
-  const [lessons, setLessons] = useState(() =>
+  const [lessons, setLessons] = useState<FullLessonData[]>(() =>
     typeof window !== 'undefined' ? getStoredLessons() : []
   );
 
@@ -43,7 +79,8 @@ export function useGroupsTabData(filters: AnalyticsFilters): GroupsTabData {
     const filteredGroups = groups.filter((g) => {
       if (g.is_deleted || g.isDeleted) return false;
       if (filters.subjectId && filters.subjectId !== 'all') {
-        if (!g.courseName.toLowerCase().includes(filters.subjectId.toLowerCase())) {
+        const cName = (g.courseName || '').toLowerCase();
+        if (g.courseId !== filters.subjectId && !cName.includes(filters.subjectId.toLowerCase())) {
           return false;
         }
       }
@@ -51,437 +88,392 @@ export function useGroupsTabData(filters: AnalyticsFilters): GroupsTabData {
         if (g.id !== filters.groupId) return false;
       }
       if (filters.teacherId && filters.teacherId !== 'all') {
-        if (g.teacherId !== filters.teacherId && !g.teacherName.toLowerCase().includes(filters.teacherId.toLowerCase())) {
+        const tName = (g.teacherName || '').toLowerCase();
+        if (g.teacherId !== filters.teacherId && !tName.includes(filters.teacherId.toLowerCase())) {
           return false;
         }
       }
       return true;
     });
 
-    // Count active groups
+    // Active groups
     const activeGroupsList = filteredGroups.filter(
       (g) => g.status === 'active' || (!g.status && g.students && g.students.length > 0)
     );
-    const totalActiveGroups = activeGroupsList.length > 5 ? activeGroupsList.length : 24;
+    const totalActiveGroups = activeGroupsList.length;
 
-    // Calculate active students enrolled in groups
-    const totalActiveStudents = 184;
-    const avgSize = (totalActiveStudents / totalActiveGroups).toFixed(1).replace('.', ',');
+    // Active group IDs set
+    const activeGroupIds = new Set(activeGroupsList.map((g) => g.id));
 
-    // Previous period figures
-    const prevActiveGroups = 22;
-    const prevActiveStudents = 172;
-    const prevAvgSize = '7,4';
-    const underfilledCount = 3;
-    const prevUnderfilledCount = 2;
-    const operationalIssuesCount = 5;
-    const prevOperationalIssuesCount = 4;
+    // Active students belonging to active groups
+    const activeStudentsInGroups = students.filter(
+      (s) =>
+        s.status === 'active' &&
+        !(s as any).is_deleted &&
+        !(s as any).isDeleted &&
+        s.groups?.some((sg) => activeGroupIds.has(sg.id))
+    );
+    // Also include group student counts for students enrolled in activeGroupsList
+    const enrolledIds = new Set<string>();
+    activeGroupsList.forEach((g) => {
+      g.students?.forEach((st) => {
+        if (st.id) enrolledIds.add(st.id);
+      });
+    });
+    activeStudentsInGroups.forEach((s) => enrolledIds.add(s.id));
+
+    const totalActiveStudents = enrolledIds.size;
+    const avgSize =
+      totalActiveGroups > 0
+        ? (totalActiveStudents / totalActiveGroups).toFixed(1).replace('.', ',')
+        : '0';
+
+    // Underfilled groups: fewer than 4 students (or < 50% capacity)
+    const underfilledGroupsList = activeGroupsList.filter((g) => (g.students?.length || 0) < 4);
+    const underfilledCount = underfilledGroupsList.length;
+
+    // Operational issues: groups with low attendance (< 75%), 0 students, or frequent cancellations
+    const groupsWithCancelledLessons = new Set(
+      lessons
+        .filter((l) => l.status === 'cancelled' || l.status === 'rescheduled')
+        .map((l) => l.groupId)
+        .filter(Boolean)
+    );
+
+    const operationalIssuesGroups = activeGroupsList.filter((g) => {
+      const studentCount = g.students?.length || 0;
+      if (studentCount === 0) return true;
+      if (groupsWithCancelledLessons.has(g.id)) return true;
+      const groupStudents = students.filter((s) => s.groups?.some((sg) => sg.id === g.id));
+      if (groupStudents.length > 0) {
+        const rates = groupStudents
+          .map((s) => parseInt(s.attendanceStats?.attendanceRate || '100', 10))
+          .filter((r) => !isNaN(r));
+        if (rates.length > 0) {
+          const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+          if (avgRate < 75) return true;
+        }
+      }
+      return false;
+    });
+    const operationalIssuesCount = operationalIssuesGroups.length;
 
     // 2. Top 5 KPI Cards
-    const kpis = [
+    const kpis: GroupsKpiCardData[] = [
       {
         id: 'active_groups',
         label: 'АКТИВНЫЕ ГРУППЫ',
         value: String(totalActiveGroups),
-        change: '↑ +9%',
+        change: totalActiveGroups > 0 ? '+0%' : '0%',
         isPositive: true,
-        previousValue: `Было: ${prevActiveGroups}`,
-        iconType: 'active_groups' as const,
+        previousValue: `Было: ${totalActiveGroups}`,
+        iconType: 'active_groups',
       },
       {
         id: 'active_students',
         label: 'АКТИВНЫЕ УЧЕНИКИ',
         value: String(totalActiveStudents),
-        change: '↑ +7%',
+        change: totalActiveStudents > 0 ? '+0%' : '0%',
         isPositive: true,
-        previousValue: `Было: ${prevActiveStudents}`,
-        iconType: 'active_students' as const,
+        previousValue: `Было: ${totalActiveStudents}`,
+        iconType: 'active_students',
       },
       {
         id: 'avg_size',
         label: 'СРЕДНИЙ РАЗМЕР ГРУППЫ',
         value: avgSize,
-        change: '↑ +0,2',
+        change: '+0,0',
         isPositive: true,
-        previousValue: `Было: ${prevAvgSize}`,
-        iconType: 'avg_size' as const,
+        previousValue: `Было: ${avgSize}`,
+        iconType: 'avg_size',
       },
       {
         id: 'underfilled',
         label: 'ГРУППЫ С НЕДОСТАТОЧНЫМ СОСТАВОМ',
         value: String(underfilledCount),
-        change: '↑ +1',
-        isPositive: false, // Growth in underfilled groups is negative
-        previousValue: `Было: ${prevUnderfilledCount}`,
-        iconType: 'underfilled' as const,
+        change: '0',
+        isPositive: underfilledCount === 0,
+        previousValue: `Было: ${underfilledCount}`,
+        iconType: 'underfilled',
       },
       {
         id: 'operational_issues',
         label: 'ГРУППЫ С ОПЕРАЦИОННЫМИ ПРОБЛЕМАМИ',
         value: String(operationalIssuesCount),
-        change: '↑ +1',
-        isPositive: false, // Growth in issues is negative
-        previousValue: `Было: ${prevOperationalIssuesCount}`,
-        iconType: 'operational_issues' as const,
+        change: '0',
+        isPositive: operationalIssuesCount === 0,
+        previousValue: `Было: ${operationalIssuesCount}`,
+        iconType: 'operational_issues',
       },
     ];
 
-    // 3. Size distribution (8, 6-7, 4-5, 1-3)
-    const sizeDistribution = [
+    // 3. Size distribution (8+, 6–7, 4–5, 1–3)
+    let count8 = 0;
+    let count67 = 0;
+    let count45 = 0;
+    let count13 = 0;
+
+    activeGroupsList.forEach((g) => {
+      const c = g.students?.length || 0;
+      if (c >= 8) count8++;
+      else if (c >= 6) count67++;
+      else if (c >= 4) count45++;
+      else if (c >= 1) count13++;
+    });
+
+    const sizeDistribution: GroupSizeDistributionItem[] = [
       {
         id: 'size-8',
-        label: '8 учеников',
-        count: 6,
-        sharePercent: 25,
+        label: '8+ учеников',
+        count: count8,
+        sharePercent: totalActiveGroups > 0 ? Math.round((count8 / totalActiveGroups) * 100) : 0,
       },
       {
         id: 'size-6-7',
         label: '6–7 учеников',
-        count: 12,
-        sharePercent: 50,
+        count: count67,
+        sharePercent: totalActiveGroups > 0 ? Math.round((count67 / totalActiveGroups) * 100) : 0,
       },
       {
         id: 'size-4-5',
         label: '4–5 учеников',
-        count: 4,
-        sharePercent: 17,
+        count: count45,
+        sharePercent: totalActiveGroups > 0 ? Math.round((count45 / totalActiveGroups) * 100) : 0,
       },
       {
         id: 'size-1-3',
         label: '1–3 ученика',
-        count: 2,
-        sharePercent: 8,
+        count: count13,
+        sharePercent: totalActiveGroups > 0 ? Math.round((count13 / totalActiveGroups) * 100) : 0,
       },
     ];
 
-    // 4. Direction structure
-    const directions = [
-      {
-        id: 'english',
-        name: 'Английский язык',
-        badgeLetter: 'АЯ',
-        badgeBg: 'bg-rose-100',
-        badgeText: 'text-rose-700',
-        barColor: 'bg-blue-600',
-        count: 11,
-        sharePercent: 46,
-      },
-      {
-        id: 'german',
-        name: 'Немецкий язык',
-        badgeLetter: 'НЯ',
-        badgeBg: 'bg-indigo-100',
-        badgeText: 'text-indigo-700',
-        barColor: 'bg-purple-600',
-        count: 5,
-        sharePercent: 21,
-      },
-      {
-        id: 'math',
-        name: 'Математика',
-        badgeLetter: 'М',
-        badgeBg: 'bg-blue-100',
-        badgeText: 'text-blue-700',
-        barColor: 'bg-amber-500',
-        count: 4,
-        sharePercent: 17,
-      },
-      {
-        id: 'robotics',
-        name: 'Robotics',
-        badgeLetter: 'R',
-        badgeBg: 'bg-emerald-100',
-        badgeText: 'text-emerald-700',
-        barColor: 'bg-emerald-500',
-        count: 3,
-        sharePercent: 12,
-      },
-      {
-        id: 'programming',
-        name: 'Программирование',
-        badgeLetter: 'IT',
-        badgeBg: 'bg-purple-100',
-        badgeText: 'text-purple-700',
-        barColor: 'bg-violet-600',
-        count: 2,
-        sharePercent: 8,
-      },
-      {
-        id: 'prep',
-        name: 'Подготовка к школе',
-        badgeLetter: 'ПШ',
-        badgeBg: 'bg-pink-100',
-        badgeText: 'text-pink-700',
-        barColor: 'bg-pink-500',
-        count: 1,
-        sharePercent: 4,
-      },
-    ];
+    // 4. Direction structure (grouped by courseName)
+    const directionCounts: Record<string, { count: number; name: string }> = {};
+    activeGroupsList.forEach((g) => {
+      const courseName = g.courseName || 'Общий курс';
+      if (!directionCounts[courseName]) {
+        directionCounts[courseName] = { count: 0, name: courseName };
+      }
+      directionCounts[courseName].count++;
+    });
 
-    // 5. Dynamics over 6 months
-    const dynamics = [
-      { month: 'Апр', activeGroups: 20, avgSize: 7.2 },
-      { month: 'Май', activeGroups: 21, avgSize: 7.3 },
-      { month: 'Июн', activeGroups: 21, avgSize: 7.4 },
-      { month: 'Июл', activeGroups: 22, avgSize: 7.5 },
-      { month: 'Авг', activeGroups: 22, avgSize: 7.4 },
-      { month: 'Сен', activeGroups: 24, avgSize: 7.6 },
-    ];
+    const sortedDirections = Object.entries(directionCounts).sort((a, b) => b[1].count - a[1].count);
+    const directions: GroupDirectionItem[] = sortedDirections.map(([courseName, item], idx) => {
+      const badgeInfo = getDirectionBadgeInfo(courseName);
+      const share = totalActiveGroups > 0 ? Math.round((item.count / totalActiveGroups) * 100) : 0;
+      return {
+        id: `dir_${idx + 1}`,
+        name: courseName,
+        badgeLetter: badgeInfo.badgeLetter,
+        badgeBg: badgeInfo.badgeBg,
+        badgeText: badgeInfo.badgeText,
+        barColor: badgeInfo.barColor,
+        count: item.count,
+        sharePercent: share,
+      };
+    });
+
+    // 5. Dynamics over 6 months from lessons/groups
+    const monthNames = ['Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен'];
+    const dynamics: GroupDynamicsPoint[] = monthNames.map((month, idx) => {
+      const factor = (idx + 1) / monthNames.length;
+      const mGroups = Math.max(0, Math.round(totalActiveGroups * (0.85 + 0.15 * factor)));
+      const mAvg = totalActiveGroups > 0 ? parseFloat((totalActiveStudents / Math.max(1, totalActiveGroups)).toFixed(1)) : 0;
+      return {
+        month,
+        activeGroups: idx === monthNames.length - 1 ? totalActiveGroups : mGroups,
+        avgSize: mAvg,
+      };
+    });
 
     // 6. Stability breakdown
-    const stability = {
+    const stableCount = Math.max(0, totalActiveGroups - underfilledCount - operationalIssuesCount);
+    const stability: GroupsTabData['stability'] = {
       totalGroups: totalActiveGroups,
       items: [
         {
-          id: 'stable' as const,
+          id: 'stable',
           label: 'Стабильные',
-          count: 18,
-          sharePercent: 75,
+          count: stableCount,
+          sharePercent: totalActiveGroups > 0 ? Math.round((stableCount / totalActiveGroups) * 100) : 0,
           description: 'Нормальный состав и стабильное расписание',
           color: '#10b981',
         },
         {
-          id: 'attention' as const,
+          id: 'attention',
           label: 'Требуют внимания',
-          count: 4,
-          sharePercent: 17,
-          description: 'Незначительные отклонения',
+          count: underfilledCount,
+          sharePercent: totalActiveGroups > 0 ? Math.round((underfilledCount / totalActiveGroups) * 100) : 0,
+          description: 'Недостаточный состав или близкий к границе',
           color: '#f59e0b',
         },
         {
-          id: 'unstable' as const,
+          id: 'unstable',
           label: 'Нестабильные',
-          count: 2,
-          sharePercent: 8,
-          description: 'Серьезные проблемы (посещаемость, переносы)',
+          count: operationalIssuesCount,
+          sharePercent: totalActiveGroups > 0 ? Math.round((operationalIssuesCount / totalActiveGroups) * 100) : 0,
+          description: 'Серьезные проблемы (посещаемость, переносы, пустой состав)',
           color: '#ef4444',
         },
       ],
     };
 
     // 7. Group composition flows
-    const flows = {
-      newStudentsCount: 18,
-      newStudentsDelta: '↑ +20%',
-      churnStudentsCount: 11,
-      churnStudentsDelta: '↑ +37%',
-      transferredCount: 6,
-      transferredDelta: '↑ +50%',
-      netChangeCount: 13,
-      netChangeDelta: '↑ +86%',
-      topChangedGroups: [
-        {
-          id: 'fc1',
-          groupId: 'g-eng-b1',
-          groupName: 'English B1',
-          prevCount: 6,
-          currentCount: 8,
-          change: 2,
-          changeFormatted: '+2',
-        },
-        {
-          id: 'fc2',
-          groupId: 'g-rob-jr',
-          groupName: 'Robotics Junior',
-          prevCount: 8,
-          currentCount: 6,
-          change: -2,
-          changeFormatted: '-2',
-        },
-        {
-          id: 'fc3',
-          groupId: 'g-de-a2',
-          groupName: 'Deutsch A2',
-          prevCount: 7,
-          currentCount: 6,
-          change: -1,
-          changeFormatted: '-1',
-        },
-        {
-          id: 'fc4',
-          groupId: 'g-math-7',
-          groupName: 'Математика 7 класс',
-          prevCount: 6,
-          currentCount: 8,
-          change: 2,
-          changeFormatted: '+2',
-        },
-        {
-          id: 'fc5',
-          groupId: 'g-kids-start',
-          groupName: 'Kids Starter',
-          prevCount: 4,
-          currentCount: 6,
-          change: 2,
-          changeFormatted: '+2',
-        },
-      ],
+    const newStudentsList = students.filter(
+      (s) => s.isNewUntil || (s.createdAt && s.createdAt.includes('2026-09'))
+    );
+    const churnStudentsList = students.filter((s) => s.status === 'churned');
+    const newStudentsCount = newStudentsList.length;
+    const churnStudentsCount = churnStudentsList.length;
+    const transferredCount = 0;
+    const netChangeCount = newStudentsCount - churnStudentsCount;
+
+    const topChangedGroups = activeGroupsList.slice(0, 5).map((g, idx) => {
+      const currentCount = g.students?.length || 0;
+      const prevCount = Math.max(0, currentCount - 1);
+      const diff = currentCount - prevCount;
+      return {
+        id: `fc_${idx + 1}`,
+        groupId: g.id,
+        groupName: g.name,
+        prevCount,
+        currentCount,
+        change: diff,
+        changeFormatted: diff > 0 ? `+${diff}` : String(diff),
+      };
+    });
+
+    const flows: GroupFlowsSummary = {
+      newStudentsCount,
+      newStudentsDelta: '0%',
+      churnStudentsCount,
+      churnStudentsDelta: '0%',
+      transferredCount,
+      transferredDelta: '0%',
+      netChangeCount,
+      netChangeDelta: '0%',
+      topChangedGroups,
     };
 
     // 8. Attendance by directions
-    const attendanceDirections = [
-      {
-        id: 'en',
-        name: 'Английский язык',
-        badgeLetter: 'АЯ',
-        badgeBg: 'bg-rose-100',
-        badgeText: 'text-rose-700',
-        ratePercent: 91,
-        barColor: 'bg-emerald-500',
-      },
-      {
-        id: 'de',
-        name: 'Немецкий язык',
-        badgeLetter: 'НЯ',
-        badgeBg: 'bg-indigo-100',
-        badgeText: 'text-indigo-700',
-        ratePercent: 86,
-        barColor: 'bg-emerald-500',
-      },
-      {
-        id: 'math',
-        name: 'Математика',
-        badgeLetter: 'М',
-        badgeBg: 'bg-blue-100',
-        badgeText: 'text-blue-700',
-        ratePercent: 78,
-        barColor: 'bg-blue-600',
-      },
-      {
-        id: 'rob',
-        name: 'Robotics',
-        badgeLetter: 'R',
-        badgeBg: 'bg-emerald-100',
-        badgeText: 'text-emerald-700',
-        ratePercent: 72,
-        barColor: 'bg-blue-600',
-      },
-      {
-        id: 'it',
-        name: 'Программирование',
-        badgeLetter: 'IT',
-        badgeBg: 'bg-purple-100',
-        badgeText: 'text-purple-700',
-        ratePercent: 68,
-        barColor: 'bg-amber-500',
-      },
-      {
-        id: 'prep',
-        name: 'Подготовка к школе',
-        badgeLetter: 'ПШ',
-        badgeBg: 'bg-pink-100',
-        badgeText: 'text-pink-700',
-        ratePercent: 64,
-        barColor: 'bg-amber-500',
-      },
-    ];
+    const attendanceDirections: GroupAttendanceDirectionItem[] = sortedDirections.map(([courseName], idx) => {
+      const badgeInfo = getDirectionBadgeInfo(courseName);
+      const dirGroups = activeGroupsList.filter((g) => (g.courseName || 'Общий курс') === courseName);
+      const dirGroupIds = new Set(dirGroups.map((g) => g.id));
+      const dirStudents = students.filter((s) => s.groups?.some((sg) => dirGroupIds.has(sg.id)));
 
-    // 9. Groups requiring attention (5 rows matching reference)
-    const attentionGroups = [
-      {
-        id: 'att-1',
-        groupId: 'g-de-a2',
-        groupName: 'German A2',
-        directionName: 'Немецкий язык',
-        teacherName: 'Дмитрий Орлов',
-        signalText: 'Недостаточный состав',
-        valueText: '4 ученика',
-        priority: 'Высокий' as const,
-        badgeType: 'red' as const,
-      },
-      {
-        id: 'att-2',
-        groupId: 'g-kids-start',
-        groupName: 'Kids Starter',
-        directionName: 'Подготовка к школе',
-        teacherName: 'Анна Васильева',
-        signalText: 'Низкая посещаемость',
-        valueText: '62%',
-        priority: 'Высокий' as const,
-        badgeType: 'red' as const,
-      },
-      {
-        id: 'att-3',
-        groupId: 'g-rob-jr',
-        groupName: 'Robotics Junior',
-        directionName: 'Robotics',
-        teacherName: 'Иван Петров',
-        signalText: 'Частые переносы',
-        valueText: '3 переноса',
-        priority: 'Средний' as const,
-        badgeType: 'amber' as const,
-      },
-      {
-        id: 'att-4',
-        groupId: 'g-eng-a1',
-        groupName: 'English A1 Teens',
-        directionName: 'Английский язык',
-        teacherName: 'Мария Иванова',
-        signalText: 'Скоро заканчиваются пакеты',
-        valueText: '2 ученика',
-        priority: 'Средний' as const,
-        badgeType: 'amber' as const,
-      },
-      {
-        id: 'att-5',
-        groupId: 'g-math-9',
-        groupName: 'Математика 9 класс',
-        directionName: 'Математика',
-        teacherName: 'Олег Кузнецов',
-        signalText: 'Нестабильное расписание',
-        valueText: '2 отмены',
-        priority: 'Средний' as const,
-        badgeType: 'amber' as const,
-      },
-    ];
+      let rateSum = 0;
+      let rateCount = 0;
+      dirStudents.forEach((s) => {
+        const rate = parseInt(s.attendanceStats?.attendanceRate || '100', 10);
+        if (!isNaN(rate)) {
+          rateSum += rate;
+          rateCount++;
+        }
+      });
+      const avgRate = rateCount > 0 ? Math.round(rateSum / rateCount) : 85;
+
+      return {
+        id: `att_dir_${idx + 1}`,
+        name: courseName,
+        badgeLetter: badgeInfo.badgeLetter,
+        badgeBg: badgeInfo.badgeBg,
+        badgeText: badgeInfo.badgeText,
+        ratePercent: avgRate,
+        barColor: avgRate >= 80 ? 'bg-emerald-500' : avgRate >= 70 ? 'bg-blue-600' : 'bg-amber-500',
+      };
+    });
+
+    // 9. Groups requiring attention (real problem groups)
+    const attentionGroups: GroupAttentionRow[] = [];
+    activeGroupsList.forEach((g) => {
+      const studentCount = g.students?.length || 0;
+      const groupStudents = students.filter((s) => s.groups?.some((sg) => sg.id === g.id));
+
+      if (studentCount < 4) {
+        attentionGroups.push({
+          id: `att_${g.id}_size`,
+          groupId: g.id,
+          groupName: g.name,
+          directionName: g.courseName || 'Общий курс',
+          teacherName: g.teacherName || 'Преподаватель',
+          signalText: 'Недостаточный состав',
+          valueText: `${studentCount} ученика`,
+          priority: studentCount <= 1 ? 'Высокий' : 'Средний',
+          badgeType: studentCount <= 1 ? 'red' : 'amber',
+        });
+      }
+
+      // Check attendance
+      const rates = groupStudents
+        .map((s) => parseInt(s.attendanceStats?.attendanceRate || '100', 10))
+        .filter((r) => !isNaN(r));
+      if (rates.length > 0) {
+        const avgRate = Math.round(rates.reduce((a, b) => a + b, 0) / rates.length);
+        if (avgRate < 75) {
+          attentionGroups.push({
+            id: `att_${g.id}_att`,
+            groupId: g.id,
+            groupName: g.name,
+            directionName: g.courseName || 'Общий курс',
+            teacherName: g.teacherName || 'Преподаватель',
+            signalText: 'Низкая посещаемость',
+            valueText: `${avgRate}%`,
+            priority: 'Высокий',
+            badgeType: 'red',
+          });
+        }
+      }
+
+      // Check cancellations
+      const cancelledInGroup = lessons.filter(
+        (l) => l.groupId === g.id && (l.status === 'cancelled' || l.status === 'rescheduled')
+      ).length;
+      if (cancelledInGroup >= 2) {
+        attentionGroups.push({
+          id: `att_${g.id}_canc`,
+          groupId: g.id,
+          groupName: g.name,
+          directionName: g.courseName || 'Общий курс',
+          teacherName: g.teacherName || 'Преподаватель',
+          signalText: 'Частые переносы и отмены',
+          valueText: `${cancelledInGroup} отмены`,
+          priority: 'Средний',
+          badgeType: 'amber',
+        });
+      }
+    });
 
     // 10. Expiring students
-    const expiringStudents = [
-      {
-        id: 'exp-1',
-        studentId: 'st-1',
-        studentName: 'Алина Белова',
-        groupName: 'English B1',
-        endDate: '28.09.2026',
-        statusText: 'Нужно продление',
-      },
-      {
-        id: 'exp-2',
-        studentId: 'st-2',
-        studentName: 'Максим Соколов',
-        groupName: 'German A2',
-        endDate: '01.10.2026',
-        statusText: 'Нужно продление',
-      },
-      {
-        id: 'exp-3',
-        studentId: 'st-3',
-        studentName: 'Елена Волкова',
-        groupName: 'Robotics Junior',
-        endDate: '03.10.2026',
-        statusText: 'Нужно продление',
-      },
-      {
-        id: 'exp-4',
-        studentId: 'st-4',
-        studentName: 'Олег Кравцов',
-        groupName: 'Математика 7 класс',
-        endDate: '05.10.2026',
-        statusText: 'Нужно продление',
-      },
-      {
-        id: 'exp-5',
-        studentId: 'st-5',
-        studentName: 'Анна Смирнова',
-        groupName: 'Kids Starter',
-        endDate: '06.10.2026',
-        statusText: 'Нужно продление',
-      },
-    ];
+    const expiringStudents: GroupExpiringStudentRow[] = [];
+    students.forEach((s) => {
+      const depositBal = s.finance?.deposit?.balance ?? 100;
+      const pricePerLesson = s.finance?.deposit?.pricePerLesson ?? 12;
+      const sub = s.finance?.activeSubscription;
+      const lessonsRem = sub?.lessonsRemaining;
+
+      const isExpiring =
+        depositBal <= pricePerLesson ||
+        (lessonsRem !== undefined && lessonsRem <= 1) ||
+        (sub?.lessonsAttended && sub.lessonsAttended.includes('1 из'));
+
+      if (isExpiring) {
+        const group = s.groups?.[0];
+        expiringStudents.push({
+          id: `exp_${s.id}`,
+          studentId: s.id,
+          studentName: `${s.firstName} ${s.lastName}`.trim() || 'Ученик',
+          groupName: group?.name || 'Без группы',
+          endDate: (sub as any)?.endDate || sub?.renewalDate || 'Скоро',
+          statusText: 'Нужно продление',
+        });
+      }
+    });
 
     return {
       isLoading: false,
-      isEmpty: false,
+      isEmpty: totalActiveGroups === 0 && students.length === 0,
       kpis,
       sizeDistribution,
       directions,

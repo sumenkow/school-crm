@@ -114,7 +114,7 @@ export default function SendHomeworkModal({
                 parents: [],
                 groups: [],
                 attendanceStats: { totalLessons: 0, presentCount: 0, absentCount: 0, rescheduledCount: 0, attendanceRate: '100%', history: [] },
-                finance: { activeSubscription: null as any, deposit: { balance: 0, balanceFormatted: '0 ₽', currency: 'RUB', pricePerLesson: 1050, pricePerLessonFormatted: '1 050 ₽' }, payments: [] },
+                finance: { activeSubscription: null as any, deposit: { balance: 0, balanceFormatted: '0 €', currency: 'EUR', pricePerLesson: 12, pricePerLessonFormatted: '12 €' }, payments: [] },
                 interactions: [],
                 tasks: [],
               }

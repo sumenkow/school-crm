@@ -748,9 +748,9 @@ export default function ParentDetailsPage() {
       ],
       finance: {
         deposit: {
-          balance: newChild.paymentStatus === 'paid' ? 7600 : 0,
-          balanceFormatted: newChild.paymentStatus === 'paid' ? '7 600 ₽' : '0 ₽',
-          currency: 'RUB',
+          balance: newChild.paymentStatus === 'paid' ? 120 : 0,
+          balanceFormatted: newChild.paymentStatus === 'paid' ? '120 €' : '0 €',
+          currency: 'EUR',
         },
         activeSubscription: {
           period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),

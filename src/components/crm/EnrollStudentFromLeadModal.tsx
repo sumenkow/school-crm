@@ -136,7 +136,7 @@ export function EnrollStudentFromLeadModal({
           ? {
               balance: lead.finance.deposit.balance,
               balanceFormatted: lead.finance.deposit.balanceFormatted,
-              currency: (lead.finance.deposit.currency as 'RUB' | 'EUR') || 'RUB',
+              currency: (lead.finance.deposit.currency as 'RUB' | 'EUR') || 'EUR',
             }
           : undefined,
         activeSubscription: {
@@ -209,6 +209,9 @@ export function EnrollStudentFromLeadModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
       <div
         className="w-full max-w-2xl md-card-elevated max-h-[92vh] flex flex-col"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="enroll-modal-title"
         style={{
           borderRadius: '24px',
           backgroundColor: 'var(--md-surface-container-lowest)',
@@ -228,7 +231,7 @@ export function EnrollStudentFromLeadModal({
               <UserCheck size={22} />
             </div>
             <div>
-              <h2 className="md-title-medium font-bold" style={{ color: 'var(--md-on-surface)' }}>
+              <h2 id="enroll-modal-title" className="md-title-medium font-bold" style={{ color: 'var(--md-on-surface)' }}>
                 Оформление зачисления в школу
               </h2>
               <p className="text-xs text-slate-500">

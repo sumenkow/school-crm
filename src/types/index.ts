@@ -72,6 +72,8 @@ export interface Course {
   isActive: boolean;
 }
 
+export type GroupStatus = 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
+
 export interface Group {
   id: string;
   courseId: string;
@@ -81,7 +83,7 @@ export interface Group {
   name: string;
   capacity: number;
   enrolledCount?: number;
-  status: 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
+  status: GroupStatus;
   isDeleted?: boolean;
   deletedAt?: string;
   scheduleRule?: Array<{ day: number; start: string; end: string }>;

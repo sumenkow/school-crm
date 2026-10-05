@@ -427,6 +427,7 @@ export interface BillingProcessResult {
 }
 
 export interface RestoreBillingResult {
+  success: boolean;
   restoredCount: number;
   restoredStudents: string[];
 }
@@ -552,7 +553,7 @@ export function processAutomaticLessonBilling(params: {
       saveInteractionToStorage(interaction);
     } else if (student.finance?.deposit && student.finance.deposit.balance > 0) {
       // 2. If student has deposit balance
-      const price = student.finance.deposit.pricePerLesson || 1050;
+      const price = student.finance.deposit.pricePerLesson || 12;
       const newBalance = Math.max(0, student.finance.deposit.balance - price);
       const updatedStudent: FullStudentData = {
         ...student,
@@ -561,7 +562,8 @@ export function processAutomaticLessonBilling(params: {
           deposit: {
             ...student.finance.deposit,
             balance: newBalance,
-            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
+            balanceFormatted: `€${newBalance.toLocaleString('ru-RU')}`,
+            currency: 'EUR',
           },
         },
       };
@@ -583,7 +585,7 @@ export function processAutomaticLessonBilling(params: {
         author: 'Биллинг-система',
         channel: 'other',
         type: 'organizational',
-        content: `💳 Автосписание: списано ${price.toLocaleString('ru-RU')} ₽ с депозита за урок «${currentLesson.groupName}» (${currentLesson.dateFormatted || currentLesson.date}). Новый баланс: ${newBalance.toLocaleString('ru-RU')} ₽.`,
+        content: `💳 Автосписание: списано €${price.toLocaleString('ru-RU')} с депозита за урок «${currentLesson.groupName}» (${currentLesson.dateFormatted || currentLesson.date}). Новый баланс: €${newBalance.toLocaleString('ru-RU')}.`,
       };
       saveInteractionToStorage(interaction);
     }
@@ -640,14 +642,14 @@ export function processAutomaticLessonBilling(params: {
  */
 export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
   const currentLesson = getStoredLessonById(lessonId);
-  if (!currentLesson) return { restoredCount: 0, restoredStudents: [] };
+  if (!currentLesson) return { success: false, restoredCount: 0, restoredStudents: [] };
 
   const billedStudentIds = currentLesson.billedStudentIds && currentLesson.billedStudentIds.length > 0
     ? currentLesson.billedStudentIds
     : (currentLesson.students || []).filter((s) => s.billed).map((s) => s.id);
 
   if (!billedStudentIds || billedStudentIds.length === 0) {
-    return { restoredCount: 0, restoredStudents: [] };
+    return { success: false, restoredCount: 0, restoredStudents: [] };
   }
 
   const allStudents = getStoredStudents();
@@ -671,7 +673,7 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
 
     if (billingDetail?.type === 'deposit') {
       // Refund deposit
-      const refundAmount = billingDetail.amount || student.finance?.deposit?.pricePerLesson || 1050;
+      const refundAmount = billingDetail?.amount || student.finance?.deposit?.pricePerLesson || 12;
       const currentBalance = student.finance?.deposit?.balance || 0;
       const newBalance = currentBalance + refundAmount;
 
@@ -682,8 +684,8 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
           deposit: {
             ...student.finance?.deposit,
             balance: newBalance,
-            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
-            currency: student.finance?.deposit?.currency || 'RUB',
+            balanceFormatted: `€${newBalance.toLocaleString('ru-RU')}`,
+            currency: 'EUR',
           },
         },
       };
@@ -722,7 +724,7 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
       restored = true;
     } else if (student.finance?.deposit) {
       // Fallback if no subscription but deposit exists
-      const refundAmount = student.finance.deposit.pricePerLesson || 1050;
+      const refundAmount = student.finance.deposit.pricePerLesson || 12;
       const currentBalance = student.finance.deposit.balance || 0;
       const newBalance = currentBalance + refundAmount;
 
@@ -733,7 +735,8 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
           deposit: {
             ...student.finance.deposit,
             balance: newBalance,
-            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
+            balanceFormatted: `€${newBalance.toLocaleString('ru-RU')}`,
+            currency: 'EUR',
           },
         },
       };
@@ -780,7 +783,7 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
     window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
   }
 
-  return { restoredCount, restoredStudents };
+  return { success: true, restoredCount, restoredStudents };
 }
 
 export interface GenerateGroupLessonsParams {

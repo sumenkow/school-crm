@@ -29,7 +29,13 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FullLessonData, INITIAL_TEACHERS, LessonTimelineEvent } from '@/lib/data/mockData';
-import { saveLessonToStorage, deleteLessonFromStorage, recordLessonAttendanceBatch } from '@/lib/data/lessonStorage';
+import {
+  saveLessonToStorage,
+  deleteLessonFromStorage,
+  recordLessonAttendanceBatch,
+  restoreLessonBilling,
+  getStoredLessonById,
+} from '@/lib/data/lessonStorage';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -339,11 +345,19 @@ export function LessonDetailsDrawer({
     if (!lesson) return;
     setIsCancelling(true);
     try {
+      if (lesson.status === 'completed') {
+        const { restoredCount } = restoreLessonBilling(lesson.id);
+        if (restoredCount > 0) {
+          toast.info(`Возврат списания занятия выполнен для ${restoredCount} уч.`);
+        }
+      }
+
+      const freshLesson = getStoredLessonById(lesson.id) || lesson;
       const now = new Date();
       const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
       
       const updatedEvents: LessonTimelineEvent[] = [
-        ...(lesson.timelineEvents || []),
+        ...(freshLesson.timelineEvents || []),
         {
           id: `ev_${Date.now()}_cancel`,
           timestamp: timestampStr,
@@ -355,7 +369,7 @@ export function LessonDetailsDrawer({
       ];
 
       const updatedLesson: FullLessonData = {
-        ...lesson,
+        ...freshLesson,
         status: 'cancelled',
         timelineEvents: updatedEvents,
       };

@@ -3,7 +3,7 @@
  * Auto-generated from schema: supabase/migrations/20260903000000_initial_schema.sql
  */
 
-export type UserRole = 'owner' | 'admin' | 'teacher';
+export type UserRole = 'developer' | 'owner' | 'admin' | 'teacher';
 export type StudentStatus = 'lead' | 'trial' | 'active' | 'paused' | 'churned' | 'archived' | 'needs_review';
 export type GroupStatus = 'recruiting' | 'active' | 'paused' | 'finished' | 'archived';
 export type EnrollmentStatus = 'active' | 'trial' | 'paused' | 'completed' | 'dropped';

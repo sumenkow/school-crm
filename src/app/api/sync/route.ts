@@ -437,7 +437,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: true, action: 'deleted', id: groupId });
         }
 
-        const validStatuses = ['active', 'recruiting', 'archived'];
+        const validStatuses = ['active', 'recruiting', 'archived', 'finished', 'paused'];
         const groupRow = {
           id: groupId,
           name: data.name || 'Группа',

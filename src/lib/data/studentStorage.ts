@@ -264,7 +264,7 @@ export async function fetchStudentsFromSupabase(): Promise<FullStudentData[]> {
             },
             finance: {
               activeSubscription: null as any,
-              deposit: { balance: 0, balanceFormatted: '0 ₽', currency: 'RUB', pricePerLesson: 1050, pricePerLessonFormatted: '1 050 ₽' },
+              deposit: { balance: 0, balanceFormatted: '0 €', currency: 'EUR', pricePerLesson: 12, pricePerLessonFormatted: '12 €' },
               payments: [],
             },
             interactions: [],
@@ -404,14 +404,14 @@ export function deductLessonFromDeposit(
 
   const currentDeposit = student.finance?.deposit || {
     balance: 0,
-    balanceFormatted: '0 ₽',
-    currency: 'RUB',
-    pricePerLesson: 1050,
-    pricePerLessonFormatted: '1 050 ₽',
+    balanceFormatted: '0 €',
+    currency: 'EUR',
+    pricePerLesson: 12,
+    pricePerLessonFormatted: '12 €',
   };
 
-  const deduct = amountToDeduct || currentDeposit.pricePerLesson || 1050;
-  const currencySymbol = currentDeposit.currency === 'EUR' ? '€' : '₽';
+  const deduct = amountToDeduct || currentDeposit.pricePerLesson || 12;
+  const currencySymbol = currentDeposit.currency === 'RUB' ? '₽' : '€';
   const newBalance = (currentDeposit.balance || 0) - deduct;
   const formattedBalance = `${newBalance.toLocaleString('ru-RU')} ${currencySymbol}`;
   const formattedDeduct = `${deduct.toLocaleString('ru-RU')} ${currencySymbol}`;
@@ -480,7 +480,7 @@ export function deductLessonFromDeposit(
     periodLabel: lessonTopic ? `Занятие: ${lessonTopic}` : 'Списание за занятие',
     status: newBalance >= 0 ? 'paid' : 'overdue',
     paymentMethod: 'deposit_deduction' as any,
-    currency: (currentDeposit.currency as any) || 'RUB',
+    currency: (currentDeposit.currency as any) || 'EUR',
     paymentType: 'prepayment',
     recordedBy: 'Система',
     comment: `Списано с баланса депозита за онлайн-занятие. Остаток: ${formattedBalance}`,
@@ -574,7 +574,7 @@ export function settleDebtsFromDeposit(studentId: string): {
 
   let settledAmount = 0;
   const todayStr = new Date().toLocaleDateString('ru-RU');
-  const currencySymbol = currentDeposit?.currency === 'EUR' ? '€' : '₽';
+  const currencySymbol = currentDeposit?.currency === 'RUB' ? '₽' : '€';
   let studentPayments = [...(student.finance?.payments || [])];
   const newInteractions: TimelineInteraction[] = [];
 
@@ -709,7 +709,7 @@ export function settleDebtsFromDeposit(studentId: string): {
       ...student.finance,
       deposit: {
         ...currentDeposit,
-        currency: (currentDeposit?.currency || 'RUB') as 'RUB' | 'EUR',
+        currency: (currentDeposit?.currency || 'EUR') as 'RUB' | 'EUR',
         balance: availableDeposit,
         balanceFormatted: `${availableDeposit.toLocaleString('ru-RU')} ${currencySymbol}`,
       },
@@ -792,7 +792,7 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
       let donorDeposit = donor.finance?.deposit?.balance || 0;
       if (donorDeposit <= 0) continue;
 
-      const currencySymbol = donor.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+      const currencySymbol = donor.finance?.deposit?.currency === 'RUB' ? '₽' : '€';
       const todayStr = new Date().toLocaleDateString('ru-RU');
 
       for (const debt of debtorDebts) {
@@ -877,7 +877,7 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
           ...donor.finance,
           deposit: {
             ...donor.finance?.deposit,
-            currency: (donor.finance?.deposit?.currency || 'RUB') as 'RUB' | 'EUR',
+            currency: (donor.finance?.deposit?.currency || 'EUR') as 'RUB' | 'EUR',
             balance: donorDeposit,
             balanceFormatted: `${donorDeposit.toLocaleString('ru-RU')} ${currencySymbol}`,
           },

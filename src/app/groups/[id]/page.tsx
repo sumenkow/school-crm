@@ -129,9 +129,9 @@ export default function GroupDetailsPage() {
     capacity: group.capacity,
     status: group.status,
     notes: group.notes || '',
-    pricePerLesson: group.pricing?.pricePerLesson || 1050,
-    pricePerMonth: group.pricing?.pricePerMonth || 7600,
-    currency: group.pricing?.currency || 'RUB',
+    pricePerLesson: group.pricing?.pricePerLesson || 12,
+    pricePerMonth: group.pricing?.pricePerMonth || 120,
+    currency: group.pricing?.currency || 'EUR',
   });
 
   const handleOpenEdit = () => {
@@ -144,9 +144,9 @@ export default function GroupDetailsPage() {
       capacity: group.capacity,
       status: group.status,
       notes: group.notes || '',
-      pricePerLesson: group.pricing?.pricePerLesson || 1050,
-      pricePerMonth: group.pricing?.pricePerMonth || 7600,
-      currency: group.pricing?.currency || 'RUB',
+      pricePerLesson: group.pricing?.pricePerLesson || 12,
+      pricePerMonth: group.pricing?.pricePerMonth || 120,
+      currency: group.pricing?.currency || 'EUR',
     });
     setIsEditModalOpen(true);
   };

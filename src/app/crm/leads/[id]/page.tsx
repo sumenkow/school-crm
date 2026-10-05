@@ -527,8 +527,8 @@ export default function LeadDetailsPage() {
       finance: {
         deposit: {
           balance: newDeposit,
-          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} ₽`,
-          currency: 'RUB',
+          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} €`,
+          currency: 'EUR',
         },
         payments: [newPaymentRecord, ...(lead.finance?.payments || [])],
       },
@@ -568,12 +568,12 @@ export default function LeadDetailsPage() {
       courseName: lead.directionOrCourse || 'Курс',
       groupName: 'Лид (до квалификации)',
       amount: num,
-      amountFormatted: `${num.toLocaleString('ru-RU')} ₽`,
+      amountFormatted: `${num.toLocaleString('ru-RU')} €`,
       paymentDate: todayStr,
       periodLabel: paymentPurpose,
       status: 'paid',
       paymentMethod,
-      currency: 'RUB',
+      currency: 'EUR',
       paymentType,
       recordedBy: userName || 'Администратор',
       comment: `Оплата от лида «${lead.name}» (${paymentPurpose})`,
@@ -583,7 +583,7 @@ export default function LeadDetailsPage() {
       window.dispatchEvent(new CustomEvent('crm-leads-changed', { detail: updatedLead }));
     }
 
-    toast.success(`Платёж ${num.toLocaleString('ru-RU')} ₽ зафиксирован! Депозит лида: ${newDeposit.toLocaleString('ru-RU')} ₽`);
+    toast.success(`Платёж ${num.toLocaleString('ru-RU')} € зафиксирован! Депозит лида: ${newDeposit.toLocaleString('ru-RU')} €`);
     setIsRecordPaymentOpen(false);
     setPaymentComment('');
   };
@@ -598,7 +598,7 @@ export default function LeadDetailsPage() {
       return;
     }
     if (num > currentDeposit) {
-      toast.error(`Недостаточно средств на депозите (доступно ${currentDeposit.toLocaleString('ru-RU')} ₽)`);
+      toast.error(`Недостаточно средств на депозите (доступно ${currentDeposit.toLocaleString('ru-RU')} €)`);
       return;
     }
 
@@ -609,7 +609,7 @@ export default function LeadDetailsPage() {
     const deductionRecord = {
       id: `pay_deduct_lead_${Date.now()}`,
       date: todayStr,
-      amount: `-${num.toLocaleString('ru-RU')} ₽`,
+      amount: `-${num.toLocaleString('ru-RU')} €`,
       numAmount: -num,
       period: deductPurpose,
       method: 'Списание с депозита',
@@ -625,7 +625,7 @@ export default function LeadDetailsPage() {
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор',
-      content: `Списано ${num.toLocaleString('ru-RU')} ₽ с депозита лида. Назначение: «${deductPurpose}». Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} ₽.${deductComment ? ` Комментарий: ${deductComment}` : ''}`,
+      content: `Списано ${num.toLocaleString('ru-RU')} € с депозита лида. Назначение: «${deductPurpose}». Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} €.${deductComment ? ` Комментарий: ${deductComment}` : ''}`,
       result: 'Списание с баланса лида',
     };
 
@@ -637,8 +637,8 @@ export default function LeadDetailsPage() {
       finance: {
         deposit: {
           balance: newDeposit,
-          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} ₽`,
-          currency: 'RUB',
+          balanceFormatted: `${newDeposit.toLocaleString('ru-RU')} €`,
+          currency: 'EUR',
         },
         payments: [deductionRecord, ...(lead.finance?.payments || [])],
       },
@@ -678,12 +678,12 @@ export default function LeadDetailsPage() {
       courseName: lead.directionOrCourse || 'Курс',
       groupName: 'Лид (до квалификации)',
       amount: -num,
-      amountFormatted: `-${num.toLocaleString('ru-RU')} ₽`,
+      amountFormatted: `-${num.toLocaleString('ru-RU')} €`,
       paymentDate: todayStr,
       periodLabel: `Списание: ${deductPurpose}`,
       status: 'paid',
       paymentMethod: 'deposit_deduction' as any,
-      currency: 'RUB',
+      currency: 'EUR',
       paymentType: 'prepayment',
       recordedBy: userName || 'Администратор',
       comment: `Списание с депозита лида «${lead.name}» (${deductPurpose})`,

@@ -166,412 +166,322 @@ export function useFinanceTabData(filters: AnalyticsFilters): FinanceTabData {
     ];
 
     // 3. Monthly accruals & chart table (6 months)
-    const monthlyAccruals = [
-      {
-        month: 'Апрель 2026',
-        accruedEur: 34200,
-        accruedFormatted: formatEur(34200),
-        paidEur: 31600,
-        paidFormatted: formatEur(31600),
-        debtEur: 7400,
-        debtFormatted: formatEur(7400),
-        trendFormatted: '↑ +5,2%',
-        isPositiveTrend: true,
-      },
-      {
-        month: 'Май 2026',
-        accruedEur: 31800,
-        accruedFormatted: formatEur(31800),
-        paidEur: 28900,
-        paidFormatted: formatEur(28900),
-        debtEur: 8100,
-        debtFormatted: formatEur(8100),
-        trendFormatted: '↓ -8,1%',
-        isPositiveTrend: false,
-      },
-      {
-        month: 'Июнь 2026',
-        accruedEur: 36450,
-        accruedFormatted: formatEur(36450),
-        paidEur: 32200,
-        paidFormatted: formatEur(32200),
-        debtEur: 9650,
-        debtFormatted: formatEur(9650),
-        trendFormatted: '↑ +14,6%',
-        isPositiveTrend: true,
-      },
-      {
-        month: 'Июль 2026',
-        accruedEur: 38100,
-        accruedFormatted: formatEur(38100),
-        paidEur: 33870,
-        paidFormatted: formatEur(33870),
-        debtEur: 7920,
-        debtFormatted: formatEur(7920),
-        trendFormatted: '↑ +4,9%',
-        isPositiveTrend: true,
-      },
-      {
-        month: 'Август 2026',
-        accruedEur: 35620,
-        accruedFormatted: formatEur(35620),
-        paidEur: 30120,
-        paidFormatted: formatEur(30120),
-        debtEur: 6920,
-        debtFormatted: formatEur(6920),
-        trendFormatted: '↓ -11,1%',
-        isPositiveTrend: false,
-      },
-      {
-        month: 'Сентябрь 2026',
-        accruedEur: baseRevenue + baseDebt,
-        accruedFormatted: formatEur(baseRevenue + baseDebt),
-        paidEur: baseRevenue,
-        paidFormatted: formatEur(baseRevenue),
-        debtEur: baseDebt,
-        debtFormatted: formatEur(baseDebt),
+    const monthAccrualLabels = ['Апрель 2026', 'Май 2026', 'Июнь 2026', 'Июль 2026', 'Август 2026', 'Сентябрь 2026'];
+    const monthlyAccruals = monthAccrualLabels.map((month, idx) => {
+      const factor = (idx + 1) / monthAccrualLabels.length;
+      const mPaid = idx === monthAccrualLabels.length - 1 ? baseRevenue : Math.max(0, Math.round(baseRevenue * (0.8 + 0.2 * factor)));
+      const mDebt = idx === monthAccrualLabels.length - 1 ? baseDebt : Math.max(0, Math.round(baseDebt * (0.8 + 0.2 * factor)));
+      const mAccrued = mPaid + mDebt;
+      return {
+        month,
+        accruedEur: mAccrued,
+        accruedFormatted: formatEur(mAccrued),
+        paidEur: mPaid,
+        paidFormatted: formatEur(mPaid),
+        debtEur: mDebt,
+        debtFormatted: formatEur(mDebt),
         trendFormatted: '+0%',
         isPositiveTrend: true,
-      },
-    ];
+      };
+    });
 
     // 4. Direction metrics table
-    const directions = [
-      {
-        id: 'english',
-        name: 'Английский язык',
-        badgeBg: 'bg-rose-100',
-        badgeText: 'text-rose-700',
-        studentsCount: 64,
-        revenueEur: 9840,
-        revenueFormatted: formatEur(9840),
-        avgCheckEur: 720,
-        avgCheckFormatted: formatEur(720),
-        debtEur: 2160,
-        debtFormatted: formatEur(2160),
-      },
-      {
-        id: 'math',
-        name: 'Математика',
-        badgeBg: 'bg-blue-100',
-        badgeText: 'text-blue-700',
-        studentsCount: 42,
-        revenueEur: 7420,
-        revenueFormatted: formatEur(7420),
-        avgCheckEur: 660,
-        avgCheckFormatted: formatEur(660),
-        debtEur: 1840,
-        debtFormatted: formatEur(1840),
-      },
-      {
-        id: 'robotics',
-        name: 'Robotics',
-        badgeBg: 'bg-indigo-100',
-        badgeText: 'text-indigo-700',
-        studentsCount: 31,
-        revenueEur: 5680,
-        revenueFormatted: formatEur(5680),
-        avgCheckEur: 710,
-        avgCheckFormatted: formatEur(710),
-        debtEur: 2130,
-        debtFormatted: formatEur(2130),
-      },
-      {
-        id: 'programming',
-        name: 'Программирование',
-        badgeBg: 'bg-purple-100',
-        badgeText: 'text-purple-700',
-        studentsCount: 28,
-        revenueEur: 4160,
-        revenueFormatted: formatEur(4160),
-        avgCheckEur: 640,
-        avgCheckFormatted: formatEur(640),
-        debtEur: 1020,
-        debtFormatted: formatEur(1020),
-      },
-      {
-        id: 'prep',
-        name: 'Подготовка к школе',
-        badgeBg: 'bg-pink-100',
-        badgeText: 'text-pink-700',
-        studentsCount: 18,
-        revenueEur: 2940,
-        revenueFormatted: formatEur(2940),
-        avgCheckEur: 530,
-        avgCheckFormatted: formatEur(530),
-        debtEur: 740,
-        debtFormatted: formatEur(740),
-      },
-      {
-        id: 'design',
-        name: 'Дизайн',
-        badgeBg: 'bg-amber-100',
-        badgeText: 'text-amber-700',
-        studentsCount: 12,
-        revenueEur: 2410,
-        revenueFormatted: formatEur(2410),
-        avgCheckEur: 600,
-        avgCheckFormatted: formatEur(600),
-        debtEur: 750,
-        debtFormatted: formatEur(750),
-      },
+    const courseNames = Array.from(
+      new Set(
+        groups
+          .map((g) => g.courseName)
+          .concat(filteredPayments.map((p) => p.courseName))
+          .filter(Boolean)
+      )
+    );
+
+    const badgeColors = [
+      { bg: 'bg-rose-100', text: 'text-rose-700', color: '#2563eb' },
+      { bg: 'bg-blue-100', text: 'text-blue-700', color: '#0ea5e9' },
+      { bg: 'bg-indigo-100', text: 'text-indigo-700', color: '#8b5cf6' },
+      { bg: 'bg-purple-100', text: 'text-purple-700', color: '#f59e0b' },
+      { bg: 'bg-pink-100', text: 'text-pink-700', color: '#ec4899' },
+      { bg: 'bg-amber-100', text: 'text-amber-700', color: '#94a3b8' },
     ];
+
+    const directions = courseNames.map((cName, idx) => {
+      const colorSet = badgeColors[idx % badgeColors.length];
+      const dirGroups = groups.filter((g) => g.courseName === cName);
+      const dirGroupIds = new Set(dirGroups.map((g) => g.id));
+      const dirStudents = students.filter((s) => s.groups?.some((sg) => dirGroupIds.has(sg.id)));
+
+      const dirPaidPayments = filteredPayments.filter(
+        (p) => p.courseName === cName && p.status === 'paid'
+      );
+      const dirOverduePayments = filteredPayments.filter(
+        (p) => p.courseName === cName && (p.status === 'overdue' || p.status === 'expected')
+      );
+
+      const dirRevenueEur = dirPaidPayments.reduce((s, p) => {
+        const v = p.currency === 'EUR' ? p.amount : convertRubToEur(p.amount, rate);
+        return s + v;
+      }, 0);
+
+      const dirDebtEur = dirOverduePayments.reduce((s, p) => {
+        const v = p.currency === 'EUR' ? p.amount : convertRubToEur(p.amount, rate);
+        return s + v;
+      }, 0);
+
+      const effectiveRevenue = dirRevenueEur > 0 ? dirRevenueEur : Math.round(baseRevenue / Math.max(1, courseNames.length));
+      const effectiveAvgCheck = dirPaidPayments.length > 0 ? Math.round(effectiveRevenue / dirPaidPayments.length) : Math.round(effectiveRevenue / Math.max(1, dirStudents.length));
+
+      return {
+        id: `dir_${idx + 1}`,
+        name: cName,
+        badgeBg: colorSet.bg,
+        badgeText: colorSet.text,
+        studentsCount: dirStudents.length || dirGroups.reduce((acc, g) => acc + (g.students?.length || 0), 0),
+        revenueEur: effectiveRevenue,
+        revenueFormatted: formatEur(effectiveRevenue),
+        avgCheckEur: effectiveAvgCheck,
+        avgCheckFormatted: formatEur(effectiveAvgCheck),
+        debtEur: dirDebtEur,
+        debtFormatted: formatEur(dirDebtEur),
+      };
+    });
 
     // 5. Revenue Dynamics (2 Lines)
-    const dynamics = [
-      { month: 'Апр', currentEur: 31600, previousEur: 29500 },
-      { month: 'Май', currentEur: 28900, previousEur: 31200 },
-      { month: 'Июн', currentEur: 32200, previousEur: 28400 },
-      { month: 'Июл', currentEur: 33870, previousEur: 32100 },
-      { month: 'Авг', currentEur: 30120, previousEur: 33800 },
-      { month: 'Сен', currentEur: Math.round(baseRevenue), previousEur: 0 },
-    ];
+    const monthShort = ['Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен'];
+    const dynamics = monthShort.map((month, idx) => {
+      const factor = (idx + 1) / monthShort.length;
+      const curEur = idx === monthShort.length - 1 ? Math.round(baseRevenue) : Math.max(0, Math.round(baseRevenue * (0.8 + 0.2 * factor)));
+      const prevEur = Math.max(0, Math.round(curEur * 0.95));
+      return {
+        month,
+        currentEur: curEur,
+        previousEur: prevEur,
+      };
+    });
 
     // 6. Revenue Structure (Donut)
+    const totalDirRev = directions.reduce((s, d) => s + d.revenueEur, 0) || 1;
     const structure = {
-      items: [
-        { id: 'en', name: 'Английский язык', color: '#2563eb', sharePercent: 30, revenueEur: 9840 },
-        { id: 'math', name: 'Математика', color: '#0ea5e9', sharePercent: 23, revenueEur: 7420 },
-        { id: 'rob', name: 'Robotics', color: '#8b5cf6', sharePercent: 17, revenueEur: 5680 },
-        { id: 'it', name: 'Программирование', color: '#f59e0b', sharePercent: 13, revenueEur: 4160 },
-        { id: 'prep', name: 'Подготовка к школе', color: '#ec4899', sharePercent: 9, revenueEur: 2940 },
-        { id: 'other', name: 'Другое', color: '#94a3b8', sharePercent: 8, revenueEur: 2410 },
-      ],
+      items: directions.map((d, idx) => ({
+        id: `struct_${idx + 1}`,
+        name: d.name,
+        color: badgeColors[idx % badgeColors.length].color,
+        sharePercent: Math.round((d.revenueEur / totalDirRev) * 100),
+        revenueEur: d.revenueEur,
+      })),
       totalRevenueFormatted: formatEur(baseRevenue),
     };
 
     // 7. Where money is lost (Tier 2 left)
+    const overduePaymentsList = filteredPayments.filter((p) => p.status === 'overdue');
+    const unpaidInvoicesList = invoices.filter((inv) => (inv.status as string) === 'overdue' || (inv.status as string) === 'pending');
+
+    const overdueSumEur = overduePaymentsList.reduce((sum, p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      return sum + ((p as any).currency === 'EUR' || String(p.amount).includes('€') ? num : convertRubToEur(num, rate));
+    }, 0);
+
+    const unpaidInvoicesSumEur = unpaidInvoicesList.reduce((sum, inv) => {
+      const num = inv.totalAmountEUR || 0;
+      return sum + (inv.currency === 'EUR' ? num : convertRubToEur(num, rate));
+    }, 0);
+
+    const expiringStudentsCount = students.filter((s) => {
+      const bal = s.finance?.deposit?.balance ?? 100;
+      const price = s.finance?.deposit?.pricePerLesson ?? 12;
+      return bal <= price;
+    }).length;
+    const expiringSumEur = expiringStudentsCount * 120;
+
+    const totalPotentialLoss = overdueSumEur + unpaidInvoicesSumEur + expiringSumEur;
+
     const lossAnalysis = {
       items: [
         {
           id: 'overdue_payments',
           title: 'Просроченные платежи',
-          count: 18,
-          amountEur: 6240,
-          amountFormatted: formatEur(6240),
-          sharePercent: 42,
+          count: overduePaymentsList.length,
+          amountEur: overdueSumEur,
+          amountFormatted: formatEur(overdueSumEur),
+          sharePercent: totalPotentialLoss > 0 ? Math.round((overdueSumEur / totalPotentialLoss) * 100) : 0,
           color: 'bg-rose-500',
         },
         {
           id: 'unpaid_invoices',
           title: 'Не оплачены счета',
-          count: 12,
-          amountEur: 3960,
-          amountFormatted: formatEur(3960),
-          sharePercent: 26,
+          count: unpaidInvoicesList.length,
+          amountEur: unpaidInvoicesSumEur,
+          amountFormatted: formatEur(unpaidInvoicesSumEur),
+          sharePercent: totalPotentialLoss > 0 ? Math.round((unpaidInvoicesSumEur / totalPotentialLoss) * 100) : 0,
           color: 'bg-amber-500',
         },
         {
           id: 'expired_subs',
           title: 'Закончился абонемент (нет продления)',
-          count: 9,
-          amountEur: 2880,
-          amountFormatted: formatEur(2880),
-          sharePercent: 19,
+          count: expiringStudentsCount,
+          amountEur: expiringSumEur,
+          amountFormatted: formatEur(expiringSumEur),
+          sharePercent: totalPotentialLoss > 0 ? Math.round((expiringSumEur / totalPotentialLoss) * 100) : 0,
           color: 'bg-blue-500',
         },
         {
           id: 'refunds',
           title: 'Отмены и возвраты',
-          count: 4,
-          amountEur: 1280,
-          amountFormatted: formatEur(1280),
-          sharePercent: 9,
+          count: 0,
+          amountEur: 0,
+          amountFormatted: formatEur(0),
+          sharePercent: 0,
           color: 'bg-purple-500',
         },
         {
           id: 'unallocated_balance',
           title: 'Нераспределённый баланс',
-          count: 3,
-          amountEur: 640,
-          amountFormatted: formatEur(640),
-          sharePercent: 4,
+          count: 0,
+          amountEur: 0,
+          amountFormatted: formatEur(0),
+          sharePercent: 0,
           color: 'bg-slate-400',
         },
       ],
-      potentialLossFormatted: formatEur(15000),
-      potentialLossDelta: '↑ +18%',
-      potentialLossShareText: 'Это 32% от возможной выручки текущего периода',
+      potentialLossFormatted: formatEur(totalPotentialLoss),
+      potentialLossDelta: '0%',
+      potentialLossShareText:
+        baseRevenue + totalPotentialLoss > 0
+          ? `Это ${Math.round((totalPotentialLoss / (baseRevenue + totalPotentialLoss)) * 100)}% от возможной выручки текущего периода`
+          : 'Потенциальных потерь нет',
     };
 
     // 8. Debts & Overdue (Tier 2 right)
+    const debtorStudentsList: Array<{
+      id: string;
+      studentId: string;
+      studentName: string;
+      groupName: string;
+      debtEur: number;
+      debtFormatted: string;
+      overdueDate: string;
+      daysOverdue: number;
+      riskLevel: 'Высокий' | 'Средний';
+    }> = [];
+
+    students.forEach((s) => {
+      const studentOverdues = (s.finance?.payments || []).filter((p) => p.status === 'overdue');
+      const studentOverduePayments = filteredPayments.filter((p) => p.studentId === s.id && p.status === 'overdue');
+      const allOverdues = [...studentOverdues, ...studentOverduePayments];
+
+      if (allOverdues.length > 0) {
+        const debtEur = allOverdues.reduce((sum, p) => {
+          const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+          return sum + ((p as any).currency === 'EUR' || String(p.amount).includes('€') ? num : convertRubToEur(num, rate));
+        }, 0);
+
+        if (debtEur > 0) {
+          debtorStudentsList.push({
+            id: `deb_${s.id}`,
+            studentId: s.id,
+            studentName: `${s.firstName} ${s.lastName}`.trim() || 'Ученик',
+            groupName: s.groups?.[0]?.name || 'Без группы',
+            debtEur,
+            debtFormatted: formatEur(debtEur),
+            overdueDate: '25.09.2026',
+            daysOverdue: 7,
+            riskLevel: debtEur > 500 ? 'Высокий' : 'Средний',
+          });
+        }
+      }
+    });
+
     const debtsSummary = {
-      totalDebtFormatted: formatEur(8640),
-      totalDebtDelta: '↑ +24,9%',
-      overdueDebtFormatted: formatEur(3120),
-      overdueDebtDelta: '↑ +48,6%',
-      debtorsCount: 27,
-      debtorsCountDelta: '↑ +28,6%',
-      debtorsList: [
-        {
-          id: 'd1',
-          studentId: '1',
-          studentName: 'Иван Петров',
-          groupName: 'Robotics Junior',
-          debtEur: 1240,
-          debtFormatted: formatEur(1240),
-          overdueDate: '25.09.2026',
-          daysOverdue: 9,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'd2',
-          studentId: '2',
-          studentName: 'Мария Соколова',
-          groupName: 'Математика',
-          debtEur: 980,
-          debtFormatted: formatEur(980),
-          overdueDate: '22.09.2026',
-          daysOverdue: 12,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'd3',
-          studentId: '3',
-          studentName: 'Алина Белова',
-          groupName: 'English B1',
-          debtEur: 720,
-          debtFormatted: formatEur(720),
-          overdueDate: '28.09.2026',
-          daysOverdue: 6,
-          riskLevel: 'Средний' as const,
-        },
-        {
-          id: 'd4',
-          studentId: '4',
-          studentName: 'Олег Кузнецов',
-          groupName: 'Python Start',
-          debtEur: 580,
-          debtFormatted: formatEur(580),
-          overdueDate: '20.09.2026',
-          daysOverdue: 14,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'd5',
-          studentId: '5',
-          studentName: 'Сергей Морозов',
-          groupName: 'Kids Starter',
-          debtEur: 450,
-          debtFormatted: formatEur(450),
-          overdueDate: '27.09.2026',
-          daysOverdue: 7,
-          riskLevel: 'Средний' as const,
-        },
-      ],
+      totalDebtFormatted: formatEur(baseDebt),
+      totalDebtDelta: '0%',
+      overdueDebtFormatted: formatEur(baseOverdueDebt),
+      overdueDebtDelta: '0%',
+      debtorsCount: debtorStudentsList.length,
+      debtorsCountDelta: '0%',
+      debtorsList: debtorStudentsList,
     };
 
-    // 9. Risk Tabs: Students (8) and Groups (5) (Tier 3)
+    // 9. Risk Tabs: Students and Groups (Tier 3)
+    const riskStudentsList: Array<{
+      id: string;
+      studentId: string;
+      studentName: string;
+      groupName: string;
+      lessonsRemaining: number;
+      lessonsRemainingColor: 'red' | 'orange' | 'green';
+      endDate: string;
+      statusText: 'Пакет заканчивается' | 'Низкий баланс' | 'Нет продления' | 'Ожидает оплаты' | 'Просрочен платеж';
+      riskLevel: 'Высокий' | 'Средний';
+    }> = [];
+
+    students.forEach((s) => {
+      const depositBal = s.finance?.deposit?.balance ?? 100;
+      const pricePerLesson = s.finance?.deposit?.pricePerLesson ?? 12;
+      const sub = s.finance?.activeSubscription;
+      const lessonsRem = sub?.lessonsRemaining;
+      const hasOverdue = (s.finance?.payments || []).some((p) => p.status === 'overdue');
+
+      if (hasOverdue || depositBal <= pricePerLesson || (lessonsRem !== undefined && lessonsRem <= 2)) {
+        const rem = lessonsRem !== undefined ? lessonsRem : depositBal <= pricePerLesson ? 1 : 3;
+        let statusText: 'Пакет заканчивается' | 'Низкий баланс' | 'Нет продления' | 'Ожидает оплаты' | 'Просрочен платеж' = 'Пакет заканчивается';
+        if (hasOverdue) statusText = 'Просрочен платеж';
+        else if (depositBal <= pricePerLesson) statusText = 'Низкий баланс';
+        else if (rem === 0) statusText = 'Нет продления';
+
+        riskStudentsList.push({
+          id: `risk_st_${s.id}`,
+          studentId: s.id,
+          studentName: `${s.firstName} ${s.lastName}`.trim() || 'Ученик',
+          groupName: s.groups?.[0]?.name || 'Без группы',
+          lessonsRemaining: rem,
+          lessonsRemainingColor: rem === 0 ? 'red' : rem <= 1 ? 'orange' : 'green',
+          endDate: sub?.renewalDate || 'Скоро',
+          statusText,
+          riskLevel: hasOverdue || rem <= 1 ? 'Высокий' : 'Средний',
+        });
+      }
+    });
+
+    const riskGroupsList: Array<{
+      id: string;
+      groupId: string;
+      groupName: string;
+      totalStudents: number;
+      debtStudentsCount: number;
+      debtSharePercent: number;
+      debtAmountEur: number;
+      debtAmountFormatted: string;
+    }> = [];
+
+    groups.forEach((g) => {
+      const groupStudents = students.filter((s) => s.groups?.some((sg) => sg.id === g.id));
+      const debtorsInGroup = groupStudents.filter((s) => (s.finance?.payments || []).some((p) => p.status === 'overdue'));
+
+      if (debtorsInGroup.length > 0) {
+        const groupDebtEur = debtorsInGroup.reduce((sum, s) => {
+          const overdues = (s.finance?.payments || []).filter((p) => p.status === 'overdue');
+          return sum + overdues.reduce((sSum, p) => {
+            const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+            return sSum + ((p as any).currency === 'EUR' || String(p.amount).includes('€') ? num : convertRubToEur(num, rate));
+          }, 0);
+        }, 0);
+
+        const totalSt = g.students?.length || groupStudents.length || 1;
+        riskGroupsList.push({
+          id: `risk_g_${g.id}`,
+          groupId: g.id,
+          groupName: g.name,
+          totalStudents: totalSt,
+          debtStudentsCount: debtorsInGroup.length,
+          debtSharePercent: Math.round((debtorsInGroup.length / totalSt) * 100),
+          debtAmountEur: groupDebtEur,
+          debtAmountFormatted: formatEur(groupDebtEur),
+        });
+      }
+    });
+
     const riskTabs = {
-      students: [
-        {
-          id: 'r1',
-          studentId: '3',
-          studentName: 'Алина Белова',
-          groupName: 'Математика',
-          lessonsRemaining: 1,
-          lessonsRemainingColor: 'orange' as const,
-          endDate: '28.09.2026',
-          statusText: 'Пакет заканчивается' as const,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'r2',
-          studentId: '6',
-          studentName: 'Дмитрий Орлов',
-          groupName: 'English B1 Teens',
-          lessonsRemaining: 2,
-          lessonsRemainingColor: 'orange' as const,
-          endDate: '03.10.2026',
-          statusText: 'Низкий баланс' as const,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'r3',
-          studentId: '7',
-          studentName: 'Елена Волкова',
-          groupName: 'Robotics Junior',
-          lessonsRemaining: 0,
-          lessonsRemainingColor: 'red' as const,
-          endDate: '01.10.2026',
-          statusText: 'Нет продления' as const,
-          riskLevel: 'Высокий' as const,
-        },
-        {
-          id: 'r4',
-          studentId: '8',
-          studentName: 'Максим Соколов',
-          groupName: 'Python Start',
-          lessonsRemaining: 3,
-          lessonsRemainingColor: 'green' as const,
-          endDate: '05.10.2026',
-          statusText: 'Ожидает оплаты' as const,
-          riskLevel: 'Средний' as const,
-        },
-        {
-          id: 'r5',
-          studentId: '9',
-          studentName: 'Анна Васильева',
-          groupName: 'Kids Starter',
-          lessonsRemaining: 2,
-          lessonsRemainingColor: 'green' as const,
-          endDate: '06.10.2026',
-          statusText: 'Просрочен платеж' as const,
-          riskLevel: 'Высокий' as const,
-        },
-      ],
-      groups: [
-        {
-          id: 'g1',
-          groupId: 'g-rob-jr',
-          groupName: 'Robotics Junior',
-          totalStudents: 18,
-          debtStudentsCount: 5,
-          debtSharePercent: 28,
-          debtAmountEur: 3120,
-          debtAmountFormatted: formatEur(3120),
-        },
-        {
-          id: 'g2',
-          groupId: 'g-math',
-          groupName: 'Математика',
-          totalStudents: 16,
-          debtStudentsCount: 4,
-          debtSharePercent: 25,
-          debtAmountEur: 1840,
-          debtAmountFormatted: formatEur(1840),
-        },
-        {
-          id: 'g3',
-          groupId: 'g-eng-b1',
-          groupName: 'English B1',
-          totalStudents: 14,
-          debtStudentsCount: 3,
-          debtSharePercent: 21,
-          debtAmountEur: 1420,
-          debtAmountFormatted: formatEur(1420),
-        },
-        {
-          id: 'g4',
-          groupId: 'g-py-start',
-          groupName: 'Python Start',
-          totalStudents: 12,
-          debtStudentsCount: 2,
-          debtSharePercent: 17,
-          debtAmountEur: 980,
-          debtAmountFormatted: formatEur(980),
-        },
-        {
-          id: 'g5',
-          groupId: 'g-kids-start',
-          groupName: 'Kids Starter',
-          totalStudents: 10,
-          debtStudentsCount: 2,
-          debtSharePercent: 17,
-          debtAmountEur: 630,
-          debtAmountFormatted: formatEur(630),
-        },
-      ],
+      students: riskStudentsList,
+      groups: riskGroupsList,
     };
 
     return {

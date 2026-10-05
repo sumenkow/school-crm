@@ -40,6 +40,8 @@ import {
   saveLessonToStorage,
   deleteLessonFromStorage,
   recordLessonAttendanceBatch,
+  getStoredLessonById,
+  restoreLessonBilling,
 } from '@/lib/data/lessonStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
@@ -375,6 +377,12 @@ export function LessonModal({
   };
 
   const handleConfirmCancelLesson = () => {
+    if (lesson && (lesson.status === 'completed' || currentStatus === 'completed')) {
+      const { restoredCount } = restoreLessonBilling(lesson.id);
+      if (restoredCount > 0) {
+        toast.info(`Возврат списания занятия выполнен для ${restoredCount} уч.`);
+      }
+    }
     setCurrentStatus('cancelled');
     setShowCancelConfirmModal(false);
     setIsStatusDropdownOpen(false);
@@ -427,6 +435,16 @@ export function LessonModal({
         newStatus = 'rescheduled';
       }
 
+      // If status is changing to 'cancelled' from 'completed', restore billing
+      const storedLessonBeforeAtt = getStoredLessonById(lesson.id);
+      const prevLessonState = storedLessonBeforeAtt || lesson;
+      if ((lesson.status === 'completed' || prevLessonState.status === 'completed') && newStatus === 'cancelled') {
+        const { restoredCount } = restoreLessonBilling(lesson.id);
+        if (restoredCount > 0) {
+          toast.info(`Возврат списания занятия выполнен для ${restoredCount} уч.`);
+        }
+      }
+
       // 1. Record attendance batch
       recordLessonAttendanceBatch({
         lessonId: lesson.id,
@@ -443,6 +461,10 @@ export function LessonModal({
             (a.status === 'absent' && !a.chargeBalance ? 'Без списания баланса' : undefined),
         })),
       });
+
+      if (newStatus === 'cancelled') {
+        restoreLessonBilling(lesson.id);
+      }
 
       // 2. Build updated timeline events
       const now = new Date();
@@ -517,9 +539,12 @@ export function LessonModal({
           }
         : lesson.rescheduleInfo;
 
-      // 3. Build updated lesson object (scheduleOverride = true when rescheduled)
+      // 3. Build updated lesson object from fresh storage state (preserving billedStudentIds and billingDetails)
+      const storedLesson = getStoredLessonById(lesson.id);
+      const freshLesson = storedLesson || lesson;
+
       const updatedLesson: FullLessonData = {
-        ...lesson,
+        ...freshLesson,
         date,
         dateFormatted,
         dayOfWeek,
@@ -539,7 +564,10 @@ export function LessonModal({
         rescheduleInfo,
         timelineEvents: updatedEvents,
         scheduleOverride: isRescheduled ? true : (lesson as any).scheduleOverride,
-        students: (lesson.students || []).map((s) => {
+        billedStudentIds: freshLesson.billedStudentIds,
+        billingDetails: freshLesson.billingDetails,
+        isBilled: freshLesson.isBilled,
+        students: (freshLesson.students || []).map((s) => {
           const att = attendance.find((a) => a.studentId === s.id);
           return {
             ...s,

@@ -899,6 +899,9 @@ export const INITIAL_TEACHERS: FullTeacherData[] = [
   },
 ];
 
+// NOTE: Student IDs 's5'..'s21' in INITIAL_GROUPS and INITIAL_LESSONS are lightweight seed/demo records
+// intended exclusively for local preview and demo mode. They are isolated from active student persistence
+// and are never synchronized to master production database without corresponding real student records in public.students.
 export const INITIAL_GROUPS: FullGroupData[] = [
   {
     id: '1',
@@ -913,6 +916,7 @@ export const INITIAL_GROUPS: FullGroupData[] = [
     status: 'active',
     startDate: '01.09.2026',
     notes: 'Основная онлайн-группа подростков 13-15 лет.',
+    // Seed/demo students s5..s21 for local occupancy demonstration (not synced without students DB records)
     students: [
       { id: '1', name: 'Иван Смирнов', status: 'active', attendanceRate: '94%', parentPhone: '+7 (999) 123-45-67', joinedAt: '01.09.2026' },
       { id: '4', name: 'Сергей Попов', status: 'paused', attendanceRate: '82%', parentPhone: '+7 (999) 456-78-90', joinedAt: '01.09.2026' },
@@ -1113,6 +1117,8 @@ export interface FullLessonData {
   }>;
 }
 
+// NOTE: Embedded attendance records for student IDs 's5'..'s21' below are intended exclusively for local seed/demo
+// journal rendering and schedule occupancy. They do not trigger cloud attendance sync unless matching student records exist in DB.
 export const INITIAL_LESSONS: FullLessonData[] = [
   {
     id: 'l1',

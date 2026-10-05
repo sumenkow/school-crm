@@ -8,6 +8,13 @@ import type { TimelineInteraction } from './mockData';
 
 const GROUPS_STORAGE_KEY = 'crm_groups_master_v2';
 
+export const VALID_GROUP_STATUSES = ['recruiting', 'active', 'paused', 'finished', 'archived'] as const;
+export type ValidGroupStatus = typeof VALID_GROUP_STATUSES[number];
+
+export function isValidGroupStatus(status: string): status is ValidGroupStatus {
+  return (VALID_GROUP_STATUSES as readonly string[]).includes(status);
+}
+
 /**
  * Loads all groups from localStorage merged with INITIAL_GROUPS.
  */
@@ -59,7 +66,7 @@ export async function fetchGroupsFromSupabase(): Promise<FullGroupData[]> {
         const mappedGroup: Partial<FullGroupData> = {
           id: g.id,
           name: g.name,
-          status: (g.status as any) || 'active',
+          status: isValidGroupStatus(g.status) ? g.status : 'active',
           capacity: g.capacity || 8,
         };
         if (existingIdx !== -1) {
@@ -73,7 +80,7 @@ export async function fetchGroupsFromSupabase(): Promise<FullGroupData[]> {
             teacherId: 't1',
             teacherName: 'Мария Иванова',
             schedule: 'Пн, Чт • 18:45–20:15',
-            status: (g.status as any) || 'active',
+            status: isValidGroupStatus(g.status) ? g.status : 'active',
             students: [],
             capacity: g.capacity || 8,
             room: 'Онлайн (Zoom)',

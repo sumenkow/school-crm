@@ -1830,17 +1830,17 @@ function CreateParentModal({
         finance: {
           activeSubscription: {
             period: 'Сентябрь 2026',
-            price: '7 600 ₽',
+            price: '120 €',
             status: 'active',
             lessonsAttended: '0 из 8',
             renewalDate: '30.09.2026',
           },
           deposit: {
             balance: 0,
-            balanceFormatted: '0 ₽',
-            currency: 'RUB',
-            pricePerLesson: 1050,
-            pricePerLessonFormatted: '1 050 ₽',
+            balanceFormatted: '0 €',
+            currency: 'EUR',
+            pricePerLesson: 12,
+            pricePerLessonFormatted: '12 €',
           },
           payments: [],
         },
