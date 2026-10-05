@@ -208,7 +208,7 @@ export default function DatabaseBackupPage() {
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <Link href="/settings" className="inline-flex items-center gap-1 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к настройкам
+          Настройки школы
         </Link>
         <span>/</span>
         <span className="text-slate-800 font-semibold">Резервное копирование</span>

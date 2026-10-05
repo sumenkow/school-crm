@@ -191,31 +191,37 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Настройки школы</h1>
-          <p className="text-sm text-slate-500">
-            Параметры организации, учебные программы, доступы и интеграции
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            <Globe className="h-3.5 w-3.5" />
-            Онлайн-платформа
-          </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <Euro className="h-3.5 w-3.5" />
-            EUR
-          </span>
+      {/* Breadcrumbs & Header */}
+      <div>
+        <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-2">
+          <span className="text-slate-900 font-semibold">Настройки школы</span>
+        </nav>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Настройки школы</h1>
+            <p className="text-sm text-slate-500">
+              Параметры организации, обучения, команды, доступа и интеграций
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              <Globe className="h-3.5 w-3.5" />
+              Онлайн-платформа
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Euro className="h-3.5 w-3.5" />
+              EUR
+            </span>
+          </div>
         </div>
       </div>
 
       {/* 4 CATEGORY CARDS AT TOP */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Card 1: Профиль школы */}
-        <div
-          onClick={() => setActiveModal('school')}
-          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between"
+        <Link
+          href="/settings/profile"
+          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start justify-between">
@@ -227,11 +233,13 @@ export default function SettingsPage() {
                   <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
                     Профиль школы
                   </h3>
-                  <p className="text-xs text-slate-500">Реквизиты и Faktura</p>
+                  <p className="text-xs text-slate-500 line-clamp-1" title="Название, контакты, рабочие часы, валюта и банковские реквизиты">
+                    Название, контакты, рабочие часы, валюта и банковские реквизиты
+                  </p>
                 </div>
               </div>
               <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors">
-                <Edit3 className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </div>
 
@@ -275,10 +283,10 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-blue-600 font-semibold">
-            <span>Изменить данные</span>
+            <span>Изменить данные →</span>
             <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
 
         {/* Card 2: Курсы и направления */}
         <Link
@@ -295,7 +303,9 @@ export default function SettingsPage() {
                   <h3 className="font-bold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">
                     Курсы и направления
                   </h3>
-                  <p className="text-xs text-slate-500">Программы и тарифы</p>
+                  <p className="text-xs text-slate-500 line-clamp-1" title="Направления, форматы, длительность, возраст и тарифы">
+                    Направления, форматы, длительность, возраст и тарифы
+                  </p>
                 </div>
               </div>
               <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 transition-colors">
@@ -338,7 +348,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-indigo-600 font-semibold">
-            <span>Настроить программы</span>
+            <span>Настроить курсы →</span>
             <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </Link>
@@ -358,7 +368,9 @@ export default function SettingsPage() {
                   <h3 className="font-bold text-slate-900 text-sm group-hover:text-purple-600 transition-colors">
                     Команда и доступ
                   </h3>
-                  <p className="text-xs text-slate-500">Роли и безопасность</p>
+                  <p className="text-xs text-slate-500 line-clamp-1" title="Сотрудники, роли, права доступа и безопасность">
+                    Сотрудники, роли, права доступа и безопасность
+                  </p>
                 </div>
               </div>
               <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-purple-600 group-hover:bg-purple-50 transition-colors">
@@ -394,15 +406,15 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-purple-600 font-semibold">
-            <span>Управление доступом</span>
+            <span>Управление командой →</span>
             <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </Link>
 
         {/* Card 4: Интеграции */}
-        <div
-          onClick={() => setActiveModal('telegram')}
-          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-sky-400 transition-all cursor-pointer flex flex-col justify-between"
+        <Link
+          href="/settings/integrations"
+          className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-sky-400 transition-all flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start justify-between">
@@ -414,11 +426,13 @@ export default function SettingsPage() {
                   <h3 className="font-bold text-slate-900 text-sm group-hover:text-sky-600 transition-colors">
                     Интеграции
                   </h3>
-                  <p className="text-xs text-slate-500">Telegram & Webhooks</p>
+                  <p className="text-xs text-slate-500 line-clamp-1" title="Telegram-бот, уведомления и внешние сервисы">
+                    Telegram-бот, уведомления и внешние сервисы
+                  </p>
                 </div>
               </div>
               <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-sky-600 group-hover:bg-sky-50 transition-colors">
-                <Edit3 className="h-3.5 w-3.5" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </div>
 
@@ -450,16 +464,16 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-sky-600 font-semibold">
-            <span>Настроить интеграции</span>
+            <span>Подключить сервисы →</span>
             <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
+        </Link>
       </div>
 
-      {/* LOWER ADMINISTRATION SECTION (Администрирование данных) */}
+      {/* LOWER ADMINISTRATION SECTION (Административные инструменты) */}
       <div className="pt-4 border-t border-slate-200/80">
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Администрирование данных</h2>
+          <h2 className="text-lg font-bold text-slate-900">Административные инструменты</h2>
           <p className="text-xs text-slate-500">
             Инструменты импорта, 3NF дедупликации, резервного копирования и синхронизации базы
           </p>
@@ -480,14 +494,14 @@ export default function SettingsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">
-                        Импорт и миграция из Excel
+                        Импорт Excel
                       </h3>
                       <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                         3NF Дедупликация
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Мастер переноса базы данных учеников и родителей
+                      Загрузка и обновление базы данных, дедупликация
                     </p>
                   </div>
                 </div>
@@ -509,7 +523,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-emerald-600 font-bold">
-              <span>Запустить мастер импорта</span>
+              <span>Запустить мастер импорта →</span>
               <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
@@ -528,14 +542,14 @@ export default function SettingsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-slate-900 text-sm group-hover:text-blue-700 transition-colors">
-                        Резервное копирование базы данных
+                        Резервное копирование
                       </h3>
                       <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
                         Excel & Sheets
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Снимки схемы, экспорт таблиц и аварийное восстановление
+                      Экспорт и автоматическое резервное копирование
                     </p>
                   </div>
                 </div>
@@ -557,7 +571,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-blue-600 font-bold">
-              <span>Управление копиями</span>
+              <span>Управление копиями →</span>
               <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>

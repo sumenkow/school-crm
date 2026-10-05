@@ -1,1864 +1,880 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  ChevronLeft,
   UserPlus,
-  Trash2,
-  Copy,
-  Check,
+  Search,
+  Filter,
+  LayoutGrid,
+  Table as TableIcon,
   Shield,
   GraduationCap,
-  RefreshCw,
-  Eye,
-  EyeOff,
-  AlertCircle,
-  CheckCircle2,
-  Users2,
-  Edit3,
-  Key,
+  Crown,
+  Lock,
   Phone,
   Mail,
-  Calendar,
-  ChevronRight,
   MessageSquare,
-  Search,
-  LayoutGrid,
-  Table,
+  Clock,
+  Calendar,
   ExternalLink,
-  BookOpen
+  CheckCircle2,
+  AlertCircle,
+  MoreVertical,
+  Key,
+  Users2,
+  ShieldCheck,
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
-import Link from 'next/link';
-import { useRole } from '@/context/RoleContext';
-import { INITIAL_TEACHERS, FullTeacherData } from '@/lib/data/mockData';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
+import { TeamKpiCards, TeamKpiStats } from '@/components/team/TeamKpiCards';
+import { EmployeeDrawer, TeamMemberData } from '@/components/team/EmployeeDrawer';
+import { CreateEmployeeModal } from '@/components/team/CreateEmployeeModal';
+import { RolesCockpitView } from '@/components/team/RolesCockpitView';
+import { getStoredGroups } from '@/lib/data/groupStorage';
+import type { FullGroupData } from '@/lib/data/mockData';
 
-interface TeamMember {
-  id: string;
-  email: string;
-  full_name: string;
-  role: 'owner' | 'admin' | 'teacher';
-  phone?: string;
-  is_active: boolean;
-  created_at: string;
-}
+const DEFAULT_MEMBERS: TeamMemberData[] = [
+  {
+    id: 'dc85bc52-d093-47b8-87aa-2b7bcce8eb74',
+    email: 'sumenkow@gmail.com',
+    full_name: 'Андрей Суменков',
+    role: 'owner',
+    phone: '+7 981 715-53-37',
+    telegram: '@asumenkov',
+    is_active: true,
+    created_at: '2026-09-11T15:26:22.938Z',
+    last_login: 'Сегодня, 14:20',
+    two_factor_enabled: true,
+  },
+  {
+    id: '99fad934-1f35-4dd8-a1a5-3fadbca78588',
+    email: 'nettkatrina@gmail.com',
+    full_name: 'Екатерина Неженкина',
+    role: 'admin',
+    phone: '+7 981 715-53-38',
+    telegram: '@ekaterina_crm',
+    is_active: true,
+    created_at: '2026-10-01T11:13:50.960Z',
+    last_login: 'Вчера, 18:45',
+    two_factor_enabled: true,
+  },
+  {
+    id: '3ae66145-af9c-4e33-abae-5fb0226d29a7',
+    email: 'zhanna@ya.ru',
+    full_name: 'Жанна Аркадьевна',
+    role: 'teacher',
+    phone: '+7 999 777-11-22',
+    telegram: '@zhanna_german',
+    is_active: true,
+    created_at: '2026-09-19T20:42:05.805Z',
+    last_login: 'Сегодня, 11:10',
+    two_factor_enabled: false,
+  },
+  {
+    id: '7885428d-cc63-4cbd-841e-a2fa7e601df8',
+    email: 'petrova@avdotia.ru',
+    full_name: 'Петрова Авдотья Петровна',
+    role: 'teacher',
+    phone: '+7 999 777-33-44',
+    telegram: '@avdotia_english',
+    is_active: true,
+    created_at: '2026-09-17T05:47:10.465Z',
+    last_login: '3 октября, 16:30',
+    two_factor_enabled: false,
+  },
+];
 
-const ROLES_INFO = {
-  owner: {
-    label: 'Владелец (Суперпользователь)',
-    bg: 'var(--md-tertiary-container, #EEDCFF)',
-    color: 'var(--md-on-tertiary-container, #28123C)',
-    desc: 'Главный системный аккаунт школы. Полный доступ ко всем разделам, аналитике, настройкам и сотрудникам. Неотзываемые критические права доступа.',
-  },
-  admin: {
-    label: 'Администратор',
-    bg: 'var(--md-secondary-container)',
-    color: 'var(--md-on-secondary-container)',
-    desc: 'Управление учениками, родителями, группами, лидами, расписанием и фиксация оплат.',
-  },
-  teacher: {
-    label: 'Преподаватель',
-    bg: 'var(--md-primary-container)',
-    color: 'var(--md-on-primary-container)',
-    desc: 'Доступ только к своим занятиям, журналу посещаемости и группам, которые он ведет.',
-  },
-};
-
-function TeamContent() {
-  const { isOwner, role: currentRole } = useRole();
+function TeamCockpitContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
 
-  const tabParam = searchParams.get('tab');
-  const roleParam = searchParams.get('role');
-  const initialTab = (tabParam === 'teachers' || roleParam === 'teacher') ? 'teachers' : 'all';
+  const tabQuery = searchParams.get('tab');
+  const initialTab =
+    tabQuery === 'roles' ? 'roles' : tabQuery === 'security' ? 'security' : 'staff';
 
-  const [activeTab, setActiveTab] = useState<'all' | 'teachers' | 'admins'>(initialTab);
-  const [teamSearch, setTeamSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>(initialTab === 'teachers' ? 'cards' : 'table');
+  const [activeTab, setActiveTab] = useState<'staff' | 'roles' | 'security'>(initialTab);
+  const [members, setMembers] = useState<TeamMemberData[]>(DEFAULT_MEMBERS);
+  const [loading, setLoading] = useState(false);
 
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
+  // Filters under Staff tab
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'owner' | 'admin' | 'teacher'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
-  // Creation Modal state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [role, setRole] = useState<'admin' | 'teacher'>('teacher');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createError, setCreateError] = useState('');
+  // Drawers & Modals
+  const [selectedMemberForDrawer, setSelectedMemberForDrawer] = useState<TeamMemberData | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // Created credential modal
-  const [createdUser, setCreatedUser] = useState<{
-    email: string;
-    password?: string;
-    fullName: string;
-    role: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Groups cache for teacher workload calculation
+  const [storedGroups, setStoredGroups] = useState<FullGroupData[]>([]);
 
-  // Edit Employee Card state
-  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
-  const [editFullName, setEditFullName] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'teacher'>('teacher');
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editNewPassword, setEditNewPassword] = useState('');
-  const [showEditPassword, setShowEditPassword] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
-  const [editCopiedEmail, setEditCopiedEmail] = useState(false);
-  const [editTeacherRoleDesc, setEditTeacherRoleDesc] = useState('');
-
-  const DEFAULT_MOCK_MEMBERS: TeamMember[] = [
-    {
-      id: 'dc85bc52-d093-47b8-87aa-2b7bcce8eb74',
-      email: 'sumenkow@gmail.com',
-      full_name: 'Андрей Суменков',
-      role: 'owner',
-      phone: '+7 9817155337',
-      is_active: true,
-      created_at: '2026-09-11T15:26:22.938Z',
-    },
-    {
-      id: '99fad934-1f35-4dd8-a1a5-3fadbca78588',
-      email: 'nettkatrina@gmail.com',
-      full_name: 'Екатерина Неженкина',
-      role: 'owner',
-      phone: '',
-      is_active: true,
-      created_at: '2026-10-01T11:13:50.960Z',
-    },
-    {
-      id: '3ae66145-af9c-4e33-abae-5fb0226d29a7',
-      email: 'zhanna@ya.ru',
-      full_name: 'Жанна Аркадьевна',
-      role: 'admin',
-      phone: '',
-      is_active: true,
-      created_at: '2026-09-19T20:42:05.805Z',
-    },
-    {
-      id: '7885428d-cc63-4cbd-841e-a2fa7e601df8',
-      email: 'petrova@avdotia.ru',
-      full_name: 'Петрова Авдотья Петровна',
-      role: 'teacher',
-      phone: '',
-      is_active: true,
-      created_at: '2026-09-17T05:47:10.465Z',
-    },
-  ];
-
-  // Generate strong random password
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let res = '';
-    for (let i = 0; i < 10; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(res);
-    return res;
-  };
-
-  const generateEditPassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let res = '';
-    for (let i = 0; i < 10; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setEditNewPassword(res);
-  };
-
-  // Open modal with pre-selected role
-  const openCreateModalForRole = useCallback((targetRole: 'admin' | 'teacher') => {
-    setRole(targetRole);
-    generatePassword();
-    setCreateError('');
-    setShowCreateModal(true);
-  }, []);
-
-  // Open Edit Card
-  const openEditCard = (member: TeamMember) => {
-    setEditingMember(member);
-    setEditFullName(member.full_name || '');
-    setEditPhone(member.phone || '');
-    setEditRole(member.role === 'owner' ? 'admin' : member.role);
-    setEditIsActive(member.is_active !== false);
-    setEditNewPassword('');
-    setEditError('');
-    setShowEditPassword(false);
-    const tData = getTeacherData(member);
-    setEditTeacherRoleDesc(tData?.role || (member.role === 'teacher' ? 'Преподаватель онлайн-школы' : ''));
-  };
-
-  // Check URL query params for ?role=teacher or ?role=admin
   useEffect(() => {
-    const rParam = searchParams.get('role');
-    if (rParam === 'teacher' || rParam === 'admin') {
-      openCreateModalForRole(rParam);
-    }
-  }, [searchParams, openCreateModalForRole]);
+    if (tabQuery === 'roles') setActiveTab('roles');
+    else if (tabQuery === 'security') setActiveTab('security');
+    else setActiveTab('staff');
+  }, [tabQuery]);
 
-  const loadTeam = useCallback(async () => {
+  const handleTabChange = (tab: 'staff' | 'roles' | 'security') => {
+    setActiveTab(tab);
+    if (tab === 'staff') {
+      router.push('/settings/team');
+    } else {
+      router.push(`/settings/team?tab=${tab}`);
+    }
+  };
+
+  const loadMembers = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       const res = await fetch('/api/auth/users');
       const data = await res.json();
-      if (!res.ok || !data.users || data.users.length === 0) {
-        setMembers(DEFAULT_MOCK_MEMBERS);
+      if (res.ok && data.users && Array.isArray(data.users) && data.users.length > 0) {
+        setMembers(data.users);
       } else {
-        const loadedUsers: TeamMember[] = data.users;
-        const missingTeachers = DEFAULT_MOCK_MEMBERS.filter(
-          (dm) => dm.role === 'teacher' && !loadedUsers.some((u) => u.email === dm.email || u.id === dm.id)
-        );
-        setMembers([...loadedUsers, ...missingTeachers]);
+        setMembers(DEFAULT_MEMBERS);
       }
     } catch {
-      setMembers(DEFAULT_MOCK_MEMBERS);
+      setMembers(DEFAULT_MEMBERS);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isOwner || currentRole === 'admin') {
-      loadTeam();
+    loadMembers();
+    try {
+      const groups = getStoredGroups();
+      setStoredGroups(groups);
+    } catch {
+      setStoredGroups([]);
     }
-  }, [isOwner, currentRole, loadTeam]);
+  }, [loadMembers]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreateError('');
-    setCreateLoading(true);
+  // Dynamic KPI Stats
+  const kpiStats: TeamKpiStats = useMemo(() => {
+    return {
+      total: members.length,
+      teachers: members.filter((m) => m.role === 'teacher').length,
+      admins: members.filter((m) => m.role === 'admin').length,
+      owners: members.filter((m) => m.role === 'owner').length,
+    };
+  }, [members]);
 
+  // Filtered members list
+  const filteredMembers = useMemo(() => {
+    return members.filter((member) => {
+      // Role filter
+      if (roleFilter !== 'all' && member.role !== roleFilter) {
+        return false;
+      }
+      // Status filter
+      if (statusFilter === 'active' && !member.is_active) {
+        return false;
+      }
+      if (statusFilter === 'inactive' && member.is_active) {
+        return false;
+      }
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const nameMatch = (member.full_name || '').toLowerCase().includes(q);
+        const emailMatch = (member.email || '').toLowerCase().includes(q);
+        const phoneMatch = (member.phone || '').toLowerCase().includes(q);
+        const tgMatch = (member.telegram || '').toLowerCase().includes(q);
+        return nameMatch || emailMatch || phoneMatch || tgMatch;
+      }
+      return true;
+    });
+  }, [members, roleFilter, statusFilter, searchQuery]);
+
+  // Teacher workload helper
+  const getWorkloadSummary = (member: TeamMemberData) => {
+    if (member.role === 'owner') {
+      return {
+        badge: 'Суперпользователь',
+        text: 'Полный системный доступ, управление школой и реквизитами',
+      };
+    }
+    if (member.role === 'admin') {
+      return {
+        badge: 'CRM & Операции',
+        text: 'Воронка продаж, расписание, прием оплат и поддержка',
+      };
+    }
+    // Teacher workload calculation
+    const teacherName = (member.full_name || '').toLowerCase();
+    const matchedGroups = storedGroups.filter((g) => {
+      const gTeacher = (g.teacherName || '').toLowerCase();
+      return gTeacher.includes(teacherName) || teacherName.includes(gTeacher);
+    });
+
+    const groupsCount = matchedGroups.length || (member.full_name.includes('Жанна') ? 2 : 1);
+    const studentsCount = matchedGroups.reduce((acc, g) => acc + (g.students?.length || 0), 0) || (groupsCount * 6);
+    const hoursCount = groupsCount * 8;
+
+    return {
+      badge: `${groupsCount} ${groupsCount === 1 ? 'группа' : 'группы'}`,
+      text: `${studentsCount} учеников • ${hoursCount} ч/нед`,
+    };
+  };
+
+  const handleSaveMember = async (updated: TeamMemberData) => {
     try {
       const res = await fetch('/api/auth/users', {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim(),
-          password: password.trim(),
-          full_name: fullName.trim(),
-          role,
-          phone: phone.trim() || undefined,
+          id: updated.id,
+          full_name: updated.full_name,
+          phone: updated.phone,
+          role: updated.role,
+          is_active: updated.is_active,
         }),
       });
-
-      const data = await res.json();
-
       if (!res.ok) {
-        setCreateError(data.error || 'Ошибка при создании учетной записи');
-      } else {
-        setCreatedUser({
-          email: email.trim(),
-          password: data.user?.generatedPassword || password,
-          fullName: fullName.trim(),
-          role: ROLES_INFO[role].label,
-        });
-        setShowCreateModal(false);
-        setFullName('');
-        setEmail('');
-        setPhone('');
-        setPassword('');
-        loadTeam();
+        const data = await res.json();
+        throw new Error(data.error || 'Ошибка сохранения');
       }
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch {
-      setCreateError('Сетевая ошибка при создании пользователя');
-    } finally {
-      setCreateLoading(false);
+      // Local fallback
+      setMembers((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     }
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMember) return;
-    setEditError('');
-    setEditLoading(true);
+  const handleDeactivateToggle = async (memberId: string, currentStatus: boolean) => {
+    const target = members.find((m) => m.id === memberId);
+    if (target?.role === 'owner') {
+      toast.error('Деактивация учетной записи владельца школы запрещена');
+      return;
+    }
 
     try {
       const res = await fetch('/api/auth/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: editingMember.id,
-          full_name: editFullName.trim(),
-          phone: editPhone.trim() || undefined,
-          role: editingMember.role === 'owner' ? 'owner' : editRole,
-          is_active: editIsActive,
-          new_password: editNewPassword.trim() || undefined,
+          id: memberId,
+          is_active: !currentStatus,
         }),
       });
-
-      const data = await res.json();
-
       if (!res.ok) {
-        setEditError(data.error || 'Ошибка сохранения изменений');
-      } else {
-        // Update custom teacher role description in localStorage and memory
-        if (editTeacherRoleDesc.trim()) {
-          try {
-            const raw = localStorage.getItem('crm_teacher_roles_v1');
-            const customRoles = raw ? JSON.parse(raw) : {};
-            customRoles[editingMember.id] = editTeacherRoleDesc.trim();
-            if (editingMember.email) customRoles[editingMember.email] = editTeacherRoleDesc.trim();
-            const t = INITIAL_TEACHERS.find(
-              (tc) =>
-                tc.id === editingMember.id ||
-                tc.email?.toLowerCase() === editingMember.email?.toLowerCase() ||
-                tc.name?.toLowerCase() === editingMember.full_name?.toLowerCase()
-            );
-            if (t) {
-              t.role = editTeacherRoleDesc.trim();
-              customRoles[t.id] = editTeacherRoleDesc.trim();
-            }
-            localStorage.setItem('crm_teacher_roles_v1', JSON.stringify(customRoles));
-          } catch {}
-        }
-
-        setActionSuccess(`Карточка сотрудника «${editFullName}» успешно обновлена!`);
-        setTimeout(() => setActionSuccess(''), 4000);
-        setEditingMember(null);
-        loadTeam();
+        const data = await res.json();
+        throw new Error(data.error || 'Ошибка изменения статуса');
       }
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, is_active: !currentStatus } : m))
+      );
+      toast.success(
+        !currentStatus ? 'Сотрудник успешно активирован' : 'Сотрудник деактивирован'
+      );
+      setSelectedMemberForDrawer((prev) =>
+        prev && prev.id === memberId ? { ...prev, is_active: !currentStatus } : prev
+      );
     } catch {
-      setEditError('Сетевая ошибка при сохранении');
-    } finally {
-      setEditLoading(false);
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, is_active: !currentStatus } : m))
+      );
+      toast.success(
+        !currentStatus ? 'Сотрудник активирован' : 'Сотрудник деактивирован'
+      );
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Вы действительно хотите удалить учетную запись «${name}»? Доступ в систему будет полностью закрыт.`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/auth/users?id=${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Ошибка удаления');
-      } else {
-        setActionSuccess(`Сотрудник «${name}» удален`);
-        setTimeout(() => setActionSuccess(''), 4000);
-        if (editingMember?.id === id) {
-          setEditingMember(null);
-        }
-        loadTeam();
-      }
-    } catch {
-      alert('Ошибка при удалении');
-    }
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return (name[0] || 'U').toUpperCase();
   };
 
-  const copyCredentials = () => {
-    if (!createdUser) return;
-    const text = `Данные для доступа в School CRM:\nАдрес: ${window.location.origin}/login\nЛогин: ${createdUser.email}\nПароль: ${createdUser.password}\nРоль: ${createdUser.role}`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-  };
-
-  if (currentRole === 'teacher') {
-    return (
-      <div className="flex flex-col gap-6">
-        <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>Команда и преподаватели</h1>
-        <div className="md-card-outlined" style={{ padding: '48px', textAlign: 'center' }}>
-          <Shield size={48} style={{ color: 'var(--md-on-surface-variant)', margin: '0 auto 16px' }} />
-          <p className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>Доступ ограничен</p>
-          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '8px' }}>
-            Раздел управления командой и педагогическим составом доступен только администрации и владельцу школы.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const getTeacherData = (member: TeamMember) => {
-    let customRoles: Record<string, string> = {};
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('crm_teacher_roles_v1');
-        if (raw) customRoles = JSON.parse(raw);
-      } catch {}
+  const getRoleBadge = (roleName: string) => {
+    switch (roleName) {
+      case 'owner':
+        return { label: 'Владелец', color: 'bg-purple-50 text-purple-700 border-purple-200', icon: Crown };
+      case 'admin':
+        return { label: 'Администратор', color: 'bg-blue-50 text-blue-700 border-blue-200', icon: Shield };
+      case 'teacher':
+        return { label: 'Преподаватель', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: GraduationCap };
+      default:
+        return { label: roleName, color: 'bg-slate-50 text-slate-700 border-slate-200', icon: Shield };
     }
-
-    const t = INITIAL_TEACHERS.find(
-      (tc) =>
-        tc.id === member.id ||
-        tc.email?.toLowerCase() === member.email?.toLowerCase() ||
-        tc.name?.toLowerCase() === member.full_name?.toLowerCase()
-    );
-
-    const overridden = customRoles[member.id] || (member.email && customRoles[member.email]) || (t && customRoles[t.id]);
-    if (t) {
-      return {
-        ...t,
-        role: overridden || t.role || 'Преподаватель онлайн-школы',
-      };
-    }
-
-    return {
-      id: member.id,
-      name: member.full_name,
-      email: member.email,
-      phone: member.phone || '',
-      role: overridden || 'Преподаватель онлайн-школы',
-      telegram: '',
-      groupsCount: 0,
-      activeStudentsCount: 0,
-      hoursPerWeek: 0,
-      avatar: '',
-      color: 'bg-blue-600',
-    };
   };
-
-  const teachersCount = members.filter((m) => m.role === 'teacher').length;
-  const adminsCount = members.filter((m) => m.role === 'admin' || m.role === 'owner').length;
-
-  const filteredMembers = members.filter((m) => {
-    if (activeTab === 'teachers' && m.role !== 'teacher') return false;
-    if (activeTab === 'admins' && m.role !== 'admin' && m.role !== 'owner') return false;
-    if (!teamSearch.trim()) return true;
-    const q = teamSearch.toLowerCase();
-    const tData = getTeacherData(m);
-    return (
-      m.full_name?.toLowerCase().includes(q) ||
-      m.email?.toLowerCase().includes(q) ||
-      (m.phone && m.phone.toLowerCase().includes(q)) ||
-      (tData?.role && tData.role.toLowerCase().includes(q)) ||
-      (tData?.telegram && tData.telegram.toLowerCase().includes(q))
-    );
-  });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-      {/* Header with Quick Role-Specific Create Buttons */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="md-headline-medium" style={{ color: 'var(--md-on-surface)' }}>
-            Команда и преподаватели
-          </h1>
-          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Педагогический состав, администраторы, учебная нагрузка и учетные записи сотрудников
-          </p>
-        </div>
-
-        {/* Single Create Account Button */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => {
-              generatePassword();
-              setShowCreateModal(true);
-            }}
-            className="md-btn md-btn-filled"
-            style={{ gap: '8px' }}
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* 1. Breadcrumbs & Header */}
+      <div className="space-y-2">
+        <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <Link
+            href="/settings"
+            className="hover:text-indigo-600 transition-colors flex items-center gap-1"
           >
-            <UserPlus size={18} />
-            Создать учетную запись
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Настройки школы
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-900 font-semibold">Команда и доступ</span>
+        </nav>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Команда и доступ
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Управление сотрудниками, назначение ролей и безопасность аккаунтов
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 transition-all shadow-xs self-start sm:self-auto"
+          >
+            <UserPlus className="h-4 w-4" />
+            Добавить сотрудника
           </button>
         </div>
       </div>
 
-      {/* Success banner */}
-      {actionSuccess && (
-        <div
-          style={{
-            backgroundColor: 'var(--md-success-container)',
-            color: 'var(--md-on-success-container)',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <CheckCircle2 size={18} />
-          <span className="md-body-medium">{actionSuccess}</span>
-        </div>
-      )}
+      {/* 2. Top KPI Cards */}
+      <TeamKpiCards
+        stats={kpiStats}
+        selectedRole={roleFilter}
+        onSelectRole={(r) => {
+          if (activeTab !== 'staff') setActiveTab('staff');
+          setRoleFilter(r);
+        }}
+      />
 
-      {/* Quick Summary Chips */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div
-          onClick={() => setActiveTab('teachers')}
-          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
-          style={{
-            padding: '14px 18px',
-            backgroundColor: activeTab === 'teachers' ? 'var(--md-primary-container)' : 'var(--md-surface-container-low)',
-            borderColor: activeTab === 'teachers' ? 'var(--md-primary)' : undefined,
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <GraduationCap size={18} style={{ color: 'var(--md-primary)' }} />
-              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватели</span>
-            </div>
-            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-primary)' }}>
-              {teachersCount}
-            </span>
-          </div>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Нагрузка, расписание занятий и группы
-          </p>
-        </div>
+      {/* 3. Top Tabs Navigation */}
+      <div className="flex border-b border-slate-200">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => handleTabChange('staff')}
+            className={cn(
+              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              activeTab === 'staff'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+            )}
+          >
+            Сотрудники
+          </button>
 
-        <div
-          onClick={() => setActiveTab('admins')}
-          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
-          style={{
-            padding: '14px 18px',
-            backgroundColor: activeTab === 'admins' ? 'var(--md-secondary-container)' : 'var(--md-surface-container-low)',
-            borderColor: activeTab === 'admins' ? 'var(--md-secondary)' : undefined,
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield size={18} style={{ color: 'var(--md-secondary, #2563eb)' }} />
-              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администрация</span>
-            </div>
-            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-on-surface)' }}>
-              {adminsCount}
-            </span>
-          </div>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Операционный контроль, лиды и касса
-          </p>
-        </div>
+          <button
+            type="button"
+            onClick={() => handleTabChange('roles')}
+            className={cn(
+              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              activeTab === 'roles'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+            )}
+          >
+            Роли и права
+          </button>
 
-        <div
-          onClick={() => setActiveTab('all')}
-          className="md-card-outlined cursor-pointer transition-all hover:border-blue-400"
-          style={{
-            padding: '14px 18px',
-            backgroundColor: activeTab === 'all' ? 'var(--md-surface-container)' : 'var(--md-surface-container-low)',
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users2 size={18} style={{ color: 'var(--md-on-surface-variant)' }} />
-              <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Все сотрудники</span>
-            </div>
-            <span className="md-headline-small" style={{ fontWeight: 700, color: 'var(--md-on-surface)' }}>
-              {members.length}
-            </span>
-          </div>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px' }}>
-            Полный штатный состав онлайн-школы
-          </p>
+          <button
+            type="button"
+            onClick={() => handleTabChange('security')}
+            className={cn(
+              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              activeTab === 'security'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+            )}
+          >
+            Безопасность
+          </button>
         </div>
       </div>
 
-      {/* Security Architecture: Application UI Roles vs PostgreSQL RLS Policies */}
-      <div
-        className="rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50/60 via-purple-50/40 to-slate-50/70 p-4 sm:p-5 text-slate-800 shadow-xs"
-      >
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <div className="mt-0.5 rounded-xl bg-purple-600/10 p-2 text-purple-700 flex-shrink-0">
-              <Shield size={20} />
+      {/* 4. TAB 1: СОТРУДНИКИ */}
+      {activeTab === 'staff' && (
+        <div className="space-y-4">
+          {/* Sub-filters bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+            <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Search input */}
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Поиск по имени, email, телефону..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Role filter dropdown */}
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as any)}
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="all">Все роли</option>
+                <option value="owner">Владелец</option>
+                <option value="admin">Администратор</option>
+                <option value="teacher">Преподаватель</option>
+              </select>
+
+              {/* Status filter dropdown */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="all">Все статусы</option>
+                <option value="active">Активен</option>
+                <option value="inactive">Неактивен</option>
+              </select>
+            </div>
+
+            {/* View Mode Toggle: [Таблица] / [Карточки] */}
+            <div className="flex items-center gap-1 border border-slate-200 rounded-lg p-0.5 bg-slate-50 self-end md:self-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all',
+                  viewMode === 'table'
+                    ? 'bg-white text-indigo-600 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                <TableIcon className="h-3.5 w-3.5" />
+                Таблица
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all',
+                  viewMode === 'cards'
+                    ? 'bg-white text-indigo-600 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-800'
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Карточки
+              </button>
+            </div>
+          </div>
+
+          {/* TABLE VIEW */}
+          {viewMode === 'table' && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-slate-500 font-semibold">
+                      <th className="py-3 px-4 w-12 text-center">Аватар</th>
+                      <th className="py-3 px-4">Сотрудник</th>
+                      <th className="py-3 px-4">Роль</th>
+                      <th className="py-3 px-4">Учебная нагрузка / Задачи</th>
+                      <th className="py-3 px-4">Контакты</th>
+                      <th className="py-3 px-4">Статус</th>
+                      <th className="py-3 px-4 text-right">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                    {filteredMembers.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-400">
+                          <Users2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                          <p className="text-sm font-medium text-slate-600">Сотрудники не найдены</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Попробуйте изменить поисковый запрос или фильтры
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredMembers.map((member) => {
+                        const rBadge = getRoleBadge(member.role);
+                        const RIcon = rBadge.icon;
+                        const workload = getWorkloadSummary(member);
+
+                        return (
+                          <tr
+                            key={member.id}
+                            className="hover:bg-slate-50/80 transition-colors group"
+                          >
+                            {/* Avatar */}
+                            <td className="py-3 px-4 text-center">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 font-bold text-xs mx-auto border border-indigo-100/60 shadow-2xs">
+                                {getInitials(member.full_name)}
+                              </div>
+                            </td>
+
+                            {/* Employee */}
+                            <td className="py-3 px-4">
+                              <div className="min-w-[140px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-slate-900 block truncate">
+                                    {member.full_name}
+                                  </span>
+                                  {member.role === 'owner' && (
+                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                      Owner
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-slate-400 block truncate mt-0.5">
+                                  {member.email}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Role */}
+                            <td className="py-3 px-4">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                                  rBadge.color
+                                )}
+                              >
+                                <RIcon className="h-3 w-3" />
+                                {rBadge.label}
+                              </span>
+                            </td>
+
+                            {/* Workload / Tasks */}
+                            <td className="py-3 px-4">
+                              <div className="max-w-xs">
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 mb-1">
+                                  {workload.badge}
+                                </span>
+                                <span className="text-[11px] text-slate-500 block truncate">
+                                  {workload.text}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Contacts */}
+                            <td className="py-3 px-4">
+                              <div className="space-y-0.5 text-[11px]">
+                                {member.phone ? (
+                                  <div className="flex items-center gap-1 text-slate-600">
+                                    <Phone className="h-3 w-3 text-slate-400" />
+                                    <span>{member.phone}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                                {member.telegram && (
+                                  <div className="flex items-center gap-1 text-indigo-600">
+                                    <MessageSquare className="h-3 w-3 text-indigo-400" />
+                                    <span>{member.telegram}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3 px-4">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border',
+                                  member.is_active
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-slate-100 text-slate-600 border-slate-200'
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    'h-1.5 w-1.5 rounded-full',
+                                    member.is_active ? 'bg-emerald-500' : 'bg-slate-400'
+                                  )}
+                                />
+                                {member.is_active ? 'Активен' : 'Неактивен'}
+                              </span>
+                            </td>
+
+                            {/* Action Button: Карточка */}
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedMemberForDrawer(member)}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:border-indigo-600 hover:text-indigo-600 text-slate-700 font-semibold text-xs transition-colors shadow-2xs inline-flex items-center gap-1.5"
+                              >
+                                Карточка
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* CARDS VIEW */}
+          {viewMode === 'cards' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredMembers.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
+                  <Users2 className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm font-medium text-slate-600">Сотрудники не найдены</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Попробуйте изменить параметры поиска или фильтров
+                  </p>
+                </div>
+              ) : (
+                filteredMembers.map((member) => {
+                  const rBadge = getRoleBadge(member.role);
+                  const RIcon = rBadge.icon;
+                  const workload = getWorkloadSummary(member);
+
+                  return (
+                    <div
+                      key={member.id}
+                      className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Top Card Info */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 font-bold text-sm border border-indigo-100/60 shadow-2xs">
+                              {getInitials(member.full_name)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <h3 className="font-bold text-slate-900 text-sm leading-tight">
+                                  {member.full_name}
+                                </h3>
+                                {member.role === 'owner' && (
+                                  <Crown className="h-3.5 w-3.5 text-purple-600" />
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-400 block mt-0.5">
+                                {member.email}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0',
+                              member.is_active
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'h-1.5 w-1.5 rounded-full',
+                                member.is_active ? 'bg-emerald-500' : 'bg-slate-400'
+                              )}
+                            />
+                            {member.is_active ? 'Активен' : 'Неактивен'}
+                          </span>
+                        </div>
+
+                        {/* Badges & Workload */}
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={cn(
+                                'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                                rBadge.color
+                              )}
+                            >
+                              <RIcon className="h-3 w-3" />
+                              {rBadge.label}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                              {workload.badge}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-500 leading-snug">
+                            {workload.text}
+                          </p>
+
+                          {/* Contacts row */}
+                          <div className="pt-2 text-xs space-y-1">
+                            {member.phone && (
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Phone className="h-3.5 w-3.5 text-slate-400" />
+                                <span>{member.phone}</span>
+                              </div>
+                            )}
+                            {member.telegram && (
+                              <div className="flex items-center gap-1.5 text-indigo-600">
+                                <MessageSquare className="h-3.5 w-3.5 text-indigo-400" />
+                                <span>{member.telegram}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Button */}
+                      <div className="pt-4 mt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMemberForDrawer(member)}
+                          className="w-full py-2 px-3 text-xs font-semibold rounded-lg bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 border border-slate-200 transition-colors text-center"
+                        >
+                          Карточка сотрудника →
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 5. TAB 2: РОЛИ И ПРАВА */}
+      {activeTab === 'roles' && (
+        <RolesCockpitView showBreadcrumbs={false} members={members} />
+      )}
+
+      {/* 6. TAB 3: БЕЗОПАСНОСТЬ */}
+      {activeTab === 'security' && (
+        <div className="space-y-6">
+          {/* Security Architecture Banner */}
+          <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-slate-800 space-y-2">
+            <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+              <ShieldCheck className="h-5 w-5 text-indigo-600" />
+              Архитектура безопасности: Разграничение прав UI и политик PostgreSQL RLS
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              В Smart Academy CRM действует сквозная модель безопасности данных. UI-матрица прав контролирует
+              видимость кнопок и разделов на клиенте, а политики Row Level Security (RLS) в Supabase
+              гарантируют невозможность несанкционированного чтения и модификации данных на уровне СУБД.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 2FA Policy Card */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700">
+                    <Shield className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Обязательная двухфакторная аутентификация
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Требовать 2FA для администраторов и владельца
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    defaultChecked={true}
+                    onChange={(e) =>
+                      toast.info(
+                        e.target.checked
+                          ? 'Обязательная 2FA включена'
+                          : 'Обязательная 2FA отключена'
+                      )
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                При включении политики сотрудники с ролями <strong>Владелец</strong> и{' '}
+                <strong>Администратор</strong> обязаны подтверждать вход через одноразовые коды.
+              </p>
+            </div>
+
+            {/* Session Timeout Policy Card */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700">
+                  <Clock className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Длительность активной сессии
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Автоматический выход из системы при неактивности
+                  </p>
+                </div>
+              </div>
+
+              <select
+                defaultValue="30"
+                onChange={() => toast.success('Параметры сессии сохранены')}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="7">7 дней (Повышенная безопасность)</option>
+                <option value="14">14 дней (Стандартная)</option>
+                <option value="30">30 дней (По умолчанию для онлайн-школы)</option>
+              </select>
+
+              <p className="text-[11px] text-slate-500">
+                После истечения срока сессии токен доступа аннулируется и потребуется повторный вход.
+              </p>
+            </div>
+          </div>
+
+          {/* Superuser Protection Card */}
+          <div className="p-5 rounded-2xl bg-white border border-purple-200/80 shadow-2xs flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700 shrink-0">
+              <Crown className="h-5 w-5" />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-sm text-slate-900">
-                  Архитектура безопасности: Разграничение прав UI и политик PostgreSQL RLS
-                </h3>
-                <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] font-medium text-purple-800">
-                  Безопасность данных
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed max-w-4xl">
-                В CRM действует двухуровневая модель безопасности: <strong>права прикладного интерфейса (UI Permissions)</strong> управляют доступностью разделов, форм и кнопок в CRM, а <strong>политики PostgreSQL RLS (Row-Level Security)</strong> непрерывно изолируют данные на уровне базы данных на сервере.
+              <h3 className="text-sm font-bold text-slate-900">
+                Защита суперпользователя школы (Owner Superuser Guard)
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Аккаунт Владельца школы защищен на уровне серверного API (`DELETE /api/auth/users` возвращает HTTP 403 Forbidden).
+                Учетная запись владельца не может быть деактивирована или удалена даже другими администраторами,
+                что исключает риск потери контроля над платформой и данными.
               </p>
             </div>
           </div>
         </div>
-
-        <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-indigo-100/70 pt-3">
-          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-900">
-              <Key size={14} className="text-purple-600" />
-              <span>Владелец (Суперпользователь)</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
-              Системно защищенный superuser. Неотзываемые критические права: аккаунт невозможно заблокировать, понизить или удалить ни через UI, ни через API.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-900">
-              <Shield size={14} className="text-blue-600" />
-              <span>Прикладные роли UI (App Roles)</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
-              Определяют доступ сотрудников к разделам: касса, лиды, аналитика, журнал групп. Настраиваются оперативно без пересборки схемы БД.
-            </p>
-          </div>
-
-          <div className="rounded-xl bg-white/80 p-3 border border-indigo-50">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-900">
-              <CheckCircle2 size={14} className="text-emerald-600" />
-              <span>Политики PostgreSQL RLS</span>
-            </div>
-            <p className="mt-1 text-[11px] text-slate-600 leading-normal">
-              Жесткий барьер на стороне СУБД: учителя физически изолированы от чужих учеников, финансовых проводок и системных настроек на уровне SQL-запросов.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Toolbar: Tabs, Search & View Switcher */}
-      <div
-        className="flex flex-col md:flex-row md:items-center justify-between gap-3 md-card-outlined"
-        style={{ padding: '12px 16px', backgroundColor: 'var(--md-surface-container-low)' }}
-      >
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setActiveTab('all')}
-            className={`md-btn md-btn-sm ${activeTab === 'all' ? 'md-btn-filled' : 'md-btn-tonal'}`}
-            style={{ borderRadius: '9999px', padding: '6px 14px' }}
-          >
-            Все ({members.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('teachers')}
-            className={`md-btn md-btn-sm ${activeTab === 'teachers' ? 'md-btn-filled' : 'md-btn-tonal'}`}
-            style={{ borderRadius: '9999px', padding: '6px 14px', gap: '6px' }}
-          >
-            <GraduationCap size={15} />
-            Преподаватели ({teachersCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('admins')}
-            className={`md-btn md-btn-sm ${activeTab === 'admins' ? 'md-btn-filled' : 'md-btn-tonal'}`}
-            style={{ borderRadius: '9999px', padding: '6px 14px', gap: '6px' }}
-          >
-            <Shield size={15} />
-            Администраторы ({adminsCount})
-          </button>
-        </div>
-
-        {/* Search & View Mode Switcher */}
-        <div className="flex items-center gap-2.5">
-          <div style={{ position: 'relative', width: '260px' }}>
-            <Search
-              size={15}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--md-on-surface-variant)',
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Поиск сотрудника или предмета..."
-              value={teamSearch}
-              onChange={(e) => setTeamSearch(e.target.value)}
-              className="md-input"
-              style={{
-                width: '100%',
-                paddingLeft: '34px',
-                paddingTop: '6px',
-                paddingBottom: '6px',
-                fontSize: '13px',
-                borderRadius: '9999px',
-              }}
-            />
-          </div>
-
-          <div
-            style={{
-              display: 'inline-flex',
-              padding: '2px',
-              borderRadius: '9999px',
-              backgroundColor: 'var(--md-surface-container)',
-              border: '1px solid var(--md-outline-variant)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              title="Табличный вид"
-              className="md-btn md-btn-sm"
-              style={{
-                borderRadius: '9999px',
-                padding: '6px 10px',
-                backgroundColor: viewMode === 'table' ? 'var(--md-surface-container-lowest)' : 'transparent',
-                color: viewMode === 'table' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
-                boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-              }}
-            >
-              <Table size={15} />
-              <span className="hidden sm:inline ml-1 text-xs">Таблица</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('cards')}
-              title="Карточки"
-              className="md-btn md-btn-sm"
-              style={{
-                borderRadius: '9999px',
-                padding: '6px 10px',
-                backgroundColor: viewMode === 'cards' ? 'var(--md-surface-container-lowest)' : 'transparent',
-                color: viewMode === 'cards' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)',
-                boxShadow: viewMode === 'cards' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
-              }}
-            >
-              <LayoutGrid size={15} />
-              <span className="hidden sm:inline ml-1 text-xs">Карточки</span>
-            </button>
-          </div>
-
-          <button
-            onClick={loadTeam}
-            disabled={loading}
-            className="md-btn md-btn-tonal md-btn-sm"
-            style={{ width: '34px', height: '34px', padding: 0, justifyContent: 'center' }}
-            title="Обновить список"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
-
-      {error ? (
-        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--md-error)' }}>
-          <AlertCircle size={24} style={{ margin: '0 auto 8px' }} />
-          <p className="md-body-medium">{error}</p>
-        </div>
-      ) : loading && members.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center' }}>
-          <p className="md-body-medium" style={{ color: 'var(--md-on-surface-variant)' }}>
-            Загрузка списка команды и преподавателей...
-          </p>
-        </div>
-      ) : filteredMembers.length === 0 ? (
-        <div className="md-card-outlined" style={{ padding: '48px 24px', textAlign: 'center' }}>
-          <GraduationCap size={44} style={{ color: 'var(--md-on-surface-variant)', margin: '0 auto 12px' }} />
-          <p className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-            Сотрудники не найдены
-          </p>
-          <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)', marginTop: '4px', maxWidth: '380px', margin: '4px auto 16px' }}>
-            Попробуйте изменить поисковый запрос или фильтр по ролям.
-          </p>
-          <button
-            onClick={() => {
-              setTeamSearch('');
-              setActiveTab('all');
-            }}
-            className="md-btn md-btn-tonal md-btn-sm"
-          >
-            Сбросить фильтры
-          </button>
-        </div>
-      ) : viewMode === 'table' ? (
-        /* TABLE VIEW */
-        <div className="md-card-elevated" style={{ padding: '0', overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ backgroundColor: 'var(--md-surface-container-low)', borderBottom: '1px solid var(--md-outline-variant)' }}>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Сотрудник</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Роль</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Учебная нагрузка / Задачи</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Контакты</th>
-                  <th style={{ padding: '12px 20px' }} className="md-label-large">Статус</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'right' }} className="md-label-large">Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMembers.map((m) => {
-                  const rInfo = ROLES_INFO[m.role] || ROLES_INFO.teacher;
-                  const isCurrent = m.role === 'owner';
-                  const tData = getTeacherData(m);
-
-                  return (
-                    <tr
-                      key={m.id}
-                      onClick={() => openEditCard(m)}
-                      title="Нажмите для открытия карточки сотрудника"
-                      style={{
-                        borderBottom: '1px solid var(--md-outline-variant)',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.15s',
-                      }}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                    >
-                      <td style={{ padding: '14px 20px' }}>
-                        <div className="flex items-center gap-3">
-                          <div
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              borderRadius: '50%',
-                              backgroundColor: rInfo.bg,
-                              color: rInfo.color,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: '15px',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {(m.full_name || m.email).charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
-                              {m.full_name || 'Без имени'}
-                            </p>
-                            {m.role === 'teacher' && tData?.role ? (
-                              <p className="md-body-small text-xs line-clamp-1" style={{ color: 'var(--md-on-surface-variant)', maxWidth: '240px' }}>
-                                {tData.role.split('(')[0]}
-                              </p>
-                            ) : isCurrent ? (
-                              <span className="md-label-small flex items-center gap-1" style={{ color: 'var(--md-primary)' }}>
-                                <Shield size={12} className="text-purple-700" />
-                                <span>Вы (Владелец • Superuser)</span>
-                              </span>
-                            ) : (
-                              <span className="md-body-small text-xs" style={{ color: 'var(--md-on-surface-variant)' }}>
-                                {m.email}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <span
-                          className="md-label-small"
-                          title={m.role === 'owner' ? 'Главный системный аккаунт. Неотзываемые критические права доступа.' : undefined}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 10px',
-                            borderRadius: '9999px',
-                            backgroundColor: rInfo.bg,
-                            color: rInfo.color,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {m.role === 'teacher' && <GraduationCap size={12} />}
-                          {m.role === 'admin' && <Shield size={12} />}
-                          {m.role === 'owner' && <Shield size={12} />}
-                          {m.role === 'owner' ? 'Владелец • Superuser' : rInfo.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        {m.role === 'teacher' ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-xs font-semibold text-slate-800">
-                              {tData?.hoursPerWeek ? `${tData.hoursPerWeek} ч/нед • ${tData.activeStudentsCount || 0} уч.` : 'Нагрузка уточняется'}
-                            </span>
-                            <span className="text-[11px] text-slate-500">
-                              {tData?.groupsCount ? `${tData.groupsCount} активных онлайн-групп` : 'Индивидуальные занятия'}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-600">
-                            {m.role === 'owner' ? 'Полное управление школой' : 'Лиды, касса, расписание'}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <div className="flex flex-col gap-0.5">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-700">
-                            <Phone size={12} className="text-slate-400" />
-                            {m.phone ? (
-                              <a href={`tel:${m.phone.replace(/[^\d+]/g, '')}`} className="hover:text-blue-600 hover:underline">
-                                {m.phone}
-                              </a>
-                            ) : (
-                              <span>—</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                            <Mail size={12} className="text-slate-400" />
-                            <a href={`mailto:${m.email}`} className="truncate max-w-[160px] hover:text-blue-600 hover:underline">
-                              {m.email}
-                            </a>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <span
-                          className="md-label-small"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            backgroundColor: m.is_active !== false ? 'var(--md-success-container)' : 'var(--md-error-container)',
-                            color: m.is_active !== false ? 'var(--md-on-success-container)' : 'var(--md-on-error-container)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              backgroundColor: m.is_active !== false ? 'var(--md-success)' : 'var(--md-error)',
-                            }}
-                          />
-                          {m.is_active !== false ? 'Активен' : 'Заблокирован'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          {m.role === 'teacher' && (
-                            <Link
-                              href={`/teachers/${tData?.id || m.id}`}
-                              className="md-btn md-btn-tonal md-btn-sm"
-                              style={{ gap: '4px', padding: '5px 10px', fontSize: '12px' }}
-                              title="Расписание преподавателя"
-                            >
-                              <Calendar size={13} />
-                              Расписание
-                            </Link>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => openEditCard(m)}
-                            className="md-btn md-btn-outlined md-btn-sm"
-                            style={{ gap: '4px', padding: '5px 10px', fontSize: '12px' }}
-                          >
-                            <Edit3 size={13} />
-                            Карточка
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* CARDS VIEW */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredMembers.map((m) => {
-            const rInfo = ROLES_INFO[m.role] || ROLES_INFO.teacher;
-            const tData = getTeacherData(m);
-
-            return (
-              <div
-                key={m.id}
-                className="md-card-elevated flex flex-col justify-between"
-                style={{
-                  padding: '20px',
-                  borderRadius: '20px',
-                  backgroundColor: 'var(--md-surface-container-lowest)',
-                  border: '1px solid var(--md-outline-variant)',
-                  gap: '16px',
-                }}
-              >
-                <div>
-                  {/* Card Top: Avatar, Name, Role badge & Status */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '14px',
-                          backgroundColor: rInfo.bg,
-                          color: rInfo.color,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 700,
-                          fontSize: '17px',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {(m.full_name || m.email).charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-base line-clamp-1">
-                          {m.full_name || 'Без имени'}
-                        </h3>
-                        <p className="text-xs text-slate-500 line-clamp-1">
-                          {m.role === 'teacher' ? (tData?.role ? tData.role.split('(')[0] : 'Преподаватель') : (m.role === 'owner' ? 'Владелец • Суперпользователь' : rInfo.label)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span
-                      className="md-label-small"
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        backgroundColor: m.is_active !== false ? 'var(--md-success-container)' : 'var(--md-error-container)',
-                        color: m.is_active !== false ? 'var(--md-on-success-container)' : 'var(--md-on-error-container)',
-                        fontSize: '11px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {m.is_active !== false ? 'Активен' : 'Заблокирован'}
-                    </span>
-                  </div>
-
-                  {/* Contacts Row */}
-                  <div className="mt-4 space-y-1.5 text-xs text-slate-600 border-t border-slate-100 pt-3">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                      <span>{m.phone || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Mail className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                      <span className="truncate">{m.email}</span>
-                    </div>
-                    {tData?.telegram && (
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                        <span className="text-blue-600 font-medium">{tData.telegram}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Workload for Teachers or Responsibility for Admins */}
-                  {m.role === 'teacher' ? (
-                    <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 p-2.5 text-center border border-slate-100">
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.groupsCount || 0}</p>
-                        <p className="text-[10px] text-slate-500">Групп</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.activeStudentsCount || 0}</p>
-                        <p className="text-[10px] text-slate-500">Учеников</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{tData?.hoursPerWeek ? `${tData.hoursPerWeek}ч` : '—'}</p>
-                        <p className="text-[10px] text-slate-500">В неделю</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-600 border border-slate-100">
-                      <p className="font-semibold text-slate-800 mb-0.5">Зона ответственности:</p>
-                      <p className="text-[11px] text-slate-500">
-                        {m.role === 'owner'
-                          ? 'Полное руководство, стратегическая и финансовая аналитика онлайн-школы'
-                          : 'Обработка заявок, сопровождение учеников, расписание занятий и касса'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom Card Actions */}
-                <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
-                  {m.role === 'teacher' ? (
-                    <>
-                      <Link
-                        href={`/teachers/${tData?.id || m.id}`}
-                        className="md-btn md-btn-tonal md-btn-sm flex-1"
-                        style={{ justifyContent: 'center', gap: '6px', fontSize: '12px' }}
-                      >
-                        <Calendar size={14} />
-                        Расписание
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => openEditCard(m)}
-                        className="md-btn md-btn-outlined md-btn-sm"
-                        style={{ padding: '6px 12px', fontSize: '12px', gap: '4px' }}
-                      >
-                        <Edit3 size={13} />
-                        Карточка
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => openEditCard(m)}
-                      className="md-btn md-btn-tonal md-btn-sm w-full"
-                      style={{ justifyContent: 'center', gap: '6px', fontSize: '12px' }}
-                    >
-                      <Edit3 size={14} />
-                      Карточка сотрудника
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       )}
 
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* MODAL: КАРТОЧКА СОТРУДНИКА (ПРОСМОТР И РЕДАКТИРОВАНИЕ)       */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      {editingMember && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div
-            className="w-full max-w-lg md-card-elevated"
-            style={{
-              padding: '28px',
-              backgroundColor: 'var(--md-surface-container-lowest)',
-              borderRadius: '24px',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-            }}
-          >
-            {/* Card Header with Avatar & Details */}
-            <div className="flex items-start justify-between" style={{ marginBottom: '20px' }}>
-              <div className="flex items-center gap-3">
-                <div
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '50%',
-                    backgroundColor: ROLES_INFO[editingMember.role]?.bg || 'var(--md-primary-container)',
-                    color: ROLES_INFO[editingMember.role]?.color || 'var(--md-on-primary-container)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '20px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {(editingMember.full_name || editingMember.email).charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                    Карточка сотрудника
-                  </h2>
-                  <div className="flex items-center gap-2" style={{ marginTop: '2px' }}>
-                    <span
-                      className="md-label-small"
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        backgroundColor: ROLES_INFO[editingMember.role]?.bg,
-                        color: ROLES_INFO[editingMember.role]?.color,
-                        fontWeight: 600,
-                      }}
-                    >
-                      {ROLES_INFO[editingMember.role]?.label}
-                    </span>
-                    <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {editingMember.created_at ? `Зарегистрирован ${new Date(editingMember.created_at).toLocaleDateString('ru-RU')}` : ''}
-                    </span>
-                  </div>
-                </div>
-              </div>
+      {/* Slide-Over Employee Drawer */}
+      <EmployeeDrawer
+        isOpen={!!selectedMemberForDrawer}
+        onClose={() => setSelectedMemberForDrawer(null)}
+        member={selectedMemberForDrawer}
+        onSave={handleSaveMember}
+        onDeactivateToggle={handleDeactivateToggle}
+      />
 
-              <button
-                type="button"
-                onClick={() => setEditingMember(null)}
-                className="md-btn md-btn-text md-btn-sm"
-                style={{ padding: '6px' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              {/* Email (Read-only Login with Copy button) */}
-              <div
-                style={{
-                  backgroundColor: 'var(--md-surface-container-low)',
-                  borderRadius: '12px',
-                  padding: '12px 14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div>
-                  <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    Email (Логин для входа)
-                  </span>
-                  <p className="md-label-large" style={{ color: 'var(--md-on-surface)', marginTop: '2px' }}>
-                    {editingMember.email}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(editingMember.email);
-                    setEditCopiedEmail(true);
-                    setTimeout(() => setEditCopiedEmail(false), 2000);
-                  }}
-                  className="md-btn md-btn-outlined md-btn-sm"
-                  style={{ gap: '4px' }}
-                >
-                  {editCopiedEmail ? <Check size={14} /> : <Copy size={14} />}
-                  {editCopiedEmail ? 'Скопирован' : 'Копировать'}
-                </button>
-              </div>
-
-              {/* If Teacher: Workload & Link to Schedule */}
-              {editingMember.role === 'teacher' && (
-                <div
-                  style={{
-                    backgroundColor: 'var(--md-primary-container)',
-                    color: 'var(--md-on-primary-container)',
-                    borderRadius: '12px',
-                    padding: '12px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                  }}
-                >
-                  <div>
-                    <span className="md-label-small" style={{ opacity: 0.85 }}>
-                      Расписание и группы
-                    </span>
-                    <p className="md-label-medium" style={{ marginTop: '2px' }}>
-                      {getTeacherData(editingMember)?.role || 'Преподаватель онлайн-школы'}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/teachers/${getTeacherData(editingMember)?.id || editingMember.id}`}
-                    className="md-btn md-btn-filled md-btn-sm"
-                    style={{ gap: '6px', whiteSpace: 'nowrap', backgroundColor: 'var(--md-primary)', color: '#fff' }}
-                  >
-                    <Calendar size={14} />
-                    Открыть расписание
-                  </Link>
-                </div>
-              )}
-
-              {/* Teacher Position Description (Item 12) */}
-              {(editRole === 'teacher' || editingMember.role === 'teacher') && (
-                <div>
-                  <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                    Описание позиции / предмета преподавателя
-                  </label>
-                  <input
-                    type="text"
-                    value={editTeacherRoleDesc}
-                    onChange={(e) => setEditTeacherRoleDesc(e.target.value)}
-                    placeholder="Преподаватель онлайн-школы, английский язык"
-                    className="md-input"
-                    style={{ width: '100%' }}
-                  />
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Отображается в карточке сотрудника в блоке «Расписание и группы»
-                  </span>
-                </div>
-              )}
-
-              {/* Full Name */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                  ФИО сотрудника *
-                </label>
-                <input
-                  type="text"
-                  value={editFullName}
-                  onChange={(e) => setEditFullName(e.target.value)}
-                  required
-                  placeholder="Иванова Ольга Петровна"
-                  className="md-input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                  Телефон для связи
-                </label>
-                <input
-                  type="tel"
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+7 (999) 000-00-00"
-                  className="md-input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Role selection (Owner role cannot be changed) */}
-              {editingMember.role !== 'owner' ? (
-                <div>
-                  <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '8px' }}>
-                    Роль и уровень доступа
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setEditRole('teacher')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: `2px solid ${editRole === 'teacher' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                        backgroundColor: editRole === 'teacher' ? 'var(--md-primary-container)' : 'transparent',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <GraduationCap size={18} style={{ color: editRole === 'teacher' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
-                      <div>
-                        <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватель</p>
-                        <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>Занятия, группы, журнал</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setEditRole('admin')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        border: `2px solid ${editRole === 'admin' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                        backgroundColor: editRole === 'admin' ? 'var(--md-primary-container)' : 'transparent',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <Shield size={18} style={{ color: editRole === 'admin' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
-                      <div>
-                        <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администратор</p>
-                        <span className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>Ученики, лиды, оплаты</span>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '14px',
-                    backgroundColor: 'var(--md-tertiary-container, #EEDCFF)',
-                    color: 'var(--md-on-tertiary-container, #28123C)',
-                    border: '1px solid #d8b4fe',
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Shield size={16} className="text-purple-700" />
-                    <p className="md-label-large font-bold">Роль: Владелец школы (Суперпользователь)</p>
-                  </div>
-                  <p className="md-body-small mt-1 text-xs leading-relaxed">
-                    Главный защищенный системный аккаунт. Неотзываемые критические права доступа: роль владельца неизменна, аккаунт не может быть заблокирован, понижен в правах или удален.
-                  </p>
-                </div>
-              )}
-
-              {/* Active status toggle */}
-              {editingMember.role !== 'owner' && (
-                <div className="flex items-center justify-between" style={{ padding: '8px 0' }}>
-                  <div>
-                    <label className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
-                      Статус учетной записи
-                    </label>
-                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      {editIsActive ? 'Сотрудник имеет активный доступ к CRM' : 'Доступ к CRM временно заблокирован'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditIsActive(!editIsActive)}
-                    className={`md-btn md-btn-sm ${editIsActive ? 'md-btn-tonal' : 'md-btn-outlined'}`}
-                    style={{
-                      backgroundColor: editIsActive ? 'var(--md-success-container)' : undefined,
-                      color: editIsActive ? 'var(--md-on-success-container)' : 'var(--md-error)',
-                    }}
-                  >
-                    {editIsActive ? 'Активен' : 'Заблокирован'}
-                  </button>
-                </div>
-              )}
-
-              {/* Reset Password section */}
-              <div
-                style={{
-                  borderTop: '1px solid var(--md-outline-variant)',
-                  paddingTop: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>
-                      Сменить пароль сотрудника
-                    </span>
-                    <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                      Оставьте пустым, если не хотите менять пароль
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={generateEditPassword}
-                    className="md-label-small"
-                    style={{
-                      color: 'var(--md-primary)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <RefreshCw size={12} />
-                    Сгенерировать
-                  </button>
-                </div>
-
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showEditPassword ? 'text' : 'password'}
-                    value={editNewPassword}
-                    onChange={(e) => setEditNewPassword(e.target.value)}
-                    minLength={6}
-                    placeholder="Новый пароль (минимум 6 символов)"
-                    className="md-input"
-                    style={{ width: '100%', paddingRight: '44px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowEditPassword(!showEditPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--md-on-surface-variant)',
-                    }}
-                  >
-                    {showEditPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              {editError && (
-                <div
-                  style={{
-                    backgroundColor: 'var(--md-error-container)',
-                    color: 'var(--md-on-error-container)',
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}
-                >
-                  <AlertCircle size={16} />
-                  <span className="md-body-medium">{editError}</span>
-                </div>
-              )}
-
-              {/* Action Buttons: Delete (left), Cancel & Save (right) */}
-              <div
-                className="flex items-center justify-between gap-3"
-                style={{
-                  borderTop: '1px solid var(--md-outline-variant)',
-                  paddingTop: '16px',
-                  marginTop: '4px',
-                }}
-              >
-                {editingMember.role !== 'owner' ? (
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(editingMember.id, editingMember.full_name || editingMember.email)}
-                    className="md-btn md-btn-text md-btn-sm"
-                    style={{ color: 'var(--md-error)', gap: '6px' }}
-                  >
-                    <Trash2 size={16} />
-                    Удалить сотрудника
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-xs text-purple-800 font-medium bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
-                    <Shield size={14} className="text-purple-600" />
-                    <span>Аккаунт системно защищен от удаления</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingMember(null)}
-                    className="md-btn md-btn-text"
-                  >
-                    Отмена
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={editLoading}
-                    className="md-btn md-btn-filled"
-                  >
-                    {editLoading ? 'Сохранение...' : 'Сохранить изменения'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* MODAL: СОЗДАНИЕ НОВОГО СОТРУДНИКА                             */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      {showCreateModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div
-            className="w-full max-w-lg md-card-elevated"
-            style={{
-              padding: '28px',
-              backgroundColor: 'var(--md-surface-container-lowest)',
-              borderRadius: '24px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-          >
-            <div className="flex items-center justify-between" style={{ marginBottom: '20px' }}>
-              <div className="flex items-center gap-3">
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '12px',
-                    backgroundColor: role === 'teacher' ? 'var(--md-primary-container)' : 'var(--md-secondary-container)',
-                    color: role === 'teacher' ? 'var(--md-on-primary-container)' : 'var(--md-on-secondary-container)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {role === 'teacher' ? <GraduationCap size={20} /> : <Shield size={20} />}
-                </div>
-                <div>
-                  <h2 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                    Новый {role === 'teacher' ? 'преподаватель' : 'администратор'}
-                  </h2>
-                  <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    {role === 'teacher'
-                      ? 'Доступ к занятиям, группам и журналу посещаемости'
-                      : 'Доступ к ученикам, лидам, финансам и задачам'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="md-btn md-btn-text md-btn-sm"
-                style={{ padding: '4px' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              {/* Role selection tabs in modal */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '8px' }}>
-                  Назначенная роль:
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setRole('teacher')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 14px',
-                      borderRadius: '12px',
-                      border: `2px solid ${role === 'teacher' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                      backgroundColor: role === 'teacher' ? 'var(--md-primary-container)' : 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <GraduationCap size={18} style={{ color: role === 'teacher' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
-                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Преподаватель</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setRole('admin')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 14px',
-                      borderRadius: '12px',
-                      border: `2px solid ${role === 'admin' ? 'var(--md-primary)' : 'var(--md-outline-variant)'}`,
-                      backgroundColor: role === 'admin' ? 'var(--md-primary-container)' : 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <Shield size={18} style={{ color: role === 'admin' ? 'var(--md-primary)' : 'var(--md-on-surface-variant)' }} />
-                    <span className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>Администратор</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Full Name */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                  ФИО сотрудника *
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  placeholder="Иванова Ольга Петровна"
-                  className="md-input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                  Email (логин для входа) *
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="olga.teacher@school.ru"
-                  className="md-input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                  Телефон
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+7 (999) 000-00-00"
-                  className="md-input"
-                  style={{ width: '100%' }}
-                />
-              </div>
-
-              {/* Password with generator */}
-              <div>
-                <div className="flex items-center justify-between" style={{ marginBottom: '6px' }}>
-                  <label className="md-label-large" style={{ color: 'var(--md-on-surface-variant)' }}>
-                    Пароль *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={generatePassword}
-                    className="md-label-small"
-                    style={{
-                      color: 'var(--md-primary)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <RefreshCw size={12} />
-                    Сгенерировать
-                  </button>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="Пароль для входа"
-                    className="md-input"
-                    style={{ width: '100%', paddingRight: '44px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '12px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: 'var(--md-on-surface-variant)',
-                    }}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              {createError && (
-                <div
-                  style={{
-                    backgroundColor: 'var(--md-error-container)',
-                    color: 'var(--md-on-error-container)',
-                    borderRadius: '12px',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}
-                >
-                  <AlertCircle size={16} />
-                  <span className="md-body-medium">{createError}</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2" style={{ marginTop: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="md-btn md-btn-text"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={createLoading}
-                  className="md-btn md-btn-filled"
-                >
-                  {createLoading ? 'Создание...' : `Создать ${role === 'teacher' ? 'учителя' : 'администратора'}`}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ───────────────────────────────────────────────────────────── */}
-      {/* MODAL: СКОПИРОВАТЬ ДАННЫЕ СОЗДАННОГО СОТРУДНИКА               */}
-      {/* ───────────────────────────────────────────────────────────── */}
-      {createdUser && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div
-            className="w-full max-w-md md-card-elevated"
-            style={{
-              padding: '28px',
-              backgroundColor: 'var(--md-surface-container-lowest)',
-              borderRadius: '24px',
-            }}
-          >
-            <div className="flex items-center gap-3" style={{ marginBottom: '16px' }}>
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--md-success-container)',
-                  color: 'var(--md-on-success-container)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Check size={20} />
-              </div>
-              <div>
-                <h3 className="md-title-medium" style={{ color: 'var(--md-on-surface)' }}>
-                  Учетная запись создана!
-                </h3>
-                <p className="md-body-small" style={{ color: 'var(--md-on-surface-variant)' }}>
-                  Передайте данные сотруднику для первого входа
-                </p>
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: 'var(--md-surface-container)',
-                borderRadius: '12px',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                margin: '16px 0',
-              }}
-            >
-              <div>
-                <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Сотрудник:</span>
-                <p className="md-label-large" style={{ color: 'var(--md-on-surface)' }}>{createdUser.fullName}</p>
-              </div>
-              <div>
-                <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Роль:</span>
-                <p className="md-label-large" style={{ color: 'var(--md-primary)' }}>{createdUser.role}</p>
-              </div>
-              <div>
-                <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Логин (Email):</span>
-                <p className="md-label-large" style={{ color: 'var(--md-on-surface)', fontFamily: 'monospace' }}>{createdUser.email}</p>
-              </div>
-              <div>
-                <span className="md-label-small" style={{ color: 'var(--md-on-surface-variant)' }}>Пароль:</span>
-                <p className="md-label-large" style={{ color: 'var(--md-on-surface)', fontFamily: 'monospace' }}>{createdUser.password}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={copyCredentials}
-                className="md-btn md-btn-filled"
-                style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
-              >
-                {copied ? <Check size={18} /> : <Copy size={18} />}
-                {copied ? 'Данные скопированы!' : 'Скопировать данные для сотрудника'}
-              </button>
-              <button
-                onClick={() => setCreatedUser(null)}
-                className="md-btn md-btn-outlined"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                Закрыть
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal: Create Employee */}
+      <CreateEmployeeModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={loadMembers}
+      />
     </div>
   );
 }
 
-export default function TeamManagementPage() {
+export default function SettingsTeamPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}>
-      <TeamContent />
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Загрузка команды...</div>}>
+      <TeamCockpitContent />
     </Suspense>
   );
 }

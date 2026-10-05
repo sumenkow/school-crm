@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client';
 export interface SchoolProfileData {
   name: string;
   slogan: string;
+  description?: string;
+  onlinePlatform?: string;
+  logoUrl?: string;
   legalEntity: string;
   accountHolder?: string;
   inn: string;
@@ -33,6 +36,9 @@ export interface SchoolProfileData {
 export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   name: 'You Europe',
   slogan: 'Центр европейского образования и подготовки',
+  description: 'Онлайн-школа по подготовке к поступлению в вузы Германии и Австрии. Комплексные программы подготовки по немецкому языку, математике и профильным предметам.',
+  onlinePlatform: 'Zoom',
+  logoUrl: '',
   legalEntity: 'Ekaterina Nezhenkina',
   accountHolder: 'Ekaterina Nezhenkina',
   inn: '',
@@ -42,10 +48,10 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   swiftBic: 'TATRSKBX',
   bankName: 'Tatra banka, a.s.',
   bik: '1100',
-  phone: '+7 9817155337',
+  phone: '+7 981 715-53-37',
   email: 'info@youeurope.eu',
   branchName: 'Онлайн-школа',
-  address: 'Онлайн-обучение (дистанционно)',
+  address: '',
   roomsDescription: 'Интерактивные онлайн-комнаты',
   workHours: 'Пн-Сб 09:00 - 21:00',
   workDays: 'Пн-Сб',
@@ -53,7 +59,7 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfileData = {
   calendarEndHour: 21,
   timezone: 'UTC+1 (Братислава / Вена)',
   currency: 'EUR',
-  vatNote: 'Nicht umsatzsteuerpflichtig / Neplatiteľ DPH',
+  vatNote: 'Nicht umsatzsteuerpflichtig / Neplátiteľ DPH',
   nextInvoiceNumber: 20260342,
   schoolFormat: 'online',
 };

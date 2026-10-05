@@ -289,7 +289,7 @@ export async function DELETE(request: NextRequest) {
 
     if (targetProfile?.role === 'owner') {
       return NextResponse.json(
-        { error: 'Невозможно удалить системный аккаунт Владельца школы' },
+        { error: 'Удаление аккаунта владельца школы запрещено' },
         { status: 403 }
       );
     }

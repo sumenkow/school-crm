@@ -1,153 +1,100 @@
-# Project: You Europe / Smart Academy CRM — Phase 8 Settings & Administration Refactor
+# Project: Phase 8 Settings & Administration UI Refactor
 
 ## Architecture
-Online-only European educational center cockpit for **You Europe / Smart Academy CRM**.
-The system operates 100% online in EUR (€) without physical classrooms, branches, or hybrid formats.
-
-### Core Modules & Data Flow
-1. **Navigation & Global Layout (`Sidebar.tsx`)**:
-   - Canonical single-active navigation item mapping without duplicate active state on subroutes.
-2. **Settings Hub (`/settings`)**:
-   - Primary cockpit overview displaying 4 core category cards at top: School Profile, Courses & Directions, Team & Access, Integrations.
-   - Dedicated Administration section below: Excel Import & Database Backup.
-3. **School Profile & Faktura (`schoolSettingsStorage.ts`, `SchoolProfileModal.tsx`)**:
-   - SSOT storage key `crm_school_profile_v1` backed by `/api/school/settings`.
-   - Online-only fixed indicator, EUR (€) fixed badge, operating hours 09:00–21:00 (Mon–Sat) controlling calendar grid.
-   - European Faktura billing details: Tatra banka, a.s., IBAN SK34..., SWIFT/BIC TATRSKBX, next invoice number.
-4. **Course & Directions Domain (`courseStorage.ts`, `/admin/courses`)**:
-   - SSOT storage key `crm_courses_v1` with event `crm-courses-changed`. Syncs to Supabase `courses` table.
-   - Strict format support: `Group` (numeric capacity) and `Individual` (capacity disabled / '—').
-   - Strict calculated pricing: `packagePrice / lessonsCount` (€/зан.) — zero manual lesson price input.
-   - Native trial availability flag `isTrialAvailable: boolean` reusing existing CRM trial mechanics (Zero New Entities).
-   - 26 realistic European online school directions across 4 subject categories.
-5. **Team & Access Control (`/settings/team`, `roleContext.tsx`, `api/auth/users`)**:
-   - Canonical route `/settings/team` managing Owner, Admin, Teacher.
-   - Non-revokable Owner protection with superuser badge.
-   - Clear UI separation between application access permissions and Postgres RLS security policies.
-6. **Integrations Hub (`TelegramSettingsModal.tsx`, `/api/telegram/*`, Google Sheets sync)**:
-   - Masked token `••••••••` with dedicated "Изменить токен" modal.
-   - Webhook registration & status, connection test buttons, Chat IDs, notification switches.
-   - Google Sheets synchronization status.
-7. **Administrative Tools (`/settings/import`, `/settings/backup`)**:
-   - Import: 4-step wizard preserved with button renamed to «Скачать шаблон Excel».
-   - Backup: Last backup timestamp, active protection status, manual export triggers.
-
----
+Online-School Configuration Cockpit for You Europe / Smart Academy CRM.
+- **SSOT Storage Layer**:
+  - `schoolSettingsStorage.ts`: School profile, EUR/SEPA bank accounts, working hours, online-only settings (`localStorage['school_settings']` synced via `/api/school/settings`).
+  - `courseStorage.ts`: Centralized course directions & tariffs (`localStorage['crm_courses_v1']` with sync to Supabase `courses` table).
+  - `groupStorage.ts`: Existing groups, schedules, and capacity (`localStorage['crm_groups_master_v2']`).
+  - `auth/users`: Supabase auth & `profiles` table.
+- **Strict Business & Architectural Constraints**:
+  - 100% Online School: Strictly zero physical classrooms, rooms, branches, or physical addresses.
+  - Two Formats: Strictly Group (`group`) and Individual (`individual`). Capacity disabled (`—`) for individual.
+  - Calculated Pricing Principle: `pricePerLesson = packagePrice / lessonsCount` read-only derived dynamically (€/зан.). No manual lesson price input.
+  - Trial Lesson Model: Reuse existing trial mechanics (`isTrialAvailable: boolean` on courses, existing lead/student/lesson statuses). Zero new DB entities.
+  - Primary Currency: EUR (€).
+  - Protected Owner Superuser: Unrevokable, unblockable, un-deletable in UI and API (`DELETE /api/auth/users` HTTP 403).
+  - Masked Telegram Token: `••••••••••••` with dedicated "Изменить токен" modal/dialog.
+  - Navigation: Canonical exact matching in `Sidebar.tsx` to prevent double-active state on `/settings` and subpages.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Canonical Navigation & Sidebar Fix | Eliminate duplicate active state between `/settings` and `/settings/team`, `/settings/import`, `/settings/backup` in `Sidebar.tsx` | M1 | Survey 1, 3 |
-| 2 | Settings Hub Overview Layout | Replace legacy 2-hero banner layout with top 4 Category Cards grid and lower Administration section on `/settings` | M1 | Survey 1 |
-| 3 | Online-Only School Profile Model | Eliminate physical rooms/branches/addresses; display fixed «Онлайн-школа» badge | M2 | Survey 1 |
-| 4 | EUR (€) & Banking Details for Faktura | Read-only EUR badge; complete Faktura details (Tatra banka, IBAN, SWIFT/BIC, next invoice #, VAT note) | M2 | Survey 1 |
-| 5 | Calendar Operating Hours SSOT | Configure and display 09:00–21:00 (Пн–Сб) operating hours wired to calendar grid | M2 | Survey 1 |
-| 6 | Course Storage SSOT (`courseStorage.ts`) | Centralized client & cloud storage for courses with 26 seed directions and event broadcasting | M3 | Survey 2 |
-| 7 | Courses & Directions Registry Page | Implement full compact registry table at `/admin/courses` with search, filters, formats, capacity, and status | M3 | Survey 2 |
-| 8 | Learning Formats & Capacity Logic | Strict `Group` vs `Individual`. Numeric capacity for Group; '—' and disabled input for Individual | M3 | Survey 2 |
-| 9 | Dynamic Calculated Tariffs Model | Tariffs package table in EUR (€); price per lesson derived strictly dynamically (`packagePrice / lessonsCount`); no manual entry | M3 | Survey 2 |
-| 10 | Trial Lesson Toggle Integration | Reuse existing trial mechanics with `isTrialAvailable: boolean` toggle on course | M3 | Survey 2 |
-| 11 | Team & Access Control Canonical Route | `/settings/team` verified as single canonical route with clear RLS vs UI permissions separation | M4 | Survey 3 |
-| 12 | Owner Role Non-Revokable Protection | Protect Owner in UI and backend API (`DELETE /api/auth/users`) against deletion, blocking, and demotion | M4 | Survey 3 |
-| 13 | Telegram Bot Secure Token Masking | Mask token as `••••••••` with dedicated "Изменить токен" modal in `TelegramSettingsModal.tsx` | M5 | Survey 3 |
-| 14 | Telegram & Google Sheets Status Hub | Interactive webhook test, chat IDs, notifications toggle, Google Sheets sync status card | M5 | Survey 3 |
-| 15 | Import Wizard Excel Template Button | Rename sample button to «Скачать шаблон Excel» with template download in `/settings/import` | M6 | Survey 3 |
-| 16 | Backup Status & Manual Trigger Display | Display last backup timestamp, active status pill, and manual export triggers in `/settings/backup` | M6 | Survey 3 |
-| 17 | Comprehensive E2E Test Suite | Automated test suite across Tiers 1–4 validating all Phase 8 features and pre-flight checks | M7 | Requirement |
-
----
+| 1 | Sidebar Navigation Fix | Fix double-active highlight for `/settings` when visiting subpages (`/settings/team`, `/settings/import`, `/settings/backup`) | M0 | Survey 3 §1.4 |
+| 2 | Owner Superuser API Protection | `DELETE /api/auth/users` blocks deleting any account with `role === 'owner'` with HTTP 403 | M0 | Survey 3 §1.1.3 |
+| 3 | `courseStorage.ts` SSOT Foundation | Centralized CRUD storage for 26 canonical course directions, EUR tariffs, formats, and event dispatch | M0 | Survey 2 §1.2 |
+| 4 | Settings Hub (`/settings`) | Breadcrumbs, updated header, 4 Category Cards (`/settings/profile`, `/admin/courses`, `/settings/team`, `/settings/integrations`), «Административные инструменты» section | M1 | Survey 1 §1.1 |
+| 5 | School Profile (`/settings/profile`) | Dedicated 2/3 + 1/3 page, 5 tabs (Основная информация, Контакты, Онлайн-формат, Рабочие часы, Банковские реквизиты EUR/SEPA) | M1 | Survey 1 §1.2 |
+| 6 | School Profile Right Sidebar Widgets | Status 🟢 Активна, Currency EUR (€), Stats (4 staff, 6 directions, 18 students), Quick Actions (Open page, Copy IBAN/SWIFT, Download PDF) | M1 | Survey 1 §1.2 |
+| 7 | Courses Registry (`/admin/courses`) | Dedicated cockpit page, top 4 KPI cards, format/status filters, [Таблица]/[Карточки] toggle, columns with `[x]`, format, duration, capacity `8`/`—`, tariffs count, trial indicator `🔘 Доступно 0 €` | M2 | Survey 1 §1.3 |
+| 8 | Course Direction Drawer | 4-tab slide-over drawer (Основное, Тарифы (N), Пробное занятие, Группы (N)), capacity guard, read-only dynamic pricing | M2 | Survey 1 §1.3 |
+| 9 | Team & Staff Cockpit (`/settings/team`) | Top KPI cards (4), tabs (Сотрудники, Роли и права, Безопасность), staff table/cards with workload and contact details, Employee Drawer (4 tabs) | M3 | Survey 3 §1.1 |
+| 10 | Roles & Permissions Matrix | `/settings/team?tab=roles` / `/settings/roles`, 4 summary role cards, permissions matrix table, Role Drawer with "X из Y" permissions and Owner protection | M3 | Survey 3 §1.1.4 |
+| 11 | Telegram Bot Cockpit (`/settings/integrations`) | Status card 🟢 Подключён, 4 tabs (Основные настройки, Уведомления, Каналы и получатели, Тестирование), masked token `••••••••`, edit token dialog, commands list, test actions | M4 | Survey 3 §1.2 |
+| 12 | Excel Import Wizard (`/settings/import`) | 4-step wizard, «Скачать шаблон Excel» button with template download, live preview table with statuses, right sidebar with history and backup link | M4 | Survey 3 §1.3.1 |
+| 13 | Backup Management Alignment (`/settings/backup`) | Last backup timestamp, active status, manual Excel/Google Sheets export, mock cleanup | M4 | Survey 3 §1.3.2 |
+| 14 | E2E Testing Suite (Tiers 1-4) | Requirements-driven test suite with >=11*N test cases covering all settings and administration features | M5 | Prompt Dual Track |
+| 15 | Adversarial Hardening (Tier 5) & Pre-Flight Verification | White-box stress tests, TypeScript check (0 errors), npm test (100%), npm run build clean | M5 | Prompt Dual Track & Pre-Flight |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Navigation & Settings Hub | `Sidebar.tsx`, `src/app/settings/page.tsx` layout refactor with 4 category cards & admin section | none | DONE |
-| M2 | School Profile & Faktura | `schoolSettingsStorage.ts`, `SchoolProfileModal.tsx`, online-only indicators, EUR currency, Faktura details | M1 | DONE |
-| M3 | Courses & Directions Registry | `courseStorage.ts`, `/admin/courses/page.tsx`, `CourseDirectionDrawer.tsx`, dynamic tariffs, Group/Individual formats | M1 | DONE |
-| M4 | Team & Access Control | `/settings/team/page.tsx`, `api/auth/users/route.ts`, Owner superuser guard, RLS vs UI permission clarity | M1 | DONE |
-| M5 | Integrations (Telegram & External) | `TelegramSettingsModal.tsx`, token masking modal, webhook testing, Google Sheets sync card | M1 | DONE |
-| M6 | Administrative Tools (Import & Backup) | `/settings/import/page.tsx` template button rename, `/settings/backup/page.tsx` integration | M1 | DONE |
-| M7 | E2E Testing & Pre-Flight Verification | Requirement-driven test suite (Tiers 1–4), `npm run check`, `npm test`, `npm run build` | M1–M6 | IN_PROGRESS |
-
----
+| M0 | Safety & Foundation Layer | Features 1, 2, 3 (`Sidebar.tsx`, `api/auth/users`, `courseStorage.ts`) | none | IN_PROGRESS |
+| M1 | Settings Hub & School Profile | Features 4, 5, 6 (`/settings`, `/settings/profile`) | M0 | PLANNED |
+| M2 | Courses & Directions Cockpit | Features 7, 8 (`/admin/courses`, `CourseDirectionDrawer.tsx`) | M0 | PLANNED |
+| M3 | Team, Roles & Permissions Cockpit | Features 9, 10 (`/settings/team`, `/settings/roles`, Employee & Role Drawers) | M0 | PLANNED |
+| M4 | Integrations, Import & Backup | Features 11, 12, 13 (`/settings/integrations`, `/settings/import`, `/settings/backup`) | M0 | PLANNED |
+| M5 | Final E2E Test Suite & Hardening | Features 14, 15 (E2E Test validation, Adversarial tests, Pre-flight checks) | M1, M2, M3, M4 | PLANNED |
 
 ## Interface Contracts
+### `courseStorage.ts` ↔ Course Management & Groups
+- Types:
+  ```ts
+  export type CourseFormat = 'group' | 'individual';
+  export type CourseStatus = 'active' | 'archived';
+  export interface CourseTariff {
+    id: string;
+    lessonsCount: number;
+    packagePrice: number; // EUR (€)
+    status: 'active' | 'archived';
+    name?: string;
+  }
+  export interface CourseDirection {
+    id: string;
+    name: string;
+    subject: 'Иностранные языки' | 'Информатика и IT' | 'Точные науки' | 'Развитие интеллекта';
+    description?: string;
+    format: CourseFormat;
+    ageGroup: string;
+    lessonDuration: string;
+    lessonDurationMinutes: number;
+    capacity: number; // 6-8 for group; 1 for individual
+    tariffs: CourseTariff[];
+    isTrialAvailable: boolean;
+    status: CourseStatus;
+    color?: string;
+  }
+  ```
+- Functions: `getStoredCourses()`, `getCourseById(id)`, `saveCourse(course)`, `deleteCourse(id)`, `calcPricePerLesson(tariff)`.
+- Event: `crm-courses-changed`.
 
-### `courseStorage.ts` ↔ UI Components (`/admin/courses`, Modals)
-```ts
-export type CourseFormat = 'group' | 'individual';
-export type CourseStatus = 'active' | 'archived';
+### `DELETE /api/auth/users` ↔ Client UI
+- Request: `DELETE /api/auth/users?id={userId}`
+- Response if target is owner: `HTTP 403 Forbidden` (`{ error: 'Удаление аккаунта владельца школы запрещено' }`).
 
-export interface CourseTariff {
-  id: string;
-  lessonsCount: number; // 4, 8, 16, 24
-  packagePrice: number; // EUR (€)
-  status: 'active' | 'archived';
-  name?: string;
-}
-
-export interface CourseDirection {
-  id: string;
-  name: string;
-  subject: 'Иностранные языки' | 'Информатика и IT' | 'Точные науки' | 'Развитие интеллекта';
-  description?: string;
-  format: CourseFormat;
-  ageGroup: string;
-  lessonDuration: string;
-  lessonDurationMinutes: number;
-  capacity: number; // e.g. 6-8 for group; 1 for individual
-  tariffs: CourseTariff[];
-  isTrialAvailable: boolean;
-  status: CourseStatus;
-  color?: string;
-}
-
-// Helper: Calculate price per lesson dynamically
-export function calculateLessonPrice(packagePrice: number, lessonsCount: number): number {
-  if (!lessonsCount || lessonsCount <= 0) return 0;
-  return Math.round((packagePrice / lessonsCount) * 100) / 100;
-}
-```
-
-### `schoolSettingsStorage.ts` ↔ School Profile & Calendar
-```ts
-export interface SchoolProfileData {
-  name: string;
-  slogan: string;
-  legalEntity: string;
-  accountHolder?: string;
-  inn: string;
-  ogrn: string;
-  bankAccount: string;
-  iban?: string;
-  swiftBic?: string;
-  bankName: string;
-  bik: string;
-  phone: string;
-  email: string;
-  workHours: string;
-  workDays?: string;
-  calendarStartHour?: number; // 9
-  calendarEndHour?: number;   // 21
-  timezone: string;
-  currency?: string;          // Strictly 'EUR'
-  vatNote?: string;
-  nextInvoiceNumber?: number;
-  schoolFormat?: 'online';    // Strictly online-only
-}
-```
-
----
+### School Profile ↔ SSOT
+- Storage: `getSchoolSettings()`, `saveSchoolSettings()` in `schoolSettingsStorage.ts`.
+- Cloud endpoint: `GET/POST /api/school/settings`.
 
 ## Code Layout
-- `src/components/layout/Sidebar.tsx`: Navigation sidebar item active state logic.
-- `src/app/settings/page.tsx`: Settings Hub overview page.
-- `src/components/settings/SchoolProfileModal.tsx`: School profile & Faktura settings modal.
-- `src/lib/data/schoolSettingsStorage.ts`: School settings persistent data layer.
-- `src/lib/data/courseStorage.ts`: Central course directions & tariffs data layer.
-- `src/app/admin/courses/page.tsx`: Courses & directions registry page.
-- `src/components/settings/CourseDirectionDrawer.tsx`: Slide-over drawer for adding/editing course directions.
-- `src/app/settings/team/page.tsx`: Canonical team & access control page.
-- `src/app/api/auth/users/route.ts`: Backend user management API with Owner protection.
-- `src/components/settings/TelegramSettingsModal.tsx`: Telegram bot configuration modal with masked token.
-- `src/app/settings/import/page.tsx`: 4-step Excel import wizard with template download.
-- `src/app/settings/backup/page.tsx`: Database backup and Google Sheets sync page.
+- `src/app/settings/page.tsx` — Settings hub
+- `src/app/settings/profile/page.tsx` — School profile page
+- `src/app/admin/courses/page.tsx` — Courses & directions registry
+- `src/components/settings/CourseDirectionDrawer.tsx` — 4-tab course direction drawer
+- `src/app/settings/team/page.tsx` — Team, roles & security cockpit
+- `src/app/settings/integrations/page.tsx` — Telegram & external integrations cockpit
+- `src/app/settings/import/page.tsx` — 4-step Excel import wizard with template download
+- `src/app/settings/backup/page.tsx` — Backup management
+- `src/lib/data/courseStorage.ts` — Course SSOT storage
+- `src/app/api/auth/users/route.ts` — User auth & Owner protection API
+- `src/components/layout/Sidebar.tsx` — Navigation active state

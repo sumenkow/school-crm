@@ -194,13 +194,31 @@ const getTeacherNav = (): NavSection[] => [
   },
 ];
 
+export function isSidebarActive(href: string, pathname: string): boolean {
+  if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+  if (href === "/settings") {
+    // When visiting subpages with their own nav items (/settings/team, /settings/import, /settings/backup),
+    // /settings must NOT be active.
+    if (
+      pathname.startsWith("/settings/team") ||
+      pathname.startsWith("/settings/import") ||
+      pathname.startsWith("/settings/backup")
+    ) {
+      return false;
+    }
+    // When on /settings or /settings/profile, /settings is active.
+    return (
+      pathname === "/settings" ||
+      pathname === "/settings/profile" ||
+      pathname.startsWith("/settings/profile/")
+    );
+  }
+  return pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
+}
+
 const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: any) => {
   const [isOpen, setIsOpen] = useState(section.defaultOpen || false);
-  const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard" || pathname === "/";
-    if (href === "/settings") return pathname === "/settings";
-    return pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
-  };
+  const isActive = (href: string) => isSidebarActive(href, pathname);
   const hasActive = section.items.some((i: any) => isActive(i.href));
 
   useEffect(() => {

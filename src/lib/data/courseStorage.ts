@@ -57,12 +57,33 @@ export const COURSES_STORAGE_KEY = 'crm_courses_v1';
 export const COURSE_STORAGE_KEY = COURSES_STORAGE_KEY;
 
 /**
+ * Canonical helper: Calculate price per lesson dynamically from tariff package price and lessons count.
+ * Conforms to PROJECT.md § Interface Contracts: calcPricePerLesson(tariff)
+ */
+export function calcPricePerLesson(
+  tariffOrPrice: { packagePrice?: number; lessonsCount?: number } | number | null | undefined,
+  maybeCount?: number
+): number {
+  let pkg = 0;
+  let count = 0;
+  if (typeof tariffOrPrice === 'number') {
+    pkg = Number(tariffOrPrice) || 0;
+    count = Number(maybeCount) || 0;
+  } else if (tariffOrPrice && typeof tariffOrPrice === 'object') {
+    pkg = Number(tariffOrPrice.packagePrice) || 0;
+    count = Number(tariffOrPrice.lessonsCount) || 0;
+  }
+  if (!Number.isFinite(pkg) || !Number.isFinite(count) || count <= 0 || pkg <= 0) return 0;
+  const res = Math.round((pkg / count) * 100) / 100;
+  return Number.isFinite(res) ? res : 0;
+}
+
+/**
  * Helper: Calculate price per lesson dynamically from package price and lessons count.
  * Never stores or allows manual override of lesson price if package is defined.
  */
 export function calculateLessonPrice(packagePrice: number, lessonsCount: number): number {
-  if (!lessonsCount || lessonsCount <= 0 || packagePrice <= 0) return 0;
-  return Math.round((packagePrice / lessonsCount) * 100) / 100;
+  return calcPricePerLesson(packagePrice, lessonsCount);
 }
 
 /**
@@ -199,7 +220,7 @@ export const INITIAL_COURSE_DIRECTIONS: CourseDirection[] = [
       { id: 't-l6-4', lessonsCount: 4, packagePrice: 70, status: 'active', name: '4 занятия' },
       { id: 't-l6-8', lessonsCount: 8, packagePrice: 130, status: 'active', name: '8 занятий' },
     ],
-    isTrialAvailable: false,
+    isTrialAvailable: true,
     status: 'archived',
     color: '#64748b',
     maxStudents: 6,
@@ -385,7 +406,7 @@ export const INITIAL_COURSE_DIRECTIONS: CourseDirection[] = [
       { id: 't-it6-8', lessonsCount: 8, packagePrice: 160, status: 'active', name: '8 занятий' },
       { id: 't-it6-16', lessonsCount: 16, packagePrice: 300, status: 'active', name: '16 занятий' },
     ],
-    isTrialAvailable: false,
+    isTrialAvailable: true,
     status: 'archived',
     color: '#64748b',
     maxStudents: 6,
@@ -524,7 +545,7 @@ export const INITIAL_COURSE_DIRECTIONS: CourseDirection[] = [
       { id: 't-sc5-4', lessonsCount: 4, packagePrice: 65, status: 'active', name: '4 занятия' },
       { id: 't-sc5-8', lessonsCount: 8, packagePrice: 120, status: 'active', name: '8 занятий' },
     ],
-    isTrialAvailable: false,
+    isTrialAvailable: true,
     status: 'archived',
     color: '#64748b',
     maxStudents: 6,
@@ -663,7 +684,7 @@ export const INITIAL_COURSE_DIRECTIONS: CourseDirection[] = [
       { id: 't-in5-4', lessonsCount: 4, packagePrice: 60, status: 'active', name: '4 занятия' },
       { id: 't-in5-8', lessonsCount: 8, packagePrice: 110, status: 'active', name: '8 занятий' },
     ],
-    isTrialAvailable: false,
+    isTrialAvailable: true,
     status: 'archived',
     color: '#64748b',
     maxStudents: 8,
@@ -678,7 +699,11 @@ export const INITIAL_COURSE_DIRECTIONS: CourseDirection[] = [
  */
 function normalizeCourseDirection(raw: any): CourseDirection {
   const format: CourseFormat = raw.format === 'individual' ? 'individual' : 'group';
-  const capacity: number = format === 'individual' ? 1 : (Number(raw.capacity ?? raw.maxStudents ?? raw.max_students) || 8);
+  const rawCap = Number(raw.capacity ?? raw.maxStudents ?? raw.max_students);
+  const capacity: number =
+    format === 'individual'
+      ? 1
+      : Math.max(2, Math.min(30, Number.isFinite(rawCap) && rawCap > 0 ? rawCap : 8));
   const status: CourseStatus =
     raw.status === 'archived' || raw.status === 'paused' || raw.is_active === false || raw.isActive === false
       ? 'archived'
@@ -846,6 +871,10 @@ export function deleteCourse(id: string): boolean {
     } catch (e) {
       console.warn('Failed to delete course in localStorage:', e);
     }
+
+    syncDeletionToCloud(id).catch((err) => {
+      console.warn('Background sync delete note:', err);
+    });
   }
 
   return true;
@@ -951,4 +980,41 @@ async function syncCourseToCloud(course: CourseDirection): Promise<void> {
   } catch (err) {
     console.warn('Cloud sync error for course', course.name, err);
   }
+}
+
+/**
+ * Background cloud deletion sync with /api/courses
+ */
+async function syncDeletionToCloud(id: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    await fetch(`/api/courses?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  } catch (err) {
+    console.warn('Cloud sync error deleting course', id, err);
+  }
+}
+
+/**
+ * Loads courses from Supabase via /api/courses if online,
+ * falls back to localStorage SSOT.
+ */
+export async function loadCoursesFromCloud(): Promise<CourseDirection[]> {
+  if (typeof window === 'undefined') return INITIAL_COURSE_DIRECTIONS;
+  try {
+    const res = await fetch('/api/courses');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.courses) && data.courses.length > 0) {
+        const normalized = data.courses.map(normalizeCourseDirection);
+        localStorage.setItem(COURSES_STORAGE_KEY, JSON.stringify(normalized));
+        window.dispatchEvent(new CustomEvent('crm-courses-changed', { detail: normalized }));
+        return normalized;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load courses from cloud, falling back to localStorage:', err);
+  }
+  return getCourses();
 }

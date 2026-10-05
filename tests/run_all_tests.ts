@@ -4,6 +4,8 @@ import { runAnalyticsAndSecurityTests } from './ts10_to_ts15_analytics_and_secur
 import { runCoreAndSecurityTests } from './ts16_to_ts20_core_and_security.test';
 import { runAnalyticsAndE2ETests } from './ts21_to_ts26_analytics_and_e2e.test';
 import { runPhase8SettingsAdminTests } from '../src/__tests__/phase8_settings_admin.test';
+import { runChallengerStressTests } from './stress_phase8_challenger1';
+import { runChallenger2StressTests } from './challenger2_stress_test';
 
 async function main() {
   console.log('===============================================================');
@@ -13,7 +15,7 @@ async function main() {
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 6;
+  const totalSuites = 8;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -38,6 +40,14 @@ async function main() {
 
     // Suite 6: Phase 8 Settings & Administration (Tiers 1–4)
     await runPhase8SettingsAdminTests();
+    passedSuites++;
+
+    // Suite 7: Challenger 1 Empirical Stress & Adversarial Suite
+    await runChallengerStressTests();
+    passedSuites++;
+
+    // Suite 8: Challenger 2 Empirical Security & Boundary Stress Suite
+    await runChallenger2StressTests();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
