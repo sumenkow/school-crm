@@ -96,6 +96,10 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
       const defaultWebhook = `${window.location.origin}/api/telegram/webhook`;
       setWebhookUrlInput(defaultWebhook);
 
+      if (!localStorage.getItem('crm_tg_bot_username')) {
+        localStorage.setItem('crm_tg_bot_username', 'youeuropeservicebot');
+      }
+
       fetchBotSetupInfo(savedToken);
     }
   }, [isOpen]);
@@ -381,10 +385,15 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
               </div>
             )}
 
-            {botInfo?.username && (
+            {botInfo?.username ? (
               <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
                 <Bot size={13} className="text-emerald-600 shrink-0" />
                 <span>Бот активен: <strong>{botInfo.first_name}</strong> (@{botInfo.username})</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50/70 text-blue-900 border border-blue-200 text-[11px] font-medium">
+                <Bot size={13} className="text-blue-600 shrink-0" />
+                <span>Адрес бота школы: <strong>@youeuropeservicebot</strong></span>
               </div>
             )}
           </div>

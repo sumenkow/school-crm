@@ -555,7 +555,7 @@ export async function runTier1FeatureTests() {
   console.log('\n[F11] Testing Telegram Bot Cockpit...');
   try {
     // T1-F11.1: Status card displays Connected
-    const botStatus = { isConnected: true, label: 'Подключён', botUsername: '@youeurope_school_bot' };
+    const botStatus = { isConnected: true, label: 'Подключён', botUsername: '@youeuropeservicebot' };
     assert.strictEqual(botStatus.isConnected, true);
     assert.strictEqual(botStatus.label, 'Подключён');
     recordPass('T1-F11.1: Telegram status card displays 🟢 Подключён');

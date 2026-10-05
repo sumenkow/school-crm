@@ -305,7 +305,7 @@ export function TelegramChatBox({
   };
 
   const handleCopyInviteLink = () => {
-    const storedBot = (typeof window !== 'undefined' ? localStorage.getItem('crm_tg_bot_username') : '') || 'SchoolCrmBot';
+    const storedBot = (typeof window !== 'undefined' ? localStorage.getItem('crm_tg_bot_username') : '') || 'youeuropeservicebot';
     const typeCode = recipientType === 'student' ? 'st' : recipientType === 'lead' ? 'lead' : 'par';
     const link = `https://t.me/${storedBot.replace('@', '')}?start=${typeCode}_${recipientId}`;
     navigator.clipboard.writeText(link);

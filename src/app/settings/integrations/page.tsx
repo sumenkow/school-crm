@@ -89,8 +89,8 @@ export default function TelegramIntegrationsPage() {
       } else {
         // Fallback for default showcase
         setBotInfo({
-          username: 'youeurope_school_bot',
-          first_name: 'You Europe Bot',
+          username: 'youeuropeservicebot',
+          first_name: 'You Europe Service Bot',
         });
       }
 
@@ -115,8 +115,8 @@ export default function TelegramIntegrationsPage() {
     } catch {
       // Fallback
       setBotInfo({
-        username: 'youeurope_school_bot',
-        first_name: 'You Europe Bot',
+        username: 'youeuropeservicebot',
+        first_name: 'You Europe Service Bot',
       });
       setWebhookInfo({
         url: 'https://youeurope.eu/api/telegram/webhook',
@@ -173,7 +173,7 @@ export default function TelegramIntegrationsPage() {
   };
 
   const status = getIntegrationStatus();
-  const currentBotUsername = botInfo?.username || 'youeurope_school_bot';
+  const currentBotUsername = botInfo?.username || 'youeuropeservicebot';
 
   const handleManualCheckConnection = async () => {
     toast.info('Проверка соединения с Telegram Bot API...');

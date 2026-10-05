@@ -64,15 +64,15 @@ export function TelegramConnectModal({
           }
         } else {
           // Fallback to localStorage or default
-          const storedBot = localStorage.getItem('crm_tg_bot_username') || 'SchoolCrmBot';
+          const storedBot = localStorage.getItem('crm_tg_bot_username') || 'youeuropeservicebot';
           setBotUsername(storedBot);
-          setBotName('Школьный Telegram-бот');
+          setBotName('You Europe Service Bot');
         }
       })
       .catch(() => {
-        const storedBot = localStorage.getItem('crm_tg_bot_username') || 'SchoolCrmBot';
+        const storedBot = localStorage.getItem('crm_tg_bot_username') || 'youeuropeservicebot';
         setBotUsername(storedBot);
-        setBotName('Школьный Telegram-бот');
+        setBotName('You Europe Service Bot');
       })
       .finally(() => setIsLoadingBot(false));
   }, [isOpen, currentTelegram]);
@@ -80,7 +80,7 @@ export function TelegramConnectModal({
   if (!isOpen) return null;
 
   const typeCode = targetType === 'student' ? 'st' : targetType === 'lead' ? 'lead' : 'par';
-  const deeplink = generateTelegramDeeplink(botUsername || 'SchoolCrmBot', typeCode, targetId);
+  const deeplink = generateTelegramDeeplink(botUsername || 'youeuropeservicebot', typeCode, targetId);
 
   const handleCopyLink = () => {
     if (!deeplink) return;
