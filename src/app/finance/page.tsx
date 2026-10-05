@@ -1,123 +1,112 @@
 'use client';
 
-import React, { useState, Suspense, useEffect, useCallback } from 'react';
-import Link from 'next/link';
-import { useFocusSync } from '@/hooks/useFocusSync';
+import React, { useState, Suspense, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useFocusSync } from '@/hooks/useFocusSync';
+import { useRole, usePermissions } from '@/context/RoleContext';
 import {
-  Plus,
-  DollarSign,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
+  Receipt,
   CreditCard,
-  ArrowUpRight,
-  Filter,
-  MessageSquare,
-  CheckSquare,
-  Snowflake,
-  RotateCcw,
-  Receipt
+  Sparkles,
+  AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_PAYMENTS, INITIAL_SUBSCRIPTIONS, FullPaymentData, FullSubscriptionData } from '@/lib/data/mockData';
+import { INITIAL_PAYMENTS, INITIAL_SUBSCRIPTIONS, FullPaymentData, FullSubscriptionData, FullGroupData } from '@/lib/data/mockData';
 import { getStoredPayments, savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
-import { calculateMultiCurrencyTotals, getEurRubRate, convertRubToEur } from '@/lib/data/currencyHelper';
-import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
-import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
-import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredInvoices, EuropeanInvoiceData, markInvoiceAsPaid } from '@/lib/data/invoiceStorage';
-import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
-import { useLanguage } from '@/context/LanguageContext';
-import { useRole, usePermissions } from '@/context/RoleContext';
+import { convertRubToEur, getEurRubRate } from '@/lib/data/currencyHelper';
 
-function getRenewalDate(endDateStr?: string): string {
-  if (!endDateStr) return '—';
-  const parts = endDateStr.split('.');
-  if (parts.length === 3) {
-    const d = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const y = parseInt(parts[2], 10);
-    const date = new Date(y, m, d);
-    date.setDate(date.getDate() - 2);
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
-  return endDateStr;
-}
+import { FinanceHeader } from '@/components/finance/FinanceHeader';
+import { FinanceGlobalFilters, FinanceFiltersState } from '@/components/finance/FinanceGlobalFilters';
+import { FinanceTopKpis } from '@/components/finance/FinanceTopKpis';
+import { InvoicesTab } from '@/components/finance/InvoicesTab';
+import { PaymentsTab } from '@/components/finance/PaymentsTab';
+import { SubscriptionsTab } from '@/components/finance/SubscriptionsTab';
+import { DebtsTab } from '@/components/finance/DebtsTab';
+import { FinanceDetailDrawer, DrawerDetailType, DebtorDetailData } from '@/components/finance/FinanceDetailDrawer';
 
-function getSubscriptionComputedStatus(s: FullSubscriptionData): 'active' | 'frozen' | 'expired' {
-  if (s.status === 'frozen') return 'frozen';
-  if (s.lessonsAttended >= s.lessonsTotal) return 'expired';
-  const parts = s.endDate?.split('.');
-  if (parts && parts.length === 3) {
-    const d = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10) - 1;
-    const y = parseInt(parts[2], 10);
-    const expiry = new Date(y, m, d, 23, 59, 59);
-    const refDate = new Date(2026, 8, 2);
-    if (refDate > expiry) return 'expired';
-  }
-  return 'active';
-}
+import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
+import { CreateSubscriptionModal } from '@/components/finance/CreateSubscriptionModal';
 
 function FinanceContent() {
-  const { role } = useRole();
   const { canViewStudentFinancialAmounts, canViewSchoolFinances, canManageStudentPayments } = usePermissions();
-  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
   const rate = getEurRubRate();
+
+  // Primary State
   const [students, setStudents] = useState(() => (typeof window !== 'undefined' ? getStoredStudents() : []));
-
-  const [activeTab, setActiveTab] = useState<'payments' | 'subscriptions' | 'debts' | 'invoices'>(
-    filterParam === 'overdue' ? 'debts' : filterParam === 'invoices' ? 'invoices' : 'payments'
-  );
-  const [payments, setPayments] = useState<FullPaymentData[]>(() => {
-    return typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS;
-  });
-  const [invoices, setInvoices] = useState<EuropeanInvoiceData[]>(() => {
-    return typeof window !== 'undefined' ? getStoredInvoices() : [];
-  });
+  const [groups, setGroups] = useState<FullGroupData[]>(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
+  const [payments, setPayments] = useState<FullPaymentData[]>(() => (typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS));
+  const [invoices, setInvoices] = useState<EuropeanInvoiceData[]>(() => (typeof window !== 'undefined' ? getStoredInvoices() : []));
   const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(INITIAL_SUBSCRIPTIONS);
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
 
-  const syncPayments = useCallback(() => {
+  // Active Tab
+  const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'subscriptions' | 'debts'>(() => {
+    if (filterParam === 'overdue' || filterParam === 'debts') return 'debts';
+    if (filterParam === 'invoices') return 'invoices';
+    if (filterParam === 'subscriptions') return 'subscriptions';
+    return 'payments';
+  });
+
+  // Global Filters
+  const [globalFilters, setGlobalFilters] = useState<FinanceFiltersState>({
+    period: 'all',
+    course: 'all',
+    groupId: 'all',
+  });
+
+  // Modals & Selection Drawer
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<string | undefined>();
+  const [selectedParentForPayment, setSelectedParentForPayment] = useState<string | undefined>();
+
+  const [selectedDrawerDetail, setSelectedDrawerDetail] = useState<DrawerDetailType>(null);
+
+  // Sync with Storage events
+  const syncFinanceData = useCallback(() => {
     setPayments(getStoredPayments());
     setInvoices(getStoredInvoices());
+    setStudents(getStoredStudents());
+    setGroups(getStoredGroups());
   }, []);
 
-  useFocusSync(syncPayments);
+  useFocusSync(syncFinanceData);
 
   useEffect(() => {
-    syncPayments();
-    window.addEventListener('crm-payments-changed', syncPayments);
-    window.addEventListener('crm-students-changed', syncPayments);
-    window.addEventListener('crm-invoices-changed', syncPayments);
+    syncFinanceData();
+    window.addEventListener('crm-payments-changed', syncFinanceData);
+    window.addEventListener('crm-students-changed', syncFinanceData);
+    window.addEventListener('crm-invoices-changed', syncFinanceData);
+    window.addEventListener('crm-groups-changed', syncFinanceData);
     return () => {
-      window.removeEventListener('crm-payments-changed', syncPayments);
-      window.removeEventListener('crm-students-changed', syncPayments);
-      window.removeEventListener('crm-invoices-changed', syncPayments);
+      window.removeEventListener('crm-payments-changed', syncFinanceData);
+      window.removeEventListener('crm-students-changed', syncFinanceData);
+      window.removeEventListener('crm-invoices-changed', syncFinanceData);
+      window.removeEventListener('crm-groups-changed', syncFinanceData);
     };
-  }, [syncPayments]);
+  }, [syncFinanceData]);
 
   useEffect(() => {
-    if (filterParam === 'overdue') {
+    if (filterParam === 'overdue' || filterParam === 'debts') {
       setActiveTab('debts');
     } else if (filterParam === 'invoices') {
       setActiveTab('invoices');
+    } else if (filterParam === 'subscriptions') {
+      setActiveTab('subscriptions');
     }
   }, [filterParam]);
 
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<string | undefined>();
-  const [selectedParentForPayment, setSelectedParentForPayment] = useState<string | undefined>();
-  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
-
+  // Handlers
   const handlePaymentRecorded = (newPayment: FullPaymentData) => {
     savePaymentToStorage(newPayment);
-    setPayments(getStoredPayments());
+    syncFinanceData();
   };
 
   const handleSubCreated = (newSub: FullSubscriptionData) => {
@@ -130,74 +119,106 @@ function FinanceContent() {
     );
   };
 
-  // Multi-Currency KPIs
-  const paidPayments = payments.filter((p) => p.status === 'paid');
-  const paidTotals = calculateMultiCurrencyTotals(paidPayments, rate);
-  const expectedTotals = calculateMultiCurrencyTotals(
-    payments.filter((p) => p.status === 'expected'),
-    rate
-  );
-  const overdueTotals = calculateMultiCurrencyTotals(
-    payments.filter((p) => p.status === 'overdue'),
-    rate
-  );
-  const overduePayments = payments.filter((p) => p.status === 'overdue');
+  const handleMarkInvoicePaid = (invoiceId: string) => {
+    markInvoiceAsPaid(invoiceId);
+    syncFinanceData();
+  };
 
-  const filteredPaidPayments = paidPayments.filter((p) => {
-    if (paymentMethodFilter === 'all') return true;
-    return p.paymentMethod === paymentMethodFilter;
-  });
+  const handleSettleDebtPayment = (studentId?: string, parentId?: string) => {
+    setSelectedStudentForPayment(studentId);
+    setSelectedParentForPayment(parentId);
+    setIsPaymentModalOpen(true);
+  };
 
-  // Debts aggregated by family (Requirement 3.4: prevent duplicate reminders to the same parent)
-  interface FamilyDebtGroup {
-    familyKey: string;
-    parentId?: string;
-    parentName: string;
-    contactPhone: string;
-    studentNames: string[];
-    payments: FullPaymentData[];
-    totalRub: number;
-    totalEur: number;
-  }
+  // Top-Level KPI Calculations (Strictly EUR)
+  const topKpiData = useMemo(() => {
+    // 1. Revenue from paid payments
+    const paidList = payments.filter((p) => p.status === 'paid');
+    const revenueEur = paidList.reduce((sum, p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      const isEur = p.currency === 'EUR' || String(p.amount).includes('€');
+      return sum + (isEur ? num : convertRubToEur(num, rate));
+    }, 0);
 
-  const familyDebtsMap = new Map<string, FamilyDebtGroup>();
-  for (const p of overduePayments) {
-    const matchedStudent = students.find((st) => st.id === p.studentId);
-    const parent = matchedStudent?.parents?.[0];
-    const contactPhone = parent?.phone || matchedStudent?.parentPhone || matchedStudent?.phone || '+7 (999) 234-56-78';
-    const parentName = p.parentName || (parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель');
-    const familyKey = p.parentId || parent?.id || contactPhone;
+    // 2. Expected from pending invoices & expected payments
+    const pendingInvoices = invoices.filter((inv) => inv.status === 'pending');
+    const expectedPayments = payments.filter((p) => p.status === 'expected');
+    const expectedInvoicesEur = pendingInvoices.reduce((sum, inv) => sum + (inv.totalAmountEUR || 0), 0);
+    const expectedPaymentsEur = expectedPayments.reduce((sum, p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      return sum + (p.currency === 'EUR' ? num : convertRubToEur(num, rate));
+    }, 0);
+    const expectedEur = expectedInvoicesEur + expectedPaymentsEur;
+    const expectedCount = pendingInvoices.length + expectedPayments.length;
 
-    const numAmount = typeof p.amount === 'number'
-      ? p.amount
-      : parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-    const isEur = p.currency === 'EUR' || p.amountFormatted?.includes('€');
-    const eurVal = isEur ? numAmount : convertRubToEur(numAmount, rate);
-    const rubVal = isEur ? Math.round(numAmount * rate) : numAmount;
+    // 3. Debt from overdue payments & overdue invoices
+    const overduePayments = payments.filter((p) => p.status === 'overdue');
+    const overdueInvoices = invoices.filter((inv) => inv.status === 'overdue');
+    const overduePaymentsEur = overduePayments.reduce((sum, p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      return sum + (p.currency === 'EUR' ? num : convertRubToEur(num, rate));
+    }, 0);
+    const overdueInvoicesEur = overdueInvoices.reduce((sum, inv) => sum + (inv.totalAmountEUR || 0), 0);
+    const debtEur = overduePaymentsEur + overdueInvoicesEur;
 
-    const existing = familyDebtsMap.get(familyKey);
-    if (existing) {
-      existing.payments.push(p);
-      if (!existing.studentNames.includes(p.studentName)) {
-        existing.studentNames.push(p.studentName);
+    // 4. Positive deposit balances of students
+    const depositStudents = students.filter((s) => (s.finance?.deposit?.balance ?? 0) > 0);
+    const depositBalanceEur = depositStudents.reduce((sum, s) => sum + (s.finance?.deposit?.balance || 0), 0);
+
+    return {
+      revenueEur,
+      paidPaymentsCount: paidList.length,
+      expectedEur,
+      expectedCount,
+      debtEur,
+      debtorsCount: overduePayments.length + overdueInvoices.length,
+      depositBalanceEur,
+      depositStudentsCount: depositStudents.length,
+    };
+  }, [payments, invoices, students, rate]);
+
+  // Debts mapping by Family
+  const debtorGroups: DebtorDetailData[] = useMemo(() => {
+    const overduePayments = payments.filter((p) => p.status === 'overdue');
+    const map = new Map<string, DebtorDetailData>();
+
+    overduePayments.forEach((p) => {
+      const matchedStudent = students.find((st) => st.id === p.studentId);
+      const parent = matchedStudent?.parents?.[0];
+      const contactPhone = parent?.phone || matchedStudent?.parentPhone || matchedStudent?.phone || '+7 (999) 000-00-00';
+      const parentName = p.parentName || (parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель');
+      const familyKey = p.parentId || parent?.id || contactPhone;
+
+      const numAmount = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      const eurVal = p.currency === 'EUR' || String(p.amount).includes('€') ? numAmount : convertRubToEur(numAmount, rate);
+
+      const existing = map.get(familyKey);
+      if (existing) {
+        existing.payments.push(p);
+        if (!existing.studentNames.includes(p.studentName)) {
+          existing.studentNames.push(p.studentName);
+        }
+        existing.totalEur += eurVal;
+      } else {
+        map.set(familyKey, {
+          familyKey,
+          parentId: p.parentId || parent?.id,
+          parentName,
+          contactPhone,
+          studentNames: [p.studentName],
+          studentId: p.studentId,
+          groupName: p.groupName,
+          totalEur: eurVal,
+          daysOverdue: 14,
+          lastPaymentDate: '01.09.2026',
+          responsibleName: 'Анна Петрова',
+          payments: [p],
+        });
       }
-      existing.totalRub += rubVal;
-      existing.totalEur += eurVal;
-    } else {
-      familyDebtsMap.set(familyKey, {
-        familyKey,
-        parentId: p.parentId || parent?.id,
-        parentName,
-        contactPhone,
-        studentNames: [p.studentName],
-        payments: [p],
-        totalRub: rubVal,
-        totalEur: eurVal,
-      });
-    }
-  }
+    });
 
-  const aggregatedFamilyDebts = Array.from(familyDebtsMap.values());
+    return Array.from(map.values());
+  }, [payments, students, rate]);
 
   if (!canViewStudentFinancialAmounts) {
     return (
@@ -207,693 +228,197 @@ function FinanceContent() {
         </div>
         <h2 className="text-lg font-bold text-slate-900 mb-1">Доступ ограничен</h2>
         <p className="text-xs text-slate-500 max-w-sm mb-5">
-          У вас активна роль Преподавателя. Раздел финансов, оплат и задолженностей доступен только администраторам и владельцу школы.
+          Раздел финансов, оплат и задолженностей доступен только администраторам и владельцу школы.
         </p>
-        <Link
-          href="/schedule"
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
-        >
-          Перейти к расписанию
-        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-16">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('finance.title', 'Финансы и Абонементы')}</h1>
-          <p className="text-sm text-slate-500">
-            {t('finance.subtitle', 'Мультивалютный учет (EUR / RUB), касса и периоды обучения')} • 1 € = {rate} ₽
-          </p>
-        </div>
+    <div className="space-y-5 max-w-7xl mx-auto pb-16">
+      {/* 1. Header with Title and 3 Action Buttons */}
+      <FinanceHeader
+        canManage={Boolean(canManageStudentPayments)}
+        onOpenInvoiceModal={() => setIsInvoiceModalOpen(true)}
+        onOpenPaymentModal={() => {
+          setSelectedStudentForPayment(undefined);
+          setSelectedParentForPayment(undefined);
+          setIsPaymentModalOpen(true);
+        }}
+        onOpenSubscriptionModal={() => setIsSubModalOpen(true)}
+      />
 
-        {canManageStudentPayments && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsInvoiceModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 border border-blue-200 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors cursor-pointer"
-            >
-              <Receipt className="h-4 w-4" />
-              Выставить счёт (Faktúra)
-            </button>
-            <button
-              onClick={() => setIsPaymentModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              {t('finance.recordPayment', 'Внести оплату')}
-            </button>
-            <button
-              onClick={() => setIsSubModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              {t('finance.newSubscription', 'Оформить абонемент')}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* 2. Global Filters Bar */}
+      <FinanceGlobalFilters
+        filters={globalFilters}
+        groups={groups}
+        onChange={setGlobalFilters}
+        onReset={() => setGlobalFilters({ period: 'all', course: 'all', groupId: 'all' })}
+      />
 
-      {/* KPI Section: Visible only to owner/developer with canViewSchoolFinances */}
+      {/* 3. Top-Level 4 KPI Cards */}
       {canViewSchoolFinances && (
-        <>
-          {/* Mobile Horizontal Bar (< 768px) per Requirement 3.4 */}
-          <div className="sm:hidden grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-xs">
-            <div>
-              <span className="text-[10px] font-semibold text-slate-500 block">Касса</span>
-              <p className="text-sm font-extrabold text-emerald-700 mt-0.5">{paidTotals.formattedTotalEur}</p>
-              <p className="text-[9px] text-slate-400">≈ {paidTotals.formattedTotalRub}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-slate-500 block">Ожидаем</span>
-              <p className="text-sm font-extrabold text-blue-700 mt-0.5">{expectedTotals.formattedTotalEur}</p>
-              <p className="text-[9px] text-slate-400">≈ {expectedTotals.formattedTotalRub}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-semibold text-rose-700 block">Долг</span>
-              <p className="text-sm font-extrabold text-rose-700 mt-0.5">{overdueTotals.formattedTotalEur}</p>
-              <p className="text-[9px] text-rose-500">≈ {overdueTotals.formattedTotalRub}</p>
-            </div>
-          </div>
-
-          {/* KPI Cards: Desktop (>= 768px) */}
-          <div className="hidden sm:grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-500">{t('finance.totalRevenue', 'Фактическая выручка (Касса)')}</span>
-                <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
-                  <CreditCard className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-1 text-2xl font-extrabold text-slate-900">{paidTotals.formattedTotalEur}</p>
-              <p className="text-xs text-emerald-700 font-semibold mt-0.5">≈ {paidTotals.formattedTotalRub}</p>
-              <p className="text-[11px] text-slate-500 mt-1">{paidTotals.breakdownSummary}</p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-500">{t('finance.expectedRevenue', 'Ожидается к поступлению')}</span>
-                <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
-                  <Clock className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-1 text-2xl font-extrabold text-slate-900">{expectedTotals.formattedTotalEur}</p>
-              <p className="text-xs text-blue-700 font-semibold mt-0.5">≈ {expectedTotals.formattedTotalRub}</p>
-              <p className="text-[11px] text-slate-500 mt-1">{expectedTotals.breakdownSummary}</p>
-            </div>
-
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 shadow-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-rose-800">{t('finance.overdueDebt', 'Просроченная задолженность')}</span>
-                <div className="rounded-lg bg-rose-100 p-2 text-rose-700">
-                  <AlertCircle className="h-4 w-4" />
-                </div>
-              </div>
-              <p className="mt-1 text-2xl font-extrabold text-rose-700">{overdueTotals.formattedTotalEur}</p>
-              <p className="text-xs text-rose-800 font-semibold mt-0.5">≈ {overdueTotals.formattedTotalRub}</p>
-              <p className="text-[11px] text-rose-600 mt-1 font-medium">
-                {overduePayments.length} • {overdueTotals.breakdownSummary}
-              </p>
-            </div>
-          </div>
-        </>
+        <FinanceTopKpis
+          revenueEur={topKpiData.revenueEur}
+          paidPaymentsCount={topKpiData.paidPaymentsCount}
+          expectedEur={topKpiData.expectedEur}
+          expectedCount={topKpiData.expectedCount}
+          debtEur={topKpiData.debtEur}
+          debtorsCount={topKpiData.debtorsCount}
+          depositBalanceEur={topKpiData.depositBalanceEur}
+          depositStudentsCount={topKpiData.depositStudentsCount}
+        />
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
+      {/* 4. Navigation Tabs */}
+      <div className="flex border-b border-slate-200/90 gap-1 overflow-x-auto">
+        {/* Tab 1: Счета на оплату */}
         <button
-          onClick={() => setActiveTab('invoices')}
+          type="button"
+          onClick={() => {
+            setActiveTab('invoices');
+            setSelectedDrawerDetail(null);
+          }}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap',
             activeTab === 'invoices'
-              ? 'border-blue-600 text-blue-600 font-bold'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
           <Receipt className="h-3.5 w-3.5" />
-          <span>Счета на оплату (Faktúry)</span>
-          <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[10px] font-bold">
+          <span>Счета на оплату</span>
+          <span className="rounded-full bg-slate-100 text-slate-700 px-2 py-0.2 text-[10px] font-bold">
             {invoices.length}
           </span>
         </button>
+
+        {/* Tab 2: Платежи */}
         <button
-          onClick={() => setActiveTab('payments')}
+          type="button"
+          onClick={() => {
+            setActiveTab('payments');
+            setSelectedDrawerDetail(null);
+          }}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap',
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap',
             activeTab === 'payments'
-              ? 'border-blue-600 text-blue-600 font-bold'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          {t('finance.tabPayments', 'История платежей')} ({paidPayments.length})
+          <CreditCard className="h-3.5 w-3.5" />
+          <span>Платежи</span>
+          <span className="rounded-full bg-blue-100 text-blue-800 px-2 py-0.2 text-[10px] font-bold">
+            {payments.filter((p) => p.status === 'paid').length}
+          </span>
         </button>
+
+        {/* Tab 3: Абонементы */}
         <button
-          onClick={() => setActiveTab('subscriptions')}
+          type="button"
+          onClick={() => {
+            setActiveTab('subscriptions');
+            setSelectedDrawerDetail(null);
+          }}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap',
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap',
             activeTab === 'subscriptions'
-              ? 'border-blue-600 text-blue-600 font-bold'
+              ? 'border-blue-600 text-blue-600 bg-blue-50/20'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          {t('finance.tabSubscriptions', 'Абонементы')} ({subscriptions.length})
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Абонементы</span>
+          <span className="rounded-full bg-slate-100 text-slate-700 px-2 py-0.2 text-[10px] font-bold">
+            {subscriptions.length}
+          </span>
         </button>
+
+        {/* Tab 4: Долги и задолженности */}
         <button
-          onClick={() => setActiveTab('debts')}
+          type="button"
+          onClick={() => {
+            setActiveTab('debts');
+            setSelectedDrawerDetail(null);
+          }}
           className={cn(
-            'px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap',
+            'px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap',
             activeTab === 'debts'
-              ? 'border-rose-600 text-rose-700 font-bold'
+              ? 'border-rose-600 text-rose-700 bg-rose-50/20'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           )}
         >
-          <span>{t('finance.tabDebts', 'Долги и задолженности')}</span>
-          <span className="rounded-full bg-rose-100 text-rose-800 px-1.5 py-0.2 text-[10px] font-bold">
-            {overduePayments.length}
+          <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+          <span>Долги и задолженности</span>
+          <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.2 text-[10px] font-bold">
+            {debtorGroups.length}
           </span>
         </button>
       </div>
 
-      {/* Tab Contents */}
-      {activeTab === 'payments' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Filter className="h-3.5 w-3.5" />
-              <span>Способ оплаты:</span>
-              <select
-                value={paymentMethodFilter}
-                onChange={(e) => setPaymentMethodFilter(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="all">Все способы</option>
-                <option value="card">Банковская карта</option>
-                <option value="bank_transfer">Перевод по СБП</option>
-                <option value="cash">Наличные</option>
-                <option value="invoice">По счету (ООО)</option>
-              </select>
-            </div>
-            <span className="text-xs text-slate-500">
-              Отображаются только подтвержденные оплаты ({filteredPaidPayments.length})
-            </span>
-          </div>
+      {/* 5. Main Content Area: Active Tab + Right-Side Detail Drawer */}
+      <div className="flex items-start gap-4">
+        <div className="flex-1 min-w-0">
+          {/* TAB 1: Счета на оплату */}
+          {activeTab === 'invoices' && (
+            <InvoicesTab
+              invoices={invoices}
+              selectedInvoiceId={
+                selectedDrawerDetail?.type === 'invoice' ? selectedDrawerDetail.data.id : undefined
+              }
+              onSelectInvoice={(inv) => setSelectedDrawerDetail({ type: 'invoice', data: inv })}
+              onMarkPaid={handleMarkInvoicePaid}
+            />
+          )}
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-            {/* Mobile Payments Cards List (< 768px) */}
-            <div className="md:hidden divide-y divide-slate-100">
-              {filteredPaidPayments.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-500">
-                  Нет подтвержденных платежей
-                </div>
-              ) : (
-                filteredPaidPayments.map((p) => {
-                  const numAmount = typeof p.amount === 'number'
-                    ? p.amount
-                    : parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-                  const eurAmount = convertRubToEur(numAmount, rate);
+          {/* TAB 2: Платежи */}
+          {activeTab === 'payments' && (
+            <PaymentsTab
+              payments={payments}
+              selectedPaymentId={
+                selectedDrawerDetail?.type === 'payment' ? selectedDrawerDetail.data.id : undefined
+              }
+              onSelectPayment={(p) => setSelectedDrawerDetail({ type: 'payment', data: p })}
+            />
+          )}
 
-                  return (
-                    <div key={p.id} className="p-3.5 space-y-1.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <Link href={`/students/${p.studentId}`} className="font-bold text-slate-900 text-xs hover:text-blue-600 truncate block">
-                            {p.studentName}
-                          </Link>
-                          <p className="text-[10px] text-slate-500 truncate">
-                            {p.parentName} • {p.courseName} ({p.groupName})
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="font-extrabold text-xs text-slate-900 block">{p.amountFormatted}</span>
-                          <span className="text-[10px] text-slate-500 block">
-                            (~{eurAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €)
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-                        <span>{p.paymentDate} • {p.periodLabel}</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.2 text-[10px] font-bold">
-                            Оплачено
-                          </span>
-                          <button
-                            onClick={() => alert(`Чек для ${p.studentName} отправлен на печать`)}
-                            className="rounded p-1 text-slate-400 hover:text-slate-700"
-                            title="Печать чека"
-                          >
-                            <Receipt className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+          {/* TAB 3: Абонементы */}
+          {activeTab === 'subscriptions' && (
+            <SubscriptionsTab
+              subscriptions={subscriptions}
+              selectedSubscriptionId={
+                selectedDrawerDetail?.type === 'subscription' ? selectedDrawerDetail.data.id : undefined
+              }
+              onSelectSubscription={(s) => setSelectedDrawerDetail({ type: 'subscription', data: s })}
+              onFreezeSubscription={handleFreezeSub}
+            />
+          )}
 
-            {/* Desktop Table (>= 768px) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-600">
-                  <tr>
-                    <th className="py-3 pl-4 pr-3">Ученик / Родитель</th>
-                    <th className="px-3 py-3">Курс / Группа</th>
-                    <th className="px-3 py-3 text-right">Сумма (RUB / EUR)</th>
-                    <th className="px-3 py-3">Дата</th>
-                    <th className="px-3 py-3">Период</th>
-                    <th className="px-3 py-3">Способ</th>
-                    <th className="px-3 py-3">Статус</th>
-                    <th className="px-3 py-3 text-center">Чек</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredPaidPayments.map((p) => {
-                    const numAmount = typeof p.amount === 'number'
-                      ? p.amount
-                      : parseFloat(String(p.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-                    const eurAmount = convertRubToEur(numAmount, rate);
-
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 pl-4 pr-3">
-                          <Link href={`/students/${p.studentId}`} className="font-semibold text-slate-900 hover:text-blue-600">
-                            {p.studentName}
-                          </Link>
-                          <p className="text-[11px] text-slate-500">{p.parentName}</p>
-                        </td>
-                        <td className="px-3 py-3 text-slate-700">
-                          {p.courseName}
-                          <span className="block text-[11px] text-slate-500">{p.groupName}</span>
-                        </td>
-                        <td className="px-3 py-3 font-bold text-slate-900 text-right">
-                          <span>{p.amountFormatted}</span>
-                          <span className="block text-[11px] font-normal text-slate-500">
-                            (~{eurAmount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €)
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-slate-600">{p.paymentDate}</td>
-                        <td className="px-3 py-3 text-slate-600">{p.periodLabel}</td>
-                        <td className="px-3 py-3 text-slate-600">
-                          {p.paymentMethod === 'card' && 'Банковская карта'}
-                          {p.paymentMethod === 'cash' && 'Наличные'}
-                          {p.paymentMethod === 'bank_transfer' && 'Перевод по СБП'}
-                          {p.paymentMethod === 'invoice' && 'По счету (ООО)'}
-                          {(p.paymentMethod as any) === 'deposit_deduction' && 'Списание с депозита'}
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold inline-block bg-emerald-100 text-emerald-800">
-                            Оплачено
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <button
-                            onClick={() => alert(`Чек для ${p.studentName} отправлен на печать`)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-                            title="Печать фискального чека"
-                          >
-                            <Receipt className="h-4 w-4 mx-auto" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* TAB 4: Долги и задолженности */}
+          {activeTab === 'debts' && (
+            <DebtsTab
+              debtors={debtorGroups}
+              selectedDebtorKey={
+                selectedDrawerDetail?.type === 'debtor' ? selectedDrawerDetail.data.familyKey : undefined
+              }
+              onSelectDebtor={(d) => setSelectedDrawerDetail({ type: 'debtor', data: d })}
+              onSettlePayment={handleSettleDebtPayment}
+            />
+          )}
         </div>
-      )}
 
-      {activeTab === 'subscriptions' && (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-          {/* Mobile Subscriptions Cards List (< 768px) */}
-          <div className="md:hidden divide-y divide-slate-100">
-            {subscriptions.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500">Нет активных абонементов</div>
-            ) : (
-              subscriptions.map((s) => {
-                const computedStatus = getSubscriptionComputedStatus(s);
-                const computedRenewalDate = s.renewalDate || getRenewalDate(s.endDate);
-                return (
-                  <div key={s.id} className="p-3.5 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <Link href={`/students/${s.studentId}`} className="font-bold text-slate-900 text-xs hover:text-blue-600 truncate block">
-                          {s.studentName}
-                        </Link>
-                        <p className="text-[10px] text-slate-500 truncate">{s.courseName} • {s.groupName}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="font-extrabold text-xs text-slate-900 block">{s.priceFormatted}</span>
-                        <span className="text-[10px] font-semibold text-blue-700 block">Продление: {computedRenewalDate}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1 border-t border-slate-100">
-                      <span>{s.lessonsAttended} из {s.lessonsTotal} зан.</span>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.2 text-[9px] font-bold',
-                            computedStatus === 'active' && 'bg-emerald-100 text-emerald-800',
-                            computedStatus === 'frozen' && 'bg-blue-100 text-blue-800',
-                            computedStatus === 'expired' && 'bg-slate-100 text-slate-700'
-                          )}
-                        >
-                          {computedStatus === 'active' ? 'Активен' : computedStatus === 'frozen' ? 'Заморожен' : 'Истек'}
-                        </span>
-                        <button
-                          onClick={() => handleFreezeSub(s.id)}
-                          className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-700"
-                        >
-                          {s.status === 'frozen' ? 'Разморозить' : 'Заморозка'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Desktop Table (>= 768px) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-600">
-                <tr>
-                  <th className="py-3 pl-4 pr-3">Ученик</th>
-                  <th className="px-3 py-3">Курс / Группа</th>
-                  <th className="px-3 py-3">Срок действия</th>
-                  <th className="px-3 py-3 text-right">Посещено</th>
-                  <th className="px-3 py-3">Следующее продление</th>
-                  <th className="px-3 py-3 text-right">Стоимость</th>
-                  <th className="px-3 py-3">Статус</th>
-                  <th className="px-3 py-3 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {subscriptions.map((s) => {
-                  const computedStatus = getSubscriptionComputedStatus(s);
-                  const computedRenewalDate = s.renewalDate || getRenewalDate(s.endDate);
-
-                  return (
-                    <tr key={s.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 pl-4 pr-3">
-                        <Link href={`/students/${s.studentId}`} className="font-semibold text-slate-900 hover:text-blue-600">
-                          {s.studentName}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3 text-slate-700">
-                        {s.courseName}
-                        <span className="block text-[11px] text-slate-500">{s.groupName}</span>
-                      </td>
-                      <td className="px-3 py-3 text-slate-600">
-                        {s.startDate} – {s.endDate}
-                      </td>
-                      <td className="px-3 py-3 font-semibold text-slate-900 text-right">
-                        {s.lessonsAttended} из {s.lessonsTotal} зан.
-                      </td>
-                      <td className="px-3 py-3 text-slate-700 font-medium">{computedRenewalDate}</td>
-                      <td className="px-3 py-3 font-bold text-slate-900 text-right">{s.priceFormatted}</td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.5 text-[10px] font-bold inline-block',
-                            computedStatus === 'active' && 'bg-emerald-100 text-emerald-800',
-                            computedStatus === 'frozen' && 'bg-blue-100 text-blue-800',
-                            computedStatus === 'expired' && 'bg-slate-100 text-slate-700'
-                          )}
-                        >
-                          {computedStatus === 'active' && 'Активен'}
-                          {computedStatus === 'frozen' && 'Заморожен'}
-                          {computedStatus === 'expired' && 'Истек'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <button
-                          onClick={() => handleFreezeSub(s.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50 cursor-pointer"
-                        >
-                          <Snowflake className="h-3 w-3 text-blue-500" />
-                          {s.status === 'frozen' ? 'Разморозить' : 'Заморозка'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'debts' && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-sm text-rose-950">
-                  Семьи с просроченными платежами ({aggregatedFamilyDebts.length} {aggregatedFamilyDebts.length === 1 ? 'семья' : 'семей'}, {overduePayments.length} {overduePayments.length === 1 ? 'долг' : 'долгов'})
-                </p>
-                <p className="text-xs text-rose-800 mt-0.5">
-                  Общая сумма задолженности составляет <strong>{overdueTotals.totalEur.toLocaleString('ru-RU')} € (≈ {overdueTotals.totalRub.toLocaleString('ru-RU')} ₽)</strong>. Долги по детям одной семьи объединены для отправки единого вежливого напоминания.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white shadow-xs">
-            {aggregatedFamilyDebts.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500">
-                Задолженностей нет — все платежи внесены вовремя!
-              </div>
-            ) : (
-              aggregatedFamilyDebts.map((fam) => {
-                const reminderMsg = `Здравствуйте, ${fam.parentName || 'уважаемый родитель'}! Напоминаем об оплате обучения ваших детей (${fam.studentNames.join(', ')}) на общую сумму ${fam.totalEur.toLocaleString('ru-RU')} € (≈ ${fam.totalRub.toLocaleString('ru-RU')} ₽). Подскажите, пожалуйста, удалось ли ознакомиться со счетом?`;
-
-                return (
-                  <div key={fam.familyKey} className="p-4 space-y-3">
-                    {/* Family Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm text-slate-900">
-                            Семья: {fam.parentName}
-                          </span>
-                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800">
-                            {fam.payments.length > 1 ? `${fam.payments.length} долга` : 'Просрочка'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Дети: <strong className="text-slate-700">{fam.studentNames.join(', ')}</strong> • Тел: {fam.contactPhone}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-3 sm:self-center">
-                        <div className="text-right">
-                          <span className="text-base font-black text-rose-700 block">
-                            {fam.totalEur.toLocaleString('ru-RU')} €
-                          </span>
-                          <span className="text-[11px] font-semibold text-slate-500">
-                            ≈ {fam.totalRub.toLocaleString('ru-RU')} ₽
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              triggerWhatsAppContact({
-                                phone: fam.contactPhone,
-                                template: reminderMsg,
-                                parentId: fam.parentId,
-                                clientName: fam.parentName,
-                                targetRole: 'Родитель',
-                              })
-                            }
-                            className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-                            title="Отправить единое напоминание в WhatsApp"
-                          >
-                            <span>WA</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              triggerTelegramContact({
-                                phone: fam.contactPhone,
-                                parentId: fam.parentId,
-                                clientName: fam.parentName,
-                                targetRole: 'Родитель',
-                              })
-                            }
-                            className="rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 transition-colors cursor-pointer"
-                            title="Написать родителю в Telegram"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </button>
-                          <Link
-                            href="/tasks"
-                            className="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 transition-colors"
-                            title="Поставить задачу по долгу семьи"
-                          >
-                            <CheckSquare className="h-4 w-4" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Children Breakdown */}
-                    <div className="space-y-2 pl-1 sm:pl-2">
-                      {fam.payments.map((p) => (
-                        <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 text-xs">
-                          <div className="min-w-0">
-                            <Link href={`/students/${p.studentId}`} className="font-bold text-slate-900 hover:text-blue-600">
-                              {p.studentName}
-                            </Link>
-                            <span className="text-slate-500 ml-2">Группа: {p.groupName} • Период: {p.periodLabel}</span>
-                            {p.comment && <p className="text-[11px] text-rose-700 mt-0.5">{p.comment}</p>}
-                          </div>
-
-                          <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                            <span className="font-bold text-rose-700">{p.amountFormatted}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedStudentForPayment(p.studentId);
-                                setSelectedParentForPayment(fam.parentId);
-                                setIsPaymentModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
-                              title="Погасить долг"
-                            >
-                              <CreditCard className="h-3.5 w-3.5" />
-                              Погасить
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: СЧЕТА НА ОПЛАТУ (FAKTÚRY) */}
-      {activeTab === 'invoices' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-xs text-slate-500">
-              Выставленные счета на оплату через Tatra banka (SEPA). Автоматическая генерация QR-кода и номеров счетов.
-            </p>
-            <button
-              type="button"
-              onClick={() => setIsInvoiceModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Выставить новый счёт
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            {invoices.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <Receipt className="h-10 w-10 text-slate-300 mx-auto" />
-                <p className="text-sm font-bold text-slate-700">Счета пока не выставлялись</p>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  Нажмите кнопку «Выставить новый счёт», чтобы сформировать официальную европейскую Faktúra с QR-кодом для оплаты.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4">№ счёта (VS)</th>
-                      <th className="py-3 px-4">Дата / Срок</th>
-                      <th className="py-3 px-4">Ученик / Плательщик</th>
-                      <th className="py-3 px-4">Курс / Период</th>
-                      <th className="py-3 px-4 text-right">Сумма</th>
-                      <th className="py-3 px-4 text-center">Статус</th>
-                      <th className="py-3 px-4 text-right">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-800">
-                    {invoices.map((inv) => {
-                      const isPaid = inv.status === 'paid';
-                      return (
-                        <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-3 px-4 font-mono font-bold text-blue-700">
-                            <Link href={`/invoices/${inv.id}`} className="hover:underline flex items-center gap-1">
-                              <Receipt size={13} />
-                              {inv.invoiceNumber}
-                            </Link>
-                          </td>
-                          <td className="py-3 px-4 text-slate-600">
-                            <div>{inv.issueDate}</div>
-                            <div className="text-[10px] text-rose-700 font-semibold">до {inv.dueDate}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900">{inv.studentName}</div>
-                            {inv.parentName && <div className="text-[11px] text-slate-400">{inv.parentName}</div>}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-slate-800">{inv.courseName}</div>
-                            <div className="text-[11px] text-slate-500">{inv.periodLabel}</div>
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-sm">
-                            {inv.totalAmountEUR.toFixed(2)} €
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            {isPaid ? (
-                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                <CheckCircle2 size={11} /> Оплачен
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                                <Clock size={11} /> Ожидает
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {!isPaid && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    markInvoiceAsPaid(inv.id);
-                                    setInvoices(getStoredInvoices());
-                                    setPayments(getStoredPayments());
-                                  }}
-                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Отметить как оплаченный"
-                                >
-                                  <CheckCircle2 size={15} />
-                                </button>
-                              )}
-                              <Link
-                                href={`/invoices/${inv.id}`}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
-                              >
-                                Открыть счёт →
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        {/* Unified Right-Side Detail Drawer */}
+        {selectedDrawerDetail && (
+          <FinanceDetailDrawer
+            detail={selectedDrawerDetail}
+            onClose={() => setSelectedDrawerDetail(null)}
+            onMarkInvoicePaid={handleMarkInvoicePaid}
+            onSettleDebtPayment={handleSettleDebtPayment}
+            onFreezeSubscription={handleFreezeSub}
+          />
+        )}
+      </div>
 
       {/* Modals */}
       <RecordPaymentModal
@@ -912,10 +437,10 @@ function FinanceContent() {
         isOpen={isInvoiceModalOpen}
         onClose={() => {
           setIsInvoiceModalOpen(false);
-          setInvoices(getStoredInvoices());
+          syncFinanceData();
         }}
         onInvoiceCreated={() => {
-          setInvoices(getStoredInvoices());
+          syncFinanceData();
         }}
       />
 
