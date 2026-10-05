@@ -70,7 +70,7 @@ export function OfferLessonModal({
   const handleSend = () => {
     if (!selectedLesson) return;
 
-    const appBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://youeurope-crm.vercel.app';
+    const appBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://youeuropecrmtest.vercel.app';
     const bookingLink = `${appBaseUrl}/mini-app?lessonId=${selectedLesson.id}`;
 
     const text = [

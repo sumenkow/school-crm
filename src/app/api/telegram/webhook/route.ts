@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       if (botToken) {
         const host = request.headers.get('host');
         const proto = request.headers.get('x-forwarded-proto') || 'https';
-        const origin = host ? `${proto}://${host}` : 'https://youeurope-crm.vercel.app';
+        const origin = host ? `${proto}://${host}` : 'https://youeuropecrmtest.vercel.app';
         const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin);
         const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
 
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     // 2. Handle interactive menu commands from Telegram Reply Keyboard (Screen 11)
     const host = request.headers.get('host');
     const proto = request.headers.get('x-forwarded-proto') || 'https';
-    const origin = host ? `${proto}://${host}` : 'https://youeurope-crm.vercel.app';
+    const origin = host ? `${proto}://${host}` : 'https://youeuropecrmtest.vercel.app';
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin);
     const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
 
