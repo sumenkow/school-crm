@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { sendTelegramDirectMessage, resolveBotToken } from '@/lib/telegram/telegramClient';
+import {
+  sendTelegramDirectMessage,
+  resolveBotToken,
+  setTelegramChatMenuButton,
+} from '@/lib/telegram/telegramClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,21 +91,60 @@ export async function POST(request: NextRequest) {
         console.warn('DB logging error during /start in Telegram webhook:', dbErr);
       }
 
-      // Send greeting response to the user in Telegram with Reply Keyboard menu (Screen 11)
+      // Send greeting response to the user in Telegram with Reply Keyboard menu and Mini App (Screen 11)
       if (botToken) {
+        const host = request.headers.get('host');
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        const origin = host ? `${proto}://${host}` : 'https://youeurope-crm.vercel.app';
+        const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin);
+        const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
+
+        // Automatically set persistent menu button (next to attachment icon in Telegram)
+        try {
+          await setTelegramChatMenuButton({
+            token: botToken,
+            miniAppUrl,
+            chatId,
+            buttonText: 'Запись онлайн 📱',
+          });
+        } catch (menuErr) {
+          console.warn('Could not set chat menu button on /start:', menuErr);
+        }
+
         const replyKeyboard = {
           keyboard: [
-            [{ text: '📅 Записаться на занятие' }],
-            [{ text: '📆 Мои занятия' }, { text: '👨‍👩‍👧 Мои дети' }],
-            [{ text: '💳 Оплаты' }, { text: '💬 Написать администратору' }],
+            [{ text: '📅 Записаться на занятие', web_app: { url: miniAppUrl } }],
+            [
+              { text: '📆 Мои занятия', web_app: { url: `${miniAppUrl}&tab=lessons` } },
+              { text: '👨‍👩‍👧 Мои дети', web_app: { url: `${miniAppUrl}&tab=children` } },
+            ],
+            [
+              { text: '💳 Оплаты', web_app: { url: `${miniAppUrl}&tab=payments` } },
+              { text: '💬 Написать администратору' },
+            ],
           ],
           resize_keyboard: true,
+        };
+
+        const inlineKeyboard = {
+          inline_keyboard: [
+            [{ text: '🚀 Записаться онлайн (Mini App)', web_app: { url: miniAppUrl } }],
+          ],
         };
 
         await sendTelegramDirectMessage({
           token: botToken,
           chatId,
-          text: `👋 *Здравствуйте, ${fromUser?.first_name || 'дорогой друг'}!*\n\nВы успешно подключились к чату нашей школы.\n\nЗдесь вы можете записаться на занятия через мини-приложение, просматривать расписание и задавать любые вопросы — администратор ответит вам в рабочее время.`,
+          text: `👋 *Здравствуйте, ${fromUser?.first_name || 'дорогой друг'}!*\n\nВы успешно подключились к чату школы You Europe.\n\n📱 *Для записи на занятия:* нажмите кнопку *«Записаться онлайн»* ниже или кнопку меню *«Запись онлайн 📱»* в левом нижнем углу.\n\n💬 Также вы можете написать любой вопрос прямо сюда — администратор школы ответит вам в этом диалоге!`,
+          parseMode: 'Markdown',
+          replyMarkup: inlineKeyboard,
+        });
+
+        // Set keyboard in a follow-up confirmation
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId,
+          text: `Клавиатура быстрого доступа подключена 👇`,
           parseMode: 'Markdown',
           replyMarkup: replyKeyboard,
         });
@@ -117,19 +160,28 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Handle interactive menu commands from Telegram Reply Keyboard (Screen 11)
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://youeurope-crm.vercel.app');
+    const host = request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const origin = host ? `${proto}://${host}` : 'https://youeurope-crm.vercel.app';
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin);
     const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
 
-    if (text === '📅 Записаться на занятие' || text.startsWith('/book')) {
+    if (
+      text === '📅 Записаться на занятие' ||
+      text.startsWith('/book') ||
+      text.startsWith('/app') ||
+      text.startsWith('/menu') ||
+      text.startsWith('/mini')
+    ) {
       if (botToken) {
         await sendTelegramDirectMessage({
           token: botToken,
           chatId,
-          text: `Отлично! Открываю запись на занятия 👇`,
+          text: `Отлично! Открываю запись на занятия в приложении 👇`,
           parseMode: 'Markdown',
           replyMarkup: {
             inline_keyboard: [
-              [{ text: 'Открыть расписание', web_app: { url: miniAppUrl } }],
+              [{ text: '🚀 Открыть расписание и запись', web_app: { url: miniAppUrl } }],
             ],
           },
         });

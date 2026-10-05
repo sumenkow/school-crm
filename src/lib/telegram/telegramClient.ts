@@ -187,3 +187,42 @@ export function generateTelegramDeeplink(
   if (!cleanUsername) return '';
   return `https://t.me/${cleanUsername}?start=${targetType}_${cleanId}`;
 }
+
+/**
+ * Sets the Telegram bot menu button to open the Mini App.
+ * Can be configured globally or per user chat.
+ */
+export async function setTelegramChatMenuButton(params: {
+  token: string;
+  miniAppUrl: string;
+  chatId?: number | string;
+  buttonText?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { token, miniAppUrl, chatId, buttonText = 'Запись онлайн 📱' } = params;
+    const cleanToken = token.trim();
+    if (!cleanToken) return { success: false, error: 'Token is empty' };
+
+    const payload: any = {
+      menu_button: {
+        type: 'web_app',
+        text: buttonText,
+        web_app: { url: miniAppUrl },
+      },
+    };
+    if (chatId) {
+      payload.chat_id = chatId;
+    }
+
+    const res = await fetch(`https://api.telegram.org/bot${cleanToken}/setChatMenuButton`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    return { success: Boolean(data.ok), error: data.description };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to set chat menu button' };
+  }
+}

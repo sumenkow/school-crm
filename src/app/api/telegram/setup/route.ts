@@ -4,6 +4,7 @@ import {
   getTelegramBotMe,
   getTelegramWebhookInfo,
   setTelegramWebhook,
+  setTelegramChatMenuButton,
 } from '@/lib/telegram/telegramClient';
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +69,18 @@ export async function POST(request: NextRequest) {
         { success: false, error: res.error || 'Не удалось зарегистрировать Webhook' },
         { status: 502 }
       );
+    }
+
+    // Automatically configure Menu Button for the Mini App
+    try {
+      const miniAppUrl = webhookUrl.replace('/api/telegram/webhook', '/mini-app');
+      await setTelegramChatMenuButton({
+        token,
+        miniAppUrl,
+        buttonText: 'Запись онлайн 📱',
+      });
+    } catch (menuErr) {
+      console.warn('Could not set chat menu button:', menuErr);
     }
 
     return NextResponse.json({
