@@ -144,7 +144,8 @@ export type LeadStatus =
   | 'thinking'
   | 'paid'
   | 'lost'
-  | 'no_response';
+  | 'no_response'
+  | 'enrolled';
 
 export interface Lead {
   id: string;
@@ -191,7 +192,7 @@ export interface Task {
   rescheduledReason?: string;
 }
 
-export type PaymentStatus = 'paid' | 'expected' | 'overdue' | 'refund' | 'undefined';
+export type PaymentStatus = 'paid' | 'expected' | 'overdue' | 'refund' | 'undefined' | 'pending' | 'failed' | 'cancelled';
 
 export interface Payment {
   id: string;

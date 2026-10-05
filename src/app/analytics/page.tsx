@@ -669,16 +669,18 @@ export default function AnalyticsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {stageFilteredLeads.map((lead) => {
-                const statusConfig = {
+                const statusMap: Record<string, { label: string; badgeClass: string }> = {
                   new: { label: 'Новый', badgeClass: 'bg-blue-100 text-blue-800' },
                   contacted: { label: 'Квалификация', badgeClass: 'bg-amber-100 text-amber-800' },
                   trial_scheduled: { label: 'Пробный назначен', badgeClass: 'bg-purple-100 text-purple-800' },
                   trial_held: { label: 'Пробный проведен', badgeClass: 'bg-indigo-100 text-indigo-800' },
                   thinking: { label: 'Думают / Счёт', badgeClass: 'bg-teal-100 text-teal-800' },
                   paid: { label: 'Оплачено (Успех)', badgeClass: 'bg-emerald-100 text-emerald-800' },
+                  enrolled: { label: 'Зачислен', badgeClass: 'bg-emerald-100 text-emerald-800' },
                   lost: { label: 'Отказ', badgeClass: 'bg-rose-100 text-rose-800' },
                   no_response: { label: 'Не отвечает', badgeClass: 'bg-slate-200 text-slate-700' },
-                }[lead.status] || { label: lead.status, badgeClass: 'bg-slate-100 text-slate-700' };
+                };
+                const statusConfig = statusMap[lead.status] || { label: lead.status, badgeClass: 'bg-slate-100 text-slate-700' };
 
                 const cleanPhone = lead.contact.replace(/[^\d+]/g, '');
 

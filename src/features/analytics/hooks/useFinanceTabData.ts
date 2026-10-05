@@ -73,22 +73,31 @@ export function useFinanceTabData(filters: AnalyticsFilters): FinanceTabData {
       return sum + val;
     }, 0);
 
-    // Baseline targets matching the school scale from reference
-    // Target base revenue: € 32 450 (with real additions)
-    const baseRevenue = rawPaidEur > 5000 ? rawPaidEur : 32450;
-    const baseCollected = Math.round(baseRevenue * 0.928); // € 30 120
-    const baseDebt = 8640;
-    const baseAvgCheck = 680;
-    const baseLtv = 3240;
-    const baseOverdueDebt = 3120;
+    const totalOverdueEur = overdueList.reduce((sum, p) => {
+      const val = p.currency === 'EUR' ? p.amount : convertRubToEur(p.amount, rate);
+      return sum + val;
+    }, 0);
+
+    const expectedList = filteredPayments.filter((p) => p.status === 'expected');
+    const totalExpectedEur = expectedList.reduce((sum, p) => {
+      const val = p.currency === 'EUR' ? p.amount : convertRubToEur(p.amount, rate);
+      return sum + val;
+    }, 0);
+
+    const baseRevenue = rawPaidEur;
+    const baseCollected = rawPaidEur;
+    const baseDebt = totalOverdueEur + totalExpectedEur;
+    const baseAvgCheck = paidList.length > 0 ? Math.round(rawPaidEur / paidList.length) : 0;
+    const baseLtv = students.length > 0 ? Math.round(rawPaidEur / students.length) : 0;
+    const baseOverdueDebt = totalOverdueEur;
 
     // Previous period values for delta calculations
-    const prevRevenue = 29860;
-    const prevCollected = 27440;
-    const prevDebt = 6920;
-    const prevAvgCheck = 620;
-    const prevLtv = 2980;
-    const prevOverdueDebt = 2100;
+    const prevRevenue = 0;
+    const prevCollected = 0;
+    const prevDebt = 0;
+    const prevAvgCheck = 0;
+    const prevLtv = 0;
+    const prevOverdueDebt = 0;
 
     // Delas
     const calcDelta = (curr: number, prev: number) => {
@@ -215,13 +224,13 @@ export function useFinanceTabData(filters: AnalyticsFilters): FinanceTabData {
       },
       {
         month: 'Сентябрь 2026',
-        accruedEur: 32450,
-        accruedFormatted: formatEur(32450),
-        paidEur: 30120,
-        paidFormatted: formatEur(30120),
-        debtEur: 8640,
-        debtFormatted: formatEur(8640),
-        trendFormatted: '↑ +8,7%',
+        accruedEur: baseRevenue + baseDebt,
+        accruedFormatted: formatEur(baseRevenue + baseDebt),
+        paidEur: baseRevenue,
+        paidFormatted: formatEur(baseRevenue),
+        debtEur: baseDebt,
+        debtFormatted: formatEur(baseDebt),
+        trendFormatted: '+0%',
         isPositiveTrend: true,
       },
     ];
@@ -315,7 +324,7 @@ export function useFinanceTabData(filters: AnalyticsFilters): FinanceTabData {
       { month: 'Июн', currentEur: 32200, previousEur: 28400 },
       { month: 'Июл', currentEur: 33870, previousEur: 32100 },
       { month: 'Авг', currentEur: 30120, previousEur: 33800 },
-      { month: 'Сен', currentEur: 32450, previousEur: 29860 },
+      { month: 'Сен', currentEur: Math.round(baseRevenue), previousEur: 0 },
     ];
 
     // 6. Revenue Structure (Donut)

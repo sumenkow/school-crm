@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { INITIAL_COURSES } from '@/lib/data/mockData';
 
 export const dynamic = 'force-dynamic';
@@ -115,14 +116,31 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { role, course, courses } = body;
+    const { course, courses } = body;
 
-    // Security check: owner, developer, admin or standard staff session can save course configurations
-    const isAuthorized = !role || role === 'owner' || role === 'developer' || role === 'admin' || role === 'superadmin' || role === 'teacher';
+    // Security check: verify session & DB profile role on server
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const isDev = process.env.NODE_ENV === 'development' && request.cookies.get('crm_dev_bypass')?.value === 'true';
+    let isAuthorized = false;
+
+    if (isDev) {
+      isAuthorized = true;
+    } else if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      const userRole = profile?.role || (user.user_metadata?.role as string | undefined);
+      isAuthorized = Boolean(userRole && ['owner', 'developer', 'admin'].includes(userRole));
+    }
+
     if (!isAuthorized) {
       return NextResponse.json(
-        { error: 'Только владелец школы имеет права на добавление и изменение направлений.' },
-        { status: 403 }
+        { error: 'Доступ запрещен. Только владелец или администратор школы имеет права на изменение курсов.' },
+        { status: user ? 403 : 401 }
       );
     }
 

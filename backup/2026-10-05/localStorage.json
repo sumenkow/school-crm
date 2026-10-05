@@ -1,0 +1,2690 @@
+{
+  "crm_students_v2": [
+    {
+      "id": "1",
+      "firstName": "Иван",
+      "lastName": "Смирнов",
+      "studentType": "school_student",
+      "birthDate": "2012-05-14",
+      "grade": "8 класс",
+      "phone": "+7 (999) 111-22-33",
+      "telegram": "@ivan_smirnov",
+      "email": "ivan.smirnov@example.com",
+      "status": "active",
+      "notes": "Ученик мотивирован, готовится к сдаче международного кембриджского теста.",
+      "createdAt": "2026-08-15T10:00:00Z",
+      "updatedAt": "2026-09-01T12:00:00Z",
+      "parents": [
+        {
+          "id": "p1",
+          "firstName": "Ольга",
+          "lastName": "Смирнова",
+          "phone": "+7 (999) 123-45-67",
+          "telegram": "@olga_smirnova",
+          "whatsapp": "+79991234567",
+          "preferredChannel": "telegram",
+          "notes": "Отвечает быстрее всего в Telegram после 18:00",
+          "relationshipType": "Мама",
+          "isPrimary": true
+        },
+        {
+          "id": "p2",
+          "firstName": "Алексей",
+          "lastName": "Смирнов",
+          "phone": "+7 (999) 987-65-43",
+          "telegram": "@alex_smirnov",
+          "preferredChannel": "phone",
+          "notes": "Отец, звонить только по экстренным вопросам",
+          "relationshipType": "Отец",
+          "isPrimary": false
+        }
+      ],
+      "groups": [
+        {
+          "id": "1",
+          "name": "English B1 Teens",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Пн, Чт • 18:45–20:15",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "5",
+          "name": "Практическая грамматика",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Среда • 18:00–19:30",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "6",
+          "name": "Разговорный клуб",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Суббота • 12:00–13:30",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 16,
+        "presentCount": 15,
+        "absentCount": 1,
+        "rescheduledCount": 0,
+        "attendanceRate": "94%",
+        "history": [
+          {
+            "date": "01.09.2026",
+            "groupName": "English B1 Teens",
+            "topic": "Present Perfect vs Past Simple",
+            "status": "present"
+          },
+          {
+            "date": "28.08.2026",
+            "groupName": "English B1 Teens",
+            "topic": "Phrasal verbs in context",
+            "status": "present"
+          },
+          {
+            "date": "25.08.2026",
+            "groupName": "English B1 Teens",
+            "topic": "Reading & Vocabulary booster",
+            "status": "present"
+          },
+          {
+            "date": "21.08.2026",
+            "groupName": "English B1 Teens",
+            "topic": "Speaking club: Travelling",
+            "status": "absent",
+            "notes": "Семейная поездка"
+          },
+          {
+            "date": "18.08.2026",
+            "groupName": "English B1 Teens",
+            "topic": "Grammar recap",
+            "status": "present"
+          }
+        ]
+      },
+      "finance": {
+        "activeSubscription": {
+          "period": "01.09.2026 – 30.09.2026",
+          "price": "7 600 ₽",
+          "status": "active",
+          "lessonsAttended": "2 из 8 занятий",
+          "renewalDate": "28.09.2026"
+        },
+        "payments": [
+          {
+            "id": "pay1",
+            "date": "01.09.2026",
+            "amount": "7 600 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          },
+          {
+            "id": "pay2",
+            "date": "01.08.2026",
+            "amount": "7 600 ₽",
+            "period": "Август 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "int1",
+          "occurredAt": "01.09.2026, 11:30",
+          "channel": "telegram",
+          "type": "follow_up",
+          "author": "Елена Менеджер",
+          "studentId": "1",
+          "studentName": "Иван Смирнов",
+          "parentId": "p1",
+          "parentName": "Ольга Смирнова",
+          "targetType": "parent",
+          "targetName": "Ольга Смирнова",
+          "targetRole": "Родитель (Мама)",
+          "content": "Уточнила у мамы Ольги получение домашнего задания. Все материалы скачали, вопросов нет.",
+          "result": "Ученик готов к следующему уроку",
+          "nextAction": "Контроль посещаемости в четверг",
+          "followUpDate": "04.09.2026"
+        },
+        {
+          "id": "int2",
+          "occurredAt": "01.09.2026, 14:10",
+          "channel": "telegram",
+          "type": "payment",
+          "author": "Елена Менеджер",
+          "studentId": "1",
+          "studentName": "Иван Смирнов",
+          "parentId": "p1",
+          "parentName": "Ольга Смирнова",
+          "targetType": "parent",
+          "targetName": "Ольга Смирнова",
+          "targetRole": "Родитель (Мама)",
+          "content": "Отправлен чек об оплате абонемента на сентябрь (7 600 ₽).",
+          "result": "Оплата успешно зафиксирована"
+        },
+        {
+          "id": "int3",
+          "occurredAt": "25.08.2026, 17:00",
+          "channel": "phone",
+          "type": "trial",
+          "author": "Мария Иванова",
+          "studentId": "1",
+          "studentName": "Иван Смирнов",
+          "targetType": "student",
+          "targetName": "Иван Смирнов",
+          "targetRole": "Ученик",
+          "content": "Провели тестирование уровня знаний перед стартом учебного года. Уверенный B1.",
+          "result": "Зачислен в основную группу B1 Teens"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "t1",
+          "title": "Предложить продление абонемента на октябрь со скидкой 5%",
+          "taskType": "Продление",
+          "studentId": "1",
+          "assignedTo": "Елена Менеджер",
+          "dueDate": "25.09.2026",
+          "status": "open",
+          "priority": "medium"
+        }
+      ],
+      "teacherComments": [
+        {
+          "id": "tc_1",
+          "studentId": "1",
+          "author": "Мария Иванова (Преподаватель)",
+          "date": "08.09.2026, 20:15",
+          "groupName": "English B1 Teens",
+          "lessonTopic": "Past Simple & Irregular Verbs",
+          "category": "progress",
+          "content": "Отлично справился с устным тестом на неправильные глаголы. Заметно выросла беглость речи, рекомендую больше читать художественную литературу на английском."
+        },
+        {
+          "id": "tc_2",
+          "studentId": "1",
+          "author": "Мария Иванова (Преподаватель)",
+          "date": "04.09.2026, 19:40",
+          "groupName": "English B1 Teens",
+          "lessonTopic": "Reading & Discussion: Technology",
+          "category": "homework",
+          "content": "Домашнее эссе сдано вовремя, хорошая аргументация. Рекомендовано обратить внимание на предлоги времени (at/in/on)."
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "firstName": "Мария",
+      "lastName": "Кузнецова",
+      "studentType": "school_student",
+      "birthDate": "2014-03-22",
+      "grade": "6 класс",
+      "phone": "+7 (999) 222-33-44",
+      "status": "active",
+      "notes": "Занимается в паре с братом Артёмом.",
+      "createdAt": "2026-08-20T10:00:00Z",
+      "updatedAt": "2026-09-02T15:00:00Z",
+      "parents": [
+        {
+          "id": "p3",
+          "firstName": "Дмитрий",
+          "lastName": "Кузнецов",
+          "phone": "+7 (999) 234-56-78",
+          "telegram": "@dkuznetsov",
+          "whatsapp": "+79992345678",
+          "preferredChannel": "whatsapp",
+          "notes": "Отец двоих учеников (Мария и Артём). Предпочитает WhatsApp.",
+          "relationshipType": "Отец",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "3",
+          "name": "Robotics Junior",
+          "courseName": "Робототехника",
+          "teacherName": "Денис Смирнов",
+          "schedule": "Ср 15:00, Сб 11:00",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "5",
+          "name": "Практическая грамматика",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Среда • 18:00–19:30",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 8,
+        "presentCount": 8,
+        "absentCount": 0,
+        "rescheduledCount": 0,
+        "attendanceRate": "100%",
+        "history": [
+          {
+            "date": "02.09.2026",
+            "groupName": "Robotics Junior",
+            "topic": "Сборка манипулятора на Arduino",
+            "status": "present"
+          },
+          {
+            "date": "29.08.2026",
+            "groupName": "Robotics Junior",
+            "topic": "Датчики расстояния и ультразвук",
+            "status": "present"
+          }
+        ]
+      },
+      "finance": {
+        "activeSubscription": {
+          "period": "01.09.2026 – 30.09.2026",
+          "price": "8 400 ₽",
+          "status": "expired",
+          "lessonsAttended": "1 из 8 занятий",
+          "renewalDate": "25.08.2026"
+        },
+        "payments": [
+          {
+            "id": "pay3",
+            "date": "25.08.2026",
+            "amount": "8 400 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Перевод по СБП",
+            "status": "overdue"
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "int4",
+          "occurredAt": "31.08.2026, 16:20",
+          "channel": "whatsapp",
+          "type": "follow_up",
+          "author": "Елена Менеджер",
+          "content": "Напомнили Дмитрию о задолженности по оплате сентября за Марию и Артёма.",
+          "result": "Обещал перевести до конца недели",
+          "nextAction": "Проверить поступление в пятницу",
+          "followUpDate": "05.09.2026"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "t2",
+          "title": "Проконтролировать погашение задолженности 8 400 ₽",
+          "taskType": "Финансы",
+          "studentId": "2",
+          "assignedTo": "Елена Менеджер",
+          "dueDate": "05.09.2026",
+          "status": "open",
+          "priority": "high"
+        }
+      ]
+    },
+    {
+      "id": "s18",
+      "firstName": "Артём",
+      "lastName": "Кузнецов",
+      "studentType": "school_student",
+      "birthDate": "2016-08-10",
+      "grade": "4 класс",
+      "phone": "+7 (999) 234-56-78",
+      "telegram": "@dkuznetsov",
+      "status": "active",
+      "notes": "Младший брат Марии Кузнецовой. Обучается в двух группах: Робототехника и Олимпиадная математика.",
+      "createdAt": "2026-08-20T10:00:00Z",
+      "updatedAt": "2026-09-02T15:00:00Z",
+      "parents": [
+        {
+          "id": "p3",
+          "firstName": "Дмитрий",
+          "lastName": "Кузнецов",
+          "phone": "+7 (999) 234-56-78",
+          "telegram": "@dkuznetsov",
+          "whatsapp": "+79992345678",
+          "preferredChannel": "whatsapp",
+          "notes": "Отец двоих учеников (Мария и Артём). Предпочитает WhatsApp.",
+          "relationshipType": "Отец",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "3",
+          "name": "Robotics Junior",
+          "courseName": "Робототехника",
+          "teacherName": "Денис Смирнов",
+          "schedule": "Ср 15:00, Сб 11:00",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "4",
+          "name": "Kids Math Safari",
+          "courseName": "Математика",
+          "teacherName": "Ольга Соколова",
+          "schedule": "Четверг • 16:00–17:00",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 8,
+        "presentCount": 8,
+        "absentCount": 0,
+        "rescheduledCount": 0,
+        "attendanceRate": "100%",
+        "history": [
+          {
+            "date": "02.09.2026",
+            "groupName": "Robotics Junior",
+            "topic": "Датчики расстояния",
+            "status": "present"
+          },
+          {
+            "date": "29.08.2026",
+            "groupName": "Robotics Junior",
+            "topic": "Вводное занятие",
+            "status": "present"
+          }
+        ]
+      },
+      "finance": {
+        "activeSubscription": {
+          "period": "01.09.2026 – 30.09.2026",
+          "price": "8 400 ₽",
+          "status": "paid",
+          "lessonsAttended": "2 из 8 занятий",
+          "renewalDate": "25.09.2026"
+        },
+        "payments": [
+          {
+            "id": "pay_artem1",
+            "date": "01.09.2026",
+            "amount": "8 400 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          }
+        ]
+      },
+      "interactions": [],
+      "tasks": []
+    },
+    {
+      "id": "3",
+      "firstName": "Анна",
+      "lastName": "Васильева",
+      "studentType": "school_student",
+      "birthDate": "2018-09-10",
+      "grade": "1 класс",
+      "status": "trial",
+      "notes": "Только начинает знакомство с языком в игровой форме.",
+      "createdAt": "2026-08-30T10:00:00Z",
+      "updatedAt": "2026-09-02T10:00:00Z",
+      "parents": [
+        {
+          "id": "p4",
+          "firstName": "Елена",
+          "lastName": "Васильева",
+          "phone": "+7 (999) 345-67-89",
+          "telegram": "@elena_v",
+          "whatsapp": "+79993456789",
+          "preferredChannel": "phone",
+          "notes": "Мама Анны",
+          "relationshipType": "Мама",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "2",
+          "name": "Kids English A1",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Вт, Пт • 15:00–16:30",
+          "status": "trial",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 1,
+        "presentCount": 0,
+        "absentCount": 1,
+        "rescheduledCount": 0,
+        "attendanceRate": "0%",
+        "history": [
+          {
+            "date": "02.09.2026",
+            "groupName": "Kids English A1",
+            "topic": "Colors & Animals",
+            "status": "absent",
+            "notes": "Заболела перед уроком"
+          }
+        ]
+      },
+      "finance": {
+        "payments": [
+          {
+            "id": "pay4",
+            "date": "05.09.2026",
+            "amount": "7 200 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Ожидается",
+            "status": "expected"
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "int5",
+          "occurredAt": "02.09.2026, 14:00",
+          "channel": "phone",
+          "type": "trial",
+          "author": "Елена Менеджер",
+          "content": "Мама позвонила и предупредила, что у Анны температура. Договорились перенести пробное занятие на пятницу.",
+          "result": "Перенос на 05.09 15:00",
+          "nextAction": "Напомнить за 3 часа до урока",
+          "followUpDate": "05.09.2026"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "t3",
+          "title": "Узнать самочувствие Анны и подтвердить пробный урок в пятницу",
+          "taskType": "Пробное",
+          "studentId": "3",
+          "assignedTo": "Елена Менеджер",
+          "dueDate": "04.09.2026",
+          "status": "open",
+          "priority": "high"
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "firstName": "Сергей",
+      "lastName": "Попов",
+      "studentType": "school_student",
+      "birthDate": "2012-07-19",
+      "grade": "8 класс",
+      "phone": "+7 (999) 456-78-90",
+      "status": "paused",
+      "notes": "4 пропуска подряд, статус «На паузе», риск оттока. Требуется звонок родителю.",
+      "createdAt": "2026-08-10T10:00:00Z",
+      "updatedAt": "2026-09-03T12:00:00Z",
+      "parents": [
+        {
+          "id": "p5",
+          "firstName": "Татьяна",
+          "lastName": "Попова",
+          "phone": "+7 (999) 456-78-90",
+          "telegram": "@tatiana_popova",
+          "preferredChannel": "phone",
+          "notes": "Мама Сергея. Обсуждали перерыв в занятиях из-за спортивных сборов.",
+          "relationshipType": "Мама",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "1",
+          "name": "English B1 Teens",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Пн, Чт • 18:45–20:15",
+          "status": "paused",
+          "joinedAt": "15.08.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 12,
+        "presentCount": 8,
+        "absentCount": 4,
+        "rescheduledCount": 0,
+        "attendanceRate": "62%",
+        "history": []
+      },
+      "finance": {
+        "payments": [
+          {
+            "id": "pay_p1",
+            "date": "15.08.2026",
+            "amount": "7 600 ₽",
+            "period": "Август 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "int_p1",
+          "occurredAt": "03.09.2026",
+          "channel": "phone",
+          "type": "follow_up",
+          "author": "Елена Менеджер",
+          "content": "Звонок маме по поводу 4 пропущенных уроков. Согласовали паузу до 15.10.",
+          "result": "Поставлен статус «На паузе»"
+        }
+      ],
+      "tasks": []
+    },
+    {
+      "id": "s6",
+      "firstName": "Максим",
+      "lastName": "Захаров",
+      "studentType": "school_student",
+      "birthDate": "2013-11-04",
+      "grade": "7 класс",
+      "phone": "+7 (916) 777-33-22",
+      "status": "active",
+      "notes": "3 пропуска подряд, нет реакции на домашние задания, задолженность.",
+      "createdAt": "2026-08-18T10:00:00Z",
+      "updatedAt": "2026-09-04T12:00:00Z",
+      "parents": [
+        {
+          "id": "p6",
+          "firstName": "Наталья",
+          "lastName": "Захарова",
+          "phone": "+7 (916) 777-33-22",
+          "telegram": "@natalia_zakh",
+          "preferredChannel": "telegram",
+          "notes": "Мама Максима",
+          "relationshipType": "Мама",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "1",
+          "name": "English B1 Teens",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Пн, Чт • 18:45–20:15",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 10,
+        "presentCount": 7,
+        "absentCount": 3,
+        "rescheduledCount": 0,
+        "attendanceRate": "65%",
+        "history": []
+      },
+      "finance": {
+        "payments": [
+          {
+            "id": "pay_z1",
+            "date": "20.08.2026",
+            "amount": "7 600 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Перевод по СБП",
+            "status": "overdue"
+          }
+        ]
+      },
+      "interactions": [],
+      "tasks": []
+    },
+    {
+      "id": "5",
+      "firstName": "Екатерина",
+      "lastName": "Морозова",
+      "studentType": "school_student",
+      "birthDate": "2016-04-12",
+      "grade": "4 класс",
+      "phone": "+7 (999) 567-89-01",
+      "status": "active",
+      "notes": "Отличные успехи в олимпиадной математике, победа в городском туре.",
+      "createdAt": "2026-08-25T10:00:00Z",
+      "updatedAt": "2026-09-05T12:00:00Z",
+      "parents": [
+        {
+          "id": "p7",
+          "firstName": "Игорь",
+          "lastName": "Морозов",
+          "phone": "+7 (999) 567-89-01",
+          "telegram": "@igor_morozov",
+          "preferredChannel": "whatsapp",
+          "notes": "Отец Екатерины",
+          "relationshipType": "Отец",
+          "isPrimary": true
+        }
+      ],
+      "groups": [
+        {
+          "id": "g_math",
+          "name": "Kids Math Safari",
+          "courseName": "Математика",
+          "teacherName": "Ольга Соколова",
+          "schedule": "Ср 16:30, Сб 12:00",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 8,
+        "presentCount": 7,
+        "absentCount": 1,
+        "rescheduledCount": 0,
+        "attendanceRate": "88%",
+        "history": []
+      },
+      "finance": {
+        "payments": [
+          {
+            "id": "pay_m1",
+            "date": "01.09.2026",
+            "amount": "7 600 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          }
+        ]
+      },
+      "interactions": [],
+      "tasks": []
+    },
+    {
+      "id": "s7",
+      "firstName": "Дарья",
+      "lastName": "Соловьева",
+      "studentType": "adult_student",
+      "birthDate": "2006-02-14",
+      "grade": "2 курс",
+      "phone": "+7 (926) 555-12-34",
+      "telegram": "@daria_solovyeva",
+      "status": "active",
+      "notes": "Совершеннолетняя студентка (20 лет). Обучается самостоятельно на продвинутом курсе C1.",
+      "createdAt": "2026-08-20T10:00:00Z",
+      "updatedAt": "2026-09-05T12:00:00Z",
+      "parents": [
+        {
+          "id": "p_sol",
+          "firstName": "Елена",
+          "lastName": "Соловьева",
+          "phone": "+7 (926) 555-99-88",
+          "preferredChannel": "phone",
+          "notes": "Экстренный контакт",
+          "relationshipType": "Экстренный контакт",
+          "isPrimary": false
+        }
+      ],
+      "groups": [
+        {
+          "id": "g_c1",
+          "name": "English C1 Advanced",
+          "courseName": "Английский язык",
+          "teacherName": "Мария Иванова",
+          "schedule": "Вт, Пт • 20:00–21:30",
+          "status": "active",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "attendanceStats": {
+        "totalLessons": 12,
+        "presentCount": 12,
+        "absentCount": 0,
+        "rescheduledCount": 0,
+        "attendanceRate": "98%",
+        "history": []
+      },
+      "finance": {
+        "payments": [
+          {
+            "id": "pay_sol1",
+            "date": "01.09.2026",
+            "amount": "8 800 ₽",
+            "period": "Сентябрь 2026",
+            "method": "Банковская карта",
+            "status": "paid"
+          }
+        ]
+      },
+      "interactions": [],
+      "tasks": []
+    }
+  ],
+  "crm_leads_v2": [
+    {
+      "id": "lead_elena_m",
+      "name": "Елена Морозова",
+      "parentLastName": "Морозова",
+      "parentFirstName": "Елена",
+      "contact": "+7 (999) 777-88-99",
+      "telegram": "@elena_morozova",
+      "studentLastName": "Морозов",
+      "studentFirstName": "Матвей",
+      "studentName": "Матвей",
+      "studentAge": "9 лет",
+      "directionOrCourse": "Английский язык",
+      "level": "A1 Starter",
+      "source": "Сайт (Заявка на пробный)",
+      "assignedTo": "Елена Менеджер",
+      "status": "new",
+      "offerAmount": "120 € (11 700 ₽)",
+      "nextAction": "Позвонить для согласования времени",
+      "nextActionDate": "2026-10-02",
+      "comment": "Интересуются вечерними группами.",
+      "createdAt": "2026-09-03T08:30:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead1",
+      "name": "Морозова Светлана",
+      "parentLastName": "Морозова",
+      "parentFirstName": "Светлана",
+      "contact": "+7 (999) 444-11-22",
+      "telegram": "@sveta_morozova",
+      "studentLastName": "Морозов",
+      "studentFirstName": "Михаил",
+      "studentName": "Морозов Михаил",
+      "studentAge": "9 лет",
+      "directionOrCourse": "Робототехника",
+      "level": "Начинающий (с нуля)",
+      "source": "Instagram",
+      "assignedTo": "Елена Менеджер",
+      "status": "new",
+      "offerAmount": "80 € (8 000 ₽)",
+      "nextAction": "Позвонить для подбора времени",
+      "nextActionDate": "Сегодня",
+      "comment": "Интересуется занятиями по субботам в первой половине дня.",
+      "studentNotes": "Увлекается Lego Technic, активный, любит практические задачи. Математику понимает хорошо.",
+      "parentNotes": "Мама Светлана. Предпочитает общение в Telegram, на звонки в рабочее время отвечает редко.",
+      "createdAt": "2026-09-03T08:30:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead7",
+      "name": "Смирнова Екатерина",
+      "parentLastName": "Смирнова",
+      "parentFirstName": "Екатерина",
+      "contact": "+7 (999) 222-33-44",
+      "telegram": "@ekaterina_sm",
+      "studentLastName": "Смирнова",
+      "studentFirstName": "Виктория",
+      "studentName": "Смирнова Виктория",
+      "studentAge": "8 лет",
+      "directionOrCourse": "Английский язык",
+      "level": "A1 Starter",
+      "source": "ВКонтакте",
+      "assignedTo": "Елена Менеджер",
+      "status": "new",
+      "offerAmount": "120 € (11 700 ₽)",
+      "nextAction": "Уточнить время для урока",
+      "nextActionDate": "2026-10-03",
+      "comment": "Оставили заявку через ВК рекламу. Хотят заниматься 2 раза в неделю.",
+      "createdAt": "2026-09-03T09:15:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead_sergey_p",
+      "name": "Сергей Павлов",
+      "parentLastName": "Павлов",
+      "parentFirstName": "Сергей",
+      "contact": "+7 (999) 888-99-00",
+      "telegram": "@sergey_pavlov",
+      "studentLastName": "Павлов",
+      "studentFirstName": "Тимофей",
+      "studentName": "Тимофей",
+      "studentAge": "13 лет",
+      "directionOrCourse": "Python Start",
+      "level": "Начинающий",
+      "source": "Рекомендация",
+      "assignedTo": "Елена Менеджер",
+      "status": "contacted",
+      "offerAmount": "140 € (13 650 ₽)",
+      "nextAction": "Отправить ссылку на онлайн-тест",
+      "nextActionDate": "2026-10-02",
+      "comment": "Хочет научиться создавать игры на Python.",
+      "createdAt": "2026-09-02T10:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead9",
+      "name": "Ольга Николаева",
+      "contact": "+7 (999) 444-55-66",
+      "telegram": "@olga_nik",
+      "studentName": "Александр",
+      "studentAge": "14 лет",
+      "directionOrCourse": "Олимпиадная математика",
+      "level": "Продвинутый",
+      "source": "Рекомендация",
+      "assignedTo": "Елена Менеджер",
+      "status": "contacted",
+      "offerAmount": "69.74 € (6 800 ₽)",
+      "nextAction": "Подобрать удобный день",
+      "nextActionDate": "Завтра, 11:00",
+      "comment": "Готовятся к районной олимпиаде.",
+      "createdAt": "2026-09-02T11:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead_victoria_s",
+      "name": "Виктория Соколова",
+      "parentLastName": "Соколова",
+      "parentFirstName": "Виктория",
+      "contact": "+7 (999) 999-00-11",
+      "telegram": "@v_sokolova",
+      "studentLastName": "Соколова",
+      "studentFirstName": "Алиса",
+      "studentName": "Алиса",
+      "studentAge": "7 лет",
+      "directionOrCourse": "Подготовка к школе",
+      "source": "Реклама Telegram",
+      "assignedTo": "Елена Менеджер",
+      "status": "trial_scheduled",
+      "offerAmount": "100 € (9 750 ₽)",
+      "nextAction": "Контроль явки на пробный урок",
+      "nextActionDate": "2026-10-02",
+      "comment": "Записаны на пятницу 17:00.",
+      "createdAt": "2026-09-01T12:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead2",
+      "name": "Павлов Артем",
+      "clientType": "adult_student",
+      "studentLastName": "Павлов",
+      "studentFirstName": "Артем",
+      "contact": "+7 (999) 555-22-33",
+      "telegram": "@artem_pavlov",
+      "studentName": "Павлов Артем",
+      "studentAge": "16 лет",
+      "directionOrCourse": "Английский язык",
+      "level": "B1 Intermediate",
+      "source": "Сайт школы",
+      "assignedTo": "Елена Менеджер",
+      "status": "trial_scheduled",
+      "trialDate": "04.09.2026 18:45",
+      "offerAmount": "77.95 € (7 600 ₽)",
+      "nextAction": "Отправить ссылку на онлайн-урок за 2 часа",
+      "nextActionDate": "04.09.2026",
+      "comment": "Хочет сдать ЕГЭ на 85+ баллов.",
+      "createdAt": "2026-09-01T14:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead_marina_o",
+      "name": "Марина Орлова",
+      "parentLastName": "Орлова",
+      "parentFirstName": "Марина",
+      "contact": "+7 (999) 333-22-11",
+      "studentLastName": "Орлов",
+      "studentFirstName": "Тимофей",
+      "studentName": "Тимофей",
+      "studentAge": "9 лет",
+      "directionOrCourse": "Робототехника",
+      "source": "Сайт школы",
+      "assignedTo": "Елена Менеджер",
+      "status": "trial_scheduled",
+      "offerAmount": "86.15 € (8 400 ₽)",
+      "nextAction": "Напомнить за 24 часа о занятии",
+      "nextActionDate": "2026-10-04",
+      "comment": "Ждут субботний слот.",
+      "createdAt": "2026-09-01T16:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead3",
+      "name": "Ковалева Наталья",
+      "parentLastName": "Ковалева",
+      "parentFirstName": "Наталья",
+      "contact": "+7 (999) 666-33-44",
+      "telegram": "@natalia_k",
+      "studentLastName": "Ковалева",
+      "studentFirstName": "Алиса",
+      "studentName": "Ковалева Алиса",
+      "studentAge": "7 лет",
+      "directionOrCourse": "Английский язык",
+      "level": "A1 Starter",
+      "source": "Рекомендация друзей",
+      "assignedTo": "Елена Менеджер",
+      "status": "trial_held",
+      "trialDate": "02.09.2026 15:00",
+      "offerAmount": "73.85 € (7 200 ₽)",
+      "nextAction": "Узнать решение мамы и выставить счет",
+      "nextActionDate": "Сегодня",
+      "comment": "Урок прошел отлично, Алисе очень понравилась преподаватель Мария.",
+      "createdAt": "2026-08-31T11:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead_ksenia_m",
+      "name": "Ксения Мельникова",
+      "parentLastName": "Мельникова",
+      "parentFirstName": "Ксения",
+      "contact": "+7 (999) 666-77-88",
+      "telegram": "@ksenia_m",
+      "studentLastName": "Мельников",
+      "studentFirstName": "Кирилл",
+      "studentName": "Кирилл",
+      "studentAge": "10 лет",
+      "directionOrCourse": "Робототехника",
+      "source": "Instagram",
+      "assignedTo": "Елена Менеджер",
+      "status": "trial_held",
+      "offerAmount": "86.15 € (8 400 ₽)",
+      "nextAction": "Получить подтверждение времени",
+      "nextActionDate": "Сегодня",
+      "comment": "Пробный прошел на ура, формируют расписание.",
+      "createdAt": "2026-08-30T10:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead4",
+      "name": "Васильев Игорь",
+      "parentLastName": "Васильев",
+      "parentFirstName": "Игорь",
+      "contact": "+7 (999) 888-77-66",
+      "studentLastName": "Васильев",
+      "studentFirstName": "Максим",
+      "studentName": "Васильев Максим",
+      "studentAge": "10 лет",
+      "directionOrCourse": "Олимпиадная математика",
+      "level": "Базовый",
+      "source": "Листовка у школы",
+      "assignedTo": "Елена Менеджер",
+      "status": "thinking",
+      "offerAmount": "69.74 € (6 800 ₽)",
+      "nextAction": "Позвонить, предложить скидку 10% на первый месяц",
+      "nextActionDate": "04.09.2026",
+      "comment": "Сравнивают с онлайн-репетитором.",
+      "createdAt": "2026-08-28T16:00:00Z",
+      "interactions": []
+    },
+    {
+      "id": "lead5",
+      "name": "Соколова Виктория",
+      "parentLastName": "Соколова",
+      "parentFirstName": "Виктория",
+      "contact": "+7 (999) 777-88-99",
+      "studentLastName": "Соколов",
+      "studentFirstName": "Даниил",
+      "studentName": "Соколов Даниил",
+      "studentAge": "11 лет",
+      "directionOrCourse": "Математика",
+      "source": "Листовка",
+      "assignedTo": "Елена Менеджер",
+      "status": "paid",
+      "offerAmount": "86.15 € (8 400 ₽)",
+      "nextAction": "Зачислен в группу Math-2",
+      "comment": "Оплатили абонемент на сентябрь.",
+      "createdAt": "2026-08-25T10:00:00Z",
+      "convertedStudentId": "5",
+      "convertedParentId": "p4",
+      "interactions": []
+    },
+    {
+      "id": "lead6",
+      "name": "Белов Константин",
+      "parentLastName": "Белов",
+      "parentFirstName": "Константин",
+      "contact": "+7 (999) 111-00-22",
+      "studentLastName": "Белова",
+      "studentFirstName": "Яна",
+      "studentName": "Белова Яна",
+      "studentAge": "8 лет",
+      "directionOrCourse": "Английский язык",
+      "source": "Яндекс.Карты",
+      "assignedTo": "Елена Менеджер",
+      "status": "lost",
+      "offerAmount": "80 € (8 000 ₽)",
+      "lossReason": "Не подошло вечернее время занятий (ищут утренние группы)",
+      "comment": "Отправили в архив, позвонить при открытии утренней группы.",
+      "createdAt": "2026-08-20T12:00:00Z",
+      "interactions": []
+    }
+  ],
+  "crm_groups_master_v2": [
+    {
+      "id": "1",
+      "name": "English B1 Teens",
+      "courseId": "c1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "schedule": "Пн, Чт • 18:45–20:15",
+      "room": "Онлайн (Zoom 1)",
+      "capacity": 8,
+      "status": "active",
+      "startDate": "01.09.2026",
+      "notes": "Основная онлайн-группа подростков 13-15 лет.",
+      "students": [
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "status": "active",
+          "attendanceRate": "94%",
+          "parentPhone": "+7 (999) 123-45-67",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "4",
+          "name": "Сергей Попов",
+          "status": "paused",
+          "attendanceRate": "82%",
+          "parentPhone": "+7 (999) 456-78-90",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s5",
+          "name": "Алина Белова",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 333-11-22",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s6",
+          "name": "Максим Захаров",
+          "status": "active",
+          "attendanceRate": "88%",
+          "parentPhone": "+7 (999) 444-22-33",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s7",
+          "name": "Полина Григорьева",
+          "status": "active",
+          "attendanceRate": "91%",
+          "parentPhone": "+7 (999) 555-33-44",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s8",
+          "name": "Егор Романов",
+          "status": "active",
+          "attendanceRate": "85%",
+          "parentPhone": "+7 (999) 666-44-55",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s9",
+          "name": "София Федорова",
+          "status": "active",
+          "attendanceRate": "95%",
+          "parentPhone": "+7 (999) 777-55-66",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l1",
+          "date": "01.09.2026",
+          "time": "18:45 – 20:15",
+          "topic": "Present Perfect vs Past Simple",
+          "status": "completed",
+          "presentCount": 6
+        },
+        {
+          "id": "l2",
+          "date": "28.08.2026",
+          "time": "18:45 – 20:15",
+          "topic": "Phrasal verbs in context",
+          "status": "completed",
+          "presentCount": 7
+        },
+        {
+          "id": "l3",
+          "date": "04.09.2026",
+          "time": "18:45 – 20:15",
+          "topic": "Future forms & conditionals",
+          "status": "scheduled",
+          "presentCount": 0
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Kids English A1",
+      "courseId": "c1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "schedule": "Вт, Пт • 15:00–16:30",
+      "room": "Онлайн (Zoom 2)",
+      "capacity": 6,
+      "status": "active",
+      "startDate": "01.09.2026",
+      "notes": "Начальная группа для детей 6-8 лет. Группа полностью укомплектована.",
+      "students": [
+        {
+          "id": "3",
+          "name": "Анна Васильева",
+          "status": "trial",
+          "attendanceRate": "0%",
+          "parentPhone": "+7 (999) 345-67-89",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s10",
+          "name": "Тимофей Орлов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 111-88-99",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s11",
+          "name": "Василиса Козлова",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 222-99-00",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s12",
+          "name": "Матвей Новиков",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 333-00-11",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s13",
+          "name": "Ксения Лебедева",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 444-11-22",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s14",
+          "name": "Лев Семенов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 555-22-33",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l4",
+          "date": "01.09.2026",
+          "time": "15:00 – 16:30",
+          "topic": "Colors & Magic Animals",
+          "status": "completed",
+          "presentCount": 5
+        },
+        {
+          "id": "l5",
+          "date": "05.09.2026",
+          "time": "15:00 – 16:30",
+          "topic": "Numbers 1-20 & Games",
+          "status": "scheduled",
+          "presentCount": 0
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Robotics Junior",
+      "courseId": "c2",
+      "courseName": "Робототехника",
+      "teacherId": "t2",
+      "teacherName": "Денис Смирнов",
+      "schedule": "Ср 15:00, Сб 11:00",
+      "room": "Онлайн (Виртуальная лаборатория)",
+      "capacity": 8,
+      "status": "recruiting",
+      "startDate": "10.09.2026",
+      "notes": "Идет активный набор. Свободно 4 места.",
+      "students": [
+        {
+          "id": "2",
+          "name": "Мария Кузнецова",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 234-56-78",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s18",
+          "name": "Артём Кузнецов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 234-56-78",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s15",
+          "name": "Арсений Павлов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 888-22-11",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s16",
+          "name": "Глеб Воронов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 999-33-22",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s17",
+          "name": "Кирилл Медведев",
+          "status": "trial",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 000-44-33",
+          "joinedAt": "02.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l6",
+          "date": "02.09.2026",
+          "time": "15:00 – 16:30",
+          "topic": "Сборка манипулятора на Arduino",
+          "status": "completed",
+          "presentCount": 4
+        },
+        {
+          "id": "l7",
+          "date": "05.09.2026",
+          "time": "11:00 – 12:30",
+          "topic": "Светодиодные датчики и сервоприводы",
+          "status": "scheduled",
+          "presentCount": 0
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Kids Math Safari",
+      "courseId": "c3",
+      "courseName": "Математика",
+      "teacherId": "t3",
+      "teacherName": "Ольга Соколова",
+      "schedule": "Четверг • 16:00–17:00",
+      "room": "Онлайн (Zoom 3)",
+      "capacity": 6,
+      "status": "active",
+      "startDate": "01.09.2026",
+      "notes": "Олимпиадная математика для 3-4 классов.",
+      "students": [
+        {
+          "id": "5",
+          "name": "Екатерина Морозова",
+          "status": "active",
+          "attendanceRate": "88%",
+          "parentPhone": "+7 (999) 567-89-01",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s18",
+          "name": "Артём Кузнецов",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 234-56-78",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s19",
+          "name": "Дарья Виноградова",
+          "status": "active",
+          "attendanceRate": "90%",
+          "parentPhone": "+7 (999) 123-77-88",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s20",
+          "name": "Ярослав Куликов",
+          "status": "active",
+          "attendanceRate": "95%",
+          "parentPhone": "+7 (999) 234-88-99",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "s21",
+          "name": "Вероника Потапова",
+          "status": "active",
+          "attendanceRate": "80%",
+          "parentPhone": "+7 (999) 345-99-00",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l8",
+          "date": "28.08.2026",
+          "time": "16:00 – 17:00",
+          "topic": "Логические квадраты и шифры",
+          "status": "completed",
+          "presentCount": 5
+        },
+        {
+          "id": "l9",
+          "date": "04.09.2026",
+          "time": "16:00 – 17:00",
+          "topic": "Графы и комбинаторика в играх",
+          "status": "scheduled",
+          "presentCount": 0
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "name": "Практическая грамматика",
+      "courseId": "c1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "schedule": "Среда • 18:00–19:30",
+      "room": "Онлайн (Zoom 1)",
+      "capacity": 8,
+      "status": "active",
+      "startDate": "01.09.2026",
+      "notes": "Углубленная проработка грамматических структур и времен.",
+      "students": [
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "status": "active",
+          "attendanceRate": "95%",
+          "parentPhone": "+7 (999) 123-45-67",
+          "joinedAt": "01.09.2026"
+        },
+        {
+          "id": "2",
+          "name": "Мария Кузнецова",
+          "status": "active",
+          "attendanceRate": "100%",
+          "parentPhone": "+7 (999) 234-56-78",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l10",
+          "date": "02.09.2026",
+          "time": "18:00 – 19:30",
+          "topic": "Articles & Conditionals",
+          "status": "completed",
+          "presentCount": 2
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "name": "Разговорный клуб",
+      "courseId": "c1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "schedule": "Суббота • 12:00–13:30",
+      "room": "Онлайн (Zoom 2)",
+      "capacity": 8,
+      "status": "active",
+      "startDate": "01.09.2026",
+      "notes": "Интерактивные дебаты, обсуждение актуальных тем и преодоление языкового барьера.",
+      "students": [
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "status": "active",
+          "attendanceRate": "95%",
+          "parentPhone": "+7 (999) 123-45-67",
+          "joinedAt": "01.09.2026"
+        }
+      ],
+      "recentLessons": [
+        {
+          "id": "l11",
+          "date": "30.08.2026",
+          "time": "12:00 – 13:30",
+          "topic": "Travel hacks and cultural differences",
+          "status": "completed",
+          "presentCount": 1
+        }
+      ]
+    }
+  ],
+  "crm_lessons_master_v2": [
+    {
+      "id": "l1",
+      "groupId": "1",
+      "groupName": "English B1 Teens",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "date": "2026-08-31",
+      "dateFormatted": "31 авг 2026",
+      "dayOfWeek": 0,
+      "startTime": "18:45",
+      "endTime": "20:15",
+      "room": "Онлайн (Zoom 1)",
+      "topic": "Unit 1: Present Perfect vs Past Simple in conversation",
+      "homework": "Workbook p. 12-14, эссе о любимом путешествии (100 слов)",
+      "onlineMeetingUrl": "https://meet.google.com/abc-defg-hij",
+      "status": "completed",
+      "timelineEvents": [
+        {
+          "id": "ev1",
+          "timestamp": "01.09.2026, 17:30",
+          "author": "Анна Админ",
+          "role": "Администратор",
+          "type": "created",
+          "comment": "Урок внесен в общее расписание школы"
+        },
+        {
+          "id": "ev2",
+          "timestamp": "01.09.2026, 20:20",
+          "author": "Мария Иванова",
+          "role": "Преподаватель",
+          "type": "attendance_marked",
+          "comment": "Отмечена посещаемость: 6 присутствуют, 1 отсутствует по болезни"
+        },
+        {
+          "id": "ev3",
+          "timestamp": "01.09.2026, 20:25",
+          "author": "Мария Иванова",
+          "role": "Преподаватель",
+          "type": "completed",
+          "comment": "Урок завершен, выдано ДЗ: Workbook p. 12-14"
+        }
+      ],
+      "students": [
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "attendanceStatus": "present",
+          "notes": "Отличная работа с временами Present Perfect и Past Simple! Нужно закрепить неправильные глаголы."
+        },
+        {
+          "id": "4",
+          "name": "Сергей Попов",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s5",
+          "name": "Алина Белова",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s6",
+          "name": "Максим Захаров",
+          "attendanceStatus": "absent",
+          "notes": "Предупредили о визите к врачу"
+        },
+        {
+          "id": "s7",
+          "name": "Полина Григорьева",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s8",
+          "name": "Егор Романов",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s9",
+          "name": "София Федорова",
+          "attendanceStatus": "present"
+        }
+      ]
+    },
+    {
+      "id": "l2",
+      "groupId": "2",
+      "groupName": "Kids English A1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "date": "2026-09-01",
+      "dateFormatted": "01 сен 2026",
+      "dayOfWeek": 1,
+      "startTime": "15:00",
+      "endTime": "16:30",
+      "room": "Онлайн (Zoom 2)",
+      "topic": "Colors, Fruits & Magic Animals songs",
+      "homework": "Раскрасить карточки со с. 8",
+      "status": "completed",
+      "students": [
+        {
+          "id": "3",
+          "name": "Анна Васильева",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s10",
+          "name": "Тимофей Орлов",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s11",
+          "name": "Василиса Козлова",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s12",
+          "name": "Матвей Новиков",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s13",
+          "name": "Ксения Лебедева",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s14",
+          "name": "Лев Семенов",
+          "attendanceStatus": "present"
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "groupId": "3",
+      "groupName": "Robotics Junior",
+      "courseName": "Робототехника",
+      "teacherId": "t2",
+      "teacherName": "Денис Смирнов",
+      "date": "2026-09-02",
+      "dateFormatted": "02 сен 2026",
+      "dayOfWeek": 2,
+      "startTime": "15:00",
+      "endTime": "16:30",
+      "room": "Онлайн (Виртуальная лаборатория)",
+      "topic": "Основы Arduino: сборка первого механического манипулятора",
+      "homework": "Повторить схему подключения сервопривода",
+      "status": "completed",
+      "trialStudentsCount": 1,
+      "students": [
+        {
+          "id": "2",
+          "name": "Мария Кузнецова",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s15",
+          "name": "Арсений Павлов (Пробное)",
+          "attendanceStatus": "present",
+          "isTrial": true
+        },
+        {
+          "id": "s16",
+          "name": "Глеб Воронов",
+          "attendanceStatus": "present"
+        },
+        {
+          "id": "s17",
+          "name": "Кирилл Медведев",
+          "attendanceStatus": "present"
+        }
+      ]
+    },
+    {
+      "id": "l4",
+      "groupId": "4",
+      "groupName": "Kids Math Safari",
+      "courseName": "Математика",
+      "teacherId": "t3",
+      "teacherName": "Ольга Соколова",
+      "date": "2026-09-03",
+      "dateFormatted": "03 сен 2026",
+      "dayOfWeek": 3,
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "room": "Онлайн (Zoom 3)",
+      "topic": "Логические переправы, весы и фальшивые монеты",
+      "status": "scheduled",
+      "students": [
+        {
+          "id": "5",
+          "name": "Екатерина Морозова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s18",
+          "name": "Артём Кузнецов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s19",
+          "name": "Дарья Виноградова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s20",
+          "name": "Ярослав Куликов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s21",
+          "name": "Вероника Потапова",
+          "attendanceStatus": "not_marked"
+        }
+      ]
+    },
+    {
+      "id": "l5",
+      "groupId": "1",
+      "groupName": "English B1 Teens",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "date": "2026-09-03",
+      "dateFormatted": "03 сен 2026",
+      "dayOfWeek": 3,
+      "startTime": "18:45",
+      "endTime": "20:15",
+      "room": "Онлайн (Zoom 1)",
+      "topic": "Modal verbs of deduction (must / might / can’t)",
+      "onlineMeetingUrl": "https://meet.google.com/xyz-uvwx-rst",
+      "status": "scheduled",
+      "trialStudentsCount": 1,
+      "students": [
+        {
+          "id": "lead2",
+          "name": "Павлов Артем (Пробное)",
+          "attendanceStatus": "not_marked",
+          "isTrial": true
+        },
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "4",
+          "name": "Сергей Попов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s5",
+          "name": "Алина Белова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s6",
+          "name": "Максим Захаров",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s7",
+          "name": "Полина Григорьева",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s8",
+          "name": "Егор Романов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s9",
+          "name": "София Федорова",
+          "attendanceStatus": "not_marked"
+        }
+      ]
+    },
+    {
+      "id": "l6",
+      "groupId": "2",
+      "groupName": "Kids English A1",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "date": "2026-09-04",
+      "dateFormatted": "04 сен 2026",
+      "dayOfWeek": 4,
+      "startTime": "15:00",
+      "endTime": "16:30",
+      "room": "Онлайн (Zoom 2)",
+      "topic": "Numbers 1-20 & Interactive classroom games",
+      "status": "scheduled",
+      "students": [
+        {
+          "id": "3",
+          "name": "Анна Васильева",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s10",
+          "name": "Тимофей Орлов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s11",
+          "name": "Василиса Козлова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s12",
+          "name": "Матвей Новиков",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s13",
+          "name": "Ксения Лебедева",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s14",
+          "name": "Лев Семенов",
+          "attendanceStatus": "not_marked"
+        }
+      ]
+    },
+    {
+      "id": "l7",
+      "groupId": "3",
+      "groupName": "Robotics Junior",
+      "courseName": "Робототехника",
+      "teacherId": "t2",
+      "teacherName": "Денис Смирнов",
+      "date": "2026-09-05",
+      "dateFormatted": "05 сен 2026",
+      "dayOfWeek": 5,
+      "startTime": "11:00",
+      "endTime": "12:30",
+      "room": "IT Лаборатория",
+      "topic": "Датчик линии и программирование движения робота",
+      "status": "scheduled",
+      "students": [
+        {
+          "id": "2",
+          "name": "Мария Кузнецова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s15",
+          "name": "Арсений Павлов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s16",
+          "name": "Глеб Воронов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s17",
+          "name": "Кирилл Медведев",
+          "attendanceStatus": "not_marked"
+        }
+      ]
+    },
+    {
+      "id": "l_sep23_1",
+      "groupId": "1",
+      "groupName": "English B1 Teens",
+      "courseName": "Английский язык",
+      "teacherId": "t1",
+      "teacherName": "Мария Иванова",
+      "date": "2026-09-23",
+      "dateFormatted": "23 сен 2026",
+      "dayOfWeek": 2,
+      "startTime": "18:45",
+      "endTime": "20:15",
+      "room": "Онлайн (Zoom 1)",
+      "topic": "Present Perfect Continuous vs Past Simple in practice",
+      "homework": "Workbook p. 18-20, устное эссе",
+      "onlineMeetingUrl": "https://meet.google.com/abc-defg-hij",
+      "status": "scheduled",
+      "students": [
+        {
+          "id": "1",
+          "name": "Иван Смирнов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "4",
+          "name": "Сергей Попов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s5",
+          "name": "Алина Белова",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s6",
+          "name": "Максим Захаров",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s7",
+          "name": "Полина Григорьева",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s8",
+          "name": "Егор Романов",
+          "attendanceStatus": "not_marked"
+        },
+        {
+          "id": "s9",
+          "name": "София Федорова",
+          "attendanceStatus": "not_marked"
+        }
+      ]
+    }
+  ],
+  "crm_payments_v2": [
+    {
+      "id": "pay1",
+      "studentId": "1",
+      "studentName": "Иван Смирнов",
+      "parentId": "p1",
+      "parentName": "Ольга Смирнова",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "amount": 7600,
+      "amountFormatted": "7 600 ₽",
+      "paymentDate": "01.09.2026",
+      "periodLabel": "Сентябрь 2026",
+      "status": "paid",
+      "paymentMethod": "card",
+      "recordedBy": "Елена Менеджер",
+      "comment": "Оплата по эквайрингу (чек отправлен в Telegram)"
+    },
+    {
+      "id": "pay2",
+      "studentId": "2",
+      "studentName": "Мария Кузнецова",
+      "parentId": "p3",
+      "parentName": "Дмитрий Кузнецов",
+      "courseName": "Робототехника",
+      "groupName": "Robotics Junior",
+      "amount": 8400,
+      "amountFormatted": "8 400 ₽",
+      "paymentDate": "25.08.2026",
+      "periodLabel": "Сентябрь 2026",
+      "status": "overdue",
+      "paymentMethod": "bank_transfer",
+      "recordedBy": "Елена Менеджер",
+      "comment": "Отец обещал перевести по СБП до конца недели. Долг 8 400 ₽"
+    },
+    {
+      "id": "pay6",
+      "studentId": "s18",
+      "studentName": "Артём Кузнецов",
+      "parentId": "p3",
+      "parentName": "Дмитрий Кузнецов",
+      "courseName": "Математика",
+      "groupName": "Kids Math Safari",
+      "amount": 6800,
+      "amountFormatted": "6 800 ₽",
+      "paymentDate": "26.08.2026",
+      "periodLabel": "Сентябрь 2026",
+      "status": "overdue",
+      "paymentMethod": "bank_transfer",
+      "recordedBy": "Елена Менеджер",
+      "comment": "Второй ребенок в семье. Долг 6 800 ₽"
+    },
+    {
+      "id": "pay7",
+      "studentId": "s6",
+      "studentName": "Максим Захаров",
+      "parentId": "p5",
+      "parentName": "Наталья Захарова",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "amount": 14400,
+      "amountFormatted": "14 400 ₽",
+      "paymentDate": "28.08.2026",
+      "periodLabel": "Сентябрь–Октябрь 2026",
+      "status": "overdue",
+      "paymentMethod": "card",
+      "recordedBy": "Анна Администратор",
+      "comment": "Оплата абонемента просрочена на 16 дней. Долг 14 400 ₽"
+    },
+    {
+      "id": "pay3",
+      "studentId": "5",
+      "studentName": "Екатерина Морозова",
+      "parentId": "p4",
+      "parentName": "Игорь Морозов",
+      "courseName": "Математика",
+      "groupName": "Kids Math Safari",
+      "amount": 6800,
+      "amountFormatted": "6 800 ₽",
+      "paymentDate": "02.09.2026",
+      "periodLabel": "Сентябрь 2026",
+      "status": "paid",
+      "paymentMethod": "invoice",
+      "recordedBy": "Александр Руководитель",
+      "comment": "Безналичный расчет по счету ООО"
+    },
+    {
+      "id": "pay4",
+      "studentId": "3",
+      "studentName": "Анна Васильева",
+      "parentId": "p4",
+      "parentName": "Елена Васильева",
+      "courseName": "Английский язык",
+      "groupName": "Kids English A1",
+      "amount": 7200,
+      "amountFormatted": "7 200 ₽",
+      "paymentDate": "05.09.2026",
+      "periodLabel": "Сентябрь 2026",
+      "status": "expected",
+      "paymentMethod": "card",
+      "recordedBy": "Елена Менеджер",
+      "comment": "Выставлена ссылка на оплату после пробного урока"
+    },
+    {
+      "id": "pay5",
+      "studentId": "4",
+      "studentName": "Сергей Попов",
+      "parentId": "p1",
+      "parentName": "Татьяна Попова",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "amount": 7600,
+      "amountFormatted": "7 600 ₽",
+      "paymentDate": "15.08.2026",
+      "periodLabel": "Август 2026",
+      "status": "paid",
+      "paymentMethod": "card",
+      "recordedBy": "Елена Менеджер"
+    }
+  ],
+  "crm_invoices_v1": [
+    {
+      "id": "inv_20260341",
+      "invoiceNumber": 20260341,
+      "variableSymbol": "20260341",
+      "issueDate": "01.10.2026",
+      "dueDate": "03.10.2026",
+      "periodLabel": "Oktober 2026",
+      "courseName": "EPD Vorbereitung",
+      "groupName": "EPD Gruppe A",
+      "studentId": "b6666666-6666-4666-8666-666666666666",
+      "studentName": "Вася Пупкин",
+      "parentId": "a7777777-7777-4777-8777-777777777777",
+      "parentName": "Петр Пупкин",
+      "parentTelegram": "140515453",
+      "parentPhone": "+7 (999) 777-88-99",
+      "parentEmail": "pupkin@example.com",
+      "items": [
+        {
+          "id": "item_1",
+          "description": "Der Kurs „EPD Vorbereitung“ (Oktober 2026)",
+          "quantity": 1,
+          "unitPriceEUR": 270,
+          "amountEUR": 270
+        }
+      ],
+      "subtotalEUR": 270,
+      "discountEUR": 0,
+      "totalAmountEUR": 270,
+      "currency": "EUR",
+      "status": "pending",
+      "bankDetails": {
+        "accountHolder": "Ekaterina Nezhenkina",
+        "bankName": "Tatra banka, a.s.",
+        "iban": "SK34 1100 0000 0029 3766 3128",
+        "swiftBic": "TATRSKBX",
+        "vatNote": "Nicht umsatzsteuerpflichtig / Neplatiteľ DPH"
+      },
+      "language": "de",
+      "createdAt": "2026-10-01T12:00:00.000Z"
+    }
+  ],
+  "crm_churn_events_v1": [
+    {
+      "id": "churn_2026_09_01",
+      "studentId": "st_seed_01",
+      "studentName": "Артём Григорьев",
+      "occurredAt": "2026-09-03T11:20:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Не подходит время занятий после перехода на вторую смену в школе",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_02",
+      "studentId": "st_seed_02",
+      "studentName": "Дарья Новикова",
+      "occurredAt": "2026-09-06T15:45:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Начались тренировки по плаванию в те же дни",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_03",
+      "studentId": "st_seed_03",
+      "studentName": "Максим Лебедев",
+      "occurredAt": "2026-09-09T09:30:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Просили перенести группу на субботу, мест нет",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_04",
+      "studentId": "st_seed_04",
+      "studentName": "Полина Козлова",
+      "occurredAt": "2026-09-12T14:10:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Слишком позднее время окончания уроков в 19:30",
+      "author": "Алексей Павлов (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_05",
+      "studentId": "st_seed_05",
+      "studentName": "Никита Макаров",
+      "occurredAt": "2026-09-16T17:00:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Накладка с музыкальной школой по вторникам",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_06",
+      "studentId": "st_seed_06",
+      "studentName": "София Зайцева",
+      "occurredAt": "2026-09-20T12:15:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "Хотели заниматься утром, группа только вечерняя",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_07",
+      "studentId": "st_seed_07",
+      "studentName": "Даниил Соловьёв",
+      "occurredAt": "2026-09-24T18:40:00.000Z",
+      "previousStatus": "trial",
+      "newStatus": "archived",
+      "churnReasonId": "schedule",
+      "churnComment": "После пробного урока не смогли подобрать время для группы",
+      "author": "Алексей Павлов (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_08",
+      "studentId": "st_seed_08",
+      "studentName": "Виктория Павлова",
+      "occurredAt": "2026-09-04T16:20:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "price",
+      "churnComment": "Повышение стоимости абонемента с сентября оказалось накладным",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_09",
+      "studentId": "st_seed_09",
+      "studentName": "Матвей Семёнов",
+      "occurredAt": "2026-09-08T10:50:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "price",
+      "churnComment": "В семье двое детей, искали скидку на второго ребенка",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_10",
+      "studentId": "st_seed_10",
+      "studentName": "Ксения Голубева",
+      "occurredAt": "2026-09-14T13:30:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "price",
+      "churnComment": "Выбрали более дешевые онлайн-курсы",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_11",
+      "studentId": "st_seed_11",
+      "studentName": "Тимофей Виноградов",
+      "occurredAt": "2026-09-19T11:00:00.000Z",
+      "previousStatus": "trial",
+      "newStatus": "archived",
+      "churnReasonId": "price",
+      "churnComment": "После пробного озвучили бюджет ниже стоимости курса",
+      "author": "Алексей Павлов (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_12",
+      "studentId": "st_seed_12",
+      "studentName": "Алиса Богданова",
+      "occurredAt": "2026-09-25T15:10:00.000Z",
+      "previousStatus": "trial",
+      "newStatus": "archived",
+      "churnReasonId": "price",
+      "churnComment": "Не готовы оплачивать абонемент на 8 занятий сразу",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_13",
+      "studentId": "st_seed_13",
+      "studentName": "Егор Воробьёв",
+      "occurredAt": "2026-09-05T14:40:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "interest",
+      "churnComment": "Ребенок перестал хотеть ходить на занятия по робототехнике",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_14",
+      "studentId": "st_seed_14",
+      "studentName": "Варвара Фёдорова",
+      "occurredAt": "2026-09-11T12:00:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "interest",
+      "churnComment": "Было сложно на математике, пропала мотивация",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_15",
+      "studentId": "st_seed_15",
+      "studentName": "Роман Михайлов",
+      "occurredAt": "2026-09-17T16:30:00.000Z",
+      "previousStatus": "paused",
+      "newStatus": "archived",
+      "churnReasonId": "interest",
+      "churnComment": "Были на заморозке 3 недели, решили не продолжать",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_16",
+      "studentId": "st_seed_16",
+      "studentName": "Милана Беляева",
+      "occurredAt": "2026-09-23T10:20:00.000Z",
+      "previousStatus": "trial",
+      "newStatus": "archived",
+      "churnReasonId": "interest",
+      "churnComment": "Не увлек формат группового урока",
+      "author": "Алексей Павлов (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_17",
+      "studentId": "st_seed_17",
+      "studentName": "Кирилл Тарасов",
+      "occurredAt": "2026-09-07T11:00:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "relocation",
+      "churnComment": "Переехали в другой район города, далеко возить",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_18",
+      "studentId": "st_seed_18",
+      "studentName": "Ульяна Мельникова",
+      "occurredAt": "2026-09-15T15:50:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "relocation",
+      "churnComment": "Переезд семьи в другой город",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_19",
+      "studentId": "st_seed_19",
+      "studentName": "Глеб Белов",
+      "occurredAt": "2026-09-27T13:10:00.000Z",
+      "previousStatus": "paused",
+      "newStatus": "archived",
+      "churnReasonId": "relocation",
+      "churnComment": "Сменили школу и место жительства",
+      "author": "Алексей Павлов (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_20",
+      "studentId": "st_seed_20",
+      "studentName": "Ярослав Комаров",
+      "occurredAt": "2026-09-10T17:15:00.000Z",
+      "previousStatus": "active",
+      "newStatus": "archived",
+      "churnReasonId": "quality",
+      "churnComment": "Родители хотели больше индивидуального внимания от педагога",
+      "author": "Ольга Смирнова (Куратор)"
+    },
+    {
+      "id": "churn_2026_09_21",
+      "studentId": "st_seed_21",
+      "studentName": "Арина Давыдова",
+      "occurredAt": "2026-09-22T14:45:00.000Z",
+      "previousStatus": "trial",
+      "newStatus": "archived",
+      "churnReasonId": "quality",
+      "churnComment": "Показалось, что программа слишком медленно идет для ее уровня",
+      "author": "Анна Иванова (Администратор)"
+    },
+    {
+      "id": "churn_2026_09_22",
+      "studentId": "st_seed_22",
+      "studentName": "Фёдор Орлов",
+      "occurredAt": "2026-09-28T16:00:00.000Z",
+      "previousStatus": "paused",
+      "newStatus": "archived",
+      "churnReasonId": "other",
+      "churnComment": "Медицинские показания, временный запрет на экраны и нагрузки",
+      "author": "Ольга Смирнова (Куратор)"
+    }
+  ],
+  "crm_tasks_v1": [
+    {
+      "id": "t1",
+      "title": "Позвонить маме Ивана после пробного урока",
+      "taskType": "Продажи",
+      "studentId": "1",
+      "studentName": "Иван Петров",
+      "parentId": "p1",
+      "parentName": "Петрова Мария",
+      "parentPhone": "+7 916 123-45-67",
+      "tag": "Пробный урок",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-02",
+      "dueDateFormatted": "Вчера, 02.10",
+      "isOverdue": true,
+      "status": "open",
+      "priority": "high",
+      "createdByRole": "owner",
+      "createdByName": "Владелец школы",
+      "description": "1. Позвонить маме Ивана\n2. Уточнить впечатления от пробного урока\n3. Ответить на вопросы по программе\n4. Согласовать дальнейшие шаги (начало обучения, расписание)\n5. Зафиксировать результат разговора в карточке лида",
+      "comments": [
+        {
+          "id": "c1",
+          "authorName": "Андрей Волков",
+          "createdAt": "02.10.2026 10:15",
+          "text": "Отправил сообщение в WhatsApp, жду ответа."
+        },
+        {
+          "id": "c2",
+          "authorName": "Андрей Волков",
+          "createdAt": "01.10.2026 16:30",
+          "text": "Проведён пробный урок. Мама Ивана была довольна."
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "title": "Проверить поступление оплаты за октябрь",
+      "taskType": "Финансы",
+      "studentId": "2",
+      "studentName": "Даниил Соколов",
+      "tag": "Абонемент",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-04",
+      "dueDateFormatted": "до 18:00",
+      "status": "open",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Выставить счёт и отправить квитанцию на почту родителя."
+    },
+    {
+      "id": "t3",
+      "title": "Подтвердить перенос занятия Robotics",
+      "taskType": "Расписание",
+      "tag": "Robotics Junior",
+      "subTag": "Перенос",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-04",
+      "dueDateFormatted": "14:00",
+      "status": "open",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Связаться с родителями и подтвердить новое время занятия в субботу."
+    },
+    {
+      "id": "t4",
+      "title": "Подготовить договор для Лизы Ивановой",
+      "taskType": "Документы",
+      "studentId": "3",
+      "studentName": "Лиза Иванова",
+      "tag": "Новый ученик",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-05",
+      "dueDateFormatted": "10:00",
+      "status": "open",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Отправить шаблон и согласовать подписание договора на обучение."
+    },
+    {
+      "id": "t5",
+      "title": "Долг: Иванов Иван (150 €)",
+      "taskType": "Финансы",
+      "studentName": "Иванов Иван",
+      "tag": "Задолженность",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-08",
+      "dueDateFormatted": "10:00",
+      "status": "open",
+      "priority": "high",
+      "createdByRole": "owner",
+      "createdByName": "Владелец школы",
+      "description": "Напомнить родителям о задолженности за сентябрь и запросить чек."
+    },
+    {
+      "id": "t6",
+      "title": "Проверить учебные материалы для 5 класса",
+      "taskType": "Учебный процесс",
+      "tag": "5 класс",
+      "subTag": "Материалы",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-08",
+      "dueDateFormatted": "08 окт.",
+      "status": "open",
+      "priority": "low",
+      "createdByRole": "admin",
+      "description": "Уточнить у преподавателя наличие рабочих тетрадей и карточек."
+    },
+    {
+      "id": "t7",
+      "title": "Уточнить расписание на следующую неделю",
+      "taskType": "Расписание",
+      "tag": "Общая задача",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-02",
+      "dueDateFormatted": "02.10.2026",
+      "status": "done",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Проверить availability преподавателей и согласовать окна в аудиториях."
+    },
+    {
+      "id": "t8",
+      "title": "Связаться с Ковалёвой Натальей (пробный урок)",
+      "taskType": "Продажи",
+      "leadId": "lead3",
+      "leadName": "Алиса Ковалёва",
+      "tag": "Пробный урок",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-03",
+      "dueDateFormatted": "18:00",
+      "isOverdue": true,
+      "status": "open",
+      "priority": "high",
+      "createdByRole": "owner",
+      "createdByName": "Владелец школы",
+      "description": "Узнать решение о зачислении на курс английского языка."
+    },
+    {
+      "id": "t9",
+      "title": "Проверить оплату от Кузнецова",
+      "taskType": "Финансы",
+      "studentName": "Кузнецов Сергей",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-05",
+      "dueDateFormatted": "12:00",
+      "status": "open",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Сверить платеж по счёту №124 через интернет-банк."
+    },
+    {
+      "id": "t10",
+      "title": "Отправить ссылку на Zoom для группы B1 Teens",
+      "taskType": "Расписание",
+      "tag": "Zoom",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-04",
+      "dueDateFormatted": "16:30",
+      "status": "in_progress",
+      "priority": "medium",
+      "createdByRole": "admin",
+      "description": "Опубликовать ссылку в Telegram-чате группы за 30 минут до начала."
+    },
+    {
+      "id": "t11",
+      "title": "Запросить справку об отсутствии у Артема",
+      "taskType": "Документы",
+      "studentName": "Артем Павлов",
+      "tag": "Справка",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-06",
+      "dueDateFormatted": "11:00",
+      "status": "open",
+      "priority": "low",
+      "createdByRole": "admin",
+      "description": "Ученик пропустил занятия на прошлой неделе по болезни."
+    },
+    {
+      "id": "t12",
+      "title": "Провести опрос удовлетворенности родителей",
+      "taskType": "Retention",
+      "tag": "Опрос NPS",
+      "assignedTo": "Андрей Волков",
+      "dueDate": "2026-10-07",
+      "dueDateFormatted": "15:00",
+      "status": "in_progress",
+      "priority": "medium",
+      "createdByRole": "owner",
+      "createdByName": "Владелец школы",
+      "description": "Отправить короткую Google-форму родителям первоклассников."
+    }
+  ],
+  "crm_courses_v1": [
+    {
+      "id": "c1",
+      "name": "Английский язык",
+      "description": "Кембриджская программа (A1 - C1)",
+      "subject": "Иностранные языки",
+      "isActive": true
+    },
+    {
+      "id": "c2",
+      "name": "Робототехника и IT",
+      "description": "Arduino, Python, конструирование",
+      "subject": "Информатика и инженерия",
+      "isActive": true
+    },
+    {
+      "id": "c3",
+      "name": "Олимпиадная математика",
+      "description": "Логика, нестандартные задачи",
+      "subject": "Точные науки",
+      "isActive": true
+    }
+  ],
+  "crm_teachers_v1": [
+    {
+      "id": "t1",
+      "name": "Мария Иванова",
+      "role": "Ведущий преподаватель английского языка (CELTA)",
+      "phone": "+7 (999) 777-11-22",
+      "telegram": "@maria_english",
+      "email": "maria.ivanova@school.ru",
+      "bio": "Опыт преподавания более 8 лет. Специализируется на подготовке подростков к международным экзаменам.",
+      "status": "active",
+      "weeklyHours": 16,
+      "lessonsPerWeek": 8,
+      "studentsCount": 28,
+      "activeGroups": [
+        {
+          "id": "1",
+          "name": "English B1 Teens",
+          "courseName": "Английский язык",
+          "schedule": "Пн, Чт • 18:45–20:15",
+          "studentsCount": 7
+        },
+        {
+          "id": "2",
+          "name": "Kids English A1",
+          "courseName": "Английский язык",
+          "schedule": "Вт, Пт • 15:00–16:30",
+          "studentsCount": 6
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "name": "Денис Смирнов",
+      "role": "Преподаватель робототехники и IT",
+      "phone": "+7 (999) 777-33-44",
+      "telegram": "@denis_robotics",
+      "email": "denis.smirnov@school.ru",
+      "bio": "Инженер-робототехник, призер соревнований Eurobot.",
+      "status": "active",
+      "weeklyHours": 8,
+      "lessonsPerWeek": 4,
+      "studentsCount": 14,
+      "activeGroups": [
+        {
+          "id": "3",
+          "name": "Robotics Junior",
+          "courseName": "Робототехника",
+          "schedule": "Ср 15:00, Сб 11:00",
+          "studentsCount": 4
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "name": "Ольга Соколова",
+      "role": "Преподаватель олимпиадной математики",
+      "phone": "+7 (999) 777-55-66",
+      "telegram": "@olga_math",
+      "email": "olga.sokolova@school.ru",
+      "bio": "Эксперт по подготовке к математическим олимпиадам начальной и средней школы.",
+      "status": "active",
+      "weeklyHours": 12,
+      "lessonsPerWeek": 6,
+      "studentsCount": 18,
+      "activeGroups": [
+        {
+          "id": "4",
+          "name": "Kids Math Safari",
+          "courseName": "Математика",
+          "schedule": "Четверг • 16:00–17:00",
+          "studentsCount": 5
+        }
+      ]
+    },
+    {
+      "id": "t4",
+      "name": "Анна Кузнецова",
+      "role": "Преподаватель немецкого языка (Goethe-Zertifikat C2)",
+      "phone": "+7 (999) 777-77-88",
+      "telegram": "@anna_deutsch",
+      "email": "anna.kuznetsova@school.ru",
+      "bio": "Преподаватель немецкого языка. Идет набор первой группы на новый учебный год.",
+      "status": "active",
+      "weeklyHours": 0,
+      "lessonsPerWeek": 0,
+      "studentsCount": 0,
+      "activeGroups": []
+    }
+  ],
+  "crm_subscriptions_v1": [
+    {
+      "id": "sub1",
+      "studentId": "1",
+      "studentName": "Иван Смирнов",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "startDate": "01.09.2026",
+      "endDate": "30.09.2026",
+      "renewalDate": "28.09.2026",
+      "price": 7600,
+      "priceFormatted": "7 600 ₽",
+      "status": "active",
+      "lessonsTotal": 8,
+      "lessonsAttended": 2,
+      "notes": "Стандартный месячный абонемент на 8 занятий"
+    },
+    {
+      "id": "sub2",
+      "studentId": "2",
+      "studentName": "Мария Кузнецова",
+      "courseName": "Робототехника",
+      "groupName": "Robotics Junior",
+      "startDate": "01.09.2026",
+      "endDate": "30.09.2026",
+      "renewalDate": "28.09.2026",
+      "price": 8400,
+      "priceFormatted": "8 400 ₽",
+      "status": "active",
+      "lessonsTotal": 8,
+      "lessonsAttended": 1,
+      "notes": "Абонемент активен до 30.09.2026"
+    },
+    {
+      "id": "sub3",
+      "studentId": "4",
+      "studentName": "Сергей Попов",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "startDate": "15.08.2026",
+      "endDate": "15.09.2026",
+      "renewalDate": "13.09.2026",
+      "price": 7600,
+      "priceFormatted": "7 600 ₽",
+      "status": "frozen",
+      "lessonsTotal": 8,
+      "lessonsAttended": 5,
+      "notes": "Заморожен на 1 неделю по заявлению родителей"
+    },
+    {
+      "id": "sub4",
+      "studentId": "5",
+      "studentName": "Екатерина Морозова",
+      "courseName": "Математика",
+      "groupName": "Kids Math Safari",
+      "startDate": "01.09.2026",
+      "endDate": "30.09.2026",
+      "renewalDate": "28.09.2026",
+      "price": 6800,
+      "priceFormatted": "6 800 ₽",
+      "status": "active",
+      "lessonsTotal": 4,
+      "lessonsAttended": 1,
+      "notes": "Абонемент на 1 занятие в неделю (4 занятия в месяц)"
+    },
+    {
+      "id": "sub5",
+      "studentId": "3",
+      "studentName": "Анна Васильева",
+      "courseName": "Английский язык",
+      "groupName": "English B1 Teens",
+      "startDate": "01.08.2026",
+      "endDate": "31.08.2026",
+      "renewalDate": "29.08.2026",
+      "price": 7600,
+      "priceFormatted": "7 600 ₽",
+      "status": "expired",
+      "lessonsTotal": 8,
+      "lessonsAttended": 8,
+      "notes": "Абонемент за август завершен (все 8 занятий пройдены)"
+    }
+  ],
+  "_meta": {
+    "snapshot_date": "2026-10-05",
+    "commit_sha": "643731e0590439aca713c0357cdc07e618834efe",
+    "branch": "backup-pre-critical-fixes-2026-10-05",
+    "record_counts": {
+      "students": 8,
+      "leads": 13,
+      "groups": 6,
+      "lessons": 8,
+      "payments": 7,
+      "invoices": 1,
+      "churn_events": 22,
+      "tasks": 12,
+      "courses": 3,
+      "teachers": 4,
+      "subscriptions": 5
+    }
+  }
+}

@@ -41,7 +41,7 @@ import {
 import { cn } from '@/lib/utils';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
-import { saveLessonToStorage, getStoredLessons, processAutomaticLessonBilling } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, getStoredLessons, getStoredLessonById, processAutomaticLessonBilling, restoreLessonBilling } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
@@ -359,6 +359,25 @@ export default function LessonDetailsPage() {
   const authorName = userName || (role === 'teacher' ? lesson.teacherName : 'Елена Менеджер');
   const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
 
+  // Keep lesson synchronized with storage events
+  React.useEffect(() => {
+    const handleLessonSync = (e: any) => {
+      const detail = e?.detail;
+      if (detail && detail.id === lessonId) {
+        setLesson(detail);
+        setStatus(detail.status);
+      } else {
+        const fresh = getStoredLessonById(lessonId);
+        if (fresh) {
+          setLesson(fresh);
+          setStatus(fresh.status);
+        }
+      }
+    };
+    window.addEventListener('crm-lessons-changed', handleLessonSync);
+    return () => window.removeEventListener('crm-lessons-changed', handleLessonSync);
+  }, [lessonId]);
+
   const handleCopyMeetingUrl = () => {
     if (lesson.onlineMeetingUrl) {
       navigator.clipboard.writeText(lesson.onlineMeetingUrl);
@@ -369,9 +388,26 @@ export default function LessonDetailsPage() {
 
   // Status Change Handler with immediate DB persistence and unified event
   const handleStatusChange = (newStatus: FullLessonData['status']) => {
+    if (newStatus === status) return;
+
+    // State machine check: disallow completed -> rescheduled
     if (newStatus === 'rescheduled') {
+      if (status === 'completed' || lesson.status === 'completed') {
+        toast.error(t('lesson.cannotRescheduleCompleted', 'Проведенный урок нельзя перенести'));
+        return;
+      }
       setIsRescheduleModalOpen(true);
       return;
+    }
+
+    const previousStatus = status;
+
+    // AUD-005: When transitioning from completed -> cancelled, call restoreLessonBilling(lesson.id)
+    if (previousStatus === 'completed' && newStatus === 'cancelled') {
+      const { restoredCount } = restoreLessonBilling(lesson.id);
+      if (restoredCount > 0) {
+        toast.info(`Возврат списания занятия в связи с отменой урока выполнен для ${restoredCount} уч.`);
+      }
     }
 
     const statusLabels: Record<string, string> = {
@@ -395,23 +431,37 @@ export default function LessonDetailsPage() {
       comment: statusLabels[newStatus] || `${t('common.status', 'Статус')}: ${newStatus}`,
     };
 
+    const freshLesson = getStoredLessonById(lesson.id) || lesson;
+
     setStatus(newStatus);
     const updatedLesson: FullLessonData = {
-      ...lesson,
+      ...freshLesson,
       status: newStatus,
-      timelineEvents: [newEvent, ...(lesson.timelineEvents || [])],
+      timelineEvents: [newEvent, ...(freshLesson.timelineEvents || [])],
     };
     setLesson(updatedLesson);
     saveLessonToStorage(updatedLesson);
     window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
 
-    if (newStatus === 'completed') {
-      const presentStudents = lesson.students.filter((s) => s.attendanceStatus === 'present' || !s.attendanceStatus || s.attendanceStatus === 'not_marked').map((s) => s.id);
+    // AUD-004: In src/app/calendar/lessons/[id]/page.tsx:409, remove || !s.attendanceStatus || s.attendanceStatus === 'not_marked'
+    // Billing is strictly allowed ONLY for students with attendanceStatus === 'present'.
+    // Disallow redundant calls to processAutomaticLessonBilling
+    if (newStatus === 'completed' && previousStatus !== 'completed') {
+      const presentStudents = updatedLesson.students
+        .filter((s) => s.attendanceStatus === 'present' && !s.billed && !updatedLesson.billedStudentIds?.includes(s.id))
+        .map((s) => s.id);
+
       if (presentStudents.length > 0) {
         const { billedCount } = processAutomaticLessonBilling({
           lessonId: lesson.id,
           studentIdsToBill: presentStudents,
         });
+
+        const refreshed = getStoredLessonById(lesson.id);
+        if (refreshed) {
+          setLesson(refreshed);
+        }
+
         if (billedCount > 0) {
           toast.success(`Урок проведен. Автосписание: списано занятие с абонементов ${billedCount} уч.`);
           return;
@@ -424,6 +474,11 @@ export default function LessonDetailsPage() {
 
   // Handle Reschedule Event
   const handleRescheduleConfirmed = (info: LessonRescheduleInfo) => {
+    // State machine check: disallow completed -> rescheduled
+    if (status === 'completed' || lesson.status === 'completed') {
+      toast.error(t('lesson.cannotRescheduleCompleted', 'Проведенный урок нельзя перенести'));
+      return;
+    }
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
       timestamp: info.changedAt,
@@ -566,6 +621,11 @@ export default function LessonDetailsPage() {
     newStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'not_marked'
   ) => {
     setLesson((prev) => {
+      const studentCurrent = prev.students.find((s) => s.id === studentId);
+      if (studentCurrent?.attendanceStatus === newStatus) {
+        return prev;
+      }
+
       const shouldPromoteToCompleted =
         prev.status === 'scheduled' &&
         (newStatus === 'present' || newStatus === 'absent' || newStatus === 'excused');
@@ -574,7 +634,7 @@ export default function LessonDetailsPage() {
         setStatus('completed');
       }
 
-      const updated: FullLessonData = {
+      let updated: FullLessonData = {
         ...prev,
         status: updatedStatus,
         students: prev.students.map((s) =>
@@ -582,15 +642,24 @@ export default function LessonDetailsPage() {
         ),
       };
       saveLessonToStorage(updated);
-      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
 
       if (newStatus === 'present') {
-        processAutomaticLessonBilling({
-          lessonId: prev.id,
-          studentIdsToBill: [studentId],
-        });
+        const isAlreadyBilled =
+          prev.billedStudentIds?.includes(studentId) ||
+          studentCurrent?.billed;
+        if (!isAlreadyBilled) {
+          processAutomaticLessonBilling({
+            lessonId: prev.id,
+            studentIdsToBill: [studentId],
+          });
+          const fresh = getStoredLessonById(prev.id);
+          if (fresh) {
+            updated = fresh;
+          }
+        }
       }
 
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
       return updated;
     });
   };
@@ -625,23 +694,30 @@ export default function LessonDetailsPage() {
     };
 
     setStatus('completed');
-    const allStudentIds = lesson.students.map((s) => s.id);
-    setLesson((prev) => {
-      const updated: FullLessonData = {
-        ...prev,
-        status: 'completed',
-        students: prev.students.map((s) => ({ ...s, attendanceStatus: 'present' as const })),
-        timelineEvents: [newEvent, ...(prev.timelineEvents || [])],
-      };
-      saveLessonToStorage(updated);
-      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
-      return updated;
-    });
+    const initialUpdated: FullLessonData = {
+      ...lesson,
+      status: 'completed',
+      students: lesson.students.map((s) => ({ ...s, attendanceStatus: 'present' as const })),
+      timelineEvents: [newEvent, ...(lesson.timelineEvents || [])],
+    };
+    saveLessonToStorage(initialUpdated);
 
-    const { billedCount } = processAutomaticLessonBilling({
-      lessonId: lesson.id,
-      studentIdsToBill: allStudentIds,
-    });
+    const unbilledStudentIds = initialUpdated.students
+      .filter((s) => !initialUpdated.billedStudentIds?.includes(s.id) && !s.billed)
+      .map((s) => s.id);
+
+    let billedCount = 0;
+    if (unbilledStudentIds.length > 0) {
+      const res = processAutomaticLessonBilling({
+        lessonId: lesson.id,
+        studentIdsToBill: unbilledStudentIds,
+      });
+      billedCount = res.billedCount;
+    }
+
+    const finalLesson = getStoredLessonById(lesson.id) || initialUpdated;
+    setLesson(finalLesson);
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: finalLesson }));
 
     if (billedCount > 0) {
       toast.success(`Все ученики отмечены. Автосписание: списано занятие с абонементов ${billedCount} уч.`);
@@ -829,13 +905,23 @@ export default function LessonDetailsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsRescheduleModalOpen(true)}
+                  disabled={status === 'completed'}
+                  onClick={() => {
+                    if (status === 'completed') {
+                      toast.error(t('lesson.cannotRescheduleCompleted', 'Проведенный урок нельзя перенести'));
+                      return;
+                    }
+                    setIsRescheduleModalOpen(true);
+                  }}
                   className={cn(
-                    'rounded-lg px-3 py-1.5 transition-all flex items-center gap-1 cursor-pointer',
+                    'rounded-lg px-3 py-1.5 transition-all flex items-center gap-1',
                     status === 'rescheduled'
                       ? 'bg-amber-100 shadow-xs font-bold text-amber-900 border border-amber-300'
-                      : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50'
+                      : status === 'completed'
+                      ? 'text-slate-300 cursor-not-allowed opacity-60'
+                      : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50 cursor-pointer'
                   )}
+                  title={status === 'completed' ? t('lesson.cannotRescheduleCompleted', 'Проведенный урок нельзя перенести') : undefined}
                 >
                   <CalendarClock className="h-3.5 w-3.5" />
                   {t('lesson.reschedule', 'Перенести')}

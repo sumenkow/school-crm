@@ -10,11 +10,6 @@ const OWNER_ONLY_ROUTES = ['/analytics', '/settings'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow bypass in development / test if cookie or header is present
-  if (request.cookies.get('crm_dev_bypass')?.value === 'true') {
-    return NextResponse.next();
-  }
-
   // Allow public routes without auth
   if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
     return NextResponse.next();

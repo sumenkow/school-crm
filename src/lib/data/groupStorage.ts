@@ -253,12 +253,21 @@ export function excludeStudentFromGroup(params: {
  * - Records "Зачисление в группу" interaction in student timeline
  * - Dispatches 'crm-groups-changed' and 'crm-students-changed'
  */
+export interface EnrollStudentResult {
+  updatedGroup?: FullGroupData;
+  updatedStudent?: FullStudentData;
+  success: boolean;
+  error?: string;
+  maxCapacity?: number;
+}
+
 export function enrollStudentToGroup(params: {
   groupId: string;
   studentId: string;
   authorName?: string;
-}): { updatedGroup?: FullGroupData; updatedStudent?: FullStudentData } {
-  const { groupId, studentId, authorName } = params;
+  allowOverflow?: boolean;
+}): EnrollStudentResult {
+  const { groupId, studentId, authorName, allowOverflow } = params;
 
   let updatedGroup: FullGroupData | undefined;
   let updatedStudent: FullStudentData | undefined;
@@ -266,17 +275,33 @@ export function enrollStudentToGroup(params: {
   const targetGroup = getGroupById(groupId);
   const targetStudent = getStoredStudents().find((s) => s.id === studentId);
 
-  if (!targetGroup || !targetStudent) return {};
+  if (!targetGroup || !targetStudent) {
+    return { success: false, error: 'not_found' };
+  }
+
+  // AUD-011: Group Capacity Limit Guard
+  const capacity = targetGroup.capacity || 8;
+  const currentStudentsCount = targetGroup.students ? targetGroup.students.length : 0;
+  const alreadyInGroup = (targetGroup.students || []).some((s) => s.id === targetStudent.id);
+
+  if (currentStudentsCount >= capacity && !allowOverflow && !alreadyInGroup) {
+    return {
+      success: false,
+      error: 'capacity_exceeded',
+      maxCapacity: capacity,
+      updatedGroup: targetGroup,
+      updatedStudent: targetStudent,
+    };
+  }
 
   // Check if already in group
-  const alreadyInGroup = targetGroup.students.some((s) => s.id === targetStudent.id);
   if (!alreadyInGroup) {
     const newStudentEntry = {
       id: targetStudent.id,
       name: `${targetStudent.firstName} ${targetStudent.lastName}`,
       status: targetStudent.status || 'active',
       attendanceRate: targetStudent.attendanceStats?.attendanceRate || '100%',
-      parentPhone: targetStudent.phone || targetStudent.parents?.[0]?.phone || '+7 (999) 000-00-00',
+      parentPhone: targetStudent.phone || targetStudent.parents?.[0]?.phone || '',
       joinedAt: new Date().toLocaleDateString('ru-RU'),
     };
 
@@ -285,6 +310,8 @@ export function enrollStudentToGroup(params: {
       students: [newStudentEntry, ...targetGroup.students],
     };
     saveGroupToStorage(updatedGroup);
+  } else {
+    updatedGroup = targetGroup;
   }
 
   // Update student groups
@@ -337,6 +364,8 @@ export function enrollStudentToGroup(params: {
       interactions: [enrollInteraction, ...(targetStudent.interactions || [])],
     };
     saveStudentToStorage(updatedStudent);
+  } else {
+    updatedStudent = targetStudent;
   }
 
   // Notify all views
@@ -345,7 +374,7 @@ export function enrollStudentToGroup(params: {
     window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
   }
 
-  return { updatedGroup, updatedStudent };
+  return { success: true, updatedGroup, updatedStudent };
 }
 
 export function softDeleteGroup(groupId: string): void {

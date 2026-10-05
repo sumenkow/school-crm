@@ -417,29 +417,85 @@ export function recordLessonAttendanceBatch(params: {
     });
   }
 
-  return { updatedLesson };
+  return { updatedLesson: getStoredLessonById(params.lessonId) || updatedLesson };
+}
+
+export interface BillingProcessResult {
+  status: 'success' | 'already_billed' | 'no_op' | 'not_found';
+  billedCount: number;
+  billedStudents: string[];
+}
+
+export interface RestoreBillingResult {
+  restoredCount: number;
+  restoredStudents: string[];
 }
 
 /**
  * Automatically deducts 1 lesson from the student's active subscription (or deducts from deposit)
  * when a lesson is marked completed or attendance is recorded.
- * Avoids duplicate billing by tracking student subscriptions and lesson state.
+ * Avoids duplicate billing by maintaining an idempotency key (lessonId, studentId)
+ * and tracking billed student IDs on the lesson object.
  */
 export function processAutomaticLessonBilling(params: {
   lessonId: string;
   studentIdsToBill: string[];
-}): { billedCount: number; billedStudents: string[] } {
+}): BillingProcessResult {
   const currentLesson = getStoredLessonById(params.lessonId);
-  if (!currentLesson) return { billedCount: 0, billedStudents: [] };
+  if (!currentLesson) return { status: 'not_found', billedCount: 0, billedStudents: [] };
+
+  if (!params.studentIdsToBill || params.studentIdsToBill.length === 0) {
+    return { status: 'no_op', billedCount: 0, billedStudents: [] };
+  }
+
+  // Idempotency tracking: check lesson.billedStudentIds and per-student billed flag in lesson.students
+  const existingBilledIds = new Set<string>(currentLesson.billedStudentIds || []);
+  for (const s of currentLesson.students || []) {
+    if (s.billed) {
+      existingBilledIds.add(s.id);
+      const eq = getEquivalentIds(s.id);
+      eq.forEach((id) => existingBilledIds.add(id));
+    }
+  }
+
+  // Filter students who are already billed (idempotency key: lessonId + studentId)
+  const unbilledStudentIds = params.studentIdsToBill.filter((id) => {
+    if (existingBilledIds.has(id)) return false;
+    const eq = getEquivalentIds(id);
+    for (const eid of eq) {
+      if (existingBilledIds.has(eid)) return false;
+    }
+    return true;
+  });
+
+  if (unbilledStudentIds.length === 0) {
+    return { status: 'already_billed', billedCount: 0, billedStudents: [] };
+  }
 
   const allStudents = getStoredStudents();
   let billedCount = 0;
   const billedStudents: string[] = [];
+  const newlyBilledIds: string[] = [];
+  const updatedBillingDetails: Record<string, { type: 'subscription' | 'deposit'; amount?: number; at?: string }> = {
+    ...(currentLesson.billingDetails || {}),
+  };
+
   const now = new Date();
   const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-  for (const studentId of params.studentIdsToBill) {
-    const student = allStudents.find((s) => s.id === studentId);
+  for (const studentId of unbilledStudentIds) {
+    // AUD-004 Requirement:
+    // Billing is strictly allowed ONLY for students with attendanceStatus === 'present'.
+    // NEVER bill not_marked, absent, excused, rescheduled, or cancelled.
+    const lessonStudent = currentLesson.students?.find(
+      (s) => s.id === studentId || getEquivalentIds(studentId).has(s.id)
+    );
+
+    if (!lessonStudent || lessonStudent.attendanceStatus !== 'present') {
+      continue;
+    }
+
+    const student = allStudents.find((s) => s.id === studentId || getEquivalentIds(studentId).has(s.id));
     if (!student) continue;
 
     let billed = false;
@@ -450,7 +506,14 @@ export function processAutomaticLessonBilling(params: {
       const prevRemaining = sub.lessonsRemaining || 0;
       const newRemaining = Math.max(0, prevRemaining - 1);
       const total = sub.lessonsTotal || 8;
-      const attendedCount = total - newRemaining;
+
+      const match = typeof sub.lessonsAttended === 'string' ? sub.lessonsAttended.match(/^(\d+)/) : null;
+      const prevAttended = match
+        ? parseInt(match[1], 10)
+        : typeof sub.lessonsAttended === 'number'
+        ? sub.lessonsAttended
+        : Math.max(0, total - prevRemaining);
+      const newAttended = prevAttended + 1;
       const newStatus = newRemaining === 0 ? 'completed' : sub.status || 'active';
 
       const updatedStudent: FullStudentData = {
@@ -460,7 +523,7 @@ export function processAutomaticLessonBilling(params: {
           activeSubscription: {
             ...sub,
             lessonsRemaining: newRemaining,
-            lessonsAttended: `${attendedCount} из ${total}`,
+            lessonsAttended: `${newAttended} из ${total}`,
             status: newStatus,
           },
         },
@@ -468,6 +531,13 @@ export function processAutomaticLessonBilling(params: {
 
       saveStudentToStorage(updatedStudent);
       billed = true;
+      newlyBilledIds.push(student.id);
+      if (studentId !== student.id) newlyBilledIds.push(studentId);
+      updatedBillingDetails[student.id] = {
+        type: 'subscription',
+        amount: 1,
+        at: now.toISOString(),
+      };
 
       // Add timeline interaction
       const interaction: TimelineInteraction = {
@@ -498,6 +568,13 @@ export function processAutomaticLessonBilling(params: {
 
       saveStudentToStorage(updatedStudent);
       billed = true;
+      newlyBilledIds.push(student.id);
+      if (studentId !== student.id) newlyBilledIds.push(studentId);
+      updatedBillingDetails[student.id] = {
+        type: 'deposit',
+        amount: price,
+        at: now.toISOString(),
+      };
 
       const interaction: TimelineInteraction = {
         id: `bill_${Date.now()}_${student.id}`,
@@ -518,19 +595,192 @@ export function processAutomaticLessonBilling(params: {
   }
 
   if (billedCount > 0) {
+    const combinedBilledStudentIds = Array.from(
+      new Set([...(currentLesson.billedStudentIds || []), ...newlyBilledIds])
+    );
+
+    const updatedStudentsList = (currentLesson.students || []).map((s) => {
+      if (newlyBilledIds.includes(s.id) || newlyBilledIds.some((nbId) => getEquivalentIds(nbId).has(s.id))) {
+        return { ...s, billed: true };
+      }
+      return s;
+    });
+
     const updatedLesson: FullLessonData = {
       ...currentLesson,
       isBilled: true,
-      billedAt: new Date().toISOString(),
+      billedAt: now.toISOString(),
+      billedStudentIds: combinedBilledStudentIds,
+      billingDetails: updatedBillingDetails,
+      students: updatedStudentsList,
     };
+
     saveLessonToStorage(updatedLesson);
+
     if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
       window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
     }
+
+    return { status: 'success', billedCount, billedStudents };
   }
 
-  return { billedCount, billedStudents };
+  // If no new billing occurred
+  return {
+    status: params.studentIdsToBill.length > unbilledStudentIds.length ? 'already_billed' : 'no_op',
+    billedCount: 0,
+    billedStudents: [],
+  };
+}
+
+/**
+ * Rolls back automatic billing when a completed lesson is changed to cancelled.
+ * Reverts subscription deduction, refunds deposit balance, and records timeline interactions.
+ */
+export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
+  const currentLesson = getStoredLessonById(lessonId);
+  if (!currentLesson) return { restoredCount: 0, restoredStudents: [] };
+
+  const billedStudentIds = currentLesson.billedStudentIds && currentLesson.billedStudentIds.length > 0
+    ? currentLesson.billedStudentIds
+    : (currentLesson.students || []).filter((s) => s.billed).map((s) => s.id);
+
+  if (!billedStudentIds || billedStudentIds.length === 0) {
+    return { restoredCount: 0, restoredStudents: [] };
+  }
+
+  const allStudents = getStoredStudents();
+  let restoredCount = 0;
+  const restoredStudents: string[] = [];
+  const processedStudentIds = new Set<string>();
+
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  for (const studentId of billedStudentIds) {
+    const student = allStudents.find((s) => s.id === studentId || getEquivalentIds(studentId).has(s.id));
+    if (!student) continue;
+
+    // Prevent double refunding if studentId was listed multiple times (or equivalent IDs)
+    if (processedStudentIds.has(student.id)) continue;
+    processedStudentIds.add(student.id);
+
+    const billingDetail = currentLesson.billingDetails?.[studentId] || currentLesson.billingDetails?.[student.id];
+    let restored = false;
+
+    if (billingDetail?.type === 'deposit') {
+      // Refund deposit
+      const refundAmount = billingDetail.amount || student.finance?.deposit?.pricePerLesson || 1050;
+      const currentBalance = student.finance?.deposit?.balance || 0;
+      const newBalance = currentBalance + refundAmount;
+
+      const updatedStudent: FullStudentData = {
+        ...student,
+        finance: {
+          ...student.finance,
+          deposit: {
+            ...student.finance?.deposit,
+            balance: newBalance,
+            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
+            currency: student.finance?.deposit?.currency || 'RUB',
+          },
+        },
+      };
+
+      saveStudentToStorage(updatedStudent);
+      restored = true;
+    } else if (student.finance?.activeSubscription) {
+      // Restore subscription: Increment activeSubscription.lessonsRemaining by 1, Decrement activeSubscription.lessonsAttended by 1
+      const sub = student.finance.activeSubscription;
+      const currentRemaining = sub.lessonsRemaining ?? 0;
+      const newRemaining = currentRemaining + 1;
+      const total = sub.lessonsTotal || 8;
+
+      const match = typeof sub.lessonsAttended === 'string' ? sub.lessonsAttended.match(/^(\d+)/) : null;
+      const currentAttended = match
+        ? parseInt(match[1], 10)
+        : typeof sub.lessonsAttended === 'number'
+        ? sub.lessonsAttended
+        : Math.max(0, total - currentRemaining);
+      const newAttended = Math.max(0, currentAttended - 1);
+
+      const updatedStudent: FullStudentData = {
+        ...student,
+        finance: {
+          ...student.finance,
+          activeSubscription: {
+            ...sub,
+            lessonsRemaining: newRemaining,
+            lessonsAttended: `${newAttended} из ${total}`,
+            status: 'active',
+          },
+        },
+      };
+
+      saveStudentToStorage(updatedStudent);
+      restored = true;
+    } else if (student.finance?.deposit) {
+      // Fallback if no subscription but deposit exists
+      const refundAmount = student.finance.deposit.pricePerLesson || 1050;
+      const currentBalance = student.finance.deposit.balance || 0;
+      const newBalance = currentBalance + refundAmount;
+
+      const updatedStudent: FullStudentData = {
+        ...student,
+        finance: {
+          ...student.finance,
+          deposit: {
+            ...student.finance.deposit,
+            balance: newBalance,
+            balanceFormatted: `${newBalance.toLocaleString('ru-RU')} ₽`,
+          },
+        },
+      };
+
+      saveStudentToStorage(updatedStudent);
+      restored = true;
+    }
+
+    if (restored) {
+      restoredCount++;
+      restoredStudents.push(`${student.firstName} ${student.lastName}`);
+
+      // Record interaction in student timeline: Возврат списания занятия в связи с отменой урока
+      const interaction: TimelineInteraction = {
+        id: `refund_${Date.now()}_${student.id}`,
+        studentId: student.id,
+        occurredAt: `Сегодня, ${timeFormatted}`,
+        author: 'Биллинг-система',
+        channel: 'other',
+        type: 'organizational',
+        content: `💳 Возврат списания занятия в связи с отменой урока «${currentLesson.groupName || ''}» (${currentLesson.dateFormatted || currentLesson.date}).`,
+      };
+      saveInteractionToStorage(interaction);
+    }
+  }
+
+  // Clear billedStudentIds on the lesson
+  const updatedLesson: FullLessonData = {
+    ...currentLesson,
+    isBilled: false,
+    billedStudentIds: [],
+    billingDetails: {},
+    students: (currentLesson.students || []).map((s) => ({
+      ...s,
+      billed: false,
+    })),
+  };
+
+  saveLessonToStorage(updatedLesson);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
+  }
+
+  return { restoredCount, restoredStudents };
 }
 
 export interface GenerateGroupLessonsParams {

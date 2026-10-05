@@ -54,10 +54,10 @@ export function getStudentFinancialSummary(
       netBalance: 0,
       netBalanceRub: 0,
       isNegative: false,
-      formattedNet: '0 € (0 ₽)',
-      formattedDebt: '0 € (0 ₽)',
-      formattedDeposit: '0 € (0 ₽)',
-      breakdownSummary: `0 € (курс ${rate} ₽/€)`,
+      formattedNet: '0 €',
+      formattedDebt: '0 €',
+      formattedDeposit: '0 €',
+      breakdownSummary: '0 €',
       currency: '€',
     };
   }
@@ -88,30 +88,28 @@ export function getStudentFinancialSummary(
 
   const formattedNet =
     netBalanceEur < 0
-      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} € (≈ -${Math.abs(netBalanceRub).toLocaleString('ru-RU')} ₽)`
+      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} €`
       : netBalanceEur > 0
-      ? `+${netBalanceEur.toLocaleString('ru-RU')} € (≈ +${netBalanceRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `+${netBalanceEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   const formattedDebt =
     debtEur > 0
-      ? `-${debtEur.toLocaleString('ru-RU')} € (≈ -${debtRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `-${debtEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   const formattedDeposit =
     depositEur > 0
-      ? `+${depositEur.toLocaleString('ru-RU')} € (≈ +${depositRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `+${depositEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   let breakdownSummary = '';
-  if (depositEur > 0 && isDepEur) {
-    breakdownSummary = `${depositEur.toLocaleString('ru-RU')} € в евро (≈ ${depositRub.toLocaleString('ru-RU')} ₽)`;
-  } else if (depositEur > 0) {
-    breakdownSummary = `${depositEur.toLocaleString('ru-RU')} € (сконвертировано из ${depositRub.toLocaleString('ru-RU')} ₽ по курсу ${rate} ₽/€)`;
+  if (depositEur > 0) {
+    breakdownSummary = `${depositEur.toLocaleString('ru-RU')} €`;
   } else if (debtEur > 0) {
-    breakdownSummary = `Долг: ${debtTotals.breakdownSummary}`;
+    breakdownSummary = `Долг: ${debtEur.toLocaleString('ru-RU')} €`;
   } else {
-    breakdownSummary = `0 € (курс ${rate} ₽/€)`;
+    breakdownSummary = '0 €';
   }
 
   return {
@@ -171,20 +169,20 @@ export function getParentFinancialSummary(
 
   const formattedNet =
     netBalanceEur < 0
-      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} € (≈ -${Math.abs(netBalanceRub).toLocaleString('ru-RU')} ₽)`
+      ? `-${Math.abs(netBalanceEur).toLocaleString('ru-RU')} €`
       : netBalanceEur > 0
-      ? `+${netBalanceEur.toLocaleString('ru-RU')} € (≈ +${netBalanceRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `+${netBalanceEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   const formattedDebt =
     totalDebtEur > 0
-      ? `-${totalDebtEur.toLocaleString('ru-RU')} € (≈ -${totalDebtRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `-${totalDebtEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   const formattedDeposit =
     totalDepositEur > 0
-      ? `+${totalDepositEur.toLocaleString('ru-RU')} € (≈ +${totalDepositRub.toLocaleString('ru-RU')} ₽)`
-      : '0 € (0 ₽)';
+      ? `+${totalDepositEur.toLocaleString('ru-RU')} €`
+      : '0 €';
 
   return {
     deposit: totalDepositEur,
@@ -197,7 +195,7 @@ export function getParentFinancialSummary(
     formattedNet,
     formattedDebt,
     formattedDeposit,
-    breakdownSummary: `Баланс семьи: ${formattedNet} (курс ${rate} ₽/€)`,
+    breakdownSummary: `Баланс семьи: ${formattedNet}`,
     currency: '€',
     childrenSummaries,
   };

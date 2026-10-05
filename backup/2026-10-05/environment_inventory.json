@@ -1,0 +1,29 @@
+{
+  "project_name": "school-app",
+  "project_version": "0.1.0",
+  "framework": {
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react_dom": "19.2.8"
+  },
+  "supabase": {
+    "supabase_js": "^2.109.0",
+    "supabase_ssr": "^0.12.5"
+  },
+  "ui_libraries": {
+    "recharts": "^3.10.1",
+    "lucide_react": "^1.49.0",
+    "tailwindcss": "^4"
+  },
+  "typescript": "^5",
+  "environment_variables_required": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY"
+  ],
+  "git_checkpoint": {
+    "commit_sha": "643731e0590439aca713c0357cdc07e618834efe",
+    "branch": "backup-pre-critical-fixes-2026-10-05",
+    "tag": "pre-critical-fixes-2026-10-05"
+  }
+}

@@ -269,8 +269,13 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ success: true, action: 'deleted', id: leadId });
         }
 
-        const validStatuses = ['new', 'contacted', 'trial_scheduled', 'trial_held', 'thinking', 'paid', 'lost', 'no_response'];
-        const status = validStatuses.includes(data.status) ? data.status : 'new';
+        const validStatuses = ['new', 'contacted', 'trial_scheduled', 'trial_held', 'thinking', 'paid', 'lost', 'no_response', 'enrolled'];
+        let status = validStatuses.includes(data.status)
+          ? data.status
+          : (data.convertedStudentId || data.converted_student_id ? 'enrolled' : 'new');
+        if (data.status === 'enrolled' || data.convertedStudentId || data.converted_student_id) {
+          status = 'enrolled';
+        }
 
         const leadRow = {
           id: leadId,
@@ -362,7 +367,7 @@ export async function POST(request: NextRequest) {
 
       case 'payment': {
         const paymentId = toUUID(data.id);
-        const validStatuses = ['pending', 'paid', 'failed', 'refunded', 'cancelled'];
+        const validStatuses = ['paid', 'expected', 'overdue', 'refund', 'pending', 'failed', 'cancelled'];
         const validMethods = ['card', 'cash', 'bank_transfer', 'sbp', 'invoice'];
 
         let paymentMethod = 'card';
@@ -373,6 +378,9 @@ export async function POST(request: NextRequest) {
           else if (m.includes('счет') || m.includes('перевод') || m.includes('bank')) paymentMethod = 'bank_transfer';
         }
 
+        const rawStatus = data.status === 'refunded' ? 'refund' : data.status;
+        const status = validStatuses.includes(rawStatus) ? rawStatus : 'expected';
+
         const paymentRow = {
           id: paymentId,
           student_id: data.studentId || data.student_id ? toUUID(data.studentId || data.student_id) : null,
@@ -380,7 +388,7 @@ export async function POST(request: NextRequest) {
           amount: typeof data.amount === 'number' ? data.amount : (parseFloat(String(data.amount).replace(/[^\d.]/g, '')) || 0),
           payment_date: data.paymentDate ? (data.paymentDate.includes('.') ? data.paymentDate.split('.').reverse().join('-') : data.paymentDate.slice(0, 10)) : (data.date ? (data.date.includes('.') ? data.date.split('.').reverse().join('-') : data.date.slice(0, 10)) : new Date().toISOString().slice(0, 10)),
           period_label: data.periodLabel || data.period || data.period_label || 'Оплата',
-          status: validStatuses.includes(data.status) ? data.status : 'paid',
+          status: status,
           payment_method: validMethods.includes(paymentMethod) ? paymentMethod : 'card',
           comment: data.comment || null,
           is_mock_data: false,

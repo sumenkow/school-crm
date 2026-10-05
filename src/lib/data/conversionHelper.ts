@@ -1,9 +1,10 @@
 import { FullLeadData, FullStudentData, TimelineInteraction } from './mockData';
-import { saveStudentToStorage } from './studentStorage';
+import { saveStudentToStorage, getStoredStudents } from './studentStorage';
 import { qualifyAndConvertLead } from './leadStorage';
 import { enrollStudentToGroup, getGroupById, getStoredGroups } from './groupStorage';
 import { saveInteractionToStorage } from './timelineStorage';
 import { createClient } from '@/lib/supabase/client';
+import { normalizePhone } from '@/lib/phoneHelper';
 
 export interface LeadConversionPayload {
   lead: FullLeadData;
@@ -51,7 +52,6 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
   } = payload;
 
   const studentId = `st_${Date.now()}`;
-  const parentId = parentName ? `par_${Date.now()}` : undefined;
 
   const firstName =
     studentFirstName?.trim() ||
@@ -73,6 +73,37 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
   const effectivePhone = studentType === 'adult_student' ? (lead.contact || parentPhone) : undefined;
   const effectiveParentPhone = studentType === 'school_student' ? (parentPhone || lead.contact) : undefined;
   const effectiveParentName = studentType === 'school_student' ? (parentName || lead.name) : undefined;
+
+  // AUD-010: Parent deduplication by normalized phone number
+  const candidatePhoneClean = normalizePhone(effectiveParentPhone);
+
+  let existingParentId: string | undefined;
+  let existingParentFirstName: string | undefined;
+  let existingParentLastName: string | undefined;
+
+  if (candidatePhoneClean.length >= 7) {
+    const existingStudents = getStoredStudents();
+    for (const st of existingStudents) {
+      if (st.parents && Array.isArray(st.parents)) {
+        for (const p of st.parents) {
+          const pClean = normalizePhone(p.phone);
+          if (
+            (pClean.length >= 7 && pClean === candidatePhoneClean) ||
+            (pClean.length >= 10 && candidatePhoneClean.length >= 10 && pClean.slice(-10) === candidatePhoneClean.slice(-10))
+          ) {
+            existingParentId = p.id;
+            existingParentFirstName = p.firstName;
+            existingParentLastName = p.lastName;
+            break;
+          }
+        }
+      }
+      if (existingParentId) break;
+    }
+  }
+
+  // Reuse existing parentId or create new if parent info is present
+  const parentId = existingParentId || (effectiveParentName || effectiveParentPhone ? `par_${Date.now()}` : undefined);
 
   // Resolve target group
   let targetGroupId = groupId;
@@ -108,19 +139,19 @@ export async function convertLeadToStudentTransaction(payload: LeadConversionPay
     grade: effectiveGrade,
     phone: effectivePhone,
     parentPhone: effectiveParentPhone,
-    parentName: effectiveParentName,
+    parentName: effectiveParentName || (existingParentFirstName ? `${existingParentFirstName} ${existingParentLastName || ''}`.trim() : undefined),
     telegram: parentTelegram || lead.telegram,
     email: parentEmail,
     status: 'active',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isNewUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    parents: effectiveParentName
+    parents: (effectiveParentName || effectiveParentPhone || existingParentId)
       ? [
           {
             id: parentId || `par_${Date.now()}`,
-            firstName: effectiveParentName.split(' ')[0] || effectiveParentName,
-            lastName: effectiveParentName.split(' ').slice(1).join(' ') || '',
+            firstName: existingParentFirstName || (effectiveParentName ? effectiveParentName.split(' ')[0] : 'Родитель'),
+            lastName: existingParentLastName !== undefined ? existingParentLastName : (effectiveParentName ? effectiveParentName.split(' ').slice(1).join(' ') : ''),
             phone: effectiveParentPhone || lead.contact,
             telegram: parentTelegram || lead.telegram,
             email: parentEmail,

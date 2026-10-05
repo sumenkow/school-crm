@@ -1101,12 +1101,15 @@ export interface FullLessonData {
   trialStudentsCount?: number;
   isBilled?: boolean;
   billedAt?: string;
+  billedStudentIds?: string[];
+  billingDetails?: Record<string, { type: 'subscription' | 'deposit'; amount?: number; at?: string }>;
   students: Array<{
     id: string;
     name: string;
     attendanceStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
     notes?: string;
     isTrial?: boolean;
+    billed?: boolean;
   }>;
 }
 
@@ -1379,7 +1382,7 @@ export interface FullLeadData {
   clientType?: 'school_student' | 'adult_student';
   source: string;
   assignedTo: string;
-  status: 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost' | 'no_response';
+  status: 'new' | 'contacted' | 'trial_scheduled' | 'trial_held' | 'thinking' | 'paid' | 'lost' | 'no_response' | 'enrolled';
   trialDate?: string;
   offerAmount?: string;
   lossReason?: string;
@@ -1954,7 +1957,7 @@ export interface FullPaymentData {
   amountFormatted: string;
   paymentDate: string;
   periodLabel: string;
-  status: 'paid' | 'expected' | 'overdue' | 'refund';
+  status: 'paid' | 'expected' | 'overdue' | 'refund' | 'pending' | 'failed' | 'cancelled';
   paymentMethod: 'card' | 'bank_transfer' | 'cash' | 'invoice';
   currency?: 'RUB' | 'EUR';
   exchangeRate?: number;

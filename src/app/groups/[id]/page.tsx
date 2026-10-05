@@ -340,10 +340,23 @@ export default function GroupDetailsPage() {
                 <span
                   className={cn(
                     'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                    group.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                    group.status === 'active' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    group.status === 'recruiting' && 'bg-blue-50 text-blue-700 border-blue-200',
+                    group.status === 'paused' && 'bg-amber-50 text-amber-700 border-amber-200',
+                    group.status === 'finished' && 'bg-slate-100 text-slate-700 border-slate-200',
+                    group.status === 'archived' && 'bg-slate-100 text-slate-500 border-slate-200',
+                    !['active', 'recruiting', 'paused', 'finished', 'archived'].includes(group.status) && 'bg-blue-50 text-blue-700 border-blue-200'
                   )}
                 >
-                  {group.status === 'active' ? t('groups.statusActive', 'Идут занятия') : t('groups.statusEnrolling', 'Идет набор')}
+                  {group.status === 'active'
+                    ? t('groups.statusActive', 'Идут занятия')
+                    : group.status === 'paused'
+                    ? t('status.paused', 'На паузе')
+                    : group.status === 'finished'
+                    ? t('status.finished', 'Завершена')
+                    : group.status === 'archived'
+                    ? t('groups.statusArchived', 'В архиве')
+                    : t('groups.statusEnrolling', 'Идет набор')}
                 </span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-1">
@@ -940,7 +953,9 @@ export default function GroupDetailsPage() {
                 >
                   <option value="active">{t('groups.statusActive', 'Идут занятия (Активна)')}</option>
                   <option value="recruiting">{t('groups.statusEnrolling', 'Идет набор')}</option>
-                  <option value="completed">{t('status.finished', 'Завершена')}</option>
+                  <option value="paused">{t('status.paused', 'На паузе')}</option>
+                  <option value="finished">{t('status.finished', 'Завершена')}</option>
+                  <option value="archived">{t('groups.statusArchived', 'В архиве')}</option>
                 </select>
               </div>
 

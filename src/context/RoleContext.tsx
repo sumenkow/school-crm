@@ -93,19 +93,21 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       const explicitRole = localStorage.getItem(ROLE_KEY) as UserRole | null;
       const saved = localStorage.getItem(STORAGE_KEY);
-      let initialRole: UserRole = DEFAULT_PROFILE.role;
 
-      if (explicitRole && ['developer', 'owner', 'admin', 'teacher'].includes(explicitRole)) {
+      // Default to teacher on initial load until DB profile confirms authority
+      // Prevent localStorage from granting unverified owner/developer permissions
+      let initialRole: UserRole = DEFAULT_PROFILE.role;
+      if (explicitRole && ['teacher', 'admin'].includes(explicitRole)) {
         initialRole = explicitRole;
       } else if (saved) {
         const parsed = JSON.parse(saved) as Partial<UserProfileData>;
-        if (parsed.role && ['developer', 'owner', 'admin', 'teacher'].includes(parsed.role)) {
+        if (parsed.role && ['teacher', 'admin'].includes(parsed.role)) {
           initialRole = parsed.role;
         }
       }
 
       setRoleState(initialRole);
-      setIsOwner(initialRole === 'owner');
+      setIsOwner(false);
 
       const resolvedOwner = getOwnerEmailFromStorage();
       setOwnerEmailState(resolvedOwner);
@@ -132,20 +134,25 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Sync across tabs / windows
+  // Sync across tabs / windows (restricted to authorized accounts)
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === ROLE_KEY && e.newValue) {
         const newRole = e.newValue as UserRole;
-        if (['developer', 'owner', 'admin', 'teacher'].includes(newRole)) {
+        if (newRole === 'owner' || newRole === 'developer') {
+          if (isOwnerAccount || isDevAccount) {
+            setRoleState(newRole);
+            setIsOwner(true);
+          }
+        } else if (['admin', 'teacher'].includes(newRole)) {
           setRoleState(newRole);
-          setIsOwner(newRole === 'owner' || newRole === 'developer');
+          setIsOwner(false);
         }
       }
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [isOwnerAccount, isDevAccount]);
 
   // 2. Load from Supabase if session exists
   const loadUser = useCallback(async () => {
