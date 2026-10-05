@@ -35,11 +35,13 @@ import {
   recordLessonAttendanceBatch,
   restoreLessonBilling,
   getStoredLessonById,
+  approveLessonInStorage,
+  rejectLessonInStorage,
 } from '@/lib/data/lessonStorage';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { usePermissions } from '@/context/RoleContext';
+import { usePermissions, useRole } from '@/context/RoleContext';
 import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
 
@@ -96,14 +98,19 @@ export function LessonDetailsDrawer({
   const toast = useToast();
   const { t } = useLanguage();
   const { canViewStudentFinancialAmounts } = usePermissions();
+  const { role, userName } = useRole();
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'notes'>('overview');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const statusMenuRef = useRef<HTMLDivElement>(null);
 
@@ -127,7 +134,9 @@ export function LessonDetailsDrawer({
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        if (showCancelConfirm) {
+        if (showRejectConfirm) {
+          setShowRejectConfirm(false);
+        } else if (showCancelConfirm) {
           setShowCancelConfirm(false);
         } else if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
@@ -140,7 +149,7 @@ export function LessonDetailsDrawer({
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, showCancelConfirm, showDeleteConfirm, onClose]);
+  }, [isOpen, showCancelConfirm, showDeleteConfirm, showRejectConfirm, onClose]);
 
   if (!isOpen || !lesson) return null;
 
@@ -441,6 +450,52 @@ export function LessonDetailsDrawer({
     toast.success('Занятие успешно продублировано');
   };
 
+  // Handle Admin Approve lesson action
+  const handleApproveLesson = async () => {
+    if (!lesson) return;
+    setIsApproving(true);
+    try {
+      const updated = await approveLessonInStorage(lesson.id);
+      if (updated) {
+        if (onLessonUpdated) onLessonUpdated(updated);
+        toast.success('Занятие успешно подтверждено');
+      } else {
+        toast.error('Не удалось подтвердить занятие');
+      }
+    } catch (err: any) {
+      console.error('Failed to approve lesson:', err);
+      toast.error('Ошибка при подтверждении занятия');
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  // Handle Admin Reject lesson action
+  const handleRejectLesson = async () => {
+    if (!lesson) return;
+    if (!rejectReason.trim()) {
+      toast.error('Пожалуйста, укажите причину отклонения');
+      return;
+    }
+    setIsRejecting(true);
+    try {
+      const updated = await rejectLessonInStorage(lesson.id, rejectReason.trim());
+      if (updated) {
+        if (onLessonUpdated) onLessonUpdated(updated);
+        setShowRejectConfirm(false);
+        setRejectReason('');
+        toast.success('Занятие отклонено');
+      } else {
+        toast.error('Не удалось отклонить занятие');
+      }
+    } catch (err: any) {
+      console.error('Failed to reject lesson:', err);
+      toast.error('Ошибка при отклонении занятия');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const isOnline = !!(lesson.onlineMeetingUrl || lesson.room?.toLowerCase().includes('онлайн'));
 
   const drawerContent = (
@@ -457,13 +512,24 @@ export function LessonDetailsDrawer({
       {/* 1. ШАПКА ПАНЕЛИ */}
       <div className="p-4 border-b border-slate-100 bg-white space-y-2.5 shrink-0">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-slate-900 truncate leading-snug">
-              {lesson.groupName.split('(')[0].trim()}
-            </h2>
-            <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">
-              {lesson.courseName || 'Робототехника'}
-            </p>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {lesson.status === 'pending' && (
+              <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                <Clock className="h-5 w-5" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-slate-900 truncate leading-snug">
+                {lesson.status === 'pending'
+                  ? 'Занятие (на подтверждении)'
+                  : lesson.groupName.split('(')[0].trim()}
+              </h2>
+              <p className="text-xs text-slate-500 truncate mt-0.5 font-medium">
+                {lesson.status === 'pending'
+                  ? lesson.groupName.split('(')[0].trim()
+                  : lesson.courseName || 'Основной курс'}
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -475,8 +541,12 @@ export function LessonDetailsDrawer({
           </button>
         </div>
 
-        {/* Интерактивный статус занятия и метка пробного урока */}
+        {/* Интерактивный статус занятия и метка формата/пробного урока */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+            {lesson.isIndividual ? '👤 Индивидуальное' : '👥 Групповое'}
+          </span>
+
           {lesson.status === 'completed' ? (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5">
               <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -486,6 +556,11 @@ export function LessonDetailsDrawer({
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1.5">
               <X className="h-3.5 w-3.5 text-rose-600" />
               <span>Отменено</span>
+            </span>
+          ) : lesson.status === 'pending' ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg border shadow-2xs bg-amber-50 text-amber-800 border-amber-300 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>🟡 На подтверждении</span>
             </span>
           ) : (
             /* Активный статус для scheduled / rescheduled с выпадающим меню действий */
@@ -824,6 +899,83 @@ export function LessonDetailsDrawer({
         {/* ВКЛАДКА 1: ОБЗОР */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
+            {/* Блок причины отклонения, если есть */}
+            {lesson.rejectionReason && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3 space-y-1">
+                <div className="flex items-center gap-1.5 text-rose-800 font-bold text-xs">
+                  <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                  <span>Причина отклонения:</span>
+                </div>
+                <p className="text-xs text-rose-900 leading-relaxed font-medium">
+                  {lesson.rejectionReason}
+                </p>
+              </div>
+            )}
+
+            {/* Карточка группы / направления */}
+            <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-3 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-slate-900 truncate">
+                  {lesson.groupName.split('(')[0].trim()}
+                </div>
+                <div className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                  {lesson.courseName || 'Основной курс'} • {lesson.students?.length || 0} учеников
+                  {lesson.isIndividual && ' (Индивидуально)'}
+                </div>
+              </div>
+            </div>
+
+            {/* Мета-информация: Дата, Время, Преподаватель, Zoom */}
+            <div className="rounded-xl border border-slate-100 bg-white p-3 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs text-slate-700">
+                <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+                <span className="font-semibold">{dateFormattedStr}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-700">
+                <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                <span className="font-semibold">{lesson.startTime} – {lesson.endTime}</span>
+                <span className="text-slate-400">({durationStr})</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-700">
+                <div className="flex items-center gap-2 min-w-0">
+                  <User className="h-4 w-4 text-slate-400 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-slate-900">{lesson.teacherName}</span>
+                    {lesson.created_at ? (
+                      <span className="text-[10px] text-slate-400 block">
+                        Создано {new Date(lesson.created_at).toLocaleDateString('ru-RU')}, {new Date(lesson.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 block">
+                        Создано {dateFormattedStr}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {lesson.onlineMeetingUrl && (
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-indigo-50/60 border border-indigo-100 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Video className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                    <span className="text-indigo-900 truncate font-mono text-[11px]">{lesson.onlineMeetingUrl}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(lesson.onlineMeetingUrl || '');
+                      toast.success('Ссылка на Zoom скопирована');
+                    }}
+                    className="px-2 py-0.5 rounded bg-white border border-indigo-200 text-indigo-700 text-[10px] font-semibold hover:bg-indigo-50 transition-colors shrink-0 cursor-pointer"
+                  >
+                    Скопировать
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Блок «Тема и задание» */}
             <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
               <div className="flex items-center justify-between">
@@ -842,10 +994,10 @@ export function LessonDetailsDrawer({
 
               <div>
                 <p className="text-xs font-semibold text-slate-800 leading-snug">
-                  {lesson.topic || 'Тема не указана'}
+                  {lesson.topic ? `Тема: ${lesson.topic}` : 'Тема не указана'}
                 </p>
                 <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  {lesson.homework ? `ДЗ: ${lesson.homework}` : 'Домашнее задание не задано'}
+                  {lesson.homework ? `Домашнее задание: ${lesson.homework}` : 'Домашнее задание не задано'}
                 </p>
               </div>
             </div>
@@ -1124,15 +1276,59 @@ export function LessonDetailsDrawer({
       </div>
 
       {/* 5. НИЖНЯЯ ЗАКРЕПЛЕННАЯ ССЫЛКА (Sticky Footer) */}
-      <div className="border-t border-slate-100 bg-white shrink-0">
-        <button
-          type="button"
-          onClick={() => onEdit(lesson)}
-          className="w-full py-3 text-center text-xs font-semibold text-blue-600 hover:bg-blue-50/50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <span>Открыть полную карточку занятия</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+      <div className="border-t border-slate-100 bg-white p-3 space-y-2 shrink-0">
+        {lesson.status === 'pending' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleApproveLesson}
+                disabled={isApproving}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                <Check className="h-4 w-4" />
+                <span>{isApproving ? 'Подтверждение...' : 'Подтвердить'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowRejectConfirm(true)}
+                disabled={isRejecting}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-semibold text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                <span>Отклонить</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onEdit(lesson, 'main')}
+                className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs cursor-pointer"
+                title="Изменить занятие"
+              >
+                <Edit3 className="h-4 w-4 text-slate-400" />
+                <span>Изменить</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2 px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-xs transition-colors cursor-pointer text-center"
+            >
+              Закрыть
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onEdit(lesson)}
+            className="w-full py-2.5 text-center text-xs font-semibold text-blue-600 hover:bg-blue-50/50 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Открыть полную карточку занятия</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1289,6 +1485,79 @@ export function LessonDetailsDrawer({
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
               >
                 {isDeleting ? 'Удаление...' : 'Удалить занятие'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safe Reject Confirmation Modal */}
+      {showRejectConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-2xs z-60 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Header with red X icon */}
+            <div className="flex items-start gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <X className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-slate-900">Отклонить занятие?</h3>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  Укажите причину отклонения. Преподаватель получит уведомление в Telegram.
+                </p>
+              </div>
+            </div>
+
+            {/* Context block: Group, Date/Time, Teacher */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Группа:</span>
+                <span className="font-bold text-slate-900 truncate max-w-[220px]">{lesson.groupName}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Дата и время:</span>
+                <span className="font-semibold text-slate-800">{dateFormattedStr} · {lesson.startTime} – {lesson.endTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Преподаватель:</span>
+                <span className="font-semibold text-slate-800">{lesson.teacherName}</span>
+              </div>
+            </div>
+
+            {/* Rejection reason textarea */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 block">
+                Причина отклонения *
+              </label>
+              <textarea
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Например: Нет возможности в это время, выберите другой слот..."
+                className="w-full border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none transition-all"
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRejectConfirm(false);
+                  setRejectReason('');
+                }}
+                disabled={isRejecting}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectLesson}
+                disabled={isRejecting || !rejectReason.trim()}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isRejecting ? 'Отклонение...' : 'Подтвердить отклонение'}
               </button>
             </div>
           </div>

@@ -103,7 +103,15 @@ export interface Teacher {
   status: 'active' | 'archived';
 }
 
-export type LessonStatus = 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+export type LessonStatus =
+  | 'pending'
+  | 'planned'
+  | 'conducted'
+  | 'cancelled'
+  | 'scheduled'
+  | 'completed'
+  | 'rescheduled'
+  | 'rejected';
 
 export interface Lesson {
   id: string;
@@ -118,6 +126,83 @@ export interface Lesson {
   onlineMeetingUrl?: string;
   status: LessonStatus;
   notes?: string;
+  rejectionReason?: string;
+  isIndividual?: boolean;
+  studentId?: string;
+  isTrial?: boolean;
+}
+
+export interface FullLessonData {
+  id: string;
+  groupId: string;
+  groupName: string;
+  courseName: string;
+  teacherId: string;
+  teacherName: string;
+  date: string; // YYYY-MM-DD
+  dateFormatted: string; // e.g. 03 сен 2026
+  dayOfWeek: number; // 0 = Mon, 6 = Sun
+  startTime: string;
+  endTime: string;
+  room: string;
+  topic: string;
+  homework?: string;
+  notes?: string;
+  generalLessonNote?: string;
+  generalLessonNoteVisibility?: 'parents' | 'internal';
+  nextLessonRecommendation?: string;
+  nextLessonRecommendationVisibility?: 'parents' | 'internal';
+  onlineMeetingUrl?: string;
+  status: LessonStatus;
+  rescheduleInfo?: {
+    previousDate: string;
+    previousTime: string;
+    newDate: string;
+    newTime: string;
+    rawNewDate?: string;
+    newStartTime?: string;
+    newEndTime?: string;
+    room: string;
+    reason: string;
+    changedBy: string;
+    changedRole: string;
+    changedAt: string;
+    notifyParents?: boolean;
+  };
+  timelineEvents?: Array<{
+    id: string;
+    timestamp: string;
+    author: string;
+    role: string;
+    type: 'created' | 'status_change' | 'rescheduled' | 'completed' | 'attendance_marked' | 'cancelled' | 'approved' | 'rejected';
+    comment: string;
+  }>;
+  scheduleOverride?: boolean;
+  isTrial?: boolean;
+  trialStudentsCount?: number;
+  isBilled?: boolean;
+  billedAt?: string;
+  billedStudentIds?: string[];
+  billingDetails?: Record<string, { type: 'subscription' | 'deposit'; amount?: number; at?: string }>;
+  students: Array<{
+    id: string;
+    name: string;
+    attendanceStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked';
+    notes?: string;
+    isTrial?: boolean;
+    billed?: boolean;
+  }>;
+  rejectionReason?: string;
+  isIndividual?: boolean;
+  studentId?: string;
+  studentName?: string;
+  createdByRole?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export type AttendanceStatus =

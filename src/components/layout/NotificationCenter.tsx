@@ -2,24 +2,27 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Bell, Check, Clock, User, ChevronRight, CheckCheck, MessageSquare } from 'lucide-react';
+import { Bell, Check, Clock, User, ChevronRight, CheckCheck, MessageSquare, AlertCircle, X, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRole } from '@/context/RoleContext';
 import { getStoredTasks } from '@/lib/data/taskStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import type { FullTaskData } from '@/lib/data/mockData';
 
 export interface ManagerNotificationItem {
   id: string;
-  taskId: string;
+  taskId?: string;
+  lessonId?: string;
   studentId?: string;
   studentName?: string;
   taskTitle: string;
   performedBy: string;
-  actionType: 'completed' | 'rescheduled';
+  actionType: 'completed' | 'rescheduled' | 'lesson_pending' | 'lesson_approved' | 'lesson_rejected';
   quoteText?: string;
   occurredAt: string;
   timestamp: number;
   isRead: boolean;
+  linkUrl?: string;
 }
 
 const READ_NOTIFS_KEY = 'crm_read_notifications_v1';
@@ -37,6 +40,7 @@ export function NotificationCenter({
 }: NotificationCenterProps = {}) {
   const { userName, role } = useRole();
   const [isOpen, setIsOpen] = useState(false);
+  const [filterTab, setFilterTab] = useState<'all' | 'unread'>('all');
   const [notifications, setNotifications] = useState<ManagerNotificationItem[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     if (typeof window === 'undefined') return new Set();
@@ -87,72 +91,134 @@ export function NotificationCenter({
     return false;
   };
 
-  // Build notifications list from tasks
+  // Build notifications list from tasks and lesson approval workflows
   const loadNotifications = async () => {
     const isManagerOrDev = role === 'developer' || role === 'owner' || role === 'admin';
-    if (!isManagerOrDev) {
-      setNotifications([]);
-      return;
-    }
-
-    const tasks = await getStoredTasks();
     const currentUserName = userName || 'Руководитель';
     const notifs: ManagerNotificationItem[] = [];
 
-    tasks.forEach((t) => {
-      // 1. Task completed notification
-      if (t.status === 'done' && t.completedAt) {
-        const executor = t.completedBy || t.assignedTo || 'Администратор';
-        // Only notify OTHER managers/devs, suppress self-actions
-        if (!isSelfAction(executor, currentUserName, role)) {
-          const ts = new Date(t.completedAt).getTime() || Date.now();
-          const notifId = `notif_done_${t.id}_${ts}`;
-          notifs.push({
-            id: notifId,
-            taskId: t.id,
-            studentId: t.studentId,
-            studentName: t.studentName || 'Ученик',
-            taskTitle: t.title,
-            performedBy: executor,
-            actionType: 'completed',
-            quoteText: t.result,
-            occurredAt: new Date(ts).toLocaleString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            timestamp: ts,
-            isRead: readIds.has(notifId),
-          });
-        }
-      }
+    // 1. Task notifications for managers/devs
+    if (isManagerOrDev) {
+      try {
+        const tasks = await getStoredTasks();
+        tasks.forEach((t) => {
+          if (t.status === 'done' && t.completedAt) {
+            const executor = t.completedBy || t.assignedTo || 'Администратор';
+            if (!isSelfAction(executor, currentUserName, role)) {
+              const ts = new Date(t.completedAt).getTime() || Date.now();
+              const notifId = `notif_done_${t.id}_${ts}`;
+              notifs.push({
+                id: notifId,
+                taskId: t.id,
+                studentId: t.studentId,
+                studentName: t.studentName || 'Ученик',
+                taskTitle: t.title,
+                performedBy: executor,
+                actionType: 'completed',
+                quoteText: t.result,
+                occurredAt: new Date(ts).toLocaleString('ru-RU', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+                timestamp: ts,
+                isRead: readIds.has(notifId),
+                linkUrl: t.studentId ? `/students/${t.studentId}?tab=tasks` : undefined,
+              });
+            }
+          }
 
-      // 2. Task rescheduled notification
-      if (t.rescheduledReason && t.status !== 'done') {
-        const executor = t.rescheduledBy || t.assignedTo || 'Администратор';
-        // Only notify OTHER managers/devs, suppress self-actions
-        if (!isSelfAction(executor, currentUserName, role)) {
-          const ts = t.rescheduledAt ? new Date(t.rescheduledAt).getTime() : Date.now();
-          const notifId = `notif_resched_${t.id}_${ts}`;
+          if (t.rescheduledReason && t.status !== 'done') {
+            const executor = t.rescheduledBy || t.assignedTo || 'Администратор';
+            if (!isSelfAction(executor, currentUserName, role)) {
+              const ts = t.rescheduledAt ? new Date(t.rescheduledAt).getTime() : Date.now();
+              const notifId = `notif_resched_${t.id}_${ts}`;
+              notifs.push({
+                id: notifId,
+                taskId: t.id,
+                studentId: t.studentId,
+                studentName: t.studentName || 'Ученик',
+                taskTitle: t.title,
+                performedBy: executor,
+                actionType: 'rescheduled',
+                quoteText: `Перенос на ${t.dueDateFormatted || t.dueDate}: «${t.rescheduledReason}»`,
+                occurredAt: t.rescheduledAt
+                  ? new Date(t.rescheduledAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                  : new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+                timestamp: ts,
+                isRead: readIds.has(notifId),
+                linkUrl: t.studentId ? `/students/${t.studentId}?tab=tasks` : undefined,
+              });
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('Tasks notification load error:', err);
+      }
+    }
+
+    // 2. Lesson Approval Workflow notifications (media_1791210072516.jpg)
+    try {
+      const storedLessons = getStoredLessons();
+      storedLessons.forEach((l) => {
+        // Pending lesson: Admins/Managers need to review & confirm
+        if (l.status === 'pending') {
+          const ts = l.created_at ? new Date(l.created_at).getTime() : Date.now();
+          const notifId = `notif_lesson_pending_${l.id}`;
           notifs.push({
             id: notifId,
-            taskId: t.id,
-            studentId: t.studentId,
-            studentName: t.studentName || 'Ученик',
-            taskTitle: t.title,
-            performedBy: executor,
-            actionType: 'rescheduled',
-            quoteText: `Перенос на ${t.dueDateFormatted || t.dueDate}: «${t.rescheduledReason}»`,
-            occurredAt: t.rescheduledAt
-              ? new Date(t.rescheduledAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }),
+            lessonId: l.id,
+            taskTitle: 'Нужно подтвердить занятие',
+            performedBy: l.teacherName || 'Преподаватель',
+            actionType: 'lesson_pending',
+            quoteText: `${l.teacherName || 'Преподаватель'} создала занятие ${l.groupName ? l.groupName.split('(')[0].trim() : 'Занятие'}, ${l.date} ${l.startTime}`,
+            occurredAt: l.dateFormatted || l.date,
             timestamp: ts,
             isRead: readIds.has(notifId),
+            linkUrl: '/calendar',
           });
         }
-      }
-    });
+
+        // Rejected lesson: Notify teacher & admin with reason
+        if (l.status === 'cancelled' && l.rejectionReason) {
+          const ts = l.rejectedAt ? new Date(l.rejectedAt).getTime() : Date.now() - 3600000;
+          const notifId = `notif_lesson_rejected_${l.id}`;
+          notifs.push({
+            id: notifId,
+            lessonId: l.id,
+            taskTitle: 'Занятие отклонено',
+            performedBy: l.rejectedBy || 'Администратор',
+            actionType: 'lesson_rejected',
+            quoteText: `Ваше занятие ${l.date} ${l.startTime} отклонено. Причина: ${l.rejectionReason}`,
+            occurredAt: l.dateFormatted || l.date,
+            timestamp: ts,
+            isRead: readIds.has(notifId),
+            linkUrl: '/calendar',
+          });
+        }
+
+        // Approved lesson: Notify teacher & admin
+        if (l.status === 'planned' && (l.approvedAt || (l.timelineEvents && l.timelineEvents.some(e => e.type === 'approved' || e.comment?.includes('подтверждено'))))) {
+          const ts = l.approvedAt ? new Date(l.approvedAt).getTime() : Date.now() - 7200000;
+          const notifId = `notif_lesson_approved_${l.id}`;
+          notifs.push({
+            id: notifId,
+            lessonId: l.id,
+            taskTitle: 'Занятие подтверждено',
+            performedBy: l.approvedBy || 'Администратор',
+            actionType: 'lesson_approved',
+            quoteText: `Ваше занятие ${l.date} ${l.startTime} подтверждено администратором.`,
+            occurredAt: l.dateFormatted || l.date,
+            timestamp: ts,
+            isRead: readIds.has(notifId),
+            linkUrl: '/calendar',
+          });
+        }
+      });
+    } catch (err) {
+      console.warn('Lesson notifications load error:', err);
+    }
 
     // Sort newest first
     notifs.sort((a, b) => b.timestamp - a.timestamp);
@@ -164,10 +230,12 @@ export function NotificationCenter({
 
     const handleSync = () => loadNotifications();
     window.addEventListener('crm-tasks-changed', handleSync);
+    window.addEventListener('crm-lessons-changed', handleSync);
     window.addEventListener('crm-notifications-changed', handleSync);
     window.addEventListener('crm-role-changed', handleSync);
     return () => {
       window.removeEventListener('crm-tasks-changed', handleSync);
+      window.removeEventListener('crm-lessons-changed', handleSync);
       window.removeEventListener('crm-notifications-changed', handleSync);
       window.removeEventListener('crm-role-changed', handleSync);
     };
@@ -192,9 +260,13 @@ export function NotificationCenter({
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
 
-  const todayNotifs = notifications.filter((n) => n.timestamp >= startOfToday);
-  const yesterdayNotifs = notifications.filter((n) => n.timestamp >= startOfYesterday && n.timestamp < startOfToday);
-  const olderNotifs = notifications.filter((n) => n.timestamp < startOfYesterday);
+  const filteredNotifications = filterTab === 'unread'
+    ? notifications.filter((n) => !readIds.has(n.id))
+    : notifications;
+
+  const todayNotifs = filteredNotifications.filter((n) => n.timestamp >= startOfToday);
+  const yesterdayNotifs = filteredNotifications.filter((n) => n.timestamp >= startOfYesterday && n.timestamp < startOfToday);
+  const olderNotifs = filteredNotifications.filter((n) => n.timestamp < startOfYesterday);
 
   const isFloating = panelPosition === 'bottom-right';
 
@@ -243,8 +315,8 @@ export function NotificationCenter({
                 <Bell className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-slate-900">Уведомления руководителя</h3>
-                <p className="text-[10px] text-slate-500">Оперативная лента исполнения поручений</p>
+                <h3 className="text-xs font-bold text-slate-900">Уведомления</h3>
+                <p className="text-[10px] text-slate-500">Оперативная лента занятий и поручений</p>
               </div>
             </div>
 
@@ -260,12 +332,45 @@ export function NotificationCenter({
             )}
           </div>
 
+          {/* Filter Tabs: Все | Непрочитанные (count) (media_1791210072516.jpg) */}
+          <div className="flex border-b border-slate-100 px-4 pt-1.5 gap-4 bg-slate-50/50">
+            <button
+              type="button"
+              onClick={() => setFilterTab('all')}
+              className={cn(
+                "pb-2 text-xs font-semibold border-b-2 transition-all cursor-pointer",
+                filterTab === 'all'
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Все
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('unread')}
+              className={cn(
+                "pb-2 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5",
+                filterTab === 'unread'
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <span>Непрочитанные</span>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-rose-500 text-white text-[9px] px-1.5 py-0.2 font-bold">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+
           {/* Notifications Content */}
           <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100">
-            {notifications.length === 0 ? (
+            {filteredNotifications.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
                 <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
-                Новых оперативных уведомлений нет
+                {filterTab === 'unread' ? 'Нет непрочитанных уведомлений' : 'Новых оперативных уведомлений нет'}
               </div>
             ) : (
               <>
@@ -307,6 +412,17 @@ export function NotificationCenter({
               </>
             )}
           </div>
+
+          {/* Footer link to Calendar */}
+          <div className="p-2.5 text-center border-t border-slate-100 bg-slate-50/80 shrink-0">
+            <Link
+              href="/calendar"
+              onClick={() => setIsOpen(false)}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Показать все уведомления
+            </Link>
+          </div>
         </div>
       )}
     </div>
@@ -323,6 +439,10 @@ function NotificationCard({
   onClose: () => void;
 }) {
   const isDone = item.actionType === 'completed';
+  const isRescheduled = item.actionType === 'rescheduled';
+  const isLessonPending = item.actionType === 'lesson_pending';
+  const isLessonRejected = item.actionType === 'lesson_rejected';
+  const isLessonApproved = item.actionType === 'lesson_approved';
 
   return (
     <div
@@ -340,32 +460,67 @@ function NotificationCard({
       <div className="pl-2 space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 font-bold text-[10px] text-slate-700">
-              {item.performedBy.charAt(0)}
-            </div>
+            {isLessonPending ? (
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-bold text-[10px]">
+                <Clock className="h-3.5 w-3.5" />
+              </div>
+            ) : isLessonRejected ? (
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-100 text-rose-700 font-bold text-[10px]">
+                <X className="h-3.5 w-3.5" />
+              </div>
+            ) : isLessonApproved ? (
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold text-[10px]">
+                <Check className="h-3.5 w-3.5" />
+              </div>
+            ) : (
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 font-bold text-[10px] text-slate-700">
+                {item.performedBy.charAt(0)}
+              </div>
+            )}
             <span className="font-bold text-slate-900">{item.performedBy}</span>
-            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')}>
-              {isDone ? 'Выполнил' : 'Перенес'}
+            <span
+              className={cn(
+                'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+                isDone || isLessonApproved
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : isLessonPending
+                  ? 'bg-blue-100 text-blue-800'
+                  : isLessonRejected
+                  ? 'bg-rose-100 text-rose-800'
+                  : 'bg-amber-100 text-amber-800'
+              )}
+            >
+              {isDone
+                ? 'Выполнил'
+                : isRescheduled
+                ? 'Перенес'
+                : isLessonPending
+                ? 'Новое занятие'
+                : isLessonRejected
+                ? 'Отклонено'
+                : 'Подтверждено'}
             </span>
           </div>
           <span className="text-[10px] text-slate-400">{item.occurredAt}</span>
         </div>
 
-        <div className="text-xs">
-          <span className="text-slate-500">Ученик: </span>
-          {item.studentId ? (
-            <Link
-              href={`/students/${item.studentId}?tab=tasks`}
-              onClick={onClose}
-              className="font-bold text-blue-600 hover:underline inline-flex items-center gap-0.5"
-            >
-              {item.studentName}
-              <ChevronRight className="h-3 w-3" />
-            </Link>
-          ) : (
-            <span className="font-semibold text-slate-800">{item.studentName}</span>
-          )}
-        </div>
+        {item.studentName && (
+          <div className="text-xs">
+            <span className="text-slate-500">Ученик: </span>
+            {item.studentId ? (
+              <Link
+                href={`/students/${item.studentId}?tab=tasks`}
+                onClick={onClose}
+                className="font-bold text-blue-600 hover:underline inline-flex items-center gap-0.5"
+              >
+                {item.studentName}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            ) : (
+              <span className="font-semibold text-slate-800">{item.studentName}</span>
+            )}
+          </div>
+        )}
 
         <p className="text-xs font-semibold text-slate-900">
           «{item.taskTitle}»
@@ -373,19 +528,19 @@ function NotificationCard({
 
         {/* Outcome Quote Block */}
         {item.quoteText && (
-          <div className="rounded-lg bg-slate-100/70 p-2 text-[11px] text-slate-700 border border-slate-200/60 font-medium italic">
-            «{item.quoteText}»
+          <div className="rounded-lg bg-slate-100/70 p-2 text-[11px] text-slate-700 border border-slate-200/60 font-medium">
+            {item.quoteText}
           </div>
         )}
 
-        {item.studentId && (
+        {item.linkUrl && (
           <div className="pt-1 flex justify-end">
             <Link
-              href={`/students/${item.studentId}?tab=tasks`}
+              href={item.linkUrl}
               onClick={onClose}
               className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
             >
-              К задаче →
+              Перейти к занятию →
             </Link>
           </div>
         )}

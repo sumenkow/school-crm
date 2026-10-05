@@ -1,4 +1,5 @@
-import { Student, Parent, StudentParentRelation, Group, Lesson, Attendance, Payment, Subscription, Task } from '@/types';
+import { Student, Parent, StudentParentRelation, Group, Lesson, LessonStatus, Attendance, Payment, Subscription, Task } from '@/types';
+export type { LessonStatus };
 
 export interface TimelineInteraction {
   id: string;
@@ -1056,7 +1057,7 @@ export interface LessonTimelineEvent {
   timestamp: string;
   author: string;
   role: string;
-  type: 'created' | 'status_change' | 'rescheduled' | 'completed' | 'attendance_marked' | 'cancelled';
+  type: 'created' | 'status_change' | 'rescheduled' | 'completed' | 'attendance_marked' | 'cancelled' | 'approved' | 'rejected';
   comment: string;
 }
 
@@ -1097,7 +1098,7 @@ export interface FullLessonData {
   nextLessonRecommendation?: string;
   nextLessonRecommendationVisibility?: 'parents' | 'internal';
   onlineMeetingUrl?: string;
-  status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+  status: LessonStatus;
   rescheduleInfo?: LessonRescheduleInfo;
   timelineEvents?: LessonTimelineEvent[];
   scheduleOverride?: boolean;
@@ -1115,6 +1116,17 @@ export interface FullLessonData {
     isTrial?: boolean;
     billed?: boolean;
   }>;
+  rejectionReason?: string;
+  isIndividual?: boolean;
+  studentId?: string;
+  studentName?: string;
+  createdByRole?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 // NOTE: Embedded attendance records for student IDs 's5'..'s21' below are intended exclusively for local seed/demo

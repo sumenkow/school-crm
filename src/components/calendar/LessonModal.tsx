@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import {
   FullLessonData,
+  LessonStatus,
   INITIAL_TEACHERS,
   LessonTimelineEvent,
   LessonRescheduleInfo,
@@ -52,6 +53,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { ScheduleLessonModal } from './ScheduleLessonModal';
 
 export type LessonModalTab = 'main' | 'attendance' | 'feedback' | 'history';
 
@@ -137,7 +139,7 @@ export function LessonModal({
   const [activeTab, setActiveTab] = useState<LessonModalTab>('main');
 
   // Status & Menu State
-  const [currentStatus, setCurrentStatus] = useState<'scheduled' | 'completed' | 'cancelled' | 'rescheduled'>('scheduled');
+  const [currentStatus, setCurrentStatus] = useState<LessonStatus>('scheduled');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('Отмена по запросу');
@@ -714,7 +716,17 @@ export function LessonModal({
     return items;
   }, [lesson]);
 
-  if (!isOpen || !lesson || !mounted) return null;
+  if (!isOpen || !mounted) return null;
+
+  if (!lesson) {
+    return (
+      <ScheduleLessonModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onScheduled={(newLesson) => onSave(newLesson)}
+      />
+    );
+  }
 
   const isCompleted = currentStatus === 'completed';
   const isScheduled = currentStatus === 'scheduled';
@@ -727,18 +739,36 @@ export function LessonModal({
   const durationText = calculateDurationString(startTime, endTime);
   const fullDateText = formatFullDateWithWeekday(date);
 
-  const statusConfig = {
-    completed: {
-      label: 'Проведено',
-      icon: CheckCircle2,
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      dotColor: 'bg-emerald-500',
+  const statusConfigMap: Record<LessonStatus, { label: string; icon: any; color: string; dotColor: string }> = {
+    pending: {
+      label: 'На подтверждении',
+      icon: Clock,
+      color: 'bg-amber-50 text-amber-700 border-amber-200',
+      dotColor: 'bg-amber-500',
+    },
+    planned: {
+      label: 'Запланировано',
+      icon: CalendarDays,
+      color: 'bg-blue-50 text-blue-700 border-blue-200',
+      dotColor: 'bg-blue-500',
     },
     scheduled: {
       label: 'Запланировано',
       icon: CalendarDays,
       color: 'bg-blue-50 text-blue-700 border-blue-200',
       dotColor: 'bg-blue-500',
+    },
+    conducted: {
+      label: 'Проведено',
+      icon: CheckCircle2,
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dotColor: 'bg-emerald-500',
+    },
+    completed: {
+      label: 'Проведено',
+      icon: CheckCircle2,
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      dotColor: 'bg-emerald-500',
     },
     rescheduled: {
       label: 'Перенесено',
@@ -752,7 +782,14 @@ export function LessonModal({
       color: 'bg-rose-50 text-rose-700 border-rose-200',
       dotColor: 'bg-rose-500',
     },
-  }[currentStatus || 'scheduled'];
+    rejected: {
+      label: 'Отклонено',
+      icon: XCircle,
+      color: 'bg-rose-50 text-rose-700 border-rose-200',
+      dotColor: 'bg-rose-500',
+    },
+  };
+  const statusConfig = statusConfigMap[currentStatus || 'scheduled'] || statusConfigMap.scheduled;
 
   // Donut chart calculations
   const circumference = 2 * Math.PI * 26;

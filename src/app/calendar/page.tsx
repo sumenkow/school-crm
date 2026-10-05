@@ -24,6 +24,7 @@ import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
 import { LessonModal } from '@/components/calendar/LessonModal';
+import { LessonDetailsDrawer } from '@/components/calendar/LessonDetailsDrawer';
 import { CalendarMobile } from '@/components/calendar/CalendarMobile';
 import { createClient } from '@/lib/supabase/client';
 import { getSchoolSettings, SchoolProfileData, fetchSchoolSettingsFromCloud } from '@/lib/data/schoolSettingsStorage';
@@ -171,6 +172,8 @@ export default function CalendarPage() {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
   });
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
+  const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [desktopModalTab, setDesktopModalTab] = useState<'main' | 'attendance' | 'feedback' | 'history'>('main');
   const [desktopModalHighlightReschedule, setDesktopModalHighlightReschedule] = useState(false);
 
@@ -285,9 +288,8 @@ export default function CalendarPage() {
   };
 
   const handleLessonClick = (lesson: FullLessonData) => {
-    setSelectedLessonForDesktop(lesson);
-    setDesktopModalTab('main');
-    setDesktopModalHighlightReschedule(false);
+    setSelectedLessonForDrawer(lesson);
+    setIsDrawerOpen(true);
   };
 
   const handleDropLessonOnSlot = async (
@@ -508,8 +510,9 @@ export default function CalendarPage() {
       if (prev.some((l) => l.id === newLesson.id)) return prev;
       return [newLesson, ...prev];
     });
-    // Immediately open the newly created lesson's modal!
-    setSelectedLessonForDesktop(newLesson);
+    // Immediately open the newly created lesson's drawer!
+    setSelectedLessonForDrawer(newLesson);
+    setIsDrawerOpen(true);
   };
 
   // Render-level dedup: guard against any remaining duplicates by ID
@@ -910,7 +913,7 @@ export default function CalendarPage() {
                             (lesson.isTrial ? lesson.students?.length : 0) ||
                             0;
                           const isTrial = lesson.isTrial || trialCount > 0;
-                          const isSelected = selectedLessonForDesktop?.id === lesson.id;
+                          const isSelected = selectedLessonForDrawer?.id === lesson.id || selectedLessonForDesktop?.id === lesson.id;
                           const isDraggable = lesson.status === 'scheduled';
                           const isDraggingThis = draggedLessonId === lesson.id;
 
@@ -922,6 +925,9 @@ export default function CalendarPage() {
                           } else if (lesson.status === 'completed') {
                             cardClasses =
                               'bg-emerald-50/80 border-l-4 border-l-emerald-500 border-emerald-100 text-emerald-900 hover:border-emerald-300';
+                          } else if (lesson.status === 'pending') {
+                            cardClasses =
+                              'bg-amber-50/90 border-l-4 border-l-amber-500 border-amber-300 text-amber-900 hover:border-amber-400';
                           } else if (lesson.status === 'rescheduled' || isTrial) {
                             cardClasses =
                               'bg-amber-50/80 border-l-4 border-l-amber-500 border-amber-100 text-amber-900 hover:border-amber-300';
@@ -1009,6 +1015,12 @@ export default function CalendarPage() {
                                 </span>
 
                                 <div className="flex items-center gap-1 shrink-0">
+                                  {lesson.status === 'pending' && (
+                                    <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-bold text-amber-900 border border-amber-300 whitespace-nowrap flex items-center gap-1">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                      <span>На подтверждении</span>
+                                    </span>
+                                  )}
                                   {trialCount > 0 && (
                                     <span className="rounded bg-purple-100 px-1 py-0.5 text-[9px] font-bold text-purple-900 border border-purple-200 whitespace-nowrap">
                                       🎯 Пробное · {trialCount}
@@ -1154,7 +1166,9 @@ export default function CalendarPage() {
                       <div className="text-right text-xs shrink-0 flex flex-col items-end gap-1">
                         <span className={cn(
                           'rounded-full px-2.5 py-1 text-[10px] font-bold border',
-                          lesson.status === 'completed'
+                          lesson.status === 'pending'
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : lesson.status === 'completed'
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : lesson.status === 'rescheduled'
                             ? 'bg-amber-100 text-amber-900 border-amber-300'
@@ -1162,7 +1176,9 @@ export default function CalendarPage() {
                             ? 'bg-rose-100 text-rose-800 border-rose-200'
                             : 'bg-blue-100 text-blue-800 border-blue-200'
                         )}>
-                          {lesson.status === 'completed'
+                          {lesson.status === 'pending'
+                            ? '🟡 На подтверждении'
+                            : lesson.status === 'completed'
                             ? '✓ ' + t('status.completed', 'Проведено')
                             : lesson.status === 'rescheduled'
                             ? '🔄 ' + t('status.rescheduled', 'Перенесено')
@@ -1278,6 +1294,31 @@ export default function CalendarPage() {
         }}
       />
 
+      {/* Lesson Details & Admin Approval Drawer */}
+      <LessonDetailsDrawer
+        isOpen={isDrawerOpen && !!selectedLessonForDrawer}
+        lesson={selectedLessonForDrawer}
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setSelectedLessonForDrawer(null);
+        }}
+        onEdit={(lesson, initialTab, highlightReschedule) => {
+          setIsDrawerOpen(false);
+          setSelectedLessonForDesktop(lesson);
+          if (initialTab) setDesktopModalTab(initialTab);
+          if (highlightReschedule) setDesktopModalHighlightReschedule(true);
+        }}
+        onLessonUpdated={(updatedLesson) => {
+          setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+          setSelectedLessonForDrawer(updatedLesson);
+        }}
+        onDelete={(lessonId) => {
+          setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+          setIsDrawerOpen(false);
+          setSelectedLessonForDrawer(null);
+        }}
+      />
+
       {/* Interactive Unified Lesson Modal (4-tab system) */}
       <LessonModal
         isOpen={!!selectedLessonForDesktop}
@@ -1290,11 +1331,18 @@ export default function CalendarPage() {
         }}
         onSave={(updatedLesson) => {
           setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+          if (selectedLessonForDrawer?.id === updatedLesson.id) {
+            setSelectedLessonForDrawer(updatedLesson);
+          }
           setSelectedLessonForDesktop(null);
           setDesktopModalHighlightReschedule(false);
         }}
         onDelete={(lessonId) => {
           setLessons((prev) => prev.filter((l) => l.id !== lessonId));
+          if (selectedLessonForDrawer?.id === lessonId) {
+            setSelectedLessonForDrawer(null);
+            setIsDrawerOpen(false);
+          }
           setSelectedLessonForDesktop(null);
           setDesktopModalHighlightReschedule(false);
         }}

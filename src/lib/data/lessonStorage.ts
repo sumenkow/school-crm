@@ -1,11 +1,12 @@
-'use client';
-
 import { FullLessonData, INITIAL_LESSONS, INITIAL_STUDENTS, FullStudentData, TimelineInteraction } from './mockData';
+import { LessonStatus } from '@/types';
+import { checkThreeWayCollision, CollisionResult } from './collisionHelper';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
-import { saveInteractionToStorage, sortTimelineChronologicalDesc, getEquivalentIds } from './timelineStorage';
+import { saveInteractionToStorage, getEquivalentIds } from './timelineStorage';
 import { persistEntityToCloud } from './cloudSync';
 
 const LESSONS_STORAGE_KEY = 'crm_lessons_master_v2';
+const SEED_LESSON_IDS = new Set<string>(INITIAL_LESSONS.map((l) => l.id));
 
 /**
  * Loads all lessons from localStorage merged with INITIAL_LESSONS.
@@ -14,7 +15,14 @@ export function getStoredLessons(): FullLessonData[] {
   if (typeof window === 'undefined') return INITIAL_LESSONS;
   try {
     const raw = localStorage.getItem(LESSONS_STORAGE_KEY);
-    if (!raw) return INITIAL_LESSONS;
+    if (!raw) {
+      for (let i = INITIAL_LESSONS.length - 1; i >= 0; i--) {
+        if (!SEED_LESSON_IDS.has(INITIAL_LESSONS[i].id)) {
+          INITIAL_LESSONS.splice(i, 1);
+        }
+      }
+      return INITIAL_LESSONS;
+    }
     const stored: FullLessonData[] = JSON.parse(raw);
     if (!Array.isArray(stored) || stored.length === 0) return INITIAL_LESSONS;
 
@@ -59,7 +67,7 @@ export async function fetchLessonsFromSupabase(): Promise<FullLessonData[]> {
           startTime: l.start_time || '18:45',
           endTime: l.end_time || '20:15',
           room: l.room || 'Онлайн (Zoom)',
-          status: (l.status as any) || 'scheduled',
+          status: (l.status as LessonStatus) || 'scheduled',
           topic: l.topic || l.title || 'Тема урока',
           homework: l.homework || undefined,
           onlineMeetingUrl: l.online_meeting_url || undefined,
@@ -86,10 +94,44 @@ export function getStoredLessonById(lessonId: string): FullLessonData | undefine
   return all.find((l) => l.id === lessonId);
 }
 
+export interface SaveLessonOptions {
+  bypassCollisionCheck?: boolean;
+}
+
+export interface SaveLessonResult {
+  success: boolean;
+  lesson?: FullLessonData;
+  error?: string;
+  collision?: CollisionResult;
+}
+
 /**
  * Persists a lesson to in-memory INITIAL_LESSONS, localStorage, and triggers Supabase cloud sync.
+ * Performs mutation-level 3-way collision and operating hours validation unless bypassed.
  */
-export function saveLessonToStorage(lesson: FullLessonData): void {
+export function saveLessonToStorage(
+  lesson: FullLessonData,
+  options?: SaveLessonOptions
+): SaveLessonResult {
+  // Mutation-level collision guard
+  if (
+    !options?.bypassCollisionCheck &&
+    lesson.status !== 'cancelled' &&
+    (lesson.status as string) !== 'rejected'
+  ) {
+    const existing = getStoredLessons();
+    const collisionCheck = checkThreeWayCollision(existing, lesson);
+    if (collisionCheck.hasConflict) {
+      const errorMessage = collisionCheck.conflicts.map((c) => c.message).join('; ');
+      console.warn('saveLessonToStorage blocked by collision:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage,
+        collision: collisionCheck,
+      };
+    }
+  }
+
   // 1. In-memory update
   const idx = INITIAL_LESSONS.findIndex((l) => l.id === lesson.id);
   if (idx !== -1) {
@@ -116,6 +158,81 @@ export function saveLessonToStorage(lesson: FullLessonData): void {
     // 3. Supabase Cloud DB write via sync layer
     persistEntityToCloud('lesson', lesson);
   }
+
+  return { success: true, lesson };
+}
+
+/**
+ * Approves a pending lesson, transitioning its status to 'planned',
+ * clearing any rejectionReason, setting approvedAt timestamp,
+ * and notifying listeners via 'crm-lessons-changed'.
+ */
+export async function approveLessonInStorage(
+  lessonId: string
+): Promise<FullLessonData | null> {
+  const current = getStoredLessonById(lessonId);
+  if (!current) {
+    return null;
+  }
+
+  const updatedLesson: FullLessonData = {
+    ...current,
+    status: 'planned',
+    rejectionReason: undefined,
+    approvedAt: new Date().toISOString(),
+  };
+
+  if (!Array.isArray(updatedLesson.timelineEvents)) {
+    updatedLesson.timelineEvents = [];
+  }
+  updatedLesson.timelineEvents.push({
+    id: `evt_appr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    author: 'Администратор',
+    role: 'admin',
+    type: 'status_change',
+    comment: 'Занятие подтверждено администратором',
+  });
+
+  saveLessonToStorage(updatedLesson, { bypassCollisionCheck: true });
+  return updatedLesson;
+}
+
+/**
+ * Rejects a pending lesson, transitioning its status to 'cancelled',
+ * setting the rejectionReason, setting rejectedAt timestamp,
+ * freeing the schedule slot, and notifying listeners via 'crm-lessons-changed'.
+ */
+export async function rejectLessonInStorage(
+  lessonId: string,
+  reason: string
+): Promise<FullLessonData | null> {
+  const current = getStoredLessonById(lessonId);
+  if (!current) {
+    return null;
+  }
+
+  const updatedLesson: FullLessonData = {
+    ...current,
+    status: 'cancelled',
+    rejectionReason: reason || 'Отклонено администратором',
+    rejectedAt: new Date().toISOString(),
+  };
+
+  if (!Array.isArray(updatedLesson.timelineEvents)) {
+    updatedLesson.timelineEvents = [];
+  }
+  updatedLesson.timelineEvents.push({
+    id: `evt_rej_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    author: 'Администратор',
+    role: 'admin',
+    type: 'cancelled',
+    comment: `Занятие отклонено: ${reason || 'Без указания причины'}`,
+  });
+
+  saveLessonToStorage(updatedLesson, { bypassCollisionCheck: true });
+  return updatedLesson;
 }
 
 /**
@@ -161,7 +278,7 @@ export function recordLessonAttendanceBatch(params: {
   topic?: string;
   homework?: string;
   teacherName?: string;
-  status?: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
+  status?: LessonStatus;
   studentRecords: Array<{
     studentId: string;
     studentName: string;

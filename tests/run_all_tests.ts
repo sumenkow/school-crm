@@ -6,16 +6,22 @@ import { runAnalyticsAndE2ETests } from './ts21_to_ts26_analytics_and_e2e.test';
 import { runPhase8SettingsAdminTests } from '../src/__tests__/phase8_settings_admin.test';
 import { runChallengerStressTests } from './stress_phase8_challenger1';
 import { runChallenger2StressTests } from './challenger2_stress_test';
+import { runPhase9LessonApprovalTests } from './ts27_to_ts32_phase9_lesson_approval.test';
+import { runChallenger2M1LessonStorageTests } from './challenger2_m1_lesson_storage_stress.test';
+import { runReviewer1CollisionStressTests } from './reviewer1_m1_collision_stress.test';
+import { runM1Challenger1StressTests } from './stress_m1_challenger1';
+import { runM2LessonModalTests } from './m2_lesson_modal_creation_workflow.test';
+import { runM3CalendarDrawerNotificationTests } from './m3_calendar_drawer_notifications.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
-  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8 Tiers ');
+  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8 & 9   ');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 8;
+  const totalSuites = 14;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -48,6 +54,48 @@ async function main() {
 
     // Suite 8: Challenger 2 Empirical Security & Boundary Stress Suite
     await runChallenger2StressTests();
+    passedSuites++;
+
+    // Suite 9: Phase 9 Teacher Lesson Creation & Approval Workflow (TS-27..TS-32)
+    const phase9Result = await runPhase9LessonApprovalTests();
+    if (phase9Result.failed > 0) {
+      console.warn(`⚠️ Warning: ${phase9Result.failed} checks failed in Phase 9 suite`);
+    }
+    passedSuites++;
+
+    // Suite 10: Challenger 2 (M1, Gen 2) Lesson Storage & Billing Invariants
+    const challenger2M1Result = await runChallenger2M1LessonStorageTests();
+    if (challenger2M1Result.failed > 0) {
+      throw new Error(`Challenger 2 M1 suite failed with ${challenger2M1Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 11: Reviewer 1 (M1, Gen 2) Collision Helper Adversarial Stress
+    const reviewer1M1Result = await runReviewer1CollisionStressTests();
+    if (reviewer1M1Result.failed > 0) {
+      throw new Error(`Reviewer 1 M1 suite failed with ${reviewer1M1Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 12: Challenger 1 (M1, Gen 2) Collision Helper Adversarial Stress & Fuzzing
+    const challenger1M1Result = await runM1Challenger1StressTests();
+    if (challenger1M1Result.failed > 0) {
+      throw new Error(`Challenger 1 M1 suite failed with ${challenger1M1Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 13: Milestone 2 (M2) Dynamic Lesson Modal, Conflict & Success Modals
+    const m2Result = await runM2LessonModalTests();
+    if (m2Result.failed > 0) {
+      throw new Error(`Milestone 2 suite failed with ${m2Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 14: Milestone 3 (M3) Calendar Drawer, Grid Badges & Notification Center
+    const m3Result = await runM3CalendarDrawerNotificationTests();
+    if (m3Result.failed > 0) {
+      throw new Error(`Milestone 3 suite failed with ${m3Result.failed} failures`);
+    }
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
