@@ -101,7 +101,10 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    if (!role || !['developer', 'owner'].includes(role)) {
+    const isAuditRoute = pathname === '/settings/audit' || pathname.startsWith('/settings/audit/');
+    const allowedRoles = isAuditRoute ? ['developer', 'owner', 'admin'] : ['developer', 'owner'];
+
+    if (!role || !allowedRoles.includes(role)) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
           { success: false, error: 'Forbidden: Insufficient privileges' },

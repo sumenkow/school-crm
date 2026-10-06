@@ -22,6 +22,9 @@ export const permissions = {
   canMarkAttendance: (role: AppRole) => ['developer', 'owner', 'admin', 'teacher'].includes(role),
   canCompleteLesson: (role: AppRole) => ['developer', 'owner', 'admin', 'teacher'].includes(role),
   isTeacherOnly: (role: AppRole) => role === 'teacher',
+
+  // Аудит и безопасность (Журнал действий)
+  canViewAuditLog: (role: AppRole) => ['developer', 'owner', 'admin'].includes(role),
 };
 
 export type PermissionsMap = {
@@ -42,5 +45,6 @@ export function getPermissionsForRole(role: AppRole): PermissionsMap {
     canMarkAttendance: permissions.canMarkAttendance(role),
     canCompleteLesson: permissions.canCompleteLesson(role),
     isTeacherOnly: permissions.isTeacherOnly(role),
+    canViewAuditLog: permissions.canViewAuditLog(role),
   };
 }

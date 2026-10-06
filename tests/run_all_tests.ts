@@ -15,16 +15,18 @@ import { runM3CalendarDrawerNotificationTests } from './m3_calendar_drawer_notif
 import { runPhase10TelegramMiniAppTests } from './phase10_telegram_mini_app.test';
 import { runTelegramPersistenceTests } from './telegram_bot_supabase_persistence.test';
 import { runP0SecurityAndSchemaHardeningTests } from './p0_security_and_schema_hardening.test';
+import { runAuditLogTests } from './audit_log.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
   console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
+  console.log('   Production Audit Log Subsystem (Suite 18)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 17;
+  const totalSuites = 18;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -119,6 +121,13 @@ async function main() {
     const p0HardeningResult = await runP0SecurityAndSchemaHardeningTests();
     if (p0HardeningResult.failed > 0) {
       throw new Error(`P0 Hardening suite failed with ${p0HardeningResult.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 18: Production Audit Log, Immutability & Anti-Spoofing
+    const auditLogResult = await runAuditLogTests();
+    if (auditLogResult.failed > 0) {
+      throw new Error(`Audit Log suite failed with ${auditLogResult.failed} failures`);
     }
     passedSuites++;
 

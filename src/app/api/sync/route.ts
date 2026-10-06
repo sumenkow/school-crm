@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { logAuditEvent } from '@/lib/audit/auditLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -176,6 +177,14 @@ export async function POST(request: NextRequest) {
         const studentId = toUUID(data.id);
         if (action === 'delete') {
           await supabase.from('students').update({ status: 'archived', updated_at: new Date().toISOString() }).eq('id', studentId);
+          await logAuditEvent({
+            action: 'STUDENT_DELETE',
+            entityType: 'student',
+            entityId: studentId,
+            description: `Архивирован ученик (ID: ${studentId})`,
+            source: 'API',
+            req: request,
+          });
           return NextResponse.json({ success: true, action: 'deleted', id: studentId });
         }
 
@@ -231,6 +240,17 @@ export async function POST(request: NextRequest) {
             }, { onConflict: 'student_id,parent_id' });
           }
         }
+
+        await logAuditEvent({
+          action: 'STUDENT_UPDATE',
+          entityType: 'student',
+          entityId: studentId,
+          entityNameSnapshot: `${studentRow.first_name} ${studentRow.last_name}`.trim(),
+          description: `Синхронизированы данные ученика ${studentRow.first_name} ${studentRow.last_name}`.trim(),
+          afterData: studentRow,
+          source: 'API',
+          req: request,
+        });
 
         return NextResponse.json({ success: true, id: studentId });
       }
@@ -397,6 +417,16 @@ export async function POST(request: NextRequest) {
         const { error: payErr } = await supabase.from('payments').upsert(paymentRow, { onConflict: 'id' });
         if (payErr) throw payErr;
 
+        await logAuditEvent({
+          action: 'PAYMENT_UPDATE',
+          entityType: 'payment',
+          entityId: paymentId,
+          description: `Зафиксирован платеж: ${paymentRow.amount} € (${paymentRow.status})`,
+          afterData: paymentRow,
+          source: 'API',
+          req: request,
+        });
+
         return NextResponse.json({ success: true, id: paymentId });
       }
 
@@ -434,6 +464,14 @@ export async function POST(request: NextRequest) {
         const groupId = toUUID(data.id);
         if (action === 'delete') {
           await supabase.from('groups').update({ status: 'archived', is_mock_data: false }).eq('id', groupId);
+          await logAuditEvent({
+            action: 'GROUP_DELETE',
+            entityType: 'group',
+            entityId: groupId,
+            description: `Архивирована группа ${groupId}`,
+            source: 'API',
+            req: request,
+          });
           return NextResponse.json({ success: true, action: 'deleted', id: groupId });
         }
 
@@ -453,6 +491,17 @@ export async function POST(request: NextRequest) {
         const { error: grpErr } = await supabase.from('groups').upsert(groupRow, { onConflict: 'id' });
         if (grpErr) throw grpErr;
 
+        await logAuditEvent({
+          action: 'GROUP_UPDATE',
+          entityType: 'group',
+          entityId: groupId,
+          entityNameSnapshot: groupRow.name,
+          description: `Обновлена группа «${groupRow.name}»`,
+          afterData: groupRow,
+          source: 'API',
+          req: request,
+        });
+
         return NextResponse.json({ success: true, id: groupId });
       }
 
@@ -460,6 +509,14 @@ export async function POST(request: NextRequest) {
         const lessonId = toUUID(data.id);
         if (action === 'delete') {
           await supabase.from('lessons').delete().eq('id', lessonId);
+          await logAuditEvent({
+            action: 'LESSON_DELETE',
+            entityType: 'lesson',
+            entityId: lessonId,
+            description: `Удален урок ${lessonId}`,
+            source: 'API',
+            req: request,
+          });
           return NextResponse.json({ success: true, action: 'deleted', id: lessonId });
         }
 
@@ -518,6 +575,17 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        await logAuditEvent({
+          action: 'LESSON_UPDATE',
+          entityType: 'lesson',
+          entityId: lessonId,
+          entityNameSnapshot: lessonRow.topic,
+          description: `Обновлен урок «${lessonRow.topic}» (${lessonRow.lesson_date})`,
+          afterData: lessonRow,
+          source: 'API',
+          req: request,
+        });
+
         return NextResponse.json({ success: true, id: lessonId });
       }
 
@@ -546,6 +614,17 @@ export async function POST(request: NextRequest) {
             marked_at: new Date().toISOString(),
           }, { onConflict: 'lesson_id,student_id' });
         }
+
+        await logAuditEvent({
+          action: 'ATTENDANCE_MARK',
+          entityType: 'attendance',
+          entityId: lessonId,
+          description: `Зафиксирована посещаемость урока ${lessonId}`,
+          afterData: data,
+          source: 'API',
+          req: request,
+        });
+
         return NextResponse.json({ success: true });
       }
 

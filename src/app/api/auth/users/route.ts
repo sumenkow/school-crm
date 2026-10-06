@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { logAuditEvent } from '@/lib/audit/auditLogger';
 
 // Helper: ensure caller is an authenticated owner
 async function verifyOwner() {
@@ -136,6 +137,17 @@ export async function POST(request: NextRequest) {
         });
     }
 
+    await logAuditEvent({
+      action: 'USER_CREATE',
+      entityType: 'user',
+      entityId: newUserId,
+      entityNameSnapshot: full_name,
+      description: `Создан пользователь ${full_name} с ролью ${role}`,
+      afterData: { id: newUserId, email, full_name, role, phone },
+      source: 'WEB',
+      req: request,
+    });
+
     return NextResponse.json({
       success: true,
       user: {
@@ -252,6 +264,22 @@ export async function PATCH(request: NextRequest) {
         }, { onConflict: 'user_id' });
     }
 
+    const isRoleChange = effectiveRole !== targetProfile.role;
+    const actionType = isRoleChange ? 'USER_ROLE_CHANGE' : 'USER_UPDATE';
+    await logAuditEvent({
+      action: actionType,
+      entityType: 'user',
+      entityId: id,
+      entityNameSnapshot: full_name,
+      description: isRoleChange
+        ? `Изменена роль пользователя ${full_name}: ${targetProfile.role} -> ${effectiveRole}`
+        : `Обновлены данные пользователя ${full_name}`,
+      beforeData: targetProfile,
+      afterData: updatedProfile,
+      source: 'WEB',
+      req: request,
+    });
+
     return NextResponse.json({ success: true, user: updatedProfile });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -283,7 +311,7 @@ export async function DELETE(request: NextRequest) {
     // Verify target profile role to protect Owner from deletion
     const { data: targetProfile } = await admin
       .from('profiles')
-      .select('role')
+      .select('*')
       .eq('id', targetUserId)
       .single();
 
@@ -303,6 +331,17 @@ export async function DELETE(request: NextRequest) {
     // 2. Also ensure profile and teacher records are removed
     await admin.from('profiles').delete().eq('id', targetUserId);
     await admin.from('teachers').delete().eq('user_id', targetUserId);
+
+    await logAuditEvent({
+      action: 'USER_DELETE',
+      entityType: 'user',
+      entityId: targetUserId,
+      entityNameSnapshot: targetProfile?.full_name || targetUserId,
+      description: `Удален аккаунт пользователя ${targetProfile?.full_name || targetUserId} (${targetProfile?.role})`,
+      beforeData: targetProfile,
+      source: 'WEB',
+      req: request,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err: unknown) {

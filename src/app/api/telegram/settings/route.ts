@@ -5,6 +5,7 @@ import {
   maskBotToken,
   TelegramBotSettings,
 } from '@/lib/telegram/settings';
+import { logAuditEvent } from '@/lib/audit/auditLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,17 @@ export async function POST(request: NextRequest) {
       ...updated,
       botToken: maskBotToken(updated.botToken),
     };
+
+    await logAuditEvent({
+      action: 'TELEGRAM_SETTINGS_UPDATE',
+      entityType: 'telegram',
+      entityId: 'settings',
+      entityNameSnapshot: botUsername || 'Telegram Bot',
+      description: `Обновлены настройки Telegram-бота (@${botUsername || 'youeuropeservicebot'})`,
+      afterData: safeSettings,
+      source: 'WEB',
+      req: request,
+    });
 
     return NextResponse.json({
       success: true,

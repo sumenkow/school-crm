@@ -479,7 +479,7 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* 📥 Импорт Excel */}
           <Link
             href="/settings/import"
@@ -517,7 +517,7 @@ export default function SettingsPage() {
                 <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
                   <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Шаблон Excel</span>
                   <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Мэппинг колонок</span>
-                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Предпросмотр перед записью</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Предпросмотр</span>
                 </div>
               </div>
             </div>
@@ -565,13 +565,61 @@ export default function SettingsPage() {
                 <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
                   <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Снимки PostgreSQL</span>
                   <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Экспорт Excel</span>
-                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Google Drive / Sheets</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Google Drive</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-blue-600 font-bold">
               <span>Управление копиями →</span>
+              <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* 🛡️ Журнал действий */}
+          <Link
+            href="/settings/audit"
+            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-md hover:border-purple-400 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-purple-50 p-3 text-purple-600 group-hover:bg-purple-100 transition-colors">
+                    <Shield className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">
+                        Журнал действий
+                      </h3>
+                      <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                        Аудит и безопасность
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Неизменяемый реестр операций пользователей
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-lg bg-slate-50 p-1.5 text-slate-400 group-hover:text-purple-600 group-hover:bg-purple-50 transition-colors">
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-1.5 text-xs text-slate-600">
+                <p className="line-clamp-2">
+                  Полная фиксация изменений: автор, время, до/после, IP-адрес и результат. Защищенный журнал событий без возможности удаления.
+                </p>
+                <div className="pt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Безопасность</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Diff изменений</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded-md font-medium">Аудит доступа</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-purple-600 font-bold">
+              <span>Открыть журнал →</span>
               <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>

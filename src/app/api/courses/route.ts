@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { INITIAL_COURSES } from '@/lib/data/mockData';
+import { logAuditEvent } from '@/lib/audit/auditLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,6 +181,18 @@ export async function POST(request: NextRequest) {
       if (error) {
         console.warn('Error upserting single course:', error);
       }
+
+      await logAuditEvent({
+        action: 'COURSE_UPDATE',
+        entityType: 'course',
+        entityId: targetId || 'new',
+        entityNameSnapshot: trimmedName,
+        description: `Обновлен курс «${trimmedName}»`,
+        afterData: payload,
+        source: 'WEB',
+        req: request,
+      });
+
       return NextResponse.json({ success: true, course: data ? enrichCourse(data) : enrichCourse(course) });
     }
 
@@ -266,6 +279,17 @@ export async function POST(request: NextRequest) {
 
       const finalDeduped = deduplicateCoursesList(updatedCourses || []);
       const enriched = finalDeduped.map(enrichCourse);
+
+      await logAuditEvent({
+        action: 'COURSE_UPDATE',
+        entityType: 'course',
+        entityId: 'batch',
+        entityNameSnapshot: `Каталог курсов (${enriched.length})`,
+        description: `Синхронизирован каталог из ${enriched.length} курсов`,
+        afterData: { count: enriched.length },
+        source: 'WEB',
+        req: request,
+      });
 
       return NextResponse.json({
         success: true,

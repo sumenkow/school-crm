@@ -105,6 +105,7 @@ const getOwnerNav = (): NavSection[] => [
       { key: 'nav.team', label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
       { key: 'nav.import', label: 'Импорт Excel', href: '/settings/import', icon: <FileSpreadsheet size={20} /> },
       { key: 'nav.backup', label: 'Бэкап базы', href: '/settings/backup', icon: <Database size={20} /> },
+      { key: 'nav.audit', label: 'Журнал действий', href: '/settings/audit', icon: <ClipboardList size={20} /> },
       { key: 'nav.settings', label: 'Настройки', href: '/settings', icon: <Settings size={20} /> },
     ],
   },
@@ -160,6 +161,7 @@ const getAdminNav = (): NavSection[] => [
     section: 'Администрирование',
     items: [
       { key: 'nav.team', label: 'Команда и преподаватели', href: '/settings/team', icon: <Users2 size={20} /> },
+      { key: 'nav.audit', label: 'Журнал действий', href: '/settings/audit', icon: <ClipboardList size={20} /> },
     ],
   },
   {

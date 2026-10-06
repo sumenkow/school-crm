@@ -1295,3 +1295,107 @@ Integrity mode: development
 - Зафиксировать изменения в git.
 
 
+
+
+## 2026-10-06T05:55:22Z
+
+# Teamwork Project Prompt — Production Audit Log (Журнал действий)
+
+> Goal: Implement a production-grade immutable audit trail for YouEurope CRM
+> Requested team: Full multidisciplinary team (Architect, Security Auditor, Supabase/Backend Engineer, Domain Engineer, Finance Engineer, Telegram/Integration Engineer, UX/UI Engineer, Performance Engineer, QA/Adversarial Reviewer, Final Success Auditor)
+
+Implement a production-grade immutable audit trail system (`audit_events`) in YouEurope CRM that records the complete history of meaningful user and system actions with zero business entity pollution, full secret redaction, and server-side PostgreSQL persistence.
+
+Working directory: /Users/andreysumenkov/Documents/crm test antigravity
+Integrity mode: development
+
+## Requirements
+
+### R1. Existing Architecture & State-Changing Action Mapping
+Map all existing meaningful state-changing operations across authentication, roles/permissions, students, parents, leads, groups, teachers, lessons, attendance, payments, invoices, subscriptions, balances, Telegram, imports/exports, backups, and settings. Construct an internal action matrix identifying domain, action, actor, entrypoint, and entity snapshot points.
+
+### R2. Database Schema, Immutability & Security Policies (Supabase)
+Create a clean PostgreSQL migration for `public.audit_events` with appropriate indexes and RLS policies:
+- Minimum fields: `id`, `created_at`, `actor_type`, `actor_id`, `actor_name_snapshot`, `action`, `result`, `entity_type`, `entity_id`, `entity_name_snapshot`, `description`, `before_data`, `after_data`, `changed_fields`, `source`, `request_id`, `session_id`, `ip_address`, `user_agent`, `metadata`.
+- Strict append-only architecture: Normal authenticated roles cannot `UPDATE` or `DELETE` audit rows (immutable system infrastructure entity).
+- Row-Level Security: Only `owner` and authorized `admin` roles can query `audit_events`. Teachers and unauthenticated callers are strictly blocked.
+
+### R3. Server-Side Audit Service & Sensitive Data Redaction
+Implement a trusted server-side audit service (`auditLogger`):
+- Derive actor identity strictly from authenticated server context (Supabase auth / session), never trusting spoofable browser headers or unauthenticated payloads.
+- Automatic secret redaction: Passwords, tokens, API keys, Telegram bot tokens, refresh tokens, and authentication credentials must be automatically stripped from `before_data`, `after_data`, and `metadata`.
+- Capture concise `changed_fields` diffs rather than entire bulky objects.
+- Support `request_id` / correlation ID across multi-step transactions.
+
+### R4. Core Domain & Security Integration
+Instrument authoritative server entrypoints for critical operations:
+- **Auth**: login, failed login, logout, password/token reset attempts.
+- **Roles & Permissions**: role elevation/changes, permission updates, user deactivation.
+- **Students & Parents**: creation, updates, status changes, group reassignments.
+- **Leads**: creation, stage/status transitions, conversions to students.
+- **Calendar & Lessons**: creation, rescheduling, cancellation, completion, teacher reassignments.
+- **Attendance**: marking present/absent, corrections, attendance resets.
+- **Finance**: payment creation/updates, invoices, subscription charges, refunds and billing reversals (guaranteeing `Zero Premature Billing` audit trails).
+- **Telegram & Integrations**: bot settings modification, webhook actions, Mini-App booking actions.
+- **Settings & System**: school profile updates, courses, working hours, backup creation/restores, import/export operations.
+
+### R5. Settings UI: «Журнал действий»
+Implement an administrative audit log screen under **Settings → Security / Administration → Журнал действий**:
+- Follow existing design system and 1440x900 desktop viewport without horizontal scrolling.
+- Compact table: columns `Время`, `Пользователь`, `Действие`, `Объект`, `Результат`, `Источник`.
+- Filters: Date period, User, Role, Action type, Entity type, Result (`SUCCESS`/`FAILURE`), Source (`WEB`, `API`, `TELEGRAM`, `SYSTEM`, `CRON`).
+- Quick filter tabs: `Все`, `Изменения`, `Финансы`, `Безопасность`, `Календарь`, `Ученики`, `Telegram`, `Ошибки`.
+- Live server-side search by actor name, entity, entity ID, description, and `request_id`.
+- Server-side cursor/offset pagination (default 50 items) preventing large payload dumps.
+- Empty states distinguishing "Журнал пуст" from "Нет записей по выбранным фильтрам".
+
+### R6. Audit Event Details Modal
+Implement a detail modal (using existing modal architecture):
+- Header with actor snapshot, role, timestamp, action badge, result status, source, and entity snapshot.
+- Structured diff table: `Поле`, `Было`, `Стало` for modified attributes.
+- Technical metadata: Request ID, Session ID, IP address, User Agent, and clickable correlation to related events sharing the same `request_id`.
+- Strict secret masking.
+
+### R7. Verification, Adversarial Testing & CI/CD Health
+- Maintain strict TypeScript (`npm run check` with 0 errors).
+- Clean Next.js build (`npm run build` on all routes).
+- Comprehensive test suite in `tests/audit_log.test.ts` verifying:
+  - Actor spoofing rejection.
+  - Immutability guards (blocked direct `UPDATE`/`DELETE`).
+  - Secret redaction validation.
+  - Sensitive operations audit coverage (Finance, Auth, Lessons, Settings).
+  - Server-side pagination and filter query correctness.
+
+---
+
+## Acceptance Criteria
+
+### Security & Invariants
+- [ ] `audit_events` persists directly in Supabase/PostgreSQL.
+- [ ] `localStorage` is not used as the authoritative audit store.
+- [ ] Actor identity comes exclusively from authenticated server context.
+- [ ] Database RLS blocks all `UPDATE` and `DELETE` queries on `audit_events` for application roles.
+- [ ] Database RLS permits `SELECT` only for `owner` and authorized `admin` roles.
+- [ ] Passwords, tokens, API keys, and Telegram credentials are never stored in audit records.
+- [ ] Failed security and business operations record safe `FAILURE` events with sanitized reasons.
+
+### Functional Scope
+- [ ] Actor snapshots (`actor_id`, `actor_name_snapshot`) and entity snapshots (`entity_id`, `entity_name_snapshot`) survive user/entity rename or deletion.
+- [ ] `changed_fields` diffs accurately reflect changed keys and values.
+- [ ] Correlation `request_id` links multi-step actions.
+- [ ] Source attribution identifies `WEB`, `API`, `TELEGRAM`, `TELEGRAM_MINI_APP`, `SYSTEM`, `CRON`.
+- [ ] Critical operations across Auth, Finance, Calendar, Attendance, Telegram, and Settings trigger audit events.
+- [ ] Timeline remains strictly separate as human-readable business history; Audit Log acts as immutable system history.
+
+### UI & Performance
+- [ ] Settings navigation provides access to «Журнал действий» for authorized administrators.
+- [ ] Table renders on 1440x900 desktop viewport without horizontal scroll.
+- [ ] Server-side pagination loads batches without dumping the entire table into client memory.
+- [ ] Quick filters, search, and parameter filters execute server-side queries.
+- [ ] Detail modal displays actor snapshot, diff table, and correlation metadata.
+- [ ] Empty and loading states gracefully communicate log status.
+
+### Quality & Build
+- [ ] `npm run check` passes with 0 TypeScript compiler errors.
+- [ ] `npm run build` compiles all routes without SSR or bundling issues.
+- [ ] Dedicated test suite passes 100% in `npm test`.
