@@ -20,6 +20,7 @@ import { runTelegramMiniAppMenuAndInlineTests } from './ts39_telegram_miniapp_me
 import { runSuite20 } from './ts40_miniapp_identity_deeplink_and_analytics_resilience.test';
 import { runSuite21 } from './ts41_diagnostic_issue_card_layout_and_formulations.test';
 import { runSuite22 } from './ts42_currency_eur_unification.test';
+import { runSuite23 } from './ts43_action_cockpit_dashboard.test';
 
 async function main() {
   console.log('===============================================================');
@@ -30,7 +31,7 @@ async function main() {
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 22;
+  const totalSuites = 23;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -155,6 +156,10 @@ async function main() {
     if (suite22Result.failed > 0) {
       console.warn(`⚠️ Currency EUR Unification: ${suite22Result.failed} checks caught active ruble occurrences (${suite22Result.passed} passed)`);
     }
+    passedSuites++;
+
+    // Suite 23: Operational Action Cockpit Dashboard (TS-43)
+    await runSuite23();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
