@@ -87,7 +87,7 @@ export function AnalyticsHeader({
             title="Фильтр по направлениям"
           >
             <option value="all">Все направления</option>
-            {courses.map((c) => (
+            {(courses || []).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -105,7 +105,7 @@ export function AnalyticsHeader({
             title="Фильтр по группам"
           >
             <option value="all">Все группы</option>
-            {groups.map((g) => (
+            {(groups || []).map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
               </option>
@@ -123,7 +123,7 @@ export function AnalyticsHeader({
             title="Фильтр по преподавателям"
           >
             <option value="all">Все преподаватели</option>
-            {teachers.map((t) => (
+            {(teachers || []).map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>

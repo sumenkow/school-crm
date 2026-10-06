@@ -361,7 +361,7 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
     const now = Date.now();
 
     const stale = newLeads.filter((l) => {
-      const createdTime = new Date(l.createdAt).getTime();
+      const createdTime = l.createdAt ? new Date(l.createdAt).getTime() : now;
       const diffHours = (now - createdTime) / (1000 * 60 * 60);
       return diffHours > rules.maxLeadContactHours || !l.interactions || l.interactions.length === 0;
     });
@@ -458,8 +458,8 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
 
     const namesList = droppedTeachers
       .map((dt) => {
-        const parts = dt.name.split(' ');
-        return parts.length > 1 ? parts[1] : dt.name;
+        const parts = (dt.name || '').split(' ');
+        return parts.length > 1 ? parts[1] : (dt.name || 'Преподаватель');
       })
       .slice(0, 2)
       .join(', ');

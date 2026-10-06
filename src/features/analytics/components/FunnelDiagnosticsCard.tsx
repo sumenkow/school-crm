@@ -35,7 +35,7 @@ export function FunnelDiagnosticsCard({
   const [funnelView, setFunnelView] = useState<'stages' | 'channels'>('stages');
 
   const isChannels = funnelView === 'channels';
-  const displayItems = isChannels && channels && channels.length > 0 ? channels : stages;
+  const displayItems = (isChannels && channels && channels.length > 0 ? channels : stages) || [];
   const fallbackInsight: FunnelInsightData = {
     title: isChannels ? 'Проблемный канал' : 'Главная проблема',
     metricLabel: '',

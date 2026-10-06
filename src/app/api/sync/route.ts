@@ -463,7 +463,7 @@ export async function POST(request: NextRequest) {
       case 'group': {
         const groupId = toUUID(data.id);
         if (action === 'delete') {
-          await supabase.from('groups').update({ status: 'archived', is_mock_data: false }).eq('id', groupId);
+          await supabase.from('groups').update({ status: 'archived' }).eq('id', groupId);
           await logAuditEvent({
             action: 'GROUP_DELETE',
             entityType: 'group',
@@ -485,7 +485,6 @@ export async function POST(request: NextRequest) {
           status: validStatuses.includes(data.status) ? data.status : 'active',
           schedule_rule: data.schedule ? { text: data.schedule } : null,
           start_date: data.startDate ? (data.startDate.includes('.') ? data.startDate.split('.').reverse().join('-') : data.startDate.slice(0, 10)) : new Date().toISOString().slice(0, 10),
-          is_mock_data: false,
         };
 
         const { error: grpErr } = await supabase.from('groups').upsert(groupRow, { onConflict: 'id' });

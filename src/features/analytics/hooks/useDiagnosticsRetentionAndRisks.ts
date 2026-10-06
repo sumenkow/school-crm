@@ -216,7 +216,7 @@ export function useDiagnosticsRetentionAndRisks(filters: AnalyticsFilters) {
       // B. Check Debt / Overdue
       const overdues = (s.finance?.payments || []).filter((p) => p.status === 'overdue');
       if (overdues.length > 0) {
-        const debtAmt = overdues.map((p) => p.amount).join(', ') || 'Долг';
+        const debtAmt = overdues.map((p) => p.amount ?? 0).join(', ') || 'Долг';
         reasons.push({
           type: 'debt',
           label: 'ПРОСРОЧЕН ПЛАТЕЖ',
@@ -233,7 +233,7 @@ export function useDiagnosticsRetentionAndRisks(filters: AnalyticsFilters) {
       if (
         rawBal <= pricePerLesson ||
         (lessonsRemaining !== undefined && lessonsRemaining <= 1) ||
-        (subLessons && (subLessons.includes('1 из') || subLessons.includes('0 из')))
+        (typeof subLessons === 'string' && (subLessons.includes('1 из') || subLessons.includes('0 из')))
       ) {
         reasons.push({
           type: 'package',

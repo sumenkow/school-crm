@@ -21,19 +21,21 @@ export function GroupCapacityCard({
   onSubjectFilterChange,
   onNavigateTab,
 }: GroupCapacityCardProps) {
+  const groupList = groups || [];
+
   // Compute distinct subjects for dropdown
   const subjectOptions = useMemo(() => {
     const set = new Set<string>();
-    groups.forEach((g) => {
+    groupList.forEach((g) => {
       if (g.courseName) set.add(g.courseName);
     });
     return Array.from(set);
-  }, [groups]);
+  }, [groupList]);
 
   // Compute total upside potential
   const totalPotentialEur = useMemo(() => {
-    return groups.reduce((acc, g) => acc + g.potentialEur, 0);
-  }, [groups]);
+    return groupList.reduce((acc, g) => acc + (g.potentialEur || 0), 0);
+  }, [groupList]);
 
   const getStatusBadge = (status: GroupCapacityItem['status']) => {
     switch (status) {
@@ -105,14 +107,14 @@ export function GroupCapacityCard({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {groups.length === 0 ? (
+            {groupList.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-4 text-center text-[10px] text-slate-400">
                   Нет групп по выбранному фильтру
                 </td>
               </tr>
             ) : (
-              groups.slice(0, 5).map((g) => (
+              groupList.slice(0, 5).map((g) => (
                 <tr key={g.id} className="hover:bg-slate-50/70 transition-colors py-0.5 text-[10px]">
                   {/* Группа */}
                   <td className="py-0.5 pl-0.5 pr-1">
@@ -138,9 +140,9 @@ export function GroupCapacityCard({
 
                   {/* Потенциал выручки */}
                   <td className="py-0.5 px-0.5 text-right whitespace-nowrap font-mono text-[10px]">
-                    {g.potentialRub > 0 || g.potentialEur > 0 ? (
+                    {(g.potentialRub ?? 0) > 0 || (g.potentialEur ?? 0) > 0 ? (
                       <span className="font-bold text-emerald-600">
-                        +{(g.potentialRub || g.potentialEur * 100).toLocaleString('ru-RU')} ₽
+                        +{((g.potentialRub || (g.potentialEur || 0) * 100) || 0).toLocaleString('ru-RU')} ₽
                       </span>
                     ) : (
                       <span className="text-slate-400 font-medium">0 ₽</span>

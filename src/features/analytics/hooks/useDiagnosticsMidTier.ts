@@ -55,6 +55,27 @@ export interface RevenueLossesData {
   potentialFromTrialRub: number;
 }
 
+export function parseOfferAmountEur(
+  val: string | number | undefined,
+  defaultEur: number = 80,
+  exchangeRate: number = 97
+): number {
+  if (typeof val === 'number' && !isNaN(val) && val > 0) {
+    return val > 500 ? Math.round(val / (exchangeRate || 97)) : val;
+  }
+  if (typeof val === 'string' && val.trim()) {
+    const matchEur = val.match(/(\d+[\s\d]*)\s*€/);
+    if (matchEur) {
+      return parseFloat(matchEur[1].replace(/\s/g, '')) || defaultEur;
+    }
+    const num = parseFloat(val.replace(/[^\d.]/g, ''));
+    if (!isNaN(num) && num > 0) {
+      return num > 500 ? Math.round(num / (exchangeRate || 97)) : num;
+    }
+  }
+  return defaultEur;
+}
+
 export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
   const [leads, setLeads] = useState<FullLeadData[]>(() =>
     typeof window !== 'undefined' ? getStoredLeads(true, true) : []
@@ -358,15 +379,7 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
 
     let leadsLossEur = 0;
     unpaidLeads.forEach((l) => {
-      // Parse offerAmount if present (e.g. "120 € (11 700 ₽)")
-      let parsedAmount = 80; // default 80 EUR
-      if (l.offerAmount) {
-        const matchEur = l.offerAmount.match(/(\d+[\s\d]*)\s*€/);
-        if (matchEur) {
-          parsedAmount = parseFloat(matchEur[1].replace(/\s/g, '')) || 80;
-        }
-      }
-      leadsLossEur += parsedAmount;
+      leadsLossEur += parseOfferAmountEur(l.offerAmount, 80, rate);
     });
 
     if (unpaidLeads.length > 0 && leadsLossEur === 0) {
@@ -507,12 +520,7 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       else if (src.includes('telegram') || src.includes('тг')) k = 'telegram';
       else if (src.includes('рекоменд') || src.includes('сарафан') || src.includes('друг')) k = 'referral';
 
-      let parsed = 80;
-      if (l.offerAmount) {
-        const m = l.offerAmount.match(/(\d+[\s\d]*)\s*€/);
-        if (m) parsed = parseFloat(m[1].replace(/\s/g, '')) || 80;
-      }
-      lossByChannelMap[k] += parsed;
+      lossByChannelMap[k] += parseOfferAmountEur(l.offerAmount, 80, rate);
     });
 
     const sumAttr = Object.values(lossByChannelMap).reduce((a, b) => a + b, 0) || 1;

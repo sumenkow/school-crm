@@ -21,10 +21,12 @@ export function TeacherEffectivenessCard({
   onFilterChange,
   onNavigateTab,
 }: TeacherEffectivenessCardProps) {
-  const anomaliesCount = teachers.filter((t) => t.hasAnomaly).length;
+  const teacherList = teachers || [];
+  const anomaliesCount = teacherList.filter((t) => t.hasAnomaly).length;
 
-  const getAvatarBg = (initials: string) => {
-    const charCode = (initials.charCodeAt(0) || 65) + (initials.charCodeAt(1) || 0);
+  const getAvatarBg = (initials?: string) => {
+    const s = initials || 'ПР';
+    const charCode = (s.charCodeAt(0) || 65) + (s.charCodeAt(1) || 0);
     const colors = [
       'bg-indigo-100 text-indigo-700',
       'bg-blue-100 text-blue-700',
@@ -80,14 +82,14 @@ export function TeacherEffectivenessCard({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {teachers.length === 0 ? (
+            {teacherList.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-4 text-center text-[10px] text-slate-400">
                   Нет преподавателей по выбранному фильтру
                 </td>
               </tr>
             ) : (
-              teachers.slice(0, 5).map((t) => (
+              teacherList.slice(0, 5).map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/70 transition-colors py-0.5 text-[10px]">
                   {/* Преподаватель (Аватар + ФИО) */}
                   <td className="py-0.5 pl-0.5 pr-1">
@@ -101,7 +103,7 @@ export function TeacherEffectivenessCard({
                           getAvatarBg(t.initials)
                         )}
                       >
-                        {t.initials}
+                        {t.initials || (t.name ? t.name.slice(0, 2).toUpperCase() : 'ПР')}
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-900 text-[10.5px] truncate max-w-[100px] group-hover:text-blue-600 transition-colors">

@@ -22,6 +22,8 @@ export function DiagnosticDrilldownModal({
 
   if (!issue) return null;
 
+  const affectedItems = issue.affectedItems || [];
+
   const handleMainAction = () => {
     onClose();
     if (issue.drillDownTab && onNavigateTab) {
@@ -61,18 +63,18 @@ export function DiagnosticDrilldownModal({
         {/* Affected Items List */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-            <span>Выявленные сущности ({issue.affectedItems.length}):</span>
+            <span>Выявленные сущности ({affectedItems.length}):</span>
             <span className="text-slate-400 font-normal">Прямой переход к объекту</span>
           </div>
 
-          {issue.affectedItems.length === 0 ? (
+          {affectedItems.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
               <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-emerald-500" />
               Отклонений не обнаружено, все показатели соответствуют норме.
             </div>
           ) : (
             <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-50">
-              {issue.affectedItems.map((item) => (
+              {affectedItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 hover:bg-slate-100/90 transition-colors"

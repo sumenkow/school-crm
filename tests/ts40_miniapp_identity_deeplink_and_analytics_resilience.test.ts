@@ -186,9 +186,59 @@ export async function runSuite20() {
     const content = fs.readFileSync(errorPath, 'utf8');
     assert.ok(content.includes('AnalyticsErrorBoundary'), 'Must define AnalyticsErrorBoundary');
     assert.ok(content.includes('reset'), 'Must provide retry button calling reset');
-    console.log('  ✓ T20.10: Dedicated Error Boundary prevents generic Next.js crash screen on /analytics');
+    assert.ok(content.includes('handleResetFiltersAndCache'), 'Must provide cache reset capability');
+    console.log('  ✓ T20.10: Dedicated Error Boundary prevents crash and provides self-healing cache reset on /analytics');
+  }
+
+  {
+    // Test 20.11: Numeric offerAmount resilience in useDiagnosticsMidTier
+    const hookPath = path.join(process.cwd(), 'src/features/analytics/hooks/useDiagnosticsMidTier.ts');
+    const content = fs.readFileSync(hookPath, 'utf8');
+    assert.ok(
+      content.includes('parseOfferAmountEur'),
+      'useDiagnosticsMidTier must provide parseOfferAmountEur helper'
+    );
+    assert.ok(
+      content.includes("typeof val === 'number'") || content.includes("typeof l.offerAmount === 'number'"),
+      'useDiagnosticsMidTier must explicitly handle numeric offerAmount'
+    );
+    assert.ok(
+      content.includes("typeof val === 'string'") || content.includes("typeof l.offerAmount === 'string'"),
+      'useDiagnosticsMidTier must guard .match() behind string type check'
+    );
+    console.log('  ✓ T20.11: useDiagnosticsMidTier safely parses numeric and string offer amounts without TypeError');
+  }
+
+  {
+    // Test 20.12: Defensive null-safety in Diagnostic Cards
+    const teacherCard = fs.readFileSync(path.join(process.cwd(), 'src/features/analytics/components/TeacherEffectivenessCard.tsx'), 'utf8');
+    assert.ok(teacherCard.includes("initials || 'ПР'"), 'TeacherEffectivenessCard must guard initials in getAvatarBg');
+
+    const riskCard = fs.readFileSync(path.join(process.cwd(), 'src/features/analytics/components/StudentsAtRiskCard.tsx'), 'utf8');
+    assert.ok(riskCard.includes("initials || 'УЧ'"), 'StudentsAtRiskCard must guard initials in getAvatarBg');
+
+    const capacityCard = fs.readFileSync(path.join(process.cwd(), 'src/features/analytics/components/GroupCapacityCard.tsx'), 'utf8');
+    assert.ok(capacityCard.includes('groups || []'), 'GroupCapacityCard must guard groups array');
+
+    const revenueCard = fs.readFileSync(path.join(process.cwd(), 'src/features/analytics/components/RevenueLossesCard.tsx'), 'utf8');
+    assert.ok(revenueCard.includes('losses?.categories || []'), 'RevenueLossesCard must guard categories');
+    assert.ok(revenueCard.includes('losses?.totalLossEur ?? 0'), 'RevenueLossesCard must guard totalLossEur');
+    console.log('  ✓ T20.12: Diagnostic cards comprehensively protected against undefined/null state crashes');
+  }
+
+  {
+    // Test 20.13: Supabase groups sync adheres to PostgreSQL schema without is_mock_data
+    const syncRoutePath = path.join(process.cwd(), 'src/app/api/sync/route.ts');
+    const content = fs.readFileSync(syncRoutePath, 'utf8');
+    const groupCaseMatch = content.match(/case 'group':\s*\{([\s\S]*?)case 'lesson':/);
+    assert.ok(groupCaseMatch, 'Must find case group block in api/sync/route.ts');
+    assert.ok(
+      !groupCaseMatch[1].includes('is_mock_data'),
+      'groups table update/upsert must not include is_mock_data column'
+    );
+    console.log('  ✓ T20.13: API sync route adheres to real Supabase groups schema without is_mock_data column');
   }
 
   console.log('---------------------------------------------------------------');
-  console.log('Suite 20 Complete: 10 passed, 0 failed\n');
+  console.log('Suite 20 Complete: 13 passed, 0 failed\n');
 }

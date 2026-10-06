@@ -21,8 +21,11 @@ export function StudentsAtRiskCard({
   onReasonFilterChange,
   onNavigateTab,
 }: StudentsAtRiskCardProps) {
-  const getAvatarBg = (initials: string) => {
-    const charCode = initials.charCodeAt(0) || 65;
+  const studentList = students || [];
+
+  const getAvatarBg = (initials?: string) => {
+    const s = initials || 'УЧ';
+    const charCode = s.charCodeAt(0) || 65;
     const colors = [
       'bg-blue-100 text-blue-700',
       'bg-indigo-100 text-indigo-700',
@@ -67,45 +70,50 @@ export function StudentsAtRiskCard({
 
       {/* 2. Students List: 5 single-line rows */}
       <div className="space-y-0.5 mt-1 flex-1 min-h-0 flex flex-col justify-between">
-        {students.slice(0, 5).map((st) => {
-          const getReasonTag = () => {
-            const primary = st.primaryReason;
-            const reasonLabels = st.reasons?.map((r) => r.label).join(' ') || '';
-            const d = `${reasonLabels} ${st.details || ''}`.toLowerCase();
+        {studentList.length === 0 ? (
+          <div className="py-4 text-center text-[10px] text-slate-400">
+            Нет учеников в зоне риска
+          </div>
+        ) : (
+          studentList.slice(0, 5).map((st) => {
+            const getReasonTag = () => {
+              const primary = st.primaryReason;
+              const reasonLabels = st.reasons?.map((r) => r.label).join(' ') || '';
+              const d = `${reasonLabels} ${st.details || ''}`.toLowerCase();
 
-            if (primary === 'package' || d.includes('пакет') || d.includes('заканч')) {
-              return { label: 'ПАКЕТ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-            }
-            if (primary === 'debt' || d.includes('долг') || d.includes('платеж') || d.includes('баланс')) {
-              return { label: 'ДОЛГ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-            }
-            if (d.includes('динамик') || d.includes('снизил')) {
-              return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
-            }
-            if (primary === 'inactivity' || d.includes('активност') || d.includes('дней')) {
-              return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
-            }
-            return { label: 'ПОСЕЩ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
-          };
+              if (primary === 'package' || d.includes('пакет') || d.includes('заканч')) {
+                return { label: 'ПАКЕТ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+              }
+              if (primary === 'debt' || d.includes('долг') || d.includes('платеж') || d.includes('баланс')) {
+                return { label: 'ДОЛГ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+              }
+              if (d.includes('динамик') || d.includes('снизил')) {
+                return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+              }
+              if (primary === 'inactivity' || d.includes('активност') || d.includes('дней')) {
+                return { label: 'АКТИВН', color: 'bg-amber-50 text-amber-700 border-amber-200/70' };
+              }
+              return { label: 'ПОСЕЩ', color: 'bg-rose-50 text-rose-700 border-rose-200/70' };
+            };
 
-          const tag = getReasonTag();
+            const tag = getReasonTag();
 
-          return (
-            <Link
-              key={st.id}
-              href={`/students/${st.id}`}
-              className="h-[21px] flex items-center justify-between py-0 px-1.5 rounded-md bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60 group text-[10.5px]"
-            >
-              <div className="flex items-center min-w-0 pr-1">
-                {/* Micro avatar */}
-                <div
-                  className={cn(
-                    'h-4 w-4 rounded-full flex items-center justify-center font-bold text-[8.5px] shrink-0 mr-1.5',
-                    getAvatarBg(st.initials)
-                  )}
-                >
-                  {st.initials}
-                </div>
+            return (
+              <Link
+                key={st.id}
+                href={`/students/${st.id}`}
+                className="h-[21px] flex items-center justify-between py-0 px-1.5 rounded-md bg-slate-50/70 hover:bg-slate-100/90 transition-colors border border-transparent hover:border-slate-200/60 group text-[10.5px]"
+              >
+                <div className="flex items-center min-w-0 pr-1">
+                  {/* Micro avatar */}
+                  <div
+                    className={cn(
+                      'h-4 w-4 rounded-full flex items-center justify-center font-bold text-[8.5px] shrink-0 mr-1.5',
+                      getAvatarBg(st.initials)
+                    )}
+                  >
+                    {st.initials || (st.name ? st.name.slice(0, 2).toUpperCase() : 'УЧ')}
+                  </div>
 
                 {/* Info */}
                 <span className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors text-[10.5px] truncate max-w-[95px]">
@@ -139,7 +147,7 @@ export function StudentsAtRiskCard({
               </div>
             </Link>
           );
-        })}
+        }))}
       </div>
 
       {/* 3. Bottom Full-width Action Link */}

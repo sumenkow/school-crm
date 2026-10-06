@@ -91,7 +91,7 @@ export function CohortRetentionCard({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {cohorts.slice(0, 5).map((c, i) => (
+            {(cohorts || []).slice(0, 5).map((c, i) => (
               <tr key={i} className="hover:bg-slate-50/60 transition-colors">
                 <td className="py-0.2 pl-1 pr-1 font-semibold text-slate-900 whitespace-nowrap text-[10px]">
                   {c.month}{' '}

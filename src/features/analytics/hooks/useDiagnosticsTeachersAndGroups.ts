@@ -184,8 +184,9 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
 
     // Compute dynamic values if real lessons & groups exist for teacher
     return defaultStats.map((item) => {
+      const lastName = item.name ? (item.name.toLowerCase().split(' ')[1] || item.name.toLowerCase()) : '';
       const teacherGroups = activeGroups.filter(
-        (g) => g.teacherId === item.id || g.teacherName?.toLowerCase().includes(item.name.toLowerCase().split(' ')[1] || '')
+        (g) => g.teacherId === item.id || (lastName && g.teacherName?.toLowerCase().includes(lastName))
       );
       if (teacherGroups.length > 0) {
         let totalEnrolled = 0;
