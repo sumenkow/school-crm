@@ -174,7 +174,13 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
           ? 'Записан'
           : 'Отказ'
       }`,
-      value: l.offerAmount || 'Счет не выставлен',
+      value: l.offerAmount
+        ? typeof l.offerAmount === 'number'
+          ? `${l.offerAmount} €`
+          : String(l.offerAmount).includes('€')
+          ? String(l.offerAmount).replace(/\s*\(.*?\)/g, '').trim()
+          : `${String(l.offerAmount).replace(/\s*\(.*?\)/g, '').trim()} €`
+        : 'Счет не выставлен',
       link: `/crm/leads/${l.id}`,
     }));
 
@@ -302,8 +308,6 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
       }
     });
 
-    const totalLostRub = totalLostEur * 100;
-
     const affectedItems = underfilled.map((g) => {
       const cap = g.capacity || 8;
       const enrolled = g.students?.length || 0;
@@ -322,7 +326,7 @@ export function useDiagnosticsAnomalies(filters: AnalyticsFilters) {
         severity: 'warning',
         title: `${pluralize(underfilled.length, 'группа недозаполнена', 'группы недозаполнены', 'групп недозаполнены')}`,
         statsText: 'Потеря выручки',
-        deltaBadge: `≈ ${totalLostRub.toLocaleString('ru-RU')} ₽`,
+        deltaBadge: `≈ ${totalLostEur.toLocaleString('ru-RU')} €`,
         deltaType: 'negative',
         scaleText: `${totalVacant} свободных мест`,
         isHealthy: false,

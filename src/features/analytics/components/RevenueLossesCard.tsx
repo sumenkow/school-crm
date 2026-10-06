@@ -25,9 +25,7 @@ export function RevenueLossesCard({
   const isChannels = lossView === 'channels';
   const activeItems = (isChannels && channels.length > 0) ? channels : categories;
 
-  const totalLossRub = losses?.totalLossRub ?? 0;
   const totalLossEur = losses?.totalLossEur ?? 0;
-  const displayRub = totalLossRub > 0 ? totalLossRub : Math.round(totalLossEur * 100);
 
   return (
     <div className="bg-white rounded-xl p-2.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full min-h-0 min-w-0 overflow-hidden">
@@ -62,10 +60,7 @@ export function RevenueLossesCard({
       <div className="mt-1 flex items-baseline justify-between h-[18px] shrink-0">
         <div className="flex items-baseline gap-1.5 min-w-0">
           <span className="text-sm lg:text-base font-extrabold text-slate-900 tracking-tight font-mono">
-            ≈ {displayRub.toLocaleString('ru-RU')} ₽
-          </span>
-          <span className="text-[10px] text-slate-400 font-medium font-mono hidden sm:inline">
-            (≈ {totalLossEur.toLocaleString('ru-RU')} €)
+            ≈ {totalLossEur.toLocaleString('ru-RU')} €
           </span>
         </div>
         <button
@@ -105,7 +100,7 @@ export function RevenueLossesCard({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="font-bold text-slate-900 text-[10px] font-mono">
-                {cat.isAvailable ? `${((cat.amountRub || (cat.amountEur || 0) * 100) || 0).toLocaleString('ru-RU')} ₽` : '0 ₽'}
+                {cat.isAvailable ? `${(cat.amountEur || 0).toLocaleString('ru-RU')} €` : '0 €'}
               </span>
               <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                 <div
@@ -129,8 +124,8 @@ export function RevenueLossesCard({
           </div>
           <span className="truncate">
             {isChannels
-              ? `Наибольшие потери в канале «${losses?.topLossChannel || 'Сайт школы'}» — ${(losses?.topLossChannelRub ?? 84000).toLocaleString('ru-RU')} ₽`
-              : 'Из 6 оплаченных пробных уроков потенциальная недополученная выручка — 84 000 ₽'}
+              ? `Наибольшие потери в канале «${losses?.topLossChannel || 'Сайт школы'}» — ${(losses?.topLossChannelEur ?? 840).toLocaleString('ru-RU')} €`
+              : `Из ${losses?.trialLeadsCount || 6} оплаченных пробных уроков потенциальная недополученная выручка — ${(losses?.potentialFromTrialEur ?? 840).toLocaleString('ru-RU')} €`}
           </span>
         </div>
         <button

@@ -338,9 +338,14 @@ export default function CrmPage() {
 
     let itemEur = 0;
     if (l.offerAmount) {
-      const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-      if (num > 0) {
-        itemEur = (String(l.offerAmount).includes('€') || num <= 500) ? num : convertRubToEur(num, rate);
+      const eurMatch = String(l.offerAmount).match(/(\d+(?:[.,]\d+)?)\s*€/);
+      if (eurMatch) {
+        itemEur = parseFloat(eurMatch[1].replace(',', '.')) || 0;
+      } else {
+        const num = parseFloat(String(l.offerAmount).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        if (num > 0) {
+          itemEur = (String(l.offerAmount).includes('€') || num <= 500) ? num : convertRubToEur(num, rate);
+        }
       }
     }
     if (itemEur === 0) {
@@ -1081,7 +1086,16 @@ export default function CrmPage() {
                       </td>
                       <td className="px-3 py-3 text-right">
                         {lead.offerAmount ? (
-                          <span className="font-bold text-slate-800">{String(lead.offerAmount).replace('++', '+')}</span>
+                          <span className="font-bold text-slate-800">
+                            {(() => {
+                              const raw = String(lead.offerAmount).replace(/\+\+/g, '+').trim();
+                              const m = raw.match(/(\d+(?:[.,]\d+)?)\s*€/);
+                              if (m) return `${m[1]} €`;
+                              const n = parseFloat(raw.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                              if (n > 0) return `${n > 500 ? Math.round(n / 100) : n} €`;
+                              return raw;
+                            })()}
+                          </span>
                         ) : finSummary.deposit > 0 ? (
                           <span className="font-semibold text-emerald-700">+{finSummary.deposit} €</span>
                         ) : (
@@ -1279,6 +1293,10 @@ function LeadCard({
     const raw = lead.offerAmount;
     if (raw) {
       const clean = String(raw).replace(/\+\+/g, '+').trim();
+      const eurMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*€/);
+      if (eurMatch) {
+        return `${eurMatch[1].replace(',', '.')} €`;
+      }
       const num = parseFloat(clean.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
       if (num > 0) {
         if (clean.includes('€') || num <= 500) {

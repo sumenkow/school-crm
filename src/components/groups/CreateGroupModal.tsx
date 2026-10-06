@@ -62,9 +62,9 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
   const [schedule, setSchedule] = useState('Пн, Чт • 18:45–20:15');
   const [scheduleState, setScheduleState] = useState<ScheduleBuilderState | null>(null);
   const [room, setRoom] = useState('Онлайн (Zoom: https://zoom.us/j/7492049281)');
-  const [currency, setCurrency] = useState<'RUB' | 'EUR'>('RUB');
-  const [pricePerLesson, setPricePerLesson] = useState('1050');
-  const [pricePerMonth, setPricePerMonth] = useState('7600');
+  const [currency, setCurrency] = useState<'EUR'>('EUR');
+  const [pricePerLesson, setPricePerLesson] = useState('15');
+  const [pricePerMonth, setPricePerMonth] = useState('80');
 
   // Compute template name
   const computeGroupName = useCallback((cId: string, lvl: string, sched: string) => {
@@ -166,13 +166,8 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     }
 
     // Sync prices from tariff
-    if (currency === 'EUR') {
-      setPricePerLesson(String(currentCourse?.eurLesson ?? 15));
-      setPricePerMonth(String(currentCourse?.eurMonth ?? 80));
-    } else {
-      setPricePerLesson(String(currentCourse?.rubLesson ?? 1050));
-      setPricePerMonth(String(currentCourse?.rubMonth ?? 7600));
-    }
+    setPricePerLesson(String(currentCourse?.eurLesson ?? 15));
+    setPricePerMonth(String(currentCourse?.eurMonth ?? 80));
   }, [courseId, coursesList, level, schedule, currency, isNameManuallyEdited, computeGroupName]);
 
   // Handle course change
@@ -229,9 +224,8 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
     const course = coursesList.find((c) => c.id === courseId) || DEFAULT_COURSES[0];
     const teacher = teachersList.find((t) => t.id === teacherId) || INITIAL_TEACHERS.find((t) => t.id === teacherId);
 
-    const currencySign = currency === 'EUR' ? '€' : '₽';
-    const numLesson = Number(pricePerLesson) || 1050;
-    const numMonth = Number(pricePerMonth) || 7600;
+    const numLesson = Number(pricePerLesson) || 15;
+    const numMonth = Number(pricePerMonth) || 80;
 
     // Single source of truth for start date: from GroupScheduleBuilder
     const finalStartDate = scheduleState?.startDate || new Date().toISOString().slice(0, 10);
@@ -254,10 +248,10 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
       recentLessons: [],
       pricing: {
         pricePerLesson: numLesson,
-        pricePerLessonFormatted: `${numLesson.toLocaleString('ru-RU')} ${currencySign}`,
+        pricePerLessonFormatted: `${numLesson.toLocaleString('ru-RU')} €`,
         pricePerMonth: numMonth,
-        pricePerMonthFormatted: `${numMonth.toLocaleString('ru-RU')} ${currencySign} / месяц`,
-        currency,
+        pricePerMonthFormatted: `${numMonth.toLocaleString('ru-RU')} € / месяц`,
+        currency: 'EUR' as const,
       },
     };
 
@@ -452,30 +446,9 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                   Тариф и стоимость курса
                 </span>
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrency('RUB')}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                      currency === 'RUB'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-white text-slate-600 border border-slate-200'
-                    )}
-                  >
-                    ₽ Рубли
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrency('EUR')}
-                    className={cn(
-                      'rounded-md px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer',
-                      currency === 'EUR'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-white text-slate-600 border border-slate-200'
-                    )}
-                  >
+                  <span className="rounded-md px-2 py-0.5 text-[11px] font-bold bg-blue-600 text-white shadow-2xs">
                     € Евро
-                  </button>
+                  </span>
                 </div>
               </div>
 
@@ -483,7 +456,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] font-semibold text-slate-700">
-                      1 занятие ({currency === 'EUR' ? '€' : '₽'})
+                      1 занятие (€)
                     </label>
                     <span className="text-[9px] font-bold text-slate-500">🔒 Тариф</span>
                   </div>
@@ -499,7 +472,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] font-semibold text-slate-700">
-                      Абонемент ({currency === 'EUR' ? '€' : '₽'})
+                      Абонемент (€)
                     </label>
                     <span className="text-[9px] font-bold text-slate-500">🔒 Тариф</span>
                   </div>
@@ -546,7 +519,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreated }: CreateGroupModa
               id: c.id,
               name: c.name,
               ageGroup: c.ageGroup || '7-15 лет',
-              monthlyPrice: `${c.rubMonth || 7600} ₽`,
+              monthlyPrice: `${c.eurMonth || 120} €`,
               lessonDuration: c.lessonDuration || '60 мин',
               maxStudents: c.maxStudents || 8,
               status: c.isActive !== false ? 'active' : 'paused',

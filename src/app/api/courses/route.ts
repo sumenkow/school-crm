@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
             const corePayload: any = {
               ...(targetId ? { id: targetId } : {}),
               name: trimmedName,
-              description: c.description || (c.ageGroup ? `${c.ageGroup} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '6 500 ₽'}` : null),
+              description: c.description || (c.ageGroup ? `${c.ageGroup} • ${c.lessonDuration || '60 мин'} • ${c.monthlyPrice || '80 €'}` : null),
               subject: c.subject || 'Общий курс',
               is_active: isActive,
             };

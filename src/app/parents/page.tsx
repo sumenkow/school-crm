@@ -418,7 +418,7 @@ function getMergedParents(): ParentRecord[] {
 
     result.push({
       ...parent,
-      totalPaid: `${totalPaidEUR.toLocaleString('ru-RU')} € (~${(totalPaidEUR * 100).toLocaleString('ru-RU')} ₽)`,
+      totalPaid: `${totalPaidEUR.toLocaleString('ru-RU')} €`,
       totalPaidEUR,
       balanceStatus,
       depositFormatted: totalDebtEUR === 0 ? `✓ Оплачено до 28.09` : undefined,
@@ -1048,7 +1048,7 @@ export default function ParentsPage() {
                                 Долг: -{p.debtBalance} €
                               </span>
                               <div className="text-[11px] font-semibold text-rose-600 truncate">
-                                Баланс: -{p.debtBalance} € <span className="text-rose-400 font-normal">(-{Math.round(p.debtBalance * 100).toLocaleString('ru-RU')} ₽)</span>
+                                Баланс: -{p.debtBalance} €
                               </div>
                             </div>
                           ) : p.balanceStatus === 'trial' ? (
@@ -1286,7 +1286,7 @@ export default function ParentsPage() {
                   <div>
                     {p.debtBalance && p.debtBalance > 0 ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5">
-                        <AlertTriangle className="h-3 w-3 text-rose-600" /> Долг: -{p.debtBalance} € (~{Math.round(p.debtBalance * 100).toLocaleString('ru-RU')} ₽)
+                        <AlertTriangle className="h-3 w-3 text-rose-600" /> Долг: -{p.debtBalance} €
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">

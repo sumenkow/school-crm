@@ -394,16 +394,10 @@ export function StudentsDesktop({
                 (presentCount + (student.rawStudentObj.attendanceStats?.absentCount ?? (attendanceRate < 100 ? 1 : 0))) ||
                 16;
 
-              // 3. Баланс (EUR + RUB конвертация)
+              // 3. Баланс (EUR)
               const netBalance = student.netBalanceEur;
               const hasDebt = student.debtEur > 0 || netBalance < 0 || student.financeStatus === 'debt';
               const hasDeposit = student.balanceEur > 0 || netBalance > 0 || student.financeStatus === 'deposit';
-
-              const rubAmount =
-                student.balanceRub ||
-                student.debtRub ||
-                Math.abs(Math.round(netBalance * 98));
-              const rubFormatted = rubAmount > 0 ? `≈ ${rubAmount.toLocaleString('ru-RU')} ₽` : '';
 
               // 4. Статус ученика
               const isAttention =
@@ -685,12 +679,6 @@ export function StudentsDesktop({
                         ) : (
                           <div className="inline-block text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/60 whitespace-nowrap">
                             0 €
-                          </div>
-                        )}
-
-                        {rubFormatted && (
-                          <div className="text-[10px] text-slate-400 font-normal truncate whitespace-nowrap">
-                            {rubFormatted}
                           </div>
                         )}
                       </div>

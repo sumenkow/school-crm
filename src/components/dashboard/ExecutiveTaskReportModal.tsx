@@ -131,7 +131,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
       setRateMeta(meta);
       setEurRate(meta.rate);
       await loadReport(meta.rate);
-      toast.success(`Курс обновлен (${meta.source}): 1 € = ${meta.rate} ₽`);
+      toast.success(`Курс обновлен (${meta.source})`);
     } catch (err) {
       toast.error('Не удалось загрузить онлайн курс');
     } finally {
@@ -150,7 +150,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
         isAuto: false,
       });
       loadReport(newRate);
-      toast.success(`Курс валют обновлен: 1 € = ${newRate} ₽`);
+      toast.success(`Курс валют обновлен: ${newRate}`);
     }
   };
 
@@ -222,86 +222,33 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
           </div>
         ) : report ? (
           <div className="p-6 space-y-6">
-            {/* Currency Rate Bar (Base: EUR) */}
-            <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-extrabold text-purple-950">💱 Валюта отчета: EUR (€)</span>
-                <span className="text-[11px] text-purple-800 bg-purple-100/80 px-2 py-0.5 rounded-full font-bold">
-                  1 € = {eurRate} ₽
-                </span>
-                {rateMeta?.source && (
-                  <span className="text-[10px] text-slate-500 bg-white/70 px-2 py-0.5 rounded border border-purple-100">
-                    {rateMeta.source}
-                  </span>
-                )}
-              </div>
-
+            {/* Currency Bar (Base: EUR) */}
+            <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 p-3 flex items-center justify-between gap-2.5 text-xs">
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleSyncLiveRate}
-                  disabled={syncingRate}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-white px-2 py-1 rounded-lg border border-purple-200 shadow-2xs hover:bg-purple-50 transition-colors"
-                  title="Обновить актуальный курс из ЦБ РФ"
-                >
-                  <RefreshCw className={`h-3 w-3 ${syncingRate ? 'animate-spin' : ''}`} />
-                  {syncingRate ? 'Загрузка...' : 'Курс ЦБ РФ'}
-                </button>
-
-                {isEditingRate ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-600 text-[11px]">Курс 1 € =</span>
-                    <input
-                      type="number"
-                      value={eurRate}
-                      onChange={(e) => setEurRate(parseFloat(e.target.value) || 100)}
-                      className="w-16 rounded border border-purple-300 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-900 focus:outline-none"
-                    />
-                    <span className="text-slate-600 text-[11px]">₽</span>
-                    <button
-                      onClick={() => {
-                        handleRateChange(eurRate);
-                        setIsEditingRate(false);
-                      }}
-                      className="rounded bg-purple-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-purple-700"
-                    >
-                      ОК
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsEditingRate(true)}
-                    className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:underline"
-                  >
-                    Изменить вручную
-                  </button>
-                )}
+                <span className="font-extrabold text-purple-950">💱 Валюта отчета: EUR (€)</span>
+                <span className="text-[11px] text-purple-800 bg-purple-100/80 px-2.5 py-0.5 rounded-full font-bold">
+                  Единый стандарт учета школы
+                </span>
               </div>
             </div>
 
-            {/* Dual Currency Financials Summary */}
+            {/* Financials Summary (EUR) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <span className="text-slate-500 text-[11px] font-medium">Выручка за день (EUR / RUB):</span>
+                <span className="text-slate-500 text-[11px] font-medium">Выручка за день (EUR):</span>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-2xl font-black text-emerald-800">
                     {(report.metrics.revenueTodayEur ?? 156).toLocaleString('ru-RU')} €
                   </p>
-                  <span className="text-xs font-bold text-emerald-700">
-                    ({(report.metrics.revenueToday ?? 15600).toLocaleString('ru-RU')} ₽)
-                  </span>
                 </div>
-                <p className="text-[10px] text-emerald-600 mt-1 font-medium">Конвертировано по курсу 1 € = {eurRate} ₽</p>
               </div>
 
               <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                <span className="text-slate-500 text-[11px] font-medium">Дебиторская задолженность (EUR / RUB):</span>
+                <span className="text-slate-500 text-[11px] font-medium">Дебиторская задолженность (EUR):</span>
                 <div className="flex items-baseline gap-2 mt-1">
                   <p className="text-2xl font-black text-rose-800">
                     -{(report.metrics.totalDebtAmountEur ?? 76).toLocaleString('ru-RU')} €
                   </p>
-                  <span className="text-xs font-bold text-rose-700">
-                    (-{(report.metrics.totalDebtAmount ?? 7600).toLocaleString('ru-RU')} ₽)
-                  </span>
                 </div>
                 <p className="text-[10px] text-rose-600 mt-1 font-medium">
                   {report.metrics.debtorsCount || 1} должников в базе
@@ -354,7 +301,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                 </div>
                 <div className="text-right shrink-0">
                   <span className="font-black text-sm text-rose-700 block">
-                    -{(report.metrics.totalDebtAmountEur ?? 76).toLocaleString('ru-RU')} € (-{(report.metrics.totalDebtAmount || 0).toLocaleString('ru-RU')} ₽)
+                    -{(report.metrics.totalDebtAmountEur ?? 76).toLocaleString('ru-RU')} €
                   </span>
                   <span className="text-[10px] text-rose-600 font-bold">{report.metrics.debtorsCount} чел.</span>
                 </div>

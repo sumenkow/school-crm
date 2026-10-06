@@ -35,7 +35,6 @@ export interface GroupCapacityItem {
   capacity: number;
   occupancyPercent: number;
   potentialEur: number;
-  potentialRub: number;
   status: GroupCapacityStatus;
   statusLabel: string;
 }
@@ -242,7 +241,6 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
       const vacant = Math.max(0, cap - enrolled);
       const price = g.pricing?.pricePerMonth || 80;
       const potentialEur = vacant * price;
-      const potentialRub = Math.round(potentialEur * rate);
 
       let status: GroupCapacityStatus = 'almost_full';
       let statusLabel = 'Почти заполнена';
@@ -264,12 +262,11 @@ export function useDiagnosticsTeachersAndGroups(filters: AnalyticsFilters) {
         capacity: cap,
         occupancyPercent: occ,
         potentialEur,
-        potentialRub,
         status,
         statusLabel,
       };
     });
-  }, [activeGroups, rate]);
+  }, [activeGroups]);
 
   const filteredGroupsCapacity = useMemo(() => {
     if (groupSubjectFilter === 'all') return groupsCapacity;

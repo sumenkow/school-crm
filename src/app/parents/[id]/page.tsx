@@ -164,7 +164,7 @@ export default function ParentDetailsPage() {
         },
       ],
       payments: [
-        { id: 'pay1', studentName: linkedChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', status: 'paid' },
+        { id: 'pay1', studentName: linkedChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '80 €', period: 'Сентябрь 2026', status: 'paid' },
       ],
     };
   });
@@ -480,7 +480,7 @@ export default function ParentDetailsPage() {
       const paid = (st?.finance?.payments || [])
         .filter((p) => p.status === 'paid' && !p.amount.startsWith('-'))
         .reduce((sum, p) => sum + (parseFloat(p.amount.replace(/[^\d.,]/g, '').replace(',', '.')) || 0), 0);
-      const currency = st?.finance?.deposit?.currency === 'EUR' ? '€' : '₽';
+      const currency = '€';
       map.set(ch.id, { deposit, debt, totalPaid: paid, currency });
     }
     return map;
@@ -1171,7 +1171,7 @@ export default function ParentDetailsPage() {
                 ) : (
                   <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200 inline-flex items-center gap-1 shadow-2xs">
                     <Clock className="h-3.5 w-3.5 text-amber-600" />
-                    {t('hero.balance', 'Баланс')}: 0 € (0 ₽)
+                    {t('hero.balance', 'Баланс')}: 0 €
                   </span>
                 )}
               </div>
@@ -1360,7 +1360,7 @@ export default function ParentDetailsPage() {
             ) : (
               <div className="flex flex-col gap-4">
                 {parent.children.map((child) => {
-                  const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '₽' };
+                  const cFinance = childFinanceMap.get(child.id) || { deposit: 0, debt: 0, totalPaid: 0, currency: '€' };
                   const childGroups = child.groups && child.groups.length > 0
                     ? child.groups
                     : [{ id: '', name: child.group || 'Группа', teacherName: child.teacher || '', schedule: '', courseName: child.course || '' }];
@@ -1765,10 +1765,10 @@ export default function ParentDetailsPage() {
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3.5">
               <span className="text-[11px] font-semibold text-emerald-800">Всего оплачено за всё время</span>
               <p className="text-xl font-bold text-emerald-700 mt-0.5">
-                {Math.round(familyTotalPaid / getEurRubRate())} €
+                {Math.round(familyTotalPaid).toLocaleString('ru-RU')} €
               </p>
               <p className="text-[11px] text-emerald-600/70 mt-0.5">
-                (~{familyTotalPaid.toLocaleString('ru-RU')} ₽)
+                Единый стандарт: EUR (€)
               </p>
             </div>
             <div

@@ -118,7 +118,7 @@ export function formatDatabaseRecords(rawData: {
   if (rawData.payments && rawData.payments.length > 0) {
     tables['Оплаты'] = rawData.payments.map((pay) => ({
       'ID': pay.id,
-      'Сумма (руб)': pay.amount || 0,
+      'Сумма (EUR)': pay.amount || 0,
       'Способ оплаты': pay.payment_method || '—',
       'Статус': pay.status === 'succeeded' ? 'Оплачено' : pay.status || '—',
       'Дата платежа': pay.paid_at ? new Date(pay.paid_at).toLocaleDateString('ru-RU') : '—',

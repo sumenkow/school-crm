@@ -478,7 +478,7 @@ export default function LeadDetailsPage() {
     const newPaymentRecord = {
       id: `pay_lead_${Date.now()}`,
       date: todayStr,
-      amount: `${num.toLocaleString('ru-RU')} ₽`,
+      amount: `${num.toLocaleString('ru-RU')} €`,
       numAmount: num,
       period: paymentPurpose,
       method: methodLabel,
@@ -494,7 +494,7 @@ export default function LeadDetailsPage() {
       channel: 'other',
       type: 'status_change',
       author: userName || 'Администратор',
-      content: `Принята оплата ${num.toLocaleString('ru-RU')} ₽ от лида. Назначение: «${paymentPurpose}» (способ: ${methodLabel}). Зачислено на депозит лида. Текущий баланс: ${newDeposit.toLocaleString('ru-RU')} ₽.${paymentComment ? ` Комментарий: ${paymentComment}` : ''}`,
+      content: `Принята оплата ${num.toLocaleString('ru-RU')} € от лида. Назначение: «${paymentPurpose}» (способ: ${methodLabel}). Зачислено на депозит лида. Текущий баланс: ${newDeposit.toLocaleString('ru-RU')} €.${paymentComment ? ` Комментарий: ${paymentComment}` : ''}`,
       result: 'Оплата получена (до квалификации)',
     };
 
@@ -693,7 +693,7 @@ export default function LeadDetailsPage() {
       window.dispatchEvent(new CustomEvent('crm-leads-changed', { detail: updatedLead }));
     }
 
-    toast.success(`Списано ${num.toLocaleString('ru-RU')} ₽. Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} ₽`);
+    toast.success(`Списано ${num.toLocaleString('ru-RU')} €. Остаток на депозите: ${newDeposit.toLocaleString('ru-RU')} €`);
     setIsDeductModalOpen(false);
     setDeductComment('');
   };
@@ -1005,12 +1005,12 @@ export default function LeadDetailsPage() {
                 ) : totalLeadPaid > 0 ? (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1.5 shadow-2xs">
                     <CreditCard className="h-3.5 w-3.5 text-blue-600" />
-                    Оплачено: {totalLeadPaid.toLocaleString('ru-RU')} ₽ (депозит израсходован)
+                    Оплачено: {totalLeadPaid.toLocaleString('ru-RU')} € (депозит израсходован)
                   </span>
                 ) : (
                   <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-slate-400" />
-                    Баланс: 0 ₽ (оплата не поступала)
+                    Баланс: 0 € (оплата не поступала)
                   </span>
                 )}
                 {lead.status === 'paid' && (
@@ -1033,14 +1033,14 @@ export default function LeadDetailsPage() {
                       <span className="font-bold">Связанный ученик: {leadFinSummary.linkedStudent.name}</span>
                       {leadFinSummary.linkedStudent.debt > 0 ? (
                         <span className="ml-2 font-bold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
-                          Задолженность: -{leadFinSummary.linkedStudent.debt.toLocaleString('ru-RU')} ₽
+                          Задолженность: -{leadFinSummary.linkedStudent.debt.toLocaleString('ru-RU')} €
                         </span>
                       ) : leadFinSummary.linkedStudent.deposit > 0 ? (
                         <span className="ml-2 font-semibold text-emerald-700">
-                          Депозит: +{leadFinSummary.linkedStudent.deposit.toLocaleString('ru-RU')} ₽
+                          Депозит: +{leadFinSummary.linkedStudent.deposit.toLocaleString('ru-RU')} €
                         </span>
                       ) : (
-                        <span className="ml-2 text-slate-500">Баланс: 0 ₽</span>
+                        <span className="ml-2 text-slate-500">Баланс: 0 €</span>
                       )}
                     </div>
                   </div>
@@ -1254,7 +1254,7 @@ export default function LeadDetailsPage() {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
             <span className="text-slate-500 text-[11px] font-medium">Текущий депозит лида:</span>
             <p className="text-xl font-black text-emerald-700 mt-0.5">
-              +{leadDeposit.toLocaleString('ru-RU')} ₽
+              +{leadDeposit.toLocaleString('ru-RU')} €
             </p>
             <p className="text-[11px] text-emerald-600 mt-0.5 font-medium">
               {leadDeposit > 0 ? 'Доступно для списания' : 'Депозит нулевой'}
@@ -1264,7 +1264,7 @@ export default function LeadDetailsPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
             <span className="text-slate-500 text-[11px] font-medium">Всего поступило от лида:</span>
             <p className="text-xl font-bold text-slate-900 mt-0.5">
-              {totalLeadPaid.toLocaleString('ru-RU')} ₽
+              {totalLeadPaid.toLocaleString('ru-RU')} €
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               Сумма всех платежей до зачисления
@@ -1900,20 +1900,20 @@ export default function LeadDetailsPage() {
                   <strong>Лид:</strong> {lead.name} • <strong>Ученик:</strong> {lead.studentName || '—'}
                 </p>
                 <p className="text-blue-700 mt-0.5">
-                  Текущий баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} ₽</strong>
+                  Текущий баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} €</strong>
                 </p>
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Сумма оплаты (₽) *
+                  Сумма оплаты (€) *
                 </label>
                 <input
                   type="text"
                   required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="5000"
+                  placeholder="80"
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -2031,7 +2031,7 @@ export default function LeadDetailsPage() {
             <form onSubmit={handleDeductLeadDeposit} className="p-6 space-y-4">
               <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
                 <p>
-                  Доступный баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} ₽</strong>
+                  Доступный баланс депозита лида: <strong>{leadDeposit.toLocaleString('ru-RU')} €</strong>
                 </p>
                 <p className="text-amber-800 mt-0.5">
                   Сумма списания будет вычтена из депозита и зафиксирована в финансовом журнале школы.
@@ -2040,14 +2040,14 @@ export default function LeadDetailsPage() {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Сумма списания (₽) *
+                  Сумма списания (€) *
                 </label>
                 <input
                   type="text"
                   required
                   value={deductAmount}
                   onChange={(e) => setDeductAmount(e.target.value)}
-                  placeholder="1000"
+                  placeholder="80"
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>

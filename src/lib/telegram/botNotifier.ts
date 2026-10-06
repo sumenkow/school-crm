@@ -250,7 +250,7 @@ export async function sendUpcomingPaymentsDigestToTelegram(items: Array<{
   const message = `🔔 *СВОДКА АДМИНИСТРАТОРУ: ПРИБЛИЖАЮЩИЕСЯ ОПЛАТЫ*
 
 Всего оплат к сбору в ближайшие дни: *${items.length}*
-💰 Ожидаемая сумма поступлений: *${totalSum.toLocaleString('ru-RU')} ₽*
+💰 Ожидаемая сумма поступлений: *${totalSum.toLocaleString('ru-RU')} €*
 
 ${list}${items.length > 7 ? `\n...и ещё ${items.length - 7} платежей` : ''}
 

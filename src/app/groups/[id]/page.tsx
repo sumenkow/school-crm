@@ -153,9 +153,8 @@ export default function GroupDetailsPage() {
 
   const handleSaveGroup = (e: React.FormEvent) => {
     e.preventDefault();
-    const currencySign = editForm.currency === 'EUR' ? '€' : '₽';
-    const numLesson = Number(editForm.pricePerLesson) || 1050;
-    const numMonth = Number(editForm.pricePerMonth) || 7600;
+    const numLesson = Number(editForm.pricePerLesson) || 12;
+    const numMonth = Number(editForm.pricePerMonth) || 120;
 
     const updated: FullGroupData = {
       ...group,
@@ -169,10 +168,10 @@ export default function GroupDetailsPage() {
       notes: editForm.notes.trim() || undefined,
       pricing: {
         pricePerLesson: numLesson,
-        pricePerLessonFormatted: `${numLesson.toLocaleString('ru-RU')} ${currencySign}`,
+        pricePerLessonFormatted: `${numLesson.toLocaleString('ru-RU')} €`,
         pricePerMonth: numMonth,
-        pricePerMonthFormatted: `${numMonth.toLocaleString('ru-RU')} ${currencySign} / месяц`,
-        currency: editForm.currency as 'RUB' | 'EUR',
+        pricePerMonthFormatted: `${numMonth.toLocaleString('ru-RU')} € / месяц`,
+        currency: 'EUR',
       },
     };
     setGroup(updated);

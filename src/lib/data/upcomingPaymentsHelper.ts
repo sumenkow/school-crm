@@ -82,7 +82,7 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
             groupName: student.groups?.[0]?.name,
             amount: finalEur,
             currency: 'EUR',
-            amountFormatted: `${finalEur.toLocaleString('ru-RU')} € (≈ ${finalRub.toLocaleString('ru-RU')} ₽)`,
+            amountFormatted: `${finalEur.toLocaleString('ru-RU')} €`,
             dueDate: sub.renewalDate,
             daysRemaining,
             isUrgent: daysRemaining <= 3,
@@ -105,7 +105,6 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
       const daysRemaining = payDateObj ? calculateDaysDifference(payDateObj) : 3;
       const isEur = pay.currency === 'EUR' || pay.amount <= 500;
       const finalEur = isEur ? pay.amount : Math.round((pay.amount / rate) * 100) / 100;
-      const finalRub = isEur ? Math.round(pay.amount * rate) : pay.amount;
 
       result.push({
         id: `upcoming_pay_${pay.id}`,
@@ -118,7 +117,7 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
         groupName: pay.groupName,
         amount: finalEur,
         currency: 'EUR',
-        amountFormatted: `${finalEur.toLocaleString('ru-RU')} € (≈ ${finalRub.toLocaleString('ru-RU')} ₽)`,
+        amountFormatted: `${finalEur.toLocaleString('ru-RU')} €`,
         dueDate: pay.paymentDate,
         daysRemaining,
         isUrgent: daysRemaining <= 3,
@@ -136,7 +135,7 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
   const leads = typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('crm_leads_v2') || 'null') || INITIAL_LEADS) : INITIAL_LEADS;
   for (const lead of leads) {
     if (lead.status === 'trial_held' || lead.status === 'contract_sent') {
-      const coursePrice = 7600;
+      const coursePrice = 80;
       result.push({
         id: `upcoming_lead_${lead.id}`,
         type: 'lead',
@@ -147,7 +146,8 @@ export function getUpcomingPayments(): UpcomingPaymentItem[] {
         parentWhatsapp: lead.whatsapp || lead.phone,
         courseName: lead.course || 'Английский язык',
         amount: coursePrice,
-        amountFormatted: `${coursePrice.toLocaleString('ru-RU')} ₽`,
+        currency: 'EUR',
+        amountFormatted: `${coursePrice.toLocaleString('ru-RU')} €`,
         dueDate: 'В течение 3 дней',
         daysRemaining: 3,
         isUrgent: true,

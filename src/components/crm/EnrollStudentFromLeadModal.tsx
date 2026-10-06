@@ -64,7 +64,7 @@ export function EnrollStudentFromLeadModal({
 
   const [selectedGroupId, setSelectedGroupId] = useState(fallbackGroups[0]?.id || '1');
   const [subscriptionPeriod, setSubscriptionPeriod] = useState('Сентябрь 2026');
-  const [subscriptionPrice, setSubscriptionPrice] = useState(lead.offerAmount || '7 600 ₽');
+  const [subscriptionPrice, setSubscriptionPrice] = useState(lead.offerAmount || '80 €');
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'pending'>('paid');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -136,7 +136,7 @@ export function EnrollStudentFromLeadModal({
           ? {
               balance: lead.finance.deposit.balance,
               balanceFormatted: lead.finance.deposit.balanceFormatted,
-              currency: (lead.finance.deposit.currency as 'RUB' | 'EUR') || 'EUR',
+              currency: 'EUR',
             }
           : undefined,
         activeSubscription: {

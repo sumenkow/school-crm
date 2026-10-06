@@ -198,18 +198,17 @@ function SmartActionHub() {
     ? getStudentFinancialSummary(firstOverdue.studentId)
     : null;
 
-  let debtHighlight = '0 € (0 ₽) долгов';
+  let debtHighlight = '0 € долгов';
   if (firstOverdue) {
     if (firstOverdueStudentSummary && firstOverdueStudentSummary.debt > 0) {
-      debtHighlight = `Долг: ${firstOverdueStudentSummary.debt.toLocaleString('ru-RU')} € (≈ ${firstOverdueStudentSummary.debtRub.toLocaleString('ru-RU')} ₽)`;
+      debtHighlight = `Долг: ${firstOverdueStudentSummary.debt.toLocaleString('ru-RU')} €`;
     } else {
       const rawAmount = typeof firstOverdue.amount === 'number'
         ? firstOverdue.amount
         : parseFloat(String(firstOverdue.amount).replace(/[^\d.,]/g, '').replace(',', '.')) || 84;
       const isEur = rawAmount <= 500 || String(firstOverdue.amount).includes('€');
       const eur = isEur ? rawAmount : Math.round((rawAmount / rate) * 100) / 100;
-      const rub = isEur ? Math.round(rawAmount * rate) : rawAmount;
-      debtHighlight = `Долг: ${eur.toLocaleString('ru-RU')} € (≈ ${rub.toLocaleString('ru-RU')} ₽)`;
+      debtHighlight = `Долг: ${eur.toLocaleString('ru-RU')} €`;
     }
   }
 
@@ -237,7 +236,7 @@ function SmartActionHub() {
         title: 'Задолженностей нет',
         deadline: 'Порядок',
         subtitle: 'Все текущие счета оплачены',
-        highlight: '0 € (0 ₽) долгов',
+        highlight: '0 € долгов',
         phone: '',
         waUrl: '',
         profileUrl: '/finance?filter=overdue',

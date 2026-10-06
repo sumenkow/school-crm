@@ -48,22 +48,27 @@ export function getChannelDotColor(key: LeadChannelKey): string {
   }
 }
 
-export function parseRubles(val?: string | number): number {
-  if (typeof val === 'number') return val;
-  if (!val) return 0;
-  const str = String(val);
-  // Match ruble part e.g. "120 € (11 700 ₽)" -> 11700 or "24 000 ₽" -> 24000
-  const rubMatch = str.match(/([\d\s]+)\s*₽/);
-  if (rubMatch && rubMatch[1]) {
-    const num = parseInt(rubMatch[1].replace(/\s+/g, ''), 10);
-    if (!isNaN(num)) return num;
+export function parseEur(val?: string | number, defaultEur: number = 120): number {
+  if (typeof val === 'number') {
+    if (isNaN(val) || val <= 0) return defaultEur;
+    return val > 500 ? Math.round(val / 97) : val;
+  }
+  if (!val) return defaultEur;
+  const str = String(val).trim();
+  const eurMatch = str.match(/([\d\s]+)\s*€/);
+  if (eurMatch && eurMatch[1]) {
+    const num = parseInt(eurMatch[1].replace(/\s+/g, ''), 10);
+    if (!isNaN(num) && num > 0) return num;
   }
   const clean = parseInt(str.replace(/[^\d]/g, ''), 10);
-  return isNaN(clean) ? 0 : clean;
+  if (!isNaN(clean) && clean > 0) {
+    return clean > 500 ? Math.round(clean / 97) : clean;
+  }
+  return defaultEur;
 }
 
-export function formatRubles(val: number): string {
-  return new Intl.NumberFormat('ru-RU').format(Math.round(val)) + ' ₽';
+export function formatEur(val: number): string {
+  return new Intl.NumberFormat('ru-RU').format(Math.round(val)) + ' €';
 }
 
 export function filterLeadsByPeriod(leads: FullLeadData[], period: string): FullLeadData[] {
@@ -192,7 +197,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
     const currConv = currNew > 0 ? (currPaid / currNew) * 100 : 0;
     const currRevenue = currLeads
       .filter((l) => l.status === 'paid')
-      .reduce((sum, l) => sum + (parseRubles(l.offerAmount) || 24000), 0);
+      .reduce((sum, l) => sum + parseEur(l.offerAmount, 120), 0);
 
     // Previous period metrics
     const prevNew = prevLeads.length;
@@ -206,7 +211,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
     const prevConv = prevNew > 0 ? (prevPaid / prevNew) * 100 : 0;
     const prevRevenue = prevLeads
       .filter((l) => l.status === 'paid')
-      .reduce((sum, l) => sum + (parseRubles(l.offerAmount) || 24000), 0);
+      .reduce((sum, l) => sum + parseEur(l.offerAmount, 120), 0);
 
     // Helper for deltas
     const calcDelta = (curr: number, prev: number) => {
@@ -285,8 +290,8 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
       {
         id: 'revenue',
         label: 'Выручка от новых',
-        value: formatRubles(currRevenue),
-        previousValue: `Было: ${formatRubles(prevRevenue)}`,
+        value: formatEur(currRevenue),
+        previousValue: `Было: ${formatEur(prevRevenue)}`,
         change: deltaRevenue.text,
         isPositive: deltaRevenue.isPositive,
         iconType: 'revenue',
@@ -449,7 +454,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
 
       const count = matching.length;
       const share = totalLostCount > 0 ? Math.round((count / totalLostCount) * 100) : 0;
-      const rev = count * 16000;
+      const rev = count * 160;
 
       return {
         id: cat.id,
@@ -457,8 +462,9 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
         color: cat.color,
         count,
         sharePercentage: share,
-        potentialRevenueRub: rev,
-        potentialRevenueFormatted: formatRubles(rev),
+        potentialRevenueEur: rev,
+        potentialRevenueRub: rev * 100,
+        potentialRevenueFormatted: formatEur(rev),
       };
     });
 
@@ -479,7 +485,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
       const tCount = mLeads.filter((l) => ['trial_scheduled', 'trial_held', 'thinking', 'paid'].includes(l.status) || !!l.trialDate).length;
       const pCount = mLeads.filter((l) => l.status === 'paid' || (l.status as string) === 'enrolled').length;
       const conv = lCount > 0 ? Math.round((pCount / lCount) * 100) : 0;
-      const rev = mLeads.filter((l) => l.status === 'paid' || (l.status as string) === 'enrolled').reduce((s, l) => s + (parseRubles(l.offerAmount) || 24000), 0);
+      const rev = mLeads.filter((l) => l.status === 'paid' || (l.status as string) === 'enrolled').reduce((s, l) => s + parseEur(l.offerAmount, 120), 0);
 
       return {
         id: `mgr_${idx + 1}`,
@@ -493,8 +499,9 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
         conversionRate: `${conv}%`,
         conversionType: conv >= 20 ? 'positive' : conv >= 10 ? 'warning' : 'negative',
         avgContactTime: avgResponseTimes[idx],
-        revenueRub: rev,
-        revenueFormatted: formatRubles(rev),
+        revenueEur: rev,
+        revenueRub: rev * 100,
+        revenueFormatted: formatEur(rev),
       };
     });
 
@@ -550,7 +557,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
         stageDotColor,
         managerName: l.assignedTo || 'Не назначен',
         lossReasonText: (l.status === 'lost' || l.status === 'no_response') ? (l.lossReason || 'Отказ') : '—',
-        offerAmountText: l.offerAmount ? formatRubles(parseRubles(l.offerAmount)) : '—',
+        offerAmountText: l.offerAmount ? formatEur(parseEur(l.offerAmount, 120)) : '—',
         statusBadge,
       };
     });
@@ -570,7 +577,7 @@ export function useSalesTabData(filters: AnalyticsFilters): SalesTabData {
       lossReasons: {
         items: lossItems,
         totalLostCount,
-        totalLostRevenueFormatted: formatRubles(totalLostCount * 16000),
+        totalLostRevenueFormatted: formatEur(totalLostCount * 160),
         isInsufficientData: totalLostCount < 3,
       },
       managers: {

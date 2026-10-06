@@ -80,7 +80,7 @@ export interface FullStudentData extends Student {
     deposit?: {
       balance: number;
       balanceFormatted: string;
-      currency: 'RUB' | 'EUR';
+      currency: 'EUR' | 'RUB';
       pricePerLesson?: number;
       pricePerLessonFormatted?: string;
     };
@@ -93,6 +93,23 @@ export interface FullStudentData extends Student {
       status: 'paid' | 'expected' | 'overdue';
     }>;
   };
+  price?: string;
+  deposit?: {
+    balance: number;
+    balanceFormatted: string;
+    currency: 'EUR' | 'RUB';
+    pricePerLesson?: number;
+    pricePerLessonFormatted?: string;
+  };
+  payments?: Array<{
+    id: string;
+    date: string;
+    amount: string;
+    amountFormatted?: string;
+    period: string;
+    method: string;
+    status: 'paid' | 'expected' | 'overdue';
+  }>;
   interactions: TimelineInteraction[];
   tasks: Task[];
   teacherComments?: TeacherComment[];
@@ -187,14 +204,14 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     finance: {
       activeSubscription: {
         period: '01.09.2026 – 30.09.2026',
-        price: '7 600 ₽',
+        price: '80 €',
         status: 'active',
         lessonsAttended: '2 из 8 занятий',
         renewalDate: '28.09.2026',
       },
       payments: [
-        { id: 'pay1', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
-        { id: 'pay2', date: '01.08.2026', amount: '7 600 ₽', period: 'Август 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay1', date: '01.09.2026', amount: '80 €', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay2', date: '01.08.2026', amount: '80 €', period: 'Август 2026', method: 'Банковская карта', status: 'paid' },
       ],
     },
     interactions: [
@@ -229,7 +246,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
         targetType: 'parent',
         targetName: 'Ольга Смирнова',
         targetRole: 'Родитель (Мама)',
-        content: 'Отправлен чек об оплате абонемента на сентябрь (7 600 ₽).',
+        content: 'Отправлен чек об оплате абонемента на сентябрь (80 €).',
         result: 'Оплата успешно зафиксирована',
       },
       {
@@ -342,13 +359,13 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     finance: {
       activeSubscription: {
         period: '01.09.2026 – 30.09.2026',
-        price: '8 400 ₽',
+        price: '84 €',
         status: 'expired',
         lessonsAttended: '1 из 8 занятий',
         renewalDate: '25.08.2026',
       },
       payments: [
-        { id: 'pay3', date: '25.08.2026', amount: '8 400 ₽', period: 'Сентябрь 2026', method: 'Перевод по СБП', status: 'overdue' },
+        { id: 'pay3', date: '25.08.2026', amount: '84 €', period: 'Сентябрь 2026', method: 'Перевод по СБП', status: 'overdue' },
       ],
     },
     interactions: [
@@ -367,7 +384,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     tasks: [
       {
         id: 't2',
-        title: 'Проконтролировать погашение задолженности 8 400 ₽',
+        title: 'Проконтролировать погашение задолженности 84 €',
         taskType: 'Финансы',
         studentId: '2',
         assignedTo: 'Елена Менеджер',
@@ -438,13 +455,13 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     finance: {
       activeSubscription: {
         period: '01.09.2026 – 30.09.2026',
-        price: '8 400 ₽',
+        price: '84 €',
         status: 'paid',
         lessonsAttended: '2 из 8 занятий',
         renewalDate: '25.09.2026',
       },
       payments: [
-        { id: 'pay_artem1', date: '01.09.2026', amount: '8 400 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay_artem1', date: '01.09.2026', amount: '84 €', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
       ],
     },
     interactions: [],
@@ -498,7 +515,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     },
     finance: {
       payments: [
-        { id: 'pay4', date: '05.09.2026', amount: '7 200 ₽', period: 'Сентябрь 2026', method: 'Ожидается', status: 'expected' },
+        { id: 'pay4', date: '05.09.2026', amount: '72 €', period: 'Сентябрь 2026', method: 'Ожидается', status: 'expected' },
       ],
     },
     interactions: [
@@ -573,7 +590,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     },
     finance: {
       payments: [
-        { id: 'pay_p1', date: '15.08.2026', amount: '7 600 ₽', period: 'Август 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay_p1', date: '15.08.2026', amount: '80 €', period: 'Август 2026', method: 'Банковская карта', status: 'paid' },
       ],
     },
     interactions: [
@@ -635,7 +652,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     },
     finance: {
       payments: [
-        { id: 'pay_z1', date: '20.08.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', method: 'Перевод по СБП', status: 'overdue' },
+        { id: 'pay_z1', date: '20.08.2026', amount: '80 €', period: 'Сентябрь 2026', method: 'Перевод по СБП', status: 'overdue' },
       ],
     },
     interactions: [],
@@ -687,7 +704,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     },
     finance: {
       payments: [
-        { id: 'pay_m1', date: '01.09.2026', amount: '7 600 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay_m1', date: '01.09.2026', amount: '70 €', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
       ],
     },
     interactions: [],
@@ -739,7 +756,7 @@ export const INITIAL_STUDENTS: FullStudentData[] = [
     },
     finance: {
       payments: [
-        { id: 'pay_sol1', date: '01.09.2026', amount: '8 800 ₽', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
+        { id: 'pay_sol1', date: '01.09.2026', amount: '88 €', period: 'Сентябрь 2026', method: 'Банковская карта', status: 'paid' },
       ],
     },
     interactions: [],
@@ -1454,7 +1471,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Сайт (Заявка на пробный)',
     assignedTo: 'Елена Менеджер',
     status: 'new',
-    offerAmount: '120 € (11 700 ₽)',
+    offerAmount: '120 €',
     nextAction: 'Позвонить для согласования времени',
     nextActionDate: '2026-10-02',
     comment: 'Интересуются вечерними группами.',
@@ -1477,7 +1494,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Instagram',
     assignedTo: 'Елена Менеджер',
     status: 'new',
-    offerAmount: '80 € (8 000 ₽)',
+    offerAmount: '80 €',
     nextAction: 'Позвонить для подбора времени',
     nextActionDate: 'Сегодня',
     comment: 'Интересуется занятиями по субботам в первой половине дня.',
@@ -1502,7 +1519,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'ВКонтакте',
     assignedTo: 'Елена Менеджер',
     status: 'new',
-    offerAmount: '120 € (11 700 ₽)',
+    offerAmount: '120 €',
     nextAction: 'Уточнить время для урока',
     nextActionDate: '2026-10-03',
     comment: 'Оставили заявку через ВК рекламу. Хотят заниматься 2 раза в неделю.',
@@ -1525,7 +1542,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Рекомендация',
     assignedTo: 'Елена Менеджер',
     status: 'contacted',
-    offerAmount: '140 € (13 650 ₽)',
+    offerAmount: '140 €',
     nextAction: 'Отправить ссылку на онлайн-тест',
     nextActionDate: '2026-10-02',
     comment: 'Хочет научиться создавать игры на Python.',
@@ -1544,7 +1561,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Рекомендация',
     assignedTo: 'Елена Менеджер',
     status: 'contacted',
-    offerAmount: '69.74 € (6 800 ₽)',
+    offerAmount: '70 €',
     nextAction: 'Подобрать удобный день',
     nextActionDate: 'Завтра, 11:00',
     comment: 'Готовятся к районной олимпиаде.',
@@ -1566,7 +1583,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Реклама Telegram',
     assignedTo: 'Елена Менеджер',
     status: 'trial_scheduled',
-    offerAmount: '100 € (9 750 ₽)',
+    offerAmount: '100 €',
     nextAction: 'Контроль явки на пробный урок',
     nextActionDate: '2026-10-02',
     comment: 'Записаны на пятницу 17:00.',
@@ -1589,7 +1606,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     assignedTo: 'Елена Менеджер',
     status: 'trial_scheduled',
     trialDate: '04.09.2026 18:45',
-    offerAmount: '77.95 € (7 600 ₽)',
+    offerAmount: '80 €',
     nextAction: 'Отправить ссылку на онлайн-урок за 2 часа',
     nextActionDate: '04.09.2026',
     comment: 'Хочет сдать ЕГЭ на 85+ баллов.',
@@ -1610,7 +1627,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Сайт школы',
     assignedTo: 'Елена Менеджер',
     status: 'trial_scheduled',
-    offerAmount: '86.15 € (8 400 ₽)',
+    offerAmount: '84 €',
     nextAction: 'Напомнить за 24 часа о занятии',
     nextActionDate: '2026-10-04',
     comment: 'Ждут субботний слот.',
@@ -1634,7 +1651,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     assignedTo: 'Елена Менеджер',
     status: 'trial_held',
     trialDate: '02.09.2026 15:00',
-    offerAmount: '73.85 € (7 200 ₽)',
+    offerAmount: '72 €',
     nextAction: 'Узнать решение мамы и выставить счет',
     nextActionDate: 'Сегодня',
     comment: 'Урок прошел отлично, Алисе очень понравилась преподаватель Мария.',
@@ -1656,7 +1673,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Instagram',
     assignedTo: 'Елена Менеджер',
     status: 'trial_held',
-    offerAmount: '86.15 € (8 400 ₽)',
+    offerAmount: '84 €',
     nextAction: 'Получить подтверждение времени',
     nextActionDate: 'Сегодня',
     comment: 'Пробный прошел на ура, формируют расписание.',
@@ -1678,7 +1695,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Листовка у школы',
     assignedTo: 'Елена Менеджер',
     status: 'thinking',
-    offerAmount: '69.74 € (6 800 ₽)',
+    offerAmount: '70 €',
     nextAction: 'Позвонить, предложить скидку 10% на первый месяц',
     nextActionDate: '04.09.2026',
     comment: 'Сравнивают с онлайн-репетитором.',
@@ -1699,7 +1716,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Листовка',
     assignedTo: 'Елена Менеджер',
     status: 'paid',
-    offerAmount: '86.15 € (8 400 ₽)',
+    offerAmount: '84 €',
     nextAction: 'Зачислен в группу Math-2',
     comment: 'Оплатили абонемент на сентябрь.',
     createdAt: '2026-08-25T10:00:00Z',
@@ -1721,7 +1738,7 @@ export const INITIAL_LEADS: FullLeadData[] = [
     source: 'Яндекс.Карты',
     assignedTo: 'Елена Менеджер',
     status: 'lost',
-    offerAmount: '80 € (8 000 ₽)',
+    offerAmount: '80 €',
     lossReason: 'Не подошло вечернее время занятий (ищут утренние группы)',
     comment: 'Отправили в архив, позвонить при открытии утренней группы.',
     createdAt: '2026-08-20T12:00:00Z',
@@ -1997,6 +2014,7 @@ export interface FullSubscriptionData {
   price: number;
   priceFormatted: string;
   status: 'active' | 'frozen' | 'expired' | 'cancelled';
+  currency?: 'EUR' | 'RUB';
   lessonsTotal: number;
   lessonsAttended: number;
   notes?: string;
@@ -2011,12 +2029,13 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Ольга Смирнова',
     courseName: 'Английский язык',
     groupName: 'English B1 Teens',
-    amount: 7600,
-    amountFormatted: '7 600 ₽',
+    amount: 80,
+    amountFormatted: '80 €',
     paymentDate: '01.09.2026',
     periodLabel: 'Сентябрь 2026',
     status: 'paid',
     paymentMethod: 'card',
+    currency: 'EUR',
     recordedBy: 'Елена Менеджер',
     comment: 'Оплата по эквайрингу (чек отправлен в Telegram)',
   },
@@ -2028,14 +2047,15 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Дмитрий Кузнецов',
     courseName: 'Робототехника',
     groupName: 'Robotics Junior',
-    amount: 8400,
-    amountFormatted: '8 400 ₽',
+    amount: 84,
+    amountFormatted: '84 €',
     paymentDate: '25.08.2026',
     periodLabel: 'Сентябрь 2026',
     status: 'overdue',
     paymentMethod: 'bank_transfer',
+    currency: 'EUR',
     recordedBy: 'Елена Менеджер',
-    comment: 'Отец обещал перевести по СБП до конца недели. Долг 8 400 ₽',
+    comment: 'Отец обещал перевести по СБП до конца недели. Долг 84 €',
   },
   {
     id: 'pay6',
@@ -2045,14 +2065,15 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Дмитрий Кузнецов',
     courseName: 'Математика',
     groupName: 'Kids Math Safari',
-    amount: 6800,
-    amountFormatted: '6 800 ₽',
+    amount: 70,
+    amountFormatted: '70 €',
     paymentDate: '26.08.2026',
     periodLabel: 'Сентябрь 2026',
     status: 'overdue',
     paymentMethod: 'bank_transfer',
+    currency: 'EUR',
     recordedBy: 'Елена Менеджер',
-    comment: 'Второй ребенок в семье. Долг 6 800 ₽',
+    comment: 'Второй ребенок в семье. Долг 70 €',
   },
   {
     id: 'pay7',
@@ -2062,14 +2083,15 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Наталья Захарова',
     courseName: 'Английский язык',
     groupName: 'English B1 Teens',
-    amount: 14400,
-    amountFormatted: '14 400 ₽',
+    amount: 144,
+    amountFormatted: '144 €',
     paymentDate: '28.08.2026',
     periodLabel: 'Сентябрь–Октябрь 2026',
     status: 'overdue',
     paymentMethod: 'card',
+    currency: 'EUR',
     recordedBy: 'Анна Администратор',
-    comment: 'Оплата абонемента просрочена на 16 дней. Долг 14 400 ₽',
+    comment: 'Оплата абонемента просрочена на 16 дней. Долг 144 €',
   },
   {
     id: 'pay3',
@@ -2079,12 +2101,13 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Игорь Морозов',
     courseName: 'Математика',
     groupName: 'Kids Math Safari',
-    amount: 6800,
-    amountFormatted: '6 800 ₽',
+    amount: 70,
+    amountFormatted: '70 €',
     paymentDate: '02.09.2026',
     periodLabel: 'Сентябрь 2026',
     status: 'paid',
     paymentMethod: 'invoice',
+    currency: 'EUR',
     recordedBy: 'Александр Руководитель',
     comment: 'Безналичный расчет по счету ООО',
   },
@@ -2096,12 +2119,13 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Елена Васильева',
     courseName: 'Английский язык',
     groupName: 'Kids English A1',
-    amount: 7200,
-    amountFormatted: '7 200 ₽',
+    amount: 72,
+    amountFormatted: '72 €',
     paymentDate: '05.09.2026',
     periodLabel: 'Сентябрь 2026',
     status: 'expected',
     paymentMethod: 'card',
+    currency: 'EUR',
     recordedBy: 'Елена Менеджер',
     comment: 'Выставлена ссылка на оплату после пробного урока',
   },
@@ -2113,12 +2137,13 @@ export const INITIAL_PAYMENTS: FullPaymentData[] = [
     parentName: 'Татьяна Попова',
     courseName: 'Английский язык',
     groupName: 'English B1 Teens',
-    amount: 7600,
-    amountFormatted: '7 600 ₽',
+    amount: 80,
+    amountFormatted: '80 €',
     paymentDate: '15.08.2026',
     periodLabel: 'Август 2026',
     status: 'paid',
     paymentMethod: 'card',
+    currency: 'EUR',
     recordedBy: 'Елена Менеджер',
   },
 ];
@@ -2133,8 +2158,9 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     startDate: '01.09.2026',
     endDate: '30.09.2026',
     renewalDate: '28.09.2026',
-    price: 7600,
-    priceFormatted: '7 600 ₽',
+    price: 80,
+    priceFormatted: '80 €',
+    currency: 'EUR',
     status: 'active',
     lessonsTotal: 8,
     lessonsAttended: 2,
@@ -2149,8 +2175,9 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     startDate: '01.09.2026',
     endDate: '30.09.2026',
     renewalDate: '28.09.2026',
-    price: 8400,
-    priceFormatted: '8 400 ₽',
+    price: 84,
+    priceFormatted: '84 €',
+    currency: 'EUR',
     status: 'active',
     lessonsTotal: 8,
     lessonsAttended: 1,
@@ -2165,8 +2192,9 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     startDate: '15.08.2026',
     endDate: '15.09.2026',
     renewalDate: '13.09.2026',
-    price: 7600,
-    priceFormatted: '7 600 ₽',
+    price: 80,
+    priceFormatted: '80 €',
+    currency: 'EUR',
     status: 'frozen',
     lessonsTotal: 8,
     lessonsAttended: 5,
@@ -2181,8 +2209,9 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     startDate: '01.09.2026',
     endDate: '30.09.2026',
     renewalDate: '28.09.2026',
-    price: 6800,
-    priceFormatted: '6 800 ₽',
+    price: 70,
+    priceFormatted: '70 €',
+    currency: 'EUR',
     status: 'active',
     lessonsTotal: 4,
     lessonsAttended: 1,
@@ -2197,8 +2226,9 @@ export const INITIAL_SUBSCRIPTIONS: FullSubscriptionData[] = [
     startDate: '01.08.2026',
     endDate: '31.08.2026',
     renewalDate: '29.08.2026',
-    price: 7600,
-    priceFormatted: '7 600 ₽',
+    price: 80,
+    priceFormatted: '80 €',
+    currency: 'EUR',
     status: 'expired',
     lessonsTotal: 8,
     lessonsAttended: 8,

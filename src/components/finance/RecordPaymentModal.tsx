@@ -6,7 +6,6 @@ import { FullPaymentData, INITIAL_STUDENTS, TimelineInteraction } from '@/lib/da
 import { getStoredStudents, saveStudentToStorage, getStudentById, settleStudentOverdueDebts, settleDebtsFromDeposit, settleFamilyDebtsFromFamilyDeposit } from '@/lib/data/studentStorage';
 import { savePaymentToStorage, settleOverduePayments, getStoredPayments } from '@/lib/data/paymentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
-import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/currencyHelper';
 import { useToast } from '@/context/ToastContext';
 import { cn } from '@/lib/utils';
 
@@ -35,15 +34,13 @@ export function RecordPaymentModal({
   lockStudent,
 }: RecordPaymentModalProps) {
   const { success } = useToast();
-  const rate = getEurRubRate();
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
 
   const defaultId = initialStudentId || allowedStudents?.[0]?.id || allStudents[0]?.id || '1';
   const [studentId, setStudentId] = useState(defaultId);
-  const [currency, setCurrency] = useState<'RUB' | 'EUR'>('EUR');
+  const [currency] = useState<'EUR'>('EUR');
   const [amount, setAmount] = useState('85');
   const [amountEur, setAmountEur] = useState('85');
-  const [amountRub, setAmountRub] = useState(() => String(Math.round(85 * rate)));
 
   // Date & Training Period
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -135,37 +132,14 @@ export function RecordPaymentModal({
     0
   );
 
-  const handleRubInput = (val: string) => {
-    setAmountRub(val);
-    const num = parseFloat(val.replace(',', '.')) || 0;
-    if (num > 0) {
-      const calculatedEur = Math.round((num / rate) * 100) / 100;
-      setAmountEur(String(calculatedEur));
-      setAmount(currency === 'EUR' ? String(calculatedEur) : val);
-    } else {
-      setAmountEur('');
-      setAmount('');
-    }
-  };
-
   const handleEurInput = (val: string) => {
     setAmountEur(val);
-    const num = parseFloat(val.replace(',', '.')) || 0;
-    if (num > 0) {
-      const calculatedRub = Math.round(num * rate);
-      setAmountRub(String(calculatedRub));
-      setAmount(currency === 'EUR' ? val : String(calculatedRub));
-    } else {
-      setAmountRub('');
-      setAmount('');
-    }
+    setAmount(val);
   };
 
   const setPresetAmount = (eur: number) => {
-    const rub = Math.round(eur * rate);
     setAmountEur(String(eur));
-    setAmountRub(String(rub));
-    setAmount(currency === 'EUR' ? String(eur) : String(rub));
+    setAmount(String(eur));
   };
 
   const handlePaymentTypeChange = (type: 'subscription' | 'prepayment' | 'one_time') => {
@@ -184,7 +158,7 @@ export function RecordPaymentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const effectiveAmountStr = amount || (currency === 'EUR' ? amountEur : amountRub);
+    const effectiveAmountStr = amount || amountEur;
     const cleanAmount = String(effectiveAmountStr).replace(',', '.').trim();
     const numAmountRaw = parseFloat(cleanAmount);
     if (isNaN(numAmountRaw) || numAmountRaw <= 0) {
@@ -192,17 +166,8 @@ export function RecordPaymentModal({
       return;
     }
 
-    const numAmountEUR =
-      currency === 'EUR'
-        ? numAmountRaw > 10000 ? 120 : numAmountRaw
-        : Math.round((numAmountRaw / rate) * 100) / 100;
-
-    const numAmountRUB =
-      currency === 'RUB'
-        ? numAmountRaw
-        : Math.round(numAmountEUR * rate);
-
-    const formattedAmount = `${numAmountEUR.toLocaleString('ru-RU')} € (≈ ${numAmountRUB.toLocaleString('ru-RU')} ₽)`;
+    const numAmountEUR = numAmountRaw;
+    const formattedAmount = `${numAmountEUR.toLocaleString('ru-RU')} €`;
     const formattedDate = new Date(paymentDate).toLocaleDateString('ru-RU');
 
     const methodLabels: Record<string, string> = {
@@ -460,7 +425,7 @@ export function RecordPaymentModal({
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="font-semibold text-rose-900 flex items-center gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-                  Долг ученика: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} ₽</strong>
+                  Долг ученика: <strong className="text-rose-700">{totalOverdueForStudent.toLocaleString('ru-RU')} €</strong>
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {selectedStudentDeposit > 0 && (
@@ -469,7 +434,7 @@ export function RecordPaymentModal({
                       onClick={() => {
                         const res = settleDebtsFromDeposit(selectedStudent.id);
                         if (res.settled) {
-                          success(`Списано ${res.settledAmount.toLocaleString('ru-RU')} ₽ с депозита!`);
+                          success(`Списано ${res.settledAmount.toLocaleString('ru-RU')} € с депозита!`);
                           onClose();
                         }
                       }}
@@ -543,45 +508,24 @@ export function RecordPaymentModal({
             </div>
           </div>
 
-          {/* CURRENCY INPUTS & DYNAMIC PRESETS */}
+          {/* CURRENCY INPUT & DYNAMIC PRESETS */}
           <div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Сумма (₽)</span>
-                  <span className="text-[9px] font-normal text-slate-400">1 € = {rate} ₽</span>
-                </label>
-                <div className="relative mt-0.5">
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={amountRub}
-                    onChange={(e) => handleRubInput(e.target.value)}
-                    placeholder={String(Math.round(85 * rate))}
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 pr-7 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                  <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">₽</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Сумма (€)</span>
-                  <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">База</span>
-                </label>
-                <div className="relative mt-0.5">
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={amountEur}
-                    onChange={(e) => handleEurInput(e.target.value)}
-                    placeholder="85"
-                    className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 pr-7 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                  <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
-                </div>
+            <div>
+              <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                <span>Сумма (€)</span>
+                <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">EUR</span>
+              </label>
+              <div className="relative mt-0.5">
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={amountEur}
+                  onChange={(e) => handleEurInput(e.target.value)}
+                  placeholder="85"
+                  className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 pr-7 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <span className="absolute right-2.5 top-1.5 text-xs font-bold text-slate-400">€</span>
               </div>
             </div>
 
@@ -594,14 +538,14 @@ export function RecordPaymentModal({
                     onClick={() => setPresetAmount(75)}
                     className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
                   >
-                    4 занятия — 75 € (≈ {Math.round(75 * rate).toLocaleString('ru-RU')} ₽)
+                    4 занятия — 75 €
                   </button>
                   <button
                     type="button"
                     onClick={() => setPresetAmount(140)}
                     className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
                   >
-                    8 занятий — 140 € (≈ {Math.round(140 * rate).toLocaleString('ru-RU')} ₽)
+                    8 занятий — 140 €
                   </button>
                 </>
               )}
@@ -611,7 +555,7 @@ export function RecordPaymentModal({
                   onClick={() => setPresetAmount(personalRate)}
                   className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
                 >
-                  1 занятие (персональная ставка) — {personalRate} € (≈ {Math.round(personalRate * rate).toLocaleString('ru-RU')} ₽)
+                  1 занятие (персональная ставка) — {personalRate} €
                 </button>
               )}
               {paymentType === 'prepayment' && (
@@ -623,7 +567,7 @@ export function RecordPaymentModal({
                       onClick={() => setPresetAmount(eur)}
                       className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 border border-slate-200/60 px-2.5 py-1 text-[11px] font-semibold text-slate-700 transition-colors cursor-pointer"
                     >
-                      +{eur} € (≈ {Math.round(eur * rate).toLocaleString('ru-RU')} ₽)
+                      +{eur} €
                     </button>
                   ))}
                 </>

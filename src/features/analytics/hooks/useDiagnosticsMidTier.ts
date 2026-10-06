@@ -45,14 +45,15 @@ export interface LossCategoryItem {
 
 export interface RevenueLossesData {
   totalLossEur: number;
-  totalLossRub: number;
+  totalLossRub?: number;
   categories: LossCategoryItem[];
   channels: LossCategoryItem[];
   topLossChannel?: string;
+  topLossChannelEur?: number;
   topLossChannelRub?: number;
   trialLeadsCount: number;
   potentialFromTrialEur: number;
-  potentialFromTrialRub: number;
+  potentialFromTrialRub?: number;
 }
 
 export function parseOfferAmountEur(
@@ -555,7 +556,7 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       };
     });
 
-    const topLossChannelItem = [...lossChannels].sort((a, b) => b.amountRub - a.amountRub)[0] || lossChannels[0];
+    const topLossChannelItem = [...lossChannels].sort((a, b) => b.amountEur - a.amountEur)[0] || lossChannels[0];
 
     return {
       totalLossEur,
@@ -563,6 +564,7 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       categories,
       channels: lossChannels,
       topLossChannel: topLossChannelItem?.name || '—',
+      topLossChannelEur: topLossChannelItem?.amountEur || 0,
       topLossChannelRub: topLossChannelItem?.amountRub || 0,
       trialLeadsCount: trialHeldLeads.length || 0,
       potentialFromTrialEur: leadsLossEur,

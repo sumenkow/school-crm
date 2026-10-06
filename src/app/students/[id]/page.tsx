@@ -11,7 +11,7 @@ import { getStudentById, saveStudentToStorage, deductLessonFromDeposit, reconcil
 import { addChurnEvent, getChurnReasonLabel, CHURN_REASONS, ChurnReasonId } from '@/lib/data/churnStorage';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
-import { parsePaymentAmountEUR, getEurRubRate } from '@/lib/data/currencyHelper';
+import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { excludeStudentFromGroup, enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
 import { CreateInvoiceModal } from '@/components/finance/CreateInvoiceModal';
@@ -2573,7 +2573,6 @@ export default function StudentDetailsPage() {
           {/* БЛОК 1: ВЕРХНИЙ ЯРУС (АБОНЕМЕНТЫ ПО КУРСАМ 60% И БАЛАНС УЧЕНИКА 40%) */}
           {(() => {
             const storedGroupsList = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
-            const eurRubRate = getEurRubRate();
             const ledgerItemsForWidget = buildChronologicalLedger(student, customPricePerLesson);
             const currentCalculatedBalance = ledgerItemsForWidget[0]?.runningBalanceEUR ?? (student.finance?.deposit?.balance || 120);
             const availableLessonsCount = Math.max(0, Math.floor(currentCalculatedBalance / (customPricePerLesson || 12)));
@@ -2670,9 +2669,6 @@ export default function StudentDetailsPage() {
                       >
                         {currentCalculatedBalance} €
                       </span>
-                      <span className="text-xs text-slate-400 font-medium">
-                        ≈ {(currentCalculatedBalance * eurRubRate).toLocaleString('ru-RU')} ₽
-                      </span>
                     </div>
                   </div>
 
@@ -2715,7 +2711,6 @@ export default function StudentDetailsPage() {
 
           {/* БЛОК 2: ФИНАНСОВЫЕ ОПЕРАЦИИ (ТАБ-ФИЛЬТРЫ И ТАБЛИЦА ИСТОРИИ) */}
           {(() => {
-            const eurRubRate = getEurRubRate();
             const ledgerItems = buildChronologicalLedger(student, customPricePerLesson);
 
             const filtered = ledgerItems.filter((ev) => {
@@ -2789,7 +2784,6 @@ export default function StudentDetailsPage() {
                   <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-50 pr-1">
                     {filtered.map((ev) => {
                       const isDeposit = ev.type === 'deposit';
-                      const rubEquivalent = (ev.amountEUR * eurRubRate).toLocaleString('ru-RU');
 
                       // Separate primary description and optional secondary details (e.g. group name)
                       let mainTitle = ev.description;
@@ -2838,9 +2832,6 @@ export default function StudentDetailsPage() {
                             ) : (
                               <span className="text-slate-700 font-bold block">-{ev.amountEUR} €</span>
                             )}
-                            <span className="text-[10px] text-slate-400 font-normal block">
-                              ≈ {rubEquivalent} ₽
-                            </span>
                           </div>
 
                           {/* Остаток */}

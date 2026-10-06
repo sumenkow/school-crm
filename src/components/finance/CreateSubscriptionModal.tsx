@@ -14,7 +14,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
   const [studentId, setStudentId] = useState('1');
   const [startDate, setStartDate] = useState('2026-10-01');
   const [endDate, setEndDate] = useState('2026-10-31');
-  const [price, setPrice] = useState('7600');
+  const [price, setPrice] = useState('80');
   const [lessonsTotal, setLessonsTotal] = useState(8);
   const [status, setStatus] = useState<FullSubscriptionData['status']>('active');
   const [notes, setNotes] = useState('');
@@ -37,7 +37,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
       endDate,
       renewalDate: new Date(endDate).toLocaleDateString('ru-RU'),
       price: numPrice,
-      priceFormatted: `${numPrice.toLocaleString('ru-RU')} ₽`,
+      priceFormatted: `${numPrice.toLocaleString('ru-RU')} €`,
       status,
       lessonsTotal: Number(lessonsTotal),
       lessonsAttended: 0,
@@ -107,7 +107,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-slate-700">Стоимость периода (₽) *</label>
+              <label className="text-xs font-medium text-slate-700">Стоимость периода (€) *</label>
               <input
                 type="number"
                 required

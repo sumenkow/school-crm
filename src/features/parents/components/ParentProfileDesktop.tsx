@@ -709,7 +709,7 @@ export function ParentProfileDesktop({
                 </span>
               )}
               <div className="text-[11px] text-slate-500 font-medium truncate">
-                Депозит: {familySummary.formattedDeposit || '0 € (0 ₽)'}
+                Депозит: {familySummary.formattedDeposit || '0 €'}
               </div>
             </div>
           )}

@@ -95,7 +95,7 @@ export function CourseDirectionRow({
             value={course.monthlyPrice ?? ''}
             onChange={(e) => onChange(course.id, 'monthlyPrice', e.target.value)}
             className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs mt-1 font-semibold text-slate-900 focus:border-indigo-500 focus:outline-hidden bg-slate-50/50 focus:bg-white"
-            placeholder="7 600 ₽/мес"
+            placeholder="120 € / мес"
           />
         </div>
 

@@ -72,17 +72,111 @@ export function normalizeStudent(st: any): FullStudentData {
       attendanceRate: '100%',
       history: [],
     },
-    finance: st.finance || {
-      activeSubscription: null as any,
-      deposit: {
-        balance: 0,
-        balanceFormatted: '0 €',
-        currency: 'EUR',
-        pricePerLesson: 12,
-        pricePerLessonFormatted: '12 €',
-      },
-      payments: [],
-    },
+    finance: st.finance
+      ? {
+          activeSubscription: st.finance.activeSubscription
+            ? {
+                ...st.finance.activeSubscription,
+                price:
+                  typeof st.finance.activeSubscription.price === 'string' &&
+                  (st.finance.activeSubscription.price.includes('₽') || st.finance.activeSubscription.price.toLowerCase().includes('руб'))
+                    ? `${Math.round(parseFloat(st.finance.activeSubscription.price.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+                    : st.finance.activeSubscription.price,
+              }
+            : (null as any),
+          deposit: st.finance.deposit
+            ? {
+                balance:
+                  st.finance.deposit.currency === 'RUB'
+                    ? Math.round((st.finance.deposit.balance || 0) / 100)
+                    : (st.finance.deposit.balance || 0),
+                balanceFormatted:
+                  st.finance.deposit.currency === 'RUB'
+                    ? `${Math.round((st.finance.deposit.balance || 0) / 100).toLocaleString('ru-RU')} €`
+                    : typeof st.finance.deposit.balanceFormatted === 'string' &&
+                      (st.finance.deposit.balanceFormatted.includes('₽') || st.finance.deposit.balanceFormatted.toLowerCase().includes('руб'))
+                    ? `${(st.finance.deposit.balance || 0).toLocaleString('ru-RU')} €`
+                    : st.finance.deposit.balanceFormatted || `${(st.finance.deposit.balance || 0).toLocaleString('ru-RU')} €`,
+                currency: 'EUR',
+                pricePerLesson: st.finance.deposit.pricePerLesson
+                  ? st.finance.deposit.currency === 'RUB'
+                    ? Math.round(st.finance.deposit.pricePerLesson / 100)
+                    : st.finance.deposit.pricePerLesson
+                  : 12,
+                pricePerLessonFormatted: st.finance.deposit.pricePerLessonFormatted
+                  ? st.finance.deposit.pricePerLessonFormatted.includes('₽') || st.finance.deposit.pricePerLessonFormatted.toLowerCase().includes('руб')
+                    ? `${(st.finance.deposit.currency === 'RUB' ? Math.round(st.finance.deposit.pricePerLesson / 100) : st.finance.deposit.pricePerLesson).toLocaleString('ru-RU')} €`
+                    : st.finance.deposit.pricePerLessonFormatted
+                  : '12 €',
+              }
+            : {
+                balance: 0,
+                balanceFormatted: '0 €',
+                currency: 'EUR',
+                pricePerLesson: 12,
+                pricePerLessonFormatted: '12 €',
+              },
+          payments: Array.isArray(st.finance.payments)
+            ? st.finance.payments.map((p: any) => ({
+                ...p,
+                currency: 'EUR',
+                amount:
+                  typeof p.amount === 'string' && (p.amount.includes('₽') || p.amount.toLowerCase().includes('руб'))
+                    ? `${Math.round(parseFloat(p.amount.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+                    : p.amount,
+                amountFormatted:
+                  typeof p.amountFormatted === 'string' &&
+                  (p.amountFormatted.includes('₽') || p.amountFormatted.toLowerCase().includes('руб'))
+                    ? `${Math.round(parseFloat(p.amountFormatted.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+                    : p.amountFormatted || (typeof p.amount === 'number' ? `${p.amount.toLocaleString('ru-RU')} €` : p.amount),
+              }))
+            : [],
+        }
+      : {
+          activeSubscription: null as any,
+          deposit: {
+            balance: 0,
+            balanceFormatted: '0 €',
+            currency: 'EUR',
+            pricePerLesson: 12,
+            pricePerLessonFormatted: '12 €',
+          },
+          payments: [],
+        },
+    price:
+      typeof st.price === 'string' && (st.price.includes('₽') || st.price.toLowerCase().includes('руб'))
+        ? `${Math.round(parseFloat(st.price.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+        : st.price,
+    deposit: st.deposit
+      ? {
+          ...st.deposit,
+          currency: 'EUR',
+          balance:
+            st.deposit.currency === 'RUB' ? Math.round((st.deposit.balance || 0) / 100) : (st.deposit.balance || 0),
+          balanceFormatted:
+            st.deposit.currency === 'RUB'
+              ? `${Math.round((st.deposit.balance || 0) / 100).toLocaleString('ru-RU')} €`
+              : typeof st.deposit.balanceFormatted === 'string' &&
+                (st.deposit.balanceFormatted.includes('₽') || st.deposit.balanceFormatted.toLowerCase().includes('руб'))
+              ? `${(st.deposit.balance || 0).toLocaleString('ru-RU')} €`
+              : st.deposit.balanceFormatted || `${(st.deposit.balance || 0).toLocaleString('ru-RU')} €`,
+        }
+      : undefined,
+    payments: Array.isArray(st.payments)
+      ? st.payments.map((p: any) => ({
+          ...p,
+          currency: 'EUR',
+          amount:
+            typeof p.amount === 'string' && (p.amount.includes('₽') || p.amount.toLowerCase().includes('руб'))
+              ? `${Math.round(parseFloat(p.amount.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+              : p.amount,
+          amountFormatted:
+            typeof p.amountFormatted === 'string' &&
+            (p.amountFormatted.includes('₽') || p.amountFormatted.toLowerCase().includes('руб'))
+              ? `${Math.round(parseFloat(p.amountFormatted.replace(/[^\d.-]/g, '') || '0') / 100).toLocaleString('ru-RU')} €`
+              : p.amountFormatted || (typeof p.amount === 'number' ? `${p.amount.toLocaleString('ru-RU')} €` : p.amount),
+        }))
+      : undefined,
     interactions: Array.isArray(st.interactions) ? st.interactions : [],
     comments: Array.isArray(st.comments) ? st.comments : [],
     teacherComments: Array.isArray(st.teacherComments) ? st.teacherComments : [],
@@ -289,7 +383,7 @@ export async function fetchStudentsFromSupabase(): Promise<FullStudentData[]> {
  * Dispatches a custom window event 'crm-students-changed' so all views sync in real time.
  */
 export function saveStudentToStorage(student: FullStudentData): void {
-  let studentToSave = student;
+  let studentToSave = normalizeStudent(student);
 
   // 1. Update in-memory INITIAL_STUDENTS
   const idx = INITIAL_STUDENTS.findIndex((s) => s.id === studentToSave.id);
@@ -411,7 +505,7 @@ export function deductLessonFromDeposit(
   };
 
   const deduct = amountToDeduct || currentDeposit.pricePerLesson || 12;
-  const currencySymbol = currentDeposit.currency === 'RUB' ? '₽' : '€';
+  const currencySymbol = '€';
   const newBalance = (currentDeposit.balance || 0) - deduct;
   const formattedBalance = `${newBalance.toLocaleString('ru-RU')} ${currencySymbol}`;
   const formattedDeduct = `${deduct.toLocaleString('ru-RU')} ${currencySymbol}`;
@@ -574,7 +668,7 @@ export function settleDebtsFromDeposit(studentId: string): {
 
   let settledAmount = 0;
   const todayStr = new Date().toLocaleDateString('ru-RU');
-  const currencySymbol = currentDeposit?.currency === 'RUB' ? '₽' : '€';
+  const currencySymbol = '€';
   let studentPayments = [...(student.finance?.payments || [])];
   const newInteractions: TimelineInteraction[] = [];
 
@@ -792,7 +886,7 @@ export function settleFamilyDebtsFromFamilyDeposit(parentId: string): {
       let donorDeposit = donor.finance?.deposit?.balance || 0;
       if (donorDeposit <= 0) continue;
 
-      const currencySymbol = donor.finance?.deposit?.currency === 'RUB' ? '₽' : '€';
+      const currencySymbol = '€';
       const todayStr = new Date().toLocaleDateString('ru-RU');
 
       for (const debt of debtorDebts) {

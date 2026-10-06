@@ -56,7 +56,7 @@ interface AddChildModalProps {
 const COURSES_CONFIG = [
   {
     name: 'Английский язык',
-    defaultPrice: '7 600 ₽',
+    defaultPrice: '80 €',
     groups: [
       { name: 'English B1 Teens', teacher: 'Мария Иванова' },
       { name: 'Kids English A1', teacher: 'Мария Иванова' },
@@ -65,7 +65,7 @@ const COURSES_CONFIG = [
   },
   {
     name: 'Робототехника и IT',
-    defaultPrice: '8 400 ₽',
+    defaultPrice: '90 €',
     groups: [
       { name: 'Robotics Junior', teacher: 'Денис Смирнов' },
       { name: 'Arduino Pro 10-14 лет', teacher: 'Денис Смирнов' },
@@ -74,7 +74,7 @@ const COURSES_CONFIG = [
   },
   {
     name: 'Олимпиадная математика',
-    defaultPrice: '6 800 ₽',
+    defaultPrice: '70 €',
     groups: [
       { name: 'Kids Math Safari', teacher: 'Ольга Соколова' },
       { name: 'Math Olympiad 5-7 класс', teacher: 'Ольга Соколова' },
@@ -83,7 +83,7 @@ const COURSES_CONFIG = [
   },
   {
     name: 'Скорочтение и память',
-    defaultPrice: '5 900 ₽',
+    defaultPrice: '60 €',
     groups: [
       { name: 'Скорочтение Junior 6-8 лет', teacher: 'Ольга Соколова' },
       { name: 'Развитие памяти и внимания', teacher: 'Ольга Соколова' },
@@ -120,7 +120,7 @@ export function AddChildModal({
 
   // Subscription & Finance
   const [subscriptionType, setSubscriptionType] = useState('Стандартный (8 уроков/мес)');
-  const [price, setPrice] = useState('7 600 ₽');
+  const [price, setPrice] = useState('80 €');
   const [paymentStatus, setPaymentStatus] = useState<'paid' | 'expected' | 'trial_free'>('paid');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -220,7 +220,7 @@ export function AddChildModal({
       attendance: existing.attendanceStats?.attendanceRate || '95%',
       relationshipType: linkRelationshipType,
       subscriptionType: 'Стандартный (8 уроков/мес)',
-      price: existing.finance?.activeSubscription?.price || '7 600 ₽',
+      price: existing.finance?.activeSubscription?.price || '80 €',
       paymentStatus: 'paid',
       startDate: new Date().toISOString().split('T')[0],
       notes: existing.notes,

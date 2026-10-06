@@ -117,12 +117,36 @@ export function convertEurToRub(amountEur: number, customRate?: number): number 
 
 /**
  * Formats a single currency amount without floating-point artefacts.
+ * - Default currency: EUR
+ * - EUR: without decimals by default for integers, or formatted with decimals if options specify → "80 €", "74,13 €"
  * - RUB: Math.round, non-breaking space thousands separator → "15\u00A0600 ₽"
- * - EUR: exactly 2 decimal places                          → "74,13 €"
  */
-export function formatCurrency(amount: number, currency: 'RUB' | 'EUR'): string {
+export interface FormatCurrencyOptions {
+  decimals?: number;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
+}
+
+export function formatCurrency(
+  amount: number,
+  currency: 'RUB' | 'EUR' = 'EUR',
+  options?: FormatCurrencyOptions
+): string {
   if (currency === 'EUR') {
-    return `${amount.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+    if (options?.decimals !== undefined) {
+      return `${amount.toLocaleString('ru-RU', {
+        minimumFractionDigits: options.decimals,
+        maximumFractionDigits: options.decimals,
+      })} €`;
+    }
+    if (options?.minimumFractionDigits !== undefined || options?.maximumFractionDigits !== undefined) {
+      return `${amount.toLocaleString('ru-RU', {
+        minimumFractionDigits: options.minimumFractionDigits,
+        maximumFractionDigits: options.maximumFractionDigits,
+      })} €`;
+    }
+    const rounded = Math.round(amount * 100) / 100;
+    return `${rounded.toLocaleString('ru-RU')} €`;
   }
   // Use Math.round to eliminate floating-point fractions (e.g. 776 589,317 → 776 589)
   return `${Math.round(amount).toLocaleString('ru-RU').replace(/\s/g, '\u00A0')} ₽`;
@@ -130,45 +154,43 @@ export function formatCurrency(amount: number, currency: 'RUB' | 'EUR'): string 
 
 /**
  * Formats amount in dual currency with primary and converted secondary currency.
- * E.g.: "15 600 ₽ (≈ 156 €)" or "156 € (≈ 15 600 ₽)"
+ * In EUR-first mode, returns clean formatted EUR amount without appending ruble conversion.
+ * E.g.: "156 €"
  */
 export function formatDualCurrency(
   amount: number,
-  baseCurrency: 'RUB' | 'EUR' = 'RUB',
+  baseCurrency: 'RUB' | 'EUR' = 'EUR',
   customRate?: number
 ): string {
   const rate = customRate || getEurRubRate();
-
-  if (baseCurrency === 'RUB') {
-    const eur = convertRubToEur(amount, rate);
-    const rubFormatted = formatCurrency(Math.round(amount), 'RUB');
-    const eurFormatted = formatCurrency(eur, 'EUR');
-    return `${rubFormatted} (≈ ${eurFormatted})`;
-  } else {
-    const rub = convertEurToRub(amount, rate);
-    const eurFormatted = formatCurrency(amount, 'EUR');
-    const rubFormatted = formatCurrency(rub, 'RUB');
-    return `${eurFormatted} (≈ ${rubFormatted})`;
-  }
+  const amountEur = baseCurrency === 'RUB' ? convertRubToEur(amount, rate) : amount;
+  return `${Math.round(amountEur).toLocaleString('ru-RU')} €`;
 }
 
 /**
  * Formats dual currency specifically for executive reports where EUR is base.
- * E.g.: "156 € (15 600 ₽)"
+ * Returns primaryEur and empty secondaryRub, with fullLabel matching primaryEur.
  */
 export function formatExecutiveDualCurrency(
   amountRub: number,
   customRate?: number
-): { rubFormatted: string; eurFormatted: string; fullLabel: string } {
+): {
+  primaryEur: string;
+  secondaryRub: string;
+  fullLabel: string;
+  rubFormatted: string;
+  eurFormatted: string;
+} {
   const rate = customRate || getEurRubRate();
-  const eur = convertRubToEur(amountRub, rate);
-  const rubFormatted = formatCurrency(amountRub, 'RUB');
-  const eurFormatted = formatCurrency(eur, 'EUR');
+  const eur = amountRub <= 500 ? amountRub : convertRubToEur(amountRub, rate);
+  const primaryEur = formatCurrency(eur, 'EUR');
 
   return {
-    rubFormatted,
-    eurFormatted,
-    fullLabel: `${eurFormatted} (${rubFormatted})`,
+    primaryEur,
+    secondaryRub: '',
+    fullLabel: primaryEur,
+    rubFormatted: '',
+    eurFormatted: primaryEur,
   };
 }
 
@@ -211,19 +233,13 @@ export function calculateMultiCurrencyTotals(
     if (rawVal <= 0) continue;
 
     const curr = (item.currency || '').toUpperCase();
-    if (curr === 'EUR' || curr === '€') {
+    if (curr === 'RUB' || curr === '₽') {
+      rubDirect += rawVal;
+      rubCount++;
+    } else {
+      // Default currency is EUR
       eurDirect += rawVal;
       eurCount++;
-    } else {
-      // By default consider numbers > 500 as RUB, or if currency is RUB
-      if (rawVal <= 500 && curr !== 'RUB' && curr !== '₽') {
-        // likely EUR amount
-        eurDirect += rawVal;
-        eurCount++;
-      } else {
-        rubDirect += rawVal;
-        rubCount++;
-      }
     }
   }
 
@@ -235,17 +251,13 @@ export function calculateMultiCurrencyTotals(
 
   const formattedTotalEur = formatCurrency(totalEur, 'EUR');
   const formattedTotalRub = formatCurrency(totalRub, 'RUB');
-  const formattedPrimaryWithSecondary = `${formattedTotalEur} (≈ ${formattedTotalRub})`;
+  const formattedPrimaryWithSecondary = formattedTotalEur;
 
   let breakdownSummary = '';
-  if (eurDirect > 0 && rubDirect > 0) {
-    breakdownSummary = `${eurDirect.toLocaleString('ru-RU')} € в евро + ${rubDirect.toLocaleString('ru-RU')} ₽ (${rubInEur.toLocaleString('ru-RU')} € по курсу ${rate} ₽/€)`;
-  } else if (eurDirect > 0) {
-    breakdownSummary = `${eurDirect.toLocaleString('ru-RU')} € (100% в евро)`;
-  } else if (rubDirect > 0) {
-    breakdownSummary = `${rubInEur.toLocaleString('ru-RU')} € (сконвертировано из ${rubDirect.toLocaleString('ru-RU')} ₽ по курсу ${rate} ₽/€)`;
+  if (totalEur > 0) {
+    breakdownSummary = `${totalEur.toLocaleString('ru-RU')} €`;
   } else {
-    breakdownSummary = `0 € (курс ${rate} ₽/€)`;
+    breakdownSummary = '0 €';
   }
 
   return {
@@ -268,11 +280,13 @@ export function calculateMultiCurrencyTotals(
 
 /**
  * Robust helper to parse any payment amount into base EUR.
- * Converts RUB values (amounts > 500 or containing ₽/руб) to EUR.
+ * Converts RUB values only if string explicitly contains 'RUB' or '₽' / 'руб'.
  * Guards against concatenated string outliers (> 10000 EUR).
  */
 export function parsePaymentAmountEUR(val: any, defaultVal = 120, customRate?: number): number {
   if (val === null || val === undefined) return defaultVal;
+
+  const effectiveRate = customRate || (defaultVal > 30 && defaultVal < 300 ? defaultVal : getEurRubRate());
 
   if (typeof val === 'number') {
     if (isNaN(val) || val <= 0) return defaultVal;
@@ -280,17 +294,22 @@ export function parsePaymentAmountEUR(val: any, defaultVal = 120, customRate?: n
       // Outlier protection against concatenated strings or internal IDs
       return defaultVal;
     }
-    if (val > 500) {
-      return convertRubToEur(val, customRate);
-    }
     return val;
   }
 
   const str = String(val).trim();
   if (!str) return defaultVal;
 
-  const isRub = str.includes('₽') || str.toLowerCase().includes('руб');
   const isEur = str.includes('€') || str.toLowerCase().includes('eur');
+  const isRub = !isEur && (str.includes('₽') || str.toLowerCase().includes('руб') || str.toUpperCase().includes('RUB'));
+
+  if (isEur) {
+    const matchEur = str.match(/([\d\s.,]+)\s*€/);
+    if (matchEur) {
+      const num = parseFloat(matchEur[1].replace(/[^\d.,]/g, '').replace(',', '.'));
+      if (!isNaN(num) && num > 0 && num <= 10000) return num;
+    }
+  }
 
   const cleaned = str.replace(/[^\d.,]/g, '').replace(',', '.');
   const parsed = parseFloat(cleaned);
@@ -300,8 +319,8 @@ export function parsePaymentAmountEUR(val: any, defaultVal = 120, customRate?: n
     return defaultVal;
   }
 
-  if (isRub || (!isEur && parsed > 500)) {
-    return convertRubToEur(parsed, customRate);
+  if (isRub) {
+    return convertRubToEur(parsed, effectiveRate);
   }
 
   return parsed;

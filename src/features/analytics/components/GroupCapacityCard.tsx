@@ -140,12 +140,12 @@ export function GroupCapacityCard({
 
                   {/* Потенциал выручки */}
                   <td className="py-0.5 px-0.5 text-right whitespace-nowrap font-mono text-[10px]">
-                    {(g.potentialRub ?? 0) > 0 || (g.potentialEur ?? 0) > 0 ? (
+                    {(g.potentialEur ?? 0) > 0 ? (
                       <span className="font-bold text-emerald-600">
-                        +{((g.potentialRub || (g.potentialEur || 0) * 100) || 0).toLocaleString('ru-RU')} ₽
+                        +{(g.potentialEur || 0).toLocaleString('ru-RU')} €
                       </span>
                     ) : (
-                      <span className="text-slate-400 font-medium">0 ₽</span>
+                      <span className="text-slate-400 font-medium">0 €</span>
                     )}
                   </td>
 

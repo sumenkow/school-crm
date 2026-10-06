@@ -77,12 +77,12 @@ export async function GET(request: NextRequest) {
     const telegramText = `👑 *ЗАКРЫТЫЙ ОТЧЕТ РУКОВОДИТЕЛЯ (AUDIT)*
 📅 *Дата:* ${dateShort} (${todayFormatted})
 👤 *Руководитель:* ${ownerName}
-💱 *Основная валюта:* EUR (€) • Курс: 1 € = ${eurRate} ₽
+💱 *Основная валюта:* EUR (€)
 
 ───────────────────
 💳 *ФИНАНСОВЫЕ СБОРЫ:*
-• Выручка за день: *${revenueTodayEur.toLocaleString('ru-RU')} €* _(${revenueTodayRub.toLocaleString('ru-RU')} ₽)_
-• Дебиторская задолженность: *-${totalDebtAmountEur.toLocaleString('ru-RU')} €* _(-${totalDebtAmountRub.toLocaleString('ru-RU')} ₽)_
+• Выручка за день: *${revenueTodayEur.toLocaleString('ru-RU')} €*
+• Дебиторская задолженность: *-${totalDebtAmountEur.toLocaleString('ru-RU')} €*
 • Должников в базе: *${debtorsCount} чел.*
 
 ───────────────────

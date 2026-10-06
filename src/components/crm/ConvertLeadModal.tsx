@@ -51,7 +51,7 @@ export function ConvertLeadModal({ isOpen, lead, onClose, onSuccess }: ConvertLe
       setCourseName(lead.directionOrCourse || 'Английский язык');
       setStartDate(new Date().toISOString().slice(0, 10));
 
-      const numAmount = parseInt((lead.offerAmount || '').replace(/\D/g, ''), 10);
+      const numAmount = parseInt(String(lead.offerAmount || '').replace(/\D/g, ''), 10);
       setDepositAmount(!isNaN(numAmount) && numAmount > 0 ? numAmount : 0);
 
       const allG = getStoredGroups().filter(g => !g.isDeleted);

@@ -149,7 +149,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
       <div className="h-12 flex items-center justify-between min-w-0 w-full">
         <div className="min-w-0">
           <h2 className="font-bold text-lg text-slate-900 truncate leading-tight">{getSchoolSettings().name || 'You Europe'}</h2>
-          <p className="text-[11px] text-slate-500 font-medium">1 € = {rate} ₽</p>
+          <p className="text-[11px] text-slate-500 font-medium">Единый стандарт: EUR (€)</p>
         </div>
         
         <div className="flex items-center gap-2 shrink-0">

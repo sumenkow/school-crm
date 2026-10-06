@@ -20,12 +20,37 @@ export function getStoredPayments(): FullPaymentData[] {
 
     const seenIds = new Set<string>();
     const result: FullPaymentData[] = [];
+    let hasMigrated = false;
 
     for (const p of stored) {
       if (!p || !p.id) continue;
       if (seenIds.has(p.id)) continue;
       seenIds.add(p.id);
-      result.push(p);
+
+      let payment = p;
+      if (typeof p.amount === 'number' && p.amount > 500) {
+        const converted = Math.round(p.amount / 100);
+        payment = {
+          ...p,
+          amount: converted,
+          amountFormatted: `${converted.toLocaleString('ru-RU')} €`,
+          currency: 'EUR',
+          comment: p.comment ? p.comment.replace(/(\d+[\s\d]*)\s*₽/g, (_, val) => {
+            const num = parseInt(val.replace(/\s/g, ''), 10);
+            return !isNaN(num) ? `${Math.round(num / 100)} €` : `${converted} €`;
+          }) : p.comment,
+        };
+        hasMigrated = true;
+      }
+      result.push(payment);
+    }
+
+    if (hasMigrated) {
+      try {
+        localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(result));
+      } catch (e) {
+        // Ignore storage write error
+      }
     }
 
     return result;

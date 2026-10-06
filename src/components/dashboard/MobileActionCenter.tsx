@@ -149,7 +149,7 @@ export function MobileActionCenter({
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900">{getSchoolSettings().name || 'You Europe'}</h1>
-          <p className="text-xs text-slate-500">{capitalizedMonth} • 1 € = {rate} ₽</p>
+          <p className="text-xs text-slate-500">{capitalizedMonth}</p>
         </div>
         <button
           onClick={onOpenCreateLead}

@@ -148,7 +148,8 @@ export interface SalesLossReasonItem {
   color: string;
   count: number;
   sharePercentage: number;
-  potentialRevenueRub: number;
+  potentialRevenueEur: number;
+  potentialRevenueRub?: number;
   potentialRevenueFormatted: string;
 }
 
@@ -164,7 +165,8 @@ export interface SalesManagerMetric {
   conversionRate: string;
   conversionType: 'positive' | 'warning' | 'negative';
   avgContactTime: string;
-  revenueRub: number;
+  revenueEur: number;
+  revenueRub?: number;
   revenueFormatted: string;
 }
 

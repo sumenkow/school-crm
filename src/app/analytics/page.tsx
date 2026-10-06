@@ -239,7 +239,7 @@ export default function AnalyticsPage() {
   // Teacher revenue performance
   const teacherRevenueByRange = {
     month: {
-      total: '945 600 ₽',
+      total: '9 456 €',
       teachers: [
         {
           id: 't1',
@@ -250,8 +250,8 @@ export default function AnalyticsPage() {
           students: 28,
           hours: 32,
           lessons: 16,
-          revenue: '486 400 ₽',
-          avgPerStudent: '17 370 ₽',
+          revenue: '4 864 €',
+          avgPerStudent: '174 €',
           share: 51.4,
           trend: '+8.4%',
           color: 'bg-blue-600',
@@ -265,8 +265,8 @@ export default function AnalyticsPage() {
           students: 14,
           hours: 16,
           lessons: 8,
-          revenue: '268 800 ₽',
-          avgPerStudent: '19 200 ₽',
+          revenue: '2 688 €',
+          avgPerStudent: '192 €',
           share: 28.4,
           trend: '+12.1%',
           color: 'bg-indigo-600',
@@ -280,8 +280,8 @@ export default function AnalyticsPage() {
           students: 18,
           hours: 24,
           lessons: 12,
-          revenue: '190 400 ₽',
-          avgPerStudent: '10 580 ₽',
+          revenue: '1 904 €',
+          avgPerStudent: '106 €',
           share: 20.2,
           trend: '+4.5%',
           color: 'bg-teal-600',
@@ -295,8 +295,8 @@ export default function AnalyticsPage() {
           students: 0,
           hours: 0,
           lessons: 0,
-          revenue: '0 ₽',
-          avgPerStudent: '0 ₽',
+          revenue: '0 €',
+          avgPerStudent: '0 €',
           share: 0,
           trend: 'Идет набор',
           color: 'bg-purple-600',
@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
       ],
     },
     quarter: {
-      total: '2 770 000 ₽',
+      total: '27 700 €',
       teachers: [
         {
           id: 't1',
@@ -315,8 +315,8 @@ export default function AnalyticsPage() {
           students: 31,
           hours: 96,
           lessons: 48,
-          revenue: '1 420 000 ₽',
-          avgPerStudent: '45 800 ₽',
+          revenue: '14 200 €',
+          avgPerStudent: '458 €',
           share: 51.3,
           trend: '+10.2%',
           color: 'bg-blue-600',
@@ -330,8 +330,8 @@ export default function AnalyticsPage() {
           students: 16,
           hours: 48,
           lessons: 24,
-          revenue: '790 000 ₽',
-          avgPerStudent: '49 375 ₽',
+          revenue: '7 900 €',
+          avgPerStudent: '494 €',
           share: 28.5,
           trend: '+15.4%',
           color: 'bg-indigo-600',
@@ -345,8 +345,8 @@ export default function AnalyticsPage() {
           students: 19,
           hours: 72,
           lessons: 36,
-          revenue: '560 000 ₽',
-          avgPerStudent: '29 470 ₽',
+          revenue: '5 600 €',
+          avgPerStudent: '295 €',
           share: 20.2,
           trend: '+6.8%',
           color: 'bg-teal-600',
@@ -360,8 +360,8 @@ export default function AnalyticsPage() {
           students: 0,
           hours: 0,
           lessons: 0,
-          revenue: '0 ₽',
-          avgPerStudent: '0 ₽',
+          revenue: '0 €',
+          avgPerStudent: '0 €',
           share: 0,
           trend: 'Идет набор',
           color: 'bg-purple-600',
@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
       ],
     },
     year: {
-      total: '8 310 000 ₽',
+      total: '83 100 €',
       teachers: [
         {
           id: 't1',
@@ -380,8 +380,8 @@ export default function AnalyticsPage() {
           students: 48,
           hours: 288,
           lessons: 144,
-          revenue: '4 250 000 ₽',
-          avgPerStudent: '88 540 ₽',
+          revenue: '42 500 €',
+          avgPerStudent: '885 €',
           share: 51.1,
           trend: '+14.0%',
           color: 'bg-blue-600',
@@ -395,8 +395,8 @@ export default function AnalyticsPage() {
           students: 26,
           hours: 144,
           lessons: 72,
-          revenue: '2 380 000 ₽',
-          avgPerStudent: '91 500 ₽',
+          revenue: '23 800 €',
+          avgPerStudent: '915 €',
           share: 28.6,
           trend: '+18.2%',
           color: 'bg-indigo-600',
@@ -410,8 +410,8 @@ export default function AnalyticsPage() {
           students: 29,
           hours: 216,
           lessons: 108,
-          revenue: '1 680 000 ₽',
-          avgPerStudent: '57 930 ₽',
+          revenue: '16 800 €',
+          avgPerStudent: '579 €',
           share: 20.3,
           trend: '+9.1%',
           color: 'bg-teal-600',
@@ -425,8 +425,8 @@ export default function AnalyticsPage() {
           students: 0,
           hours: 0,
           lessons: 0,
-          revenue: '0 ₽',
-          avgPerStudent: '0 ₽',
+          revenue: '0 €',
+          avgPerStudent: '0 €',
           share: 0,
           trend: 'Идет набор',
           color: 'bg-purple-600',
@@ -438,22 +438,22 @@ export default function AnalyticsPage() {
   // Course performance by range
   const coursesByRange = {
     month: [
-      { name: 'Английский язык', students: 64, revenue: '486 400 ₽', share: 51.4, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 32, revenue: '268 800 ₽', share: 28.4, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 28, revenue: '190 400 ₽', share: 20.2, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
+      { name: 'Английский язык', students: 64, revenue: '4 864 €', share: 51.4, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 32, revenue: '2 688 €', share: 28.4, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 28, revenue: '1 904 €', share: 20.2, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
     ],
     quarter: [
-      { name: 'Английский язык', students: 78, revenue: '1 420 000 ₽', share: 51.3, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 42, revenue: '790 000 ₽', share: 28.5, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 35, revenue: '560 000 ₽', share: 20.2, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
+      { name: 'Английский язык', students: 78, revenue: '14 200 €', share: 51.3, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 42, revenue: '7 900 €', share: 28.5, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 35, revenue: '5 600 €', share: 20.2, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
     ],
     year: [
-      { name: 'Английский язык', students: 120, revenue: '4 250 000 ₽', share: 51.1, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 65, revenue: '2 380 000 ₽', share: 28.6, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 54, revenue: '1 680 000 ₽', share: 20.3, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 ₽', share: 0, color: 'bg-purple-600' },
+      { name: 'Английский язык', students: 120, revenue: '42 500 €', share: 51.1, color: 'bg-blue-600' },
+      { name: 'Робототехника', students: 65, revenue: '23 800 €', share: 28.6, color: 'bg-indigo-600' },
+      { name: 'Олимпиадная математика', students: 54, revenue: '16 800 €', share: 20.3, color: 'bg-teal-600' },
+      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
     ],
   };
 
@@ -477,7 +477,7 @@ export default function AnalyticsPage() {
       csvRows.push('Показатель;Значение;Динамика / Пояснение');
       csvRows.push('Удержание учеников (Retention);91.4%;+2.1% к прошлому периоду');
       csvRows.push('Сквозная конверсия CRM;35.7%;10 оплат из 28 обращений');
-      csvRows.push('Средний LTV ученика;45 600 ₽;+5.4%');
+      csvRows.push('Средний LTV ученика;456 €;+5.4%');
       csvRows.push(`Совокупная выручка за период;${currentTeacherData.total};100% от плана`);
       csvRows.push(`Учеников в активных группах;${mockCoursesStats.reduce((acc, c) => acc + c.students, 0)};чел.`);
       csvRows.push('');
