@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   History,
   Clock,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters, DetailedReportsData } from '../types';
+import { getStoredInteractions, TimelineInteraction } from '@/lib/data/timelineStorage';
 
 interface OperationsLogReportProps {
   data: DetailedReportsData;
@@ -25,79 +26,55 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
   const [selectedAdmin, setSelectedAdmin] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [interactions, setInteractions] = useState<TimelineInteraction[]>(() =>
+    typeof window !== 'undefined' ? getStoredInteractions() : []
+  );
 
-  const operationsLog = useMemo(() => [
-    {
-      id: 'op-501',
-      timestamp: '12.09.2026 11:45',
-      admin: 'Анна Иванова',
-      initials: 'АИ',
-      category: 'Оплаты',
-      action: 'Зачисление платежа 120 €',
-      target: 'Алиса Белова (English B1 Teens)',
-      status: 'Успешно',
-    },
-    {
-      id: 'op-502',
-      timestamp: '12.09.2026 10:24',
-      admin: 'Анна Иванова',
-      initials: 'АИ',
-      category: 'Обращения',
-      action: 'Запись на пробный урок',
-      target: 'Елена Петрова (WhatsApp)',
-      status: 'Успешно',
-    },
-    {
-      id: 'op-503',
-      timestamp: '12.09.2026 09:41',
-      admin: 'Мария Смирнова',
-      initials: 'МС',
-      category: 'Обращения',
-      action: 'Консультация в чате',
-      target: 'Максим Иванов (Telegram)',
-      status: 'Успешно',
-    },
-    {
-      id: 'op-504',
-      timestamp: '11.09.2026 18:22',
-      admin: 'Ольга Кузнецова',
-      initials: 'ОК',
-      category: 'Продления',
-      action: 'Продление договора на 1 месяц',
-      target: 'София Климова (IELTS Intensive)',
-      status: 'Успешно',
-    },
-    {
-      id: 'op-505',
-      timestamp: '11.09.2026 16:05',
-      admin: 'Дмитрий Орлов',
-      initials: 'ДО',
-      category: 'Обращения',
-      action: 'Ответ на заявку с сайта (SLA 48м)',
-      target: 'Иван Соколов (Сайт)',
-      status: 'Задержка',
-    },
-    {
-      id: 'op-506',
-      timestamp: '11.09.2026 14:10',
-      admin: 'Анна Иванова',
-      initials: 'АИ',
-      category: 'Задачи',
-      action: 'Закрытие задачи: перенос занятия',
-      target: 'Группа English B1 Teens',
-      status: 'Успешно',
-    },
-    {
-      id: 'op-507',
-      timestamp: '10.09.2026 17:30',
-      admin: 'Мария Смирнова',
-      initials: 'МС',
-      category: 'Оплаты',
-      action: 'Выставление счета №485 (80 €)',
-      target: 'Марк Соколов (Kids Starter A1)',
-      status: 'Успешно',
-    },
-  ], []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUpdate = () => {
+      setInteractions(getStoredInteractions());
+    };
+    window.addEventListener('crm-timeline-interactions-changed', handleUpdate);
+    window.addEventListener('crm-students-changed', handleUpdate);
+    return () => {
+      window.removeEventListener('crm-timeline-interactions-changed', handleUpdate);
+      window.removeEventListener('crm-students-changed', handleUpdate);
+    };
+  }, []);
+
+  const operationsLog = useMemo(() => {
+    if (data.operationsLogs && data.operationsLogs.length > 0) {
+      return data.operationsLogs;
+    }
+    if (!interactions || interactions.length === 0) return [];
+    return interactions.slice(0, 50).map((item) => {
+      const category =
+        item.type === 'payment'
+          ? 'Оплаты'
+          : item.type === 'teacher_comment' || item.type === 'initial_contact' || item.type === 'follow_up'
+          ? 'Обращения'
+          : item.type === 'renewal'
+          ? 'Продления'
+          : item.type === 'organizational' || item.type === 'status_change'
+          ? 'Задачи'
+          : 'История';
+      return {
+        id: item.id,
+        timestamp: item.occurredAt || (item.createdAt ? new Date(item.createdAt).toLocaleString('ru-RU') : 'Сегодня'),
+        admin: item.author || 'Администратор',
+        initials: (item.author || 'АД').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'АД',
+        category,
+        action: item.content || 'Действие в CRM',
+        target: item.targetName || item.studentName || 'Клиент',
+        status: 'Успешно' as const,
+      };
+    });
+  }, [data.operationsLogs, interactions]);
+
+  const availableAdmins = useMemo(() => {
+    return Array.from(new Set(operationsLog.map((l) => l.admin).filter(Boolean))).sort();
+  }, [operationsLog]);
 
   const filteredLogs = useMemo(() => {
     return operationsLog.filter((log) => {
@@ -142,7 +119,7 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
             <span>Всего операций в смене</span>
             <History className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">342</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">{operationsLog.length}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Все действия фиксируются в аудите</div>
         </div>
 
@@ -151,8 +128,12 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
             <span>Финансовые транзакции</span>
             <CreditCard className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">28 счетов</div>
-          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">420 000 € собрано</div>
+          <div className="text-2xl font-black text-emerald-600 mt-1">
+            {data.heroKpis?.collectedPayments?.paidCount ?? 0} счетов
+          </div>
+          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">
+            {data.heroKpis?.collectedPayments?.amountFormatted ?? '0 €'} собрано
+          </div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -160,8 +141,10 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
             <span>Обработано лидов</span>
             <MessageSquare className="h-4 w-4 text-purple-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">148 диалогов</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">86% без нарушения регламента</div>
+          <div className="text-2xl font-black text-purple-600 mt-1">
+            {data.recentCommunications?.length ?? 0} диалогов
+          </div>
+          <div className="text-[10.5px] text-slate-400 mt-1">Интеграция с каналами связи</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -169,8 +152,12 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
             <span>Закрыто задач</span>
             <CheckSquare className="h-4 w-4 text-teal-600" />
           </div>
-          <div className="text-2xl font-black text-teal-600 mt-1">182 задачи</div>
-          <div className="text-[10.5px] text-teal-700 font-medium mt-1">91.3% вовремя</div>
+          <div className="text-2xl font-black text-teal-600 mt-1">
+            {data.heroKpis?.taskCompletion?.completed ?? 0} задач
+          </div>
+          <div className="text-[10.5px] text-teal-700 font-medium mt-1">
+            {data.heroKpis?.taskCompletion?.percent ?? 0}% вовремя
+          </div>
         </div>
       </div>
 
@@ -196,10 +183,11 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
               className="py-1 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-medium text-slate-700 focus:outline-hidden cursor-pointer"
             >
               <option value="all">Все администраторы</option>
-              <option value="Анна Иванова">Анна Иванова</option>
-              <option value="Мария Смирнова">Мария Смирнова</option>
-              <option value="Ольга Кузнецова">Ольга Кузнецова</option>
-              <option value="Дмитрий Орлов">Дмитрий Орлов</option>
+              {availableAdmins.map((admin) => (
+                <option key={admin} value={admin}>
+                  {admin}
+                </option>
+              ))}
             </select>
 
             <select
@@ -240,39 +228,61 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 pl-1 text-slate-500 whitespace-nowrap text-[10.5px] font-mono">
-                    {log.timestamp}
-                  </td>
-                  <td className="py-2.5 font-semibold text-slate-800 whitespace-nowrap">
-                    {log.admin}
-                  </td>
-                  <td className="py-2.5 whitespace-nowrap">
-                    <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200/60">
-                      {log.category}
-                    </span>
-                  </td>
-                  <td className="py-2.5 text-slate-800 font-medium">
-                    {log.action}
-                  </td>
-                  <td className="py-2.5 text-slate-600">
-                    {log.target}
-                  </td>
-                  <td className="py-2.5 text-right pr-1 whitespace-nowrap">
-                    <span
-                      className={cn(
-                        'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
-                        log.status === 'Успешно'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      )}
-                    >
-                      {log.status}
-                    </span>
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <History className="h-5 w-5" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700">
+                        {searchTerm || selectedAdmin !== 'all' || selectedCategory !== 'all'
+                          ? 'Записей в журнале операций не найдено'
+                          : 'Журнал операционной активности пуст'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-sm">
+                        {searchTerm || selectedAdmin !== 'all' || selectedCategory !== 'all'
+                          ? 'Попробуйте изменить поисковый запрос или сбросить фильтры'
+                          : 'Все финансовые транзакции, задачи и обращения будут автоматически отображаться здесь'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-2.5 pl-1 text-slate-500 whitespace-nowrap text-[10.5px] font-mono">
+                      {log.timestamp}
+                    </td>
+                    <td className="py-2.5 font-semibold text-slate-800 whitespace-nowrap">
+                      {log.admin}
+                    </td>
+                    <td className="py-2.5 whitespace-nowrap">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200/60">
+                        {log.category}
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-slate-800 font-medium">
+                      {log.action}
+                    </td>
+                    <td className="py-2.5 text-slate-600">
+                      {log.target}
+                    </td>
+                    <td className="py-2.5 text-right pr-1 whitespace-nowrap">
+                      <span
+                        className={cn(
+                          'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
+                          log.status === 'Успешно'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        )}
+                      >
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

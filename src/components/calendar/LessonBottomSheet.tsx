@@ -148,12 +148,12 @@ export function LessonBottomSheet({
           lesson_id: updatedLesson.id,
           student_id: st.studentId,
           status: st.status,
-          charge_balance: st.status === 'present' || (st.status === 'absent' && st.chargeBalance),
-          updated_at: new Date().toISOString(),
+          notes: null,
+          marked_at: new Date().toISOString(),
         }));
 
         await supabase
-          .from('lesson_attendance')
+          .from('attendance')
           .upsert(attendancePayload, { onConflict: 'lesson_id,student_id' });
       } catch (err) {
         console.warn('Supabase sync warning:', err);

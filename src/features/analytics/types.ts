@@ -670,12 +670,26 @@ export interface RecentCommunicationRow {
   id: string;
   date: string;
   clientName: string;
+  phone?: string;
   channel: 'WhatsApp' | 'Telegram' | 'Телефон' | 'Сайт';
   subject: string;
   reactionTime: string;
+  reactionMinutes?: number;
   isOverdueSla: boolean;
   responsibleName: string;
   status: 'Обработано' | 'Просрочено';
+  outcome?: string;
+}
+
+export interface OperationLogRow {
+  id: string;
+  timestamp: string;
+  admin: string;
+  initials: string;
+  category: 'Оплаты' | 'Обращения' | 'Задачи' | 'Продления' | 'История';
+  action: string;
+  target: string;
+  status: 'Успешно' | 'Задержка' | 'В работе';
 }
 
 export interface PaymentAttentionRow {
@@ -717,4 +731,5 @@ export interface DetailedReportsData {
   adminTasksList: AdminTaskDistributionRow[];
   recentCommunications: RecentCommunicationRow[];
   attentionPayments: PaymentAttentionRow[];
+  operationsLogs?: OperationLogRow[];
 }

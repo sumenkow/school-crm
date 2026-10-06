@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bookGroupLesson, bookIndividualLesson } from '@/lib/data/lessonStorage';
 import { sendTelegramDirectMessage, resolveBotToken } from '@/lib/telegram/telegramClient';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,37 @@ export async function POST(request: NextRequest) {
       } catch (tgErr) {
         console.warn('Could not send booking confirmation to Telegram:', tgErr);
       }
+    }
+
+    // Direct persistence to Supabase database (eliminating phantom serverless bookings)
+    try {
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL && result.lesson) {
+        const supabase = createAdminClient();
+        const l = result.lesson;
+        await supabase.from('lessons').upsert({
+          id: l.id,
+          group_id: l.groupId || null,
+          teacher_id: l.teacherId || null,
+          lesson_date: l.date,
+          date: l.date,
+          start_time: l.startTime,
+          end_time: l.endTime,
+          topic: l.topic || 'Занятие',
+          online_meeting_url: l.onlineMeetingUrl || null,
+          zoom_url: l.onlineMeetingUrl || null,
+          status: l.status || 'scheduled',
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'id' });
+
+        await supabase.from('attendance').upsert({
+          lesson_id: l.id,
+          student_id: studentId,
+          status: 'not_marked',
+          marked_at: new Date().toISOString(),
+        }, { onConflict: 'lesson_id,student_id' });
+      }
+    } catch (dbErr) {
+      console.warn('Supabase direct persistence warning in /api/telegram/mini-app/book:', dbErr);
     }
 
     return NextResponse.json({

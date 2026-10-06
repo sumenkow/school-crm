@@ -21,6 +21,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { success: false, error: 'Database seeding is strictly forbidden in production' },
+        { status: 403 }
+      );
+    }
+
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
       return NextResponse.json(
         { success: false, error: 'Supabase credentials not configured in environment' },

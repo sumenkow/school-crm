@@ -229,6 +229,9 @@ export function LessonDetailsDrawer({
   const absentCount = students.filter((s) => s.attendanceStatus === 'absent').length;
   const attendanceRate =
     totalStudentsCount > 0 ? Math.round((presentCount / totalStudentsCount) * 100) : 0;
+  const hasMarkedAttendance = students.some(
+    (s) => s.attendanceStatus && s.attendanceStatus !== 'not_marked'
+  );
 
   // Handle student attendance status change inside Drawer
   const handleStudentAttendanceChange = (
@@ -299,6 +302,64 @@ export function LessonDetailsDrawer({
     window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
     window.dispatchEvent(new CustomEvent('crm-students-changed'));
     toast.success('Все ученики отмечены как присутствующие');
+  };
+
+  // Handle Reset Attendance with Zero Premature Billing protection
+  const handleResetAttendance = () => {
+    if (!lesson || !students || students.length === 0) return;
+
+    try {
+      // 1. Rollback all billing deductions for this lesson
+      const { restoredCount } = restoreLessonBilling(lesson.id);
+
+      // 2. Fetch fresh lesson after billing rollback
+      const currentFresh = getStoredLessonById(lesson.id) || lesson;
+
+      // 3. Mark all students as 'not_marked'
+      const updatedStudents = (currentFresh.students || []).map((s) => ({
+        ...s,
+        attendanceStatus: 'not_marked' as const,
+        billed: false,
+      }));
+
+      const updatedLesson: FullLessonData = {
+        ...currentFresh,
+        isBilled: false,
+        billedStudentIds: [],
+        students: updatedStudents,
+      };
+
+      saveLessonToStorage(updatedLesson);
+
+      // 4. Sync attendance history and Supabase DB
+      recordLessonAttendanceBatch({
+        lessonId: updatedLesson.id,
+        topic: updatedLesson.topic,
+        homework: updatedLesson.homework,
+        teacherName: updatedLesson.teacherName,
+        status: updatedLesson.status,
+        studentRecords: updatedStudents.map((s) => ({
+          studentId: s.id,
+          studentName: s.name,
+          status: 'not_marked',
+          note: s.notes,
+        })),
+      });
+
+      const finalLesson = getStoredLessonById(lesson.id) || updatedLesson;
+      if (onLessonUpdated) onLessonUpdated(finalLesson);
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: finalLesson }));
+      window.dispatchEvent(new CustomEvent('crm-students-changed'));
+
+      if (restoredCount > 0) {
+        toast.info(`Отметки сброшены. Возврат списаний выполнен для ${restoredCount} уч.`);
+      } else {
+        toast.info('Отметки посещаемости сброшены');
+      }
+    } catch (err) {
+      console.error('Failed to reset attendance:', err);
+      toast.error('Не удалось сбросить отметки посещаемости');
+    }
   };
 
   // Handle Conduct lesson action
@@ -1121,15 +1182,32 @@ export function LessonDetailsDrawer({
                 Состав группы: {totalStudentsCount} уч.
               </span>
               {students.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleMarkAllPresent}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
-                  title="Отметить всех учеников как присутствующих"
-                >
-                  <Check className="h-3 w-3 text-emerald-600" />
-                  <span>Отметить всех</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleResetAttendance}
+                    disabled={!hasMarkedAttendance}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium text-[11px] border transition-colors',
+                      hasMarkedAttendance
+                        ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 cursor-pointer shadow-2xs'
+                        : 'bg-slate-50 text-slate-400 border-slate-200/60 cursor-not-allowed opacity-60'
+                    )}
+                    title="Сбросить все отметки посещаемости и вернуть списания"
+                  >
+                    <RotateCcw className="h-3 w-3 text-slate-500" />
+                    <span>Сбросить отметки</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMarkAllPresent}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] border border-emerald-200 transition-colors cursor-pointer shadow-2xs"
+                    title="Отметить всех учеников как присутствующих"
+                  >
+                    <Check className="h-3 w-3 text-emerald-600" />
+                    <span>Отметить всех</span>
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1193,8 +1271,8 @@ export function LessonDetailsDrawer({
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
-                          onClick={() => handleStudentAttendanceChange(st.id, 'present')}
-                          title="Был"
+                          onClick={() => handleStudentAttendanceChange(st.id, st.attendanceStatus === 'present' ? 'not_marked' : 'present')}
+                          title={st.attendanceStatus === 'present' ? 'Сбросить отметку' : 'Был'}
                           className={cn(
                             'px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer',
                             st.attendanceStatus === 'present'
@@ -1206,8 +1284,8 @@ export function LessonDetailsDrawer({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleStudentAttendanceChange(st.id, 'absent')}
-                          title="Пропуск"
+                          onClick={() => handleStudentAttendanceChange(st.id, st.attendanceStatus === 'absent' ? 'not_marked' : 'absent')}
+                          title={st.attendanceStatus === 'absent' ? 'Сбросить отметку' : 'Пропуск'}
                           className={cn(
                             'px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer',
                             st.attendanceStatus === 'absent'
@@ -1219,8 +1297,8 @@ export function LessonDetailsDrawer({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleStudentAttendanceChange(st.id, 'excused')}
-                          title="Болезнь / Уважительная"
+                          onClick={() => handleStudentAttendanceChange(st.id, st.attendanceStatus === 'excused' ? 'not_marked' : 'excused')}
+                          title={st.attendanceStatus === 'excused' ? 'Сбросить отметку' : 'Болезнь / Уважительная'}
                           className={cn(
                             'px-2 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer',
                             st.attendanceStatus === 'excused'

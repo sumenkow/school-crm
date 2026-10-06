@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   CreditCard,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters, DetailedReportsData } from '../types';
+import { getStoredPayments } from '@/lib/data/paymentStorage';
 
 interface PaymentsReceivablesReportProps {
   data: DetailedReportsData;
@@ -26,93 +27,41 @@ interface PaymentsReceivablesReportProps {
 export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivablesReportProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [payments, setPayments] = useState<any[]>(() =>
+    typeof window !== 'undefined' ? getStoredPayments() : []
+  );
 
-  const invoicesList = useMemo(() => [
-    {
-      id: 'inv-301',
-      invoiceNumber: '№ 482',
-      invoiceDate: '02.09.2026',
-      studentName: 'Алиса Белова',
-      groupName: 'English B1 Teens',
-      amountEur: 120,
-      amountFormatted: '120 €',
-      dueDate: '09.09.2026',
-      overdueDays: 3,
-      status: 'overdue' as const,
-      statusLabel: 'Просрочен на 3 дн.',
-      admin: 'Анна Иванова',
-    },
-    {
-      id: 'inv-302',
-      invoiceNumber: '№ 485',
-      invoiceDate: '05.09.2026',
-      studentName: 'Марк Соколов',
-      groupName: 'Kids Starter A1',
-      amountEur: 80,
-      amountFormatted: '80 €',
-      dueDate: '10.09.2026',
-      overdueDays: 2,
-      status: 'overdue' as const,
-      statusLabel: 'Просрочен на 2 дн.',
-      admin: 'Мария Смирнова',
-    },
-    {
-      id: 'inv-303',
-      invoiceNumber: '№ 491',
-      invoiceDate: '08.09.2026',
-      studentName: 'София Климова',
-      groupName: 'IELTS Intensive',
-      amountEur: 150,
-      amountFormatted: '150 €',
-      dueDate: '12.09.2026',
-      overdueDays: 1,
-      status: 'overdue' as const,
-      statusLabel: 'Просрочен на 1 дн.',
-      admin: 'Ольга Кузнецова',
-    },
-    {
-      id: 'inv-304',
-      invoiceNumber: '№ 497',
-      invoiceDate: '10.09.2026',
-      studentName: 'Даниил Орлов',
-      groupName: 'Robotics Advanced',
-      amountEur: 120,
-      amountFormatted: '120 €',
-      dueDate: '13.09.2026',
-      overdueDays: 0,
-      status: 'pending' as const,
-      statusLabel: 'Ожидает оплаты',
-      admin: 'Дмитрий Орлов',
-    },
-    {
-      id: 'inv-305',
-      invoiceNumber: '№ 478',
-      invoiceDate: '01.09.2026',
-      studentName: 'Екатерина Романова',
-      groupName: 'English B1 Teens',
-      amountEur: 120,
-      amountFormatted: '120 €',
-      dueDate: '08.09.2026',
-      overdueDays: 0,
-      status: 'paid' as const,
-      statusLabel: 'Оплачено вовремя',
-      admin: 'Анна Иванова',
-    },
-    {
-      id: 'inv-306',
-      invoiceNumber: '№ 479',
-      invoiceDate: '01.09.2026',
-      studentName: 'Максим Иванов',
-      groupName: 'English Teens B2',
-      amountEur: 140,
-      amountFormatted: '140 €',
-      dueDate: '08.09.2026',
-      overdueDays: 0,
-      status: 'paid' as const,
-      statusLabel: 'Оплачено вовремя',
-      admin: 'Мария Смирнова',
-    },
-  ], []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUpdate = () => {
+      setPayments(getStoredPayments());
+    };
+    window.addEventListener('crm-payments-changed', handleUpdate);
+    return () => {
+      window.removeEventListener('crm-payments-changed', handleUpdate);
+    };
+  }, []);
+
+  const invoicesList = useMemo(() => {
+    if (!payments || payments.length === 0) return [];
+    return payments.map((p, idx) => {
+      const amt = parseFloat(p.amount) || 0;
+      return {
+        id: p.id || `inv-${idx}`,
+        invoiceNumber: p.receiptNumber || p.id ? `№ ${p.receiptNumber || p.id.slice(0, 6)}` : `№ ${idx + 100}`,
+        invoiceDate: p.date || 'Сегодня',
+        studentName: p.studentName || 'Ученик',
+        groupName: p.direction || p.groupName || 'Курс школы',
+        amountEur: amt,
+        amountFormatted: `${amt} €`,
+        dueDate: p.dueDate || p.date || 'По графику',
+        overdueDays: p.status === 'overdue' ? 3 : 0,
+        status: (p.status === 'paid' ? 'paid' : p.status === 'overdue' ? 'overdue' : 'pending') as 'paid' | 'overdue' | 'pending',
+        statusLabel: p.status === 'paid' ? 'Оплачено вовремя' : p.status === 'overdue' ? 'Просрочен' : 'Ожидает оплаты',
+        admin: p.recordedBy || 'Администратор',
+      };
+    });
+  }, [payments]);
 
   const filteredInvoices = useMemo(() => {
     return invoicesList.filter((inv) => {
@@ -125,6 +74,12 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
       return matchStatus && matchSearch;
     });
   }, [invoicesList, selectedStatus, searchTerm]);
+
+  const paidInvoices = invoicesList.filter((inv) => inv.status === 'paid');
+  const overdueInvoices = invoicesList.filter((inv) => inv.status === 'overdue');
+  const totalCollectedEur = paidInvoices.reduce((sum, inv) => sum + inv.amountEur, 0);
+  const overdueAmountEur = overdueInvoices.reduce((sum, inv) => sum + inv.amountEur, 0);
+  const paymentConversion = invoicesList.length > 0 ? ((paidInvoices.length / invoicesList.length) * 100).toFixed(1) : '0';
 
   const handleExportCsv = () => {
     const headers = ['Номер счета', 'Дата', 'Ученик', 'Группа', 'Сумма (€)', 'Срок', 'Дней просрочки', 'Статус', 'Ответственный'];
@@ -160,8 +115,10 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
             <span>Собрано оплат (EUR)</span>
             <Euro className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">420 000 €</div>
-          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">93.3% счетов оплачено (28 из 30)</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">{totalCollectedEur.toLocaleString('ru-RU')} €</div>
+          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">
+            {paymentConversion}% счетов оплачено ({paidInvoices.length} из {invoicesList.length})
+          </div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -169,8 +126,8 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
             <span>Дебиторская задолженность</span>
             <AlertTriangle className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">470 €</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">3 просроченных счета, 1 ожидающий</div>
+          <div className="text-2xl font-black text-rose-600 mt-1">{overdueAmountEur.toLocaleString('ru-RU')} €</div>
+          <div className="text-[10.5px] text-slate-400 mt-1">{overdueInvoices.length} просроченных счетов</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -253,45 +210,53 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 px-2 font-mono font-bold text-slate-900">
-                    {inv.invoiceNumber}
-                  </td>
-                  <td className="py-2.5 px-2 text-slate-500 text-[10.5px]">
-                    {inv.invoiceDate}
-                  </td>
-                  <td className="py-2.5 px-2 font-semibold text-slate-800">
-                    {inv.studentName}
-                  </td>
-                  <td className="py-2.5 px-2 text-slate-600 font-medium">
-                    {inv.groupName}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-black text-slate-900">
-                    {inv.amountFormatted}
-                  </td>
-                  <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
-                    {inv.dueDate}
-                  </td>
-                  <td className="py-2.5 px-2 text-center">
-                    <span
-                      className={cn(
-                        'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
-                        inv.status === 'paid'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : inv.status === 'overdue'
-                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      )}
-                    >
-                      {inv.statusLabel}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-slate-700 font-medium">
-                    {inv.admin}
+              {filteredInvoices.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                    Счетов по выбранным критериям не найдено
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredInvoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-2.5 px-2 font-mono font-bold text-slate-900">
+                      {inv.invoiceNumber}
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-500 text-[10.5px]">
+                      {inv.invoiceDate}
+                    </td>
+                    <td className="py-2.5 px-2 font-semibold text-slate-800">
+                      {inv.studentName}
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-600 font-medium">
+                      {inv.groupName}
+                    </td>
+                    <td className="py-2.5 px-2 text-right font-black text-slate-900">
+                      {inv.amountFormatted}
+                    </td>
+                    <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
+                      {inv.dueDate}
+                    </td>
+                    <td className="py-2.5 px-2 text-center">
+                      <span
+                        className={cn(
+                          'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
+                          inv.status === 'paid'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : inv.status === 'overdue'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        )}
+                      >
+                        {inv.statusLabel}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-right text-slate-700 font-medium">
+                      {inv.admin}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

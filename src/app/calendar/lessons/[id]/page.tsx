@@ -41,7 +41,7 @@ import {
 import { cn } from '@/lib/utils';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
-import { saveLessonToStorage, getStoredLessons, getStoredLessonById, processAutomaticLessonBilling, restoreLessonBilling } from '@/lib/data/lessonStorage';
+import { saveLessonToStorage, getStoredLessons, getStoredLessonById, processAutomaticLessonBilling, restoreLessonBilling, recordLessonAttendanceBatch } from '@/lib/data/lessonStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { useRole } from '@/context/RoleContext';
@@ -727,15 +727,47 @@ export default function LessonDetailsPage() {
   };
 
   const handleResetAttendance = () => {
-    setLesson((prev) => {
+    if (!lesson) return;
+    try {
+      const { restoredCount } = restoreLessonBilling(lesson.id);
+      const fresh = getStoredLessonById(lesson.id) || lesson;
+      const updatedStudents = (fresh.students || []).map((s) => ({
+        ...s,
+        attendanceStatus: 'not_marked' as const,
+        billed: false,
+      }));
       const updated: FullLessonData = {
-        ...prev,
-        students: prev.students.map((s) => ({ ...s, attendanceStatus: 'not_marked' as const })),
+        ...fresh,
+        isBilled: false,
+        billedStudentIds: [],
+        students: updatedStudents,
       };
       saveLessonToStorage(updated);
+      recordLessonAttendanceBatch({
+        lessonId: updated.id,
+        topic: updated.topic,
+        homework: updated.homework,
+        teacherName: updated.teacherName,
+        status: updated.status,
+        studentRecords: updatedStudents.map((s) => ({
+          studentId: s.id,
+          studentName: s.name,
+          status: 'not_marked',
+          note: s.notes,
+        })),
+      });
+      setLesson(updated);
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updated }));
-      return updated;
-    });
+      window.dispatchEvent(new CustomEvent('crm-students-changed'));
+      if (restoredCount > 0) {
+        toast.info(`Отметки сброшены. Возврат списаний выполнен для ${restoredCount} уч.`);
+      } else {
+        toast.info('Отметки посещаемости сброшены');
+      }
+    } catch (err) {
+      console.error('Failed to reset attendance:', err);
+      toast.error('Не удалось сбросить отметки посещаемости');
+    }
   };
 
   // Add Comment to Lesson Timeline

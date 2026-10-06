@@ -1100,3 +1100,198 @@ Integrity mode: development
 - [ ] TypeScript компиляция (`npm run check`) — 0 ошибок.
 - [ ] Продакшн сборка Next.js (`npm run build`) собирает все 33+ маршрута без единой ошибки.
 - [ ] Изменения зафиксированы в Git и отправлены в `origin main`.
+
+## 2026-10-06T03:11:21Z
+
+IMPORTANT EXECUTION CONSTRAINT: This is a READ-ONLY overnight forensic audit. Do not modify source code, database, configuration, migrations, tests, dependencies or production data. Do not wait for user clarification during execution. Resolve ambiguity by documenting assumptions and continue with the safest read-only interpretation. The user will not be available for interactive approvals during the audit. The objective is to produce the complete audit artifacts and final production-readiness verdict autonomously.
+
+Use the Document Review / large distributed audit approach, with read-only Explorers, independent Critics and a final Success Auditor. No Workers are permitted to modify the repository.
+
+Working directory: /Users/andreysumenkov/Documents/crm test antigravity
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Code Quality, TypeScript & Next.js Runtime Hygiene
+- Conduct comprehensive static and architectural analysis of the entire TypeScript / Next.js 16 codebase under `src/`.
+- Verify server/client boundary integrity (`'use client'` vs server actions/routes), ensuring domain logic in `src/lib/data/` cannot leak browser-only globals when invoked in server contexts.
+- Detect memory leaks, unbounded caches, unhandled async rejections, cascading `useEffect` dependencies, circular imports, and deprecated Next.js patterns.
+- Confirm zero TypeScript compiler warnings or suppressed errors.
+
+### R2. Architecture & Modular Boundary Integrity
+- Evaluate modular separation of concerns between data storage (`src/lib/data/*`), API handlers (`src/app/api/*`), domain models (`src/types/*`), and UI presentation (`src/components/*`).
+- Audit the dual-layer data architecture (local in-memory/localStorage cache vs central Supabase database) for consistency, conflict resolution, race condition vulnerabilities, and stale cache hazards.
+
+### R3. Data Layer, Supabase Schema & Migration Audit
+- Verify strict adherence to `docs/schema.md` and the `AGENTS.md` Zero New Entities law (`students`, `parents`, `groups`, `lessons`, `attendance`, `leads`, `courses`, `system_settings`).
+- Verify database migrations in `supabase/migrations/`: correct data types, foreign key constraints, indexes, cascade rules, and RLS policies for CRM roles (`owner`, `admin`, `teacher`) and `service_role`.
+- Identify any orphaned, undeclared, or un-migrated columns and ensure zero schema drift.
+
+### R4. Core Business Logic & Financial Invariants
+- Verify the strict **Zero Premature Billing Invariant**: lesson bookings must incur zero billing debits on student balance/subscription; billing occurs exclusively upon confirmed lesson conduction / attendance marking.
+- Audit the collision engine (`collisionHelper.ts`): teacher schedule conflicts, student overlaps, room constraints, and operating hours (09:00–21:00).
+- Audit group capacity and seat allocation logic: verify prevention of overbooking, duplicate enrollments, and race conditions on the last seat.
+- Audit attendance logging, lesson completion workflows, and teacher lesson proposal/approval states (`pending` -> `planned` / `cancelled`).
+
+### R5. UI/UX, Design System & AGENTS.md Compliance
+- Audit strict separation of target platforms: Desktop (1280px+ viewports) vs Mobile (smartphones 375–430px) without cross-platform degradation.
+- **Mock Data Ban**: ensure zero static hardcoded placeholders in JSX (e.g. fake counts, fake phone numbers, placeholder strings); all content must come dynamically from props, hooks, or DB state, with proper empty states.
+- **Design System Rules**:
+  - Zero letter circles with initials (e.g. `<div>W</div>`).
+  - Zero text emojis or symbols (e.g. `✉`, `☎`, `📞`); official Lucide SVG icons only.
+  - Strict color psychology: `emerald` for success / conducted lessons / full groups (>=80%); `rose` strictly for critical errors and actual financial debts. Never color full groups in red.
+  - Geometry and layout stability: verify `min-w-0`, `truncate`, consistent card heights, and zero layout shift.
+  - Interactive lookalikes: all elements resembling buttons or links must have functional event handlers.
+
+### R6. Analytics & Financial Reporting Integrity
+- Audit diagnostic and analytics calculations across all dashboards: sales funnel, revenue loss breakdown, cohort retention matrix (M0–M5), teacher efficiency, and group load.
+- Verify that all complex aggregation, sorting, and statistic calculations are memoized with `useMemo` to eliminate UI thread freezing.
+- Verify numeric accuracy and formula consistency between backend API responses and frontend visualizations.
+
+### R7. Security, Auth & Vulnerability Assessment
+- Audit IDOR (Insecure Direct Object Reference) protections across all endpoints (`/api/telegram/*`, `/api/lessons/*`, `/api/reports/*`, `/api/backup/*`).
+- Verify authentication and role-based authorization guards on sensitive routes and server actions.
+- Audit secret management: verify that Telegram bot tokens, Supabase service keys, and webhook secrets are never leaked to client bundles, local storage, or public API responses (must use masking `••••••••`).
+- Audit rate limiting, input sanitization, and CSRF/CORS protections.
+
+### R8. Production-Readiness Verdict & Independent Forensic Reports
+- Consolidate all explorer findings through independent adversarial review by Critics and Challengers to eliminate false positives and verify reproducible proof.
+- Synthesize the final Production Readiness Executive Verdict:
+  - **Overall Verdict**: `READY FOR PRODUCTION` | `CONDITIONALLY READY` | `BLOCKED`
+  - **Risk Matrix**: P0 (Blockers), P1 (High Severity), P2 (Medium Severity), P3 (Low / Tech Debt).
+  - **Audit Evidence Catalog**: concrete file links, line numbers, reproduction steps, and impact assessment for every finding.
+  - **Remediation Roadmap**: actionable step-by-step guidance for subsequent fix phases.
+
+---
+
+## Acceptance Criteria
+
+### Audit Integrity & Read-Only Governance
+- [ ] Strictly zero modifications made to source code, migrations, tests, dependencies, or database records throughout the audit.
+- [ ] All audits conducted autonomously without blocking on user interactive input.
+- [ ] Ambiguities resolved safely via documented assumptions.
+
+### Comprehensive Domain Coverage
+- [ ] Code quality & Next.js architecture report completed with zero false positives.
+- [ ] Supabase schema & migration verification completed against `docs/schema.md`.
+- [ ] Business logic & Zero Premature Billing invariant verified with mathematical proof.
+- [ ] UI/UX & `AGENTS.md` design compliance audit completed across Desktop and Mobile viewports.
+- [ ] Security & IDOR vulnerability assessment completed with threat modeling.
+- [ ] Analytics & financial formulas verified for numeric accuracy and memoization.
+
+### Adversarial Verification & Final Verdict
+- [ ] Independent Critics / Challengers cross-verify all findings to prevent hallucinations or premature self-certification.
+- [ ] All 16 automated test suites executed in read-only verification mode with results recorded.
+- [ ] Final production-readiness verdict document generated with prioritized P0–P3 issue tracker and remediation blueprint.
+
+## 2026-10-06T03:56:19Z
+
+Комплексное устранение всех 9 критических дефектов P0 и ключевых дефектов P1, выявленных в ходе ночного аудита CRM Smart Academy / You Europe, с полным выравниванием схемы Supabase, закрытием периметра безопасности API, реализацией серверной персистентности Telegram Mini-App и устранением нарушений правил AGENTS.md.
+
+Working directory: /Users/andreysumenkov/Documents/crm test antigravity
+Integrity mode: development
+
+## Requirements
+
+### R1. Закрытие периметра безопасности и авторизация API (P0-1, P0-2, P0-7, P0-8, P0-9, P1-1)
+- **`src/middleware.ts`**: Удалить безусловный пропуск `pathname.startsWith('/api/')`. Закрыть все внутренние API-маршруты проверкой аутентификации. В белый список публичных маршрутов включить строго:
+  - `/api/telegram/webhook` (приём апдейтов от Telegram)
+  - `/api/telegram/mini-app/*` (маршруты родительского Mini App)
+  - `/api/auth/*` (вход, колбэки, выход)
+- **`/api/sync` и `/api/database/seed`**:
+  - Закрыть обязательной проверкой авторизации с ролью `owner` или `admin`.
+  - В `/api/database/seed` полностью заблокировать сброс базы данных в production окружении (`NODE_ENV === 'production'`).
+- **`/api/telegram/settings` и `/api/telegram/messages`**:
+  - `POST /api/telegram/settings`: разрешить только авторизованным администраторам (`['owner', 'admin']`).
+  - `/api/telegram/messages`: закрыть авторизацией, исключить открытую выгрузку чужой переписки (IDOR).
+- **Supabase RLS на `profiles`**:
+  - Выпустить миграцию, обновляющую политику `profiles_update_own`: запретить пользователю самостоятельно изменять свою колонку `role`.
+
+### R2. Выравнивание схемы данных Supabase и исправление триггера (P0-4, P0-5, P0-6)
+- **Миграция `supabase/migrations/20261006010000_align_lessons_and_attendance.sql`**:
+  - Расширить энум `lesson_status` значениями: `'pending'`, `'planned'`, `'conducted'`, `'rejected'`.
+  - Добавить в таблицу `public.lessons` колонки: `date DATE`, `zoom_url TEXT`, `homework TEXT`, `day_of_week INT`, `updated_at TIMESTAMPTZ DEFAULT NOW()`.
+  - Обеспечить триггерную синхронизацию между `date` <-> `lesson_date` и `zoom_url` <-> `online_meeting_url`, чтобы старые и новые запросы работали без сбоев.
+  - Устранить дубликат `lesson_attendance`: перевести мобильный компонент `LessonBottomSheet.tsx` на работу с официальной таблицей `public.attendance`. Смигрировать существующие данные и удалить таблицу-дубликат.
+  - Исправить функцию триггера `process_lesson_attendance_balance()`: заменить несуществующие поля `spent_lessons` и `total_lessons` на `lessons_attended` и `lessons_total`.
+
+### R3. Гарантированная серверная персистентность Telegram Mini-App (P0-3)
+- В [`src/app/api/telegram/mini-app/book/route.ts`](file:///Users/andreysumenkov/Documents/crm%20test%20antigravity/src/app/api/telegram/mini-app/book/route.ts):
+  - Реализовать прямое атомарное сохранение забронированного группового или индивидуального занятия в таблицу `lessons` в Supabase через `createAdminClient()`.
+  - Обеспечить запись студента в `lesson.students` и отметку в `attendance`.
+  - Исключить фантомные бронирования: любая запись с мобильного устройства в Telegram Mini-App обязана персистентно сохраняться в базе данных и мгновенно отображаться на десктопе администратора.
+
+### R4. Устранение нарушений Mock Data Ban в аналитике (P1-3)
+- В [`useDetailedReportsData.ts`](file:///Users/andreysumenkov/Documents/crm%20test%20antigravity/src/features/analytics/hooks/useDetailedReportsData.ts):
+  - Заменить фиктивные заглушки реальным вычислением метрик по полученным массивам `tasks`, `leads`, `payments`, `students`.
+- В [`CommunicationsReport.tsx`](file:///Users/andreysumenkov/Documents/crm%20test%20antigravity/src/features/analytics/components/CommunicationsReport.tsx) и [`OperationsLogReport.tsx`](file:///Users/andreysumenkov/Documents/crm%20test%20antigravity/src/features/analytics/components/OperationsLogReport.tsx):
+  - Удалить запрещённые правилом 2 `AGENTS.md` заглушки: `English B1 Teens`, фейковые телефоны и захардкоженные цифры в JSX.
+  - При отсутствии данных выводить аккуратные empty states.
+
+### R5. Защита финансовых списаний при отмене отметки (P1-4)
+- В [`LessonDetailsDrawer.tsx`](file:///Users/andreysumenkov/Documents/crm%20test%20antigravity/src/components/calendar/LessonDetailsDrawer.tsx):
+  - При сбросе отметки присутствия (`handleResetAttendance`) возвращать списанное занятие на абонемент/баланс ученика.
+  - Подтвердить сохранение инварианта `Zero Premature Billing` во всех сценариях.
+
+### R6. Комплексная верификация и тестирование (R8)
+- Создать сьют автотестов `tests/p0_security_and_schema_hardening.test.ts`:
+  - Проверка блокировки 401/403 на неавторизованные запросы к `/api/sync`, `/api/database/seed`, `/api/telegram/settings`.
+  - Проверка успешного сохранения бронирований Mini-App в Supabase.
+  - Проверка поддержки энумов и колонок таблицы `lessons`.
+- Обеспечить успешное прохождение всех 17 тестовых сьютов (`npm test`).
+- Обеспечить 0 ошибок компиляции TypeScript (`npm run check`).
+- Обеспечить успешную сборку проекта (`npm run build`) на всех 33+ маршрутах.
+
+---
+
+## Acceptance Criteria
+
+### Security & Perimeter Lockdown
+- [ ] Анонимный вызов `GET /api/sync` возвращает `401 Unauthorized`.
+- [ ] Анонимный вызов `POST /api/database/seed` возвращает `401 Unauthorized` / `403 Forbidden`.
+- [ ] `POST /api/telegram/settings` требует роли администратора или владельца.
+- [ ] Политика RLS запрещает не-владельцам менять `role` в `profiles`.
+
+### Schema Realignment & Mini-App Persistence
+- [ ] Миграция применена; статусы `pending/planned/conducted/rejected` валидны в Postgres.
+- [ ] Бронирование через Mini App атомарно вставляется/обновляется в Supabase `lessons`.
+- [ ] Таблица `lesson_attendance` устранена; мобильная шторка пишет в `attendance`.
+- [ ] Триггер списаний уроков выполняется без ошибок колонок.
+
+### Clean Code & Quality Invariants
+- [ ] В аналитике отсутствуют строки `English B1 Teens` и фейковые телефонные номера.
+- [ ] Все 17 тестовых сьютов проходят на 100% (`npm test`).
+- [ ] `npm run check` завершается с 0 ошибок.
+- [ ] `npm run build` компилирует все страницы без ошибок.
+- [ ] Изменения зафиксированы в git и отправлены в `origin main`.
+
+## 2026-10-06T04:15:28Z
+
+Команда устранения дефектов и hardening (Remediation & Hardening Team):
+
+Working directory: /Users/andreysumenkov/Documents/crm test antigravity
+Integrity mode: development
+
+## Status & Progress:
+- R1 & R2: Middleware perimeter locked in src/middleware.ts, database seed locked in src/app/api/database/seed/route.ts, migration 20261006010000_align_lessons_and_attendance.sql created, LessonBottomSheet.tsx updated to use public.attendance.
+- R3: Direct Supabase persistence added to src/app/api/telegram/mini-app/book/route.ts.
+
+## Remaining Tasks to complete:
+### R4. Устранение нарушений Mock Data Ban в аналитике (P1-3)
+- В src/features/analytics/hooks/useDetailedReportsData.ts:
+  - Вычислять реальные метрики по полученным массивам tasks, leads, payments, students вместо полного отбрасывания и возврата статических моков.
+- В src/features/analytics/components/CommunicationsReport.tsx и OperationsLogReport.tsx:
+  - Удалить запрещённые заглушки: 'English B1 Teens', фейковые телефоны '+7 (911) 234-56-78' и захардкоженные цифры в JSX.
+
+### R5. Защита финансовых списаний при отмене отметки (P1-4)
+- В src/components/calendar/LessonDetailsDrawer.tsx:
+  - При сбросе отметки присутствия (handleResetAttendance) возвращать списанное занятие на абонемент/баланс ученика.
+
+### R6. Комплексная верификация и тестирование (R8)
+- Создать сьют тестов tests/p0_security_and_schema_hardening.test.ts.
+- Обеспечить прохождение всех тестовых сьютов (npm test).
+- Обеспечить 0 ошибок компиляции TypeScript (npm run check).
+- Обеспечить успешную сборку проекта (npm run build).
+- Зафиксировать изменения в git.
+
+

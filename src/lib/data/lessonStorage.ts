@@ -62,15 +62,15 @@ export async function fetchLessonsFromSupabase(): Promise<FullLessonData[]> {
           id: l.id,
           groupId: l.group_id || undefined,
           teacherId: l.teacher_id || undefined,
-          date: l.date,
-          dateFormatted: new Date(l.date).toLocaleDateString('ru-RU'),
+          date: l.date || l.lesson_date,
+          dateFormatted: new Date(l.date || l.lesson_date).toLocaleDateString('ru-RU'),
           startTime: l.start_time || '18:45',
           endTime: l.end_time || '20:15',
           room: l.room || 'Онлайн (Zoom)',
           status: (l.status as LessonStatus) || 'scheduled',
           topic: l.topic || l.title || 'Тема урока',
           homework: l.homework || undefined,
-          onlineMeetingUrl: l.online_meeting_url || undefined,
+          onlineMeetingUrl: l.zoom_url || l.online_meeting_url || undefined,
           isTrial: l.is_trial || false,
         };
 
@@ -514,7 +514,25 @@ export function recordLessonAttendanceBatch(params: {
     }).catch(() => {});
   }
 
-  // Automatic lesson deduction for present students using resolved student IDs
+  // 1. Revert automatic billing for students who were previously billed but are no longer present
+  const previouslyBilledIds = new Set<string>(currentLesson.billedStudentIds || []);
+  for (const s of currentLesson.students || []) {
+    if (s.billed) {
+      previouslyBilledIds.add(s.id);
+      getEquivalentIds(s.id).forEach((id) => previouslyBilledIds.add(id));
+    }
+  }
+
+  const unpresentRecords = params.studentRecords.filter((r) => r.status !== 'present');
+  for (const rec of unpresentRecords) {
+    const eq = getEquivalentIds(rec.studentId);
+    const wasBilled = previouslyBilledIds.has(rec.studentId) || Array.from(eq).some((id) => previouslyBilledIds.has(id));
+    if (wasBilled) {
+      restoreStudentLessonBilling(params.lessonId, rec.studentId);
+    }
+  }
+
+  // 2. Automatic lesson deduction for present students using resolved student IDs
   const presentStudentIds = params.studentRecords
     .filter((r) => r.status === 'present')
     .map((r) => {
@@ -901,6 +919,150 @@ export function restoreLessonBilling(lessonId: string): RestoreBillingResult {
   }
 
   return { success: true, restoredCount, restoredStudents };
+}
+
+/**
+ * Reverts automatic billing for a single student when their attendance status
+ * is changed from 'present' to 'not_marked', 'absent', 'excused', etc.
+ */
+export function restoreStudentLessonBilling(
+  lessonId: string,
+  studentId: string
+): { success: boolean; studentName?: string } {
+  const currentLesson = getStoredLessonById(lessonId);
+  if (!currentLesson) return { success: false };
+
+  const eq = getEquivalentIds(studentId);
+  const isBilledInLesson =
+    (currentLesson.billedStudentIds || []).some((id) => id === studentId || eq.has(id)) ||
+    (currentLesson.students || []).some(
+      (s) => (s.id === studentId || eq.has(s.id)) && s.billed
+    );
+
+  if (!isBilledInLesson) {
+    return { success: false };
+  }
+
+  const allStudents = getStoredStudents();
+  const student = allStudents.find((s) => s.id === studentId || eq.has(s.id));
+  if (!student) return { success: false };
+
+  const billingDetail =
+    currentLesson.billingDetails?.[studentId] ||
+    currentLesson.billingDetails?.[student.id];
+
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  if (billingDetail?.type === 'deposit') {
+    const refundAmount = billingDetail?.amount || student.finance?.deposit?.pricePerLesson || 12;
+    const currentBalance = student.finance?.deposit?.balance || 0;
+    const newBalance = currentBalance + refundAmount;
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      finance: {
+        ...student.finance,
+        deposit: {
+          ...student.finance?.deposit,
+          balance: newBalance,
+          balanceFormatted: `€${newBalance.toLocaleString('ru-RU')}`,
+          currency: 'EUR',
+        },
+      },
+    };
+    saveStudentToStorage(updatedStudent);
+  } else if (student.finance?.activeSubscription) {
+    const sub = student.finance.activeSubscription;
+    const currentRemaining = sub.lessonsRemaining ?? 0;
+    const newRemaining = currentRemaining + 1;
+    const total = sub.lessonsTotal || 8;
+
+    const match = typeof sub.lessonsAttended === 'string' ? sub.lessonsAttended.match(/^(\d+)/) : null;
+    const currentAttended = match
+      ? parseInt(match[1], 10)
+      : typeof sub.lessonsAttended === 'number'
+      ? sub.lessonsAttended
+      : Math.max(0, total - currentRemaining);
+    const newAttended = Math.max(0, currentAttended - 1);
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      finance: {
+        ...student.finance,
+        activeSubscription: {
+          ...sub,
+          lessonsRemaining: newRemaining,
+          lessonsAttended: `${newAttended} из ${total}`,
+          status: 'active',
+        },
+      },
+    };
+    saveStudentToStorage(updatedStudent);
+  } else if (student.finance?.deposit) {
+    const refundAmount = student.finance.deposit.pricePerLesson || 12;
+    const currentBalance = student.finance.deposit.balance || 0;
+    const newBalance = currentBalance + refundAmount;
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      finance: {
+        ...student.finance,
+        deposit: {
+          ...student.finance.deposit,
+          balance: newBalance,
+          balanceFormatted: `€${newBalance.toLocaleString('ru-RU')}`,
+          currency: 'EUR',
+        },
+      },
+    };
+    saveStudentToStorage(updatedStudent);
+  }
+
+  // Record interaction in student timeline
+  const interaction: TimelineInteraction = {
+    id: `refund_${Date.now()}_${student.id}`,
+    studentId: student.id,
+    occurredAt: `Сегодня, ${timeFormatted}`,
+    author: 'Биллинг-система',
+    channel: 'other',
+    type: 'organizational',
+    content: `💳 Возврат списания занятия в связи с изменением посещаемости урока «${currentLesson.groupName || ''}» (${currentLesson.dateFormatted || currentLesson.date}).`,
+  };
+  saveInteractionToStorage(interaction);
+
+  // Update lesson billed arrays and students
+  const updatedBilledStudentIds = (currentLesson.billedStudentIds || []).filter(
+    (id) => id !== studentId && !eq.has(id) && id !== student.id
+  );
+  const updatedBillingDetails = { ...(currentLesson.billingDetails || {}) };
+  delete updatedBillingDetails[studentId];
+  delete updatedBillingDetails[student.id];
+
+  const updatedStudents = (currentLesson.students || []).map((s) => {
+    if (s.id === studentId || eq.has(s.id) || s.id === student.id) {
+      return { ...s, billed: false };
+    }
+    return s;
+  });
+
+  const updatedLesson: FullLessonData = {
+    ...currentLesson,
+    isBilled: updatedBilledStudentIds.length > 0,
+    billedStudentIds: updatedBilledStudentIds,
+    billingDetails: updatedBillingDetails,
+    students: updatedStudents,
+  };
+
+  saveLessonToStorage(updatedLesson);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
+    window.dispatchEvent(new CustomEvent('crm-students-changed'));
+    window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed'));
+  }
+
+  return { success: true, studentName: `${student.firstName} ${student.lastName}` };
 }
 
 export interface GenerateGroupLessonsParams {

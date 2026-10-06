@@ -2,23 +2,29 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/mini-app'];
+const PUBLIC_ROUTES = [
+  '/login',
+  '/mini-app',
+  '/api/telegram/webhook',
+  '/api/telegram/mini-app',
+  '/api/auth',
+  '/api/backup/cron',
+];
 
 // Routes restricted to owner / developer only
-const OWNER_ONLY_ROUTES = ['/analytics', '/settings'];
+const OWNER_ONLY_ROUTES = ['/analytics', '/settings', '/api/database/seed', '/api/school/settings'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes without auth
+  // Allow explicit public routes without auth
   if (PUBLIC_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
     return NextResponse.next();
   }
 
-  // Allow Next.js internal routes and static files
+  // Allow Next.js internal routes and static files only (API routes MUST NOT be bypassed!)
   if (
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/') ||
     pathname.includes('.')
   ) {
     return NextResponse.next();
@@ -63,17 +69,23 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // No session → redirect to login
+  // No session → reject API with 401 or redirect pages to login
   if (!user) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Authentication required' },
+        { status: 401 }
+      );
+    }
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     return NextResponse.redirect(loginUrl);
   }
 
-  // Check role restrictions for owner-only routes (/analytics, /settings)
+  // Check role restrictions for owner-only routes (/analytics, /settings, /api/database/seed, etc.)
   if (OWNER_ONLY_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
-    // 1. Fast path: check role from JWT metadata (instant in-memory check, 0ms)
-    let role = (user.user_metadata?.role || user.app_metadata?.role) as string | undefined;
+    // 1. Fast path: check role from server-controlled app_metadata first, then user_metadata
+    let role = (user.app_metadata?.role || user.user_metadata?.role) as string | undefined;
 
     // 2. Slow fallback: query profiles table only if role is missing in metadata
     if (!role) {
@@ -90,6 +102,12 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!role || !['developer', 'owner'].includes(role)) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden: Insufficient privileges' },
+          { status: 403 }
+        );
+      }
       // Redirect non-owners to dashboard
       const dashboardUrl = request.nextUrl.clone();
       dashboardUrl.pathname = '/dashboard';

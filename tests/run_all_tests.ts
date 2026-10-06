@@ -14,16 +14,17 @@ import { runM2LessonModalTests } from './m2_lesson_modal_creation_workflow.test'
 import { runM3CalendarDrawerNotificationTests } from './m3_calendar_drawer_notifications.test';
 import { runPhase10TelegramMiniAppTests } from './phase10_telegram_mini_app.test';
 import { runTelegramPersistenceTests } from './telegram_bot_supabase_persistence.test';
+import { runP0SecurityAndSchemaHardeningTests } from './p0_security_and_schema_hardening.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
-  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10');
+  console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 16;
+  const totalSuites = 17;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -111,6 +112,13 @@ async function main() {
     const persistenceResult = await runTelegramPersistenceTests();
     if (persistenceResult.failed > 0) {
       throw new Error(`Telegram persistence suite failed with ${persistenceResult.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 17: P0 Security Perimeter, Schema Realignment & Attendance Reversal
+    const p0HardeningResult = await runP0SecurityAndSchemaHardeningTests();
+    if (p0HardeningResult.failed > 0) {
+      throw new Error(`P0 Hardening suite failed with ${p0HardeningResult.failed} failures`);
     }
     passedSuites++;
 

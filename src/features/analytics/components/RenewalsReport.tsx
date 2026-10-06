@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   RefreshCw,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsFilters, DetailedReportsData } from '../types';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 
 interface RenewalsReportProps {
   data: DetailedReportsData;
@@ -26,75 +27,58 @@ interface RenewalsReportProps {
 export function RenewalsReport({ data, filters }: RenewalsReportProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [students, setStudents] = useState<any[]>(() =>
+    typeof window !== 'undefined' ? getStoredStudents() : []
+  );
 
-  const renewalsList = useMemo(() => [
-    {
-      id: 'ren-201',
-      studentName: 'Екатерина Романова',
-      groupName: 'English B1 Teens',
-      expirationDate: '15.09.2026',
-      contactDate: '08.09.2026',
-      status: 'renewed' as const,
-      statusLabel: 'Продлен вовремя',
-      admin: 'Анна Иванова',
-      nextCyclePrice: '120 €',
-    },
-    {
-      id: 'ren-202',
-      studentName: 'Максим Иванов',
-      groupName: 'English Teens B2',
-      expirationDate: '16.09.2026',
-      contactDate: '09.09.2026',
-      status: 'renewed' as const,
-      statusLabel: 'Продлен вовремя',
-      admin: 'Мария Смирнова',
-      nextCyclePrice: '140 €',
-    },
-    {
-      id: 'ren-203',
-      studentName: 'Алиса Белова',
-      groupName: 'English B1 Teens',
-      expirationDate: '12.09.2026',
-      contactDate: '11.09.2026',
-      status: 'pending' as const,
-      statusLabel: 'Согласование расписания',
-      admin: 'Анна Иванова',
-      nextCyclePrice: '120 €',
-    },
-    {
-      id: 'ren-204',
-      studentName: 'Марк Соколов',
-      groupName: 'Kids Starter A1',
-      expirationDate: '10.09.2026',
-      contactDate: '10.09.2026',
-      status: 'overdue' as const,
-      statusLabel: 'Просрочен срок решения',
-      admin: 'Мария Смирнова',
-      nextCyclePrice: '80 €',
-    },
-    {
-      id: 'ren-205',
-      studentName: 'София Климова',
-      groupName: 'IELTS Intensive',
-      expirationDate: '18.09.2026',
-      contactDate: '12.09.2026',
-      status: 'renewed' as const,
-      statusLabel: 'Продлен вовремя',
-      admin: 'Ольга Кузнецова',
-      nextCyclePrice: '150 €',
-    },
-    {
-      id: 'ren-206',
-      studentName: 'Игорь Денисов',
-      groupName: 'German A2 Adults',
-      expirationDate: '05.09.2026',
-      contactDate: '06.09.2026',
-      status: 'churn' as const,
-      statusLabel: 'Отказ (смена графика)',
-      admin: 'Дмитрий Орлов',
-      nextCyclePrice: '110 €',
-    },
-  ], []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUpdate = () => {
+      setStudents(getStoredStudents());
+    };
+    window.addEventListener('crm-students-changed', handleUpdate);
+    return () => {
+      window.removeEventListener('crm-students-changed', handleUpdate);
+    };
+  }, []);
+
+  const renewalsList = useMemo(() => {
+    if (!students || students.length === 0) return [];
+    return students
+      .filter((s: any) => s.finance?.activeSubscription)
+      .map((s: any, idx: number) => {
+        const sub = s.finance.activeSubscription;
+        const rem = sub.lessonsRemaining ?? 0;
+        let status: 'renewed' | 'pending' | 'overdue' | 'churn' = 'renewed';
+        if (s.status === 'archived' || s.status === 'inactive') {
+          status = 'churn';
+        } else if (rem <= 0) {
+          status = 'overdue';
+        } else if (rem <= 3) {
+          status = 'pending';
+        }
+        const statusLabel =
+          status === 'renewed'
+            ? 'Продлен вовремя'
+            : status === 'pending'
+            ? 'Осталось мало уроков'
+            : status === 'churn'
+            ? 'Отказ от продления'
+            : 'Требуется продление';
+        const grp = s.groups?.[0]?.name || 'Учебная группа';
+        return {
+          id: `ren-${s.id || idx}`,
+          studentName: `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Ученик',
+          groupName: grp,
+          expirationDate: sub.expiryDate || 'Конец месяца',
+          contactDate: 'Сегодня',
+          status,
+          statusLabel,
+          admin: 'Администратор',
+          nextCyclePrice: sub.price ? `${sub.price} €` : '120 €',
+        };
+      });
+  }, [students]);
 
   const filteredRenewals = useMemo(() => {
     return renewalsList.filter((r) => {
@@ -106,6 +90,12 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
       return matchStatus && matchSearch;
     });
   }, [renewalsList, selectedStatus, searchTerm]);
+
+  const totalRenewals = renewalsList.length;
+  const renewedCount = renewalsList.filter((r) => r.status === 'renewed').length;
+  const pendingCount = renewalsList.filter((r) => r.status === 'pending' || r.status === 'overdue').length;
+  const churnCount = renewalsList.filter((r) => r.status === 'churn').length;
+  const conversionRate = totalRenewals > 0 ? ((renewedCount / totalRenewals) * 100).toFixed(1) : '0';
 
   const handleExportCsv = () => {
     const headers = ['Ученик', 'Группа', 'Окончание абонемента', 'Дата контакта', 'Статус продления', 'Сумма следующего цикла', 'Ответственный'];
@@ -139,8 +129,8 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
             <span>Конверсия продления</span>
             <RefreshCw className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">88.5%</div>
-          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Выше целевого плана (85%)</div>
+          <div className="text-2xl font-black text-emerald-600 mt-1">{conversionRate}%</div>
+          <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Целевой план: 85%</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -148,8 +138,8 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
             <span>Продлены вовремя</span>
             <CheckCircle2 className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">23</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">Из 26 завершающихся абонементов</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">{renewedCount}</div>
+          <div className="text-[10.5px] text-slate-400 mt-1">Из {totalRenewals} завершающихся абонементов</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -157,8 +147,8 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
             <span>В согласовании / Просрочка</span>
             <AlertTriangle className="h-4 w-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-black text-amber-600 mt-1">2</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">Требуется повторный звонок</div>
+          <div className="text-2xl font-black text-amber-600 mt-1">{pendingCount}</div>
+          <div className="text-[10.5px] text-slate-400 mt-1">Требуется повторный контакт</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -166,8 +156,8 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
             <span>Уход / Не продлили</span>
             <Users className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">1 (3.8%)</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">Причина: переезд / смена графика</div>
+          <div className="text-2xl font-black text-rose-600 mt-1">{churnCount}</div>
+          <div className="text-[10.5px] text-slate-400 mt-1">Причина: отток студентов</div>
         </div>
       </div>
 
@@ -232,44 +222,52 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredRenewals.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 px-2 font-semibold text-slate-800">
-                    {item.studentName}
-                  </td>
-                  <td className="py-2.5 px-2 text-slate-600 font-medium">
-                    {item.groupName}
-                  </td>
-                  <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
-                    {item.expirationDate}
-                  </td>
-                  <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
-                    {item.contactDate}
-                  </td>
-                  <td className="py-2.5 px-2 text-right font-bold text-slate-900">
-                    {item.nextCyclePrice}
-                  </td>
-                  <td className="py-2.5 px-2 text-slate-700 font-medium">
-                    {item.admin}
-                  </td>
-                  <td className="py-2.5 px-2 text-right">
-                    <span
-                      className={cn(
-                        'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
-                        item.status === 'renewed'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : item.status === 'pending'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : item.status === 'overdue'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      )}
-                    >
-                      {item.statusLabel}
-                    </span>
+              {filteredRenewals.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                    Данных по продлению абонементов не найдено
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredRenewals.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-2.5 px-2 font-semibold text-slate-800">
+                      {item.studentName}
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-600 font-medium">
+                      {item.groupName}
+                    </td>
+                    <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
+                      {item.expirationDate}
+                    </td>
+                    <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">
+                      {item.contactDate}
+                    </td>
+                    <td className="py-2.5 px-2 text-right font-bold text-slate-900">
+                      {item.nextCyclePrice}
+                    </td>
+                    <td className="py-2.5 px-2 text-slate-700 font-medium">
+                      {item.admin}
+                    </td>
+                    <td className="py-2.5 px-2 text-right">
+                      <span
+                        className={cn(
+                          'inline-block px-2 py-0.5 rounded text-[10px] font-bold',
+                          item.status === 'renewed'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : item.status === 'pending'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : item.status === 'overdue'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        )}
+                      >
+                        {item.statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

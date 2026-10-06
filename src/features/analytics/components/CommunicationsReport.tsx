@@ -28,80 +28,21 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const communicationsList = useMemo(() => [
-    {
-      id: 'comm-101',
-      date: '12.09 10:24',
-      client: 'Елена Петрова',
-      phone: '+7 (911) 234-56-78',
-      channel: 'WhatsApp' as const,
-      topic: 'Запись на пробный урок B1',
-      reactionMinutes: 3,
-      slaStatus: 'on_time' as const,
-      admin: 'Анна Иванова',
-      outcome: 'Записан на пробный (15.09)',
-    },
-    {
-      id: 'comm-102',
-      date: '12.09 09:41',
-      client: 'Максим Иванов',
-      phone: '+7 (921) 345-67-89',
-      channel: 'Telegram' as const,
-      topic: 'Вопрос по расписанию Teens',
-      reactionMinutes: 12,
-      slaStatus: 'on_time' as const,
-      admin: 'Мария Смирнова',
-      outcome: 'Консультация завершена',
-    },
-    {
-      id: 'comm-103',
-      date: '11.09 18:22',
-      client: 'Ольга Кузнецова',
-      phone: '+7 (905) 456-78-90',
-      channel: 'Телефон' as const,
-      topic: 'Продление абонемента',
-      reactionMinutes: 7,
-      slaStatus: 'on_time' as const,
-      admin: 'Ольга Кузнецова',
-      outcome: 'Выставлен счет (150 €)',
-    },
-    {
-      id: 'comm-104',
-      date: '11.09 16:05',
-      client: 'Иван Соколов',
-      phone: '+7 (916) 567-89-01',
-      channel: 'Сайт' as const,
-      topic: 'Стоимость курса и формат',
-      reactionMinutes: 48,
-      slaStatus: 'overdue' as const,
-      admin: 'Дмитрий Орлов',
-      outcome: 'Отправлен прайс-лист',
-    },
-    {
-      id: 'comm-105',
-      date: '11.09 14:15',
-      client: 'Марина Васильева',
-      phone: '+7 (912) 678-90-12',
-      channel: 'WhatsApp' as const,
-      topic: 'Индивидуальные занятия',
-      reactionMinutes: 4,
-      slaStatus: 'on_time' as const,
-      admin: 'Анна Иванова',
-      outcome: 'Подбор преподавателя',
-    },
-    {
-      id: 'comm-106',
-      date: '10.09 19:30',
-      client: 'Кирилл Морозов',
-      phone: '+7 (903) 789-01-23',
-      channel: 'Telegram' as const,
-      topic: 'Перенос времени занятия',
-      reactionMinutes: 25,
-      slaStatus: 'overdue' as const,
-      admin: 'Мария Смирнова',
-      outcome: 'Расписание скорректировано',
-    },
-  ], []);
+  const communicationsList = useMemo(() => {
+    if (!data.recentCommunications || data.recentCommunications.length === 0) return [];
+    return data.recentCommunications.map((c) => ({
+      id: c.id,
+      date: c.date,
+      client: c.clientName,
+      phone: c.phone || '—',
+      channel: c.channel,
+      topic: c.subject,
+      reactionMinutes: c.reactionMinutes ?? (parseInt(c.reactionTime, 10) || 0),
+      slaStatus: (c.isOverdueSla ? 'overdue' : 'on_time') as 'overdue' | 'on_time',
+      admin: c.responsibleName,
+      outcome: c.outcome || c.status,
+    }));
+  }, [data.recentCommunications]);
 
   const filteredCommunications = useMemo(() => {
     return communicationsList.filter((c) => {
@@ -114,6 +55,13 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
       return matchChannel && matchSearch;
     });
   }, [communicationsList, selectedChannel, searchTerm]);
+
+  const totalComms = communicationsList.length;
+  const onTimeComms = communicationsList.filter((c) => c.slaStatus === 'on_time').length;
+  const overdueComms = communicationsList.filter((c) => c.slaStatus !== 'on_time').length;
+  const onTimePercent = totalComms > 0 ? ((onTimeComms / totalComms) * 100).toFixed(1) : '0';
+  const overduePercent = totalComms > 0 ? ((overdueComms / totalComms) * 100).toFixed(1) : '0';
+  const avgSlaMinutes = data.heroKpis?.contactSla?.minutes ?? 0;
 
   // Channel badge helper
   const renderChannelBadge = (channel: string) => {
@@ -184,7 +132,7 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
             <span>Всего обращений</span>
             <MessageSquare className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">148</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">{totalComms}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Входящий поток в смену</div>
         </div>
 
@@ -193,7 +141,9 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
             <span>В рамках регламента (≤15м)</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">127 (85.8%)</div>
+          <div className="text-2xl font-black text-emerald-600 mt-1">
+            {onTimeComms} ({onTimePercent}%)
+          </div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Цель: не менее 80%</div>
         </div>
 
@@ -202,8 +152,12 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
             <span>С задержкой SLA (&gt;15м)</span>
             <AlertCircle className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">21 (14.2%)</div>
-          <div className="text-[10.5px] text-slate-400 mt-1">Пик: вечернее время 18:00–20:00</div>
+          <div className="text-2xl font-black text-rose-600 mt-1">
+            {overdueComms} ({overduePercent}%)
+          </div>
+          <div className="text-[10.5px] text-slate-400 mt-1">
+            {overdueComms > 0 ? 'Требуется сократить время ответа' : 'Задержек регламента нет'}
+          </div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
@@ -211,7 +165,9 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
             <span>Среднее время ответа</span>
             <Clock className="h-4 w-4 text-purple-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">8.4 мин</div>
+          <div className="text-2xl font-black text-purple-600 mt-1">
+            {avgSlaMinutes > 0 ? `${avgSlaMinutes} мин` : '—'}
+          </div>
           <div className="text-[10.5px] text-emerald-600 font-medium mt-1">Регламент школы: 15 минут</div>
         </div>
       </div>
@@ -278,43 +234,65 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredCommunications.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 pl-1 text-slate-500 whitespace-nowrap text-[10.5px]">
-                    {item.date}
-                  </td>
-                  <td className="py-2.5 font-semibold text-slate-800 whitespace-nowrap">
-                    {item.client}
-                  </td>
-                  <td className="py-2.5 text-slate-500 whitespace-nowrap text-[10.5px]">
-                    {item.phone}
-                  </td>
-                  <td className="py-2.5 whitespace-nowrap">
-                    {renderChannelBadge(item.channel)}
-                  </td>
-                  <td className="py-2.5 text-slate-700 font-medium truncate max-w-[150px]" title={item.topic}>
-                    {item.topic}
-                  </td>
-                  <td className="py-2.5 text-center whitespace-nowrap">
-                    <span
-                      className={cn(
-                        'text-[10.5px] font-bold px-1.5 py-0.5 rounded',
-                        item.slaStatus === 'on_time'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      )}
-                    >
-                      {item.reactionMinutes} мин
-                    </span>
-                  </td>
-                  <td className="py-2.5 text-slate-700 font-medium whitespace-nowrap">
-                    {item.admin}
-                  </td>
-                  <td className="py-2.5 text-right pr-1 text-slate-600 font-normal whitespace-nowrap">
-                    {item.outcome}
+              {filteredCommunications.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                        <MessageSquare className="h-5 w-5" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700">
+                        {searchTerm || selectedChannel !== 'all'
+                          ? 'Обращений по выбранным фильтрам не найдено'
+                          : 'Нет обращений за выбранный период'}
+                      </p>
+                      <p className="text-[11px] text-slate-400 max-w-sm">
+                        {searchTerm || selectedChannel !== 'all'
+                          ? 'Попробуйте изменить поисковый запрос или выбрать другой канал связи'
+                          : 'Входящие обращения через WhatsApp, Telegram и сайт появятся в этом отчёте'}
+                      </p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredCommunications.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-2.5 pl-1 text-slate-500 whitespace-nowrap text-[10.5px]">
+                      {item.date}
+                    </td>
+                    <td className="py-2.5 font-semibold text-slate-800 whitespace-nowrap">
+                      {item.client}
+                    </td>
+                    <td className="py-2.5 text-slate-500 whitespace-nowrap text-[10.5px]">
+                      {item.phone}
+                    </td>
+                    <td className="py-2.5 whitespace-nowrap">
+                      {renderChannelBadge(item.channel)}
+                    </td>
+                    <td className="py-2.5 text-slate-700 font-medium truncate max-w-[150px]" title={item.topic}>
+                      {item.topic}
+                    </td>
+                    <td className="py-2.5 text-center whitespace-nowrap">
+                      <span
+                        className={cn(
+                          'text-[10.5px] font-bold px-1.5 py-0.5 rounded',
+                          item.slaStatus === 'on_time'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        )}
+                      >
+                        {item.reactionMinutes} мин
+                      </span>
+                    </td>
+                    <td className="py-2.5 text-slate-700 font-medium whitespace-nowrap">
+                      {item.admin}
+                    </td>
+                    <td className="py-2.5 text-right pr-1 text-slate-600 font-normal whitespace-nowrap">
+                      {item.outcome}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
