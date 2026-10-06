@@ -18,6 +18,7 @@ import { runP0SecurityAndSchemaHardeningTests } from './p0_security_and_schema_h
 import { runAuditLogTests } from './audit_log.test';
 import { runTelegramMiniAppMenuAndInlineTests } from './ts39_telegram_miniapp_menu_and_inline_buttons.test';
 import { runSuite20 } from './ts40_miniapp_identity_deeplink_and_analytics_resilience.test';
+import { runSuite21 } from './ts41_diagnostic_issue_card_layout_and_formulations.test';
 
 async function main() {
   console.log('===============================================================');
@@ -28,7 +29,7 @@ async function main() {
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 20;
+  const totalSuites = 21;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -142,6 +143,10 @@ async function main() {
 
     // Suite 20: Mini App Identity, Direct Lesson Deep-Link & Analytics Resilience
     await runSuite20();
+    passedSuites++;
+
+    // Suite 21: Diagnostic Issue Card Layout, Geometry & Formulations
+    await runSuite21();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
