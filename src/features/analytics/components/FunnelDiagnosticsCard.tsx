@@ -36,7 +36,20 @@ export function FunnelDiagnosticsCard({
 
   const isChannels = funnelView === 'channels';
   const displayItems = isChannels && channels && channels.length > 0 ? channels : stages;
-  const activeInsight = isChannels && channelInsight ? channelInsight : insight;
+  const fallbackInsight: FunnelInsightData = {
+    title: isChannels ? 'Проблемный канал' : 'Главная проблема',
+    metricLabel: '',
+    dropPp: 0,
+    prevRate: 0,
+    currRate: 0,
+    unpaidCount: 0,
+    frequentReasons: [],
+  };
+  const activeInsight = (isChannels && channelInsight ? channelInsight : insight) || fallbackInsight;
+  const frequentReasonsText =
+    Array.isArray(activeInsight?.frequentReasons) && activeInsight.frequentReasons.length > 0
+      ? activeInsight.frequentReasons?.join(', ')
+      : '—';
 
   return (
     <div className="bg-white rounded-xl p-2.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full min-h-0 min-w-0 overflow-hidden">
@@ -200,9 +213,9 @@ export function FunnelDiagnosticsCard({
 
             <div
               className="text-[9px] text-slate-500 truncate cursor-help"
-              title={activeInsight.frequentReasons.join(', ')}
+              title={frequentReasonsText}
             >
-              Частые причины: {activeInsight.frequentReasons.join(', ')}
+              Частые причины: {frequentReasonsText}
             </div>
           </div>
         </div>

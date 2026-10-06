@@ -116,6 +116,9 @@ function MiniAppMainContent() {
   const searchParams = useSearchParams();
   const rawChatId = searchParams.get('chatId') || searchParams.get('telegram') || '';
   const initialLessonId = searchParams.get('lessonId') || '';
+  const initialStudentId = searchParams.get('studentId') || '';
+  const initialParentId = searchParams.get('parentId') || '';
+  const initialLeadId = searchParams.get('leadId') || '';
 
   // Core state
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -161,15 +164,52 @@ function MiniAppMainContent() {
     async function initMiniAppData() {
       setIsLoading(true);
       try {
+        // Read Telegram WebApp context if available
+        let tgChatId = '';
+        let tgUsername = '';
+        let tgFirstName = '';
+        let tgLastName = '';
+
+        if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+          const tg = (window as any).Telegram.WebApp;
+          try {
+            tg.ready();
+            tg.expand();
+          } catch {}
+          const tgUser = tg.initDataUnsafe?.user;
+          if (tgUser) {
+            tgChatId = tgUser.id ? String(tgUser.id) : '';
+            tgUsername = tgUser.username || '';
+            tgFirstName = tgUser.first_name || '';
+            tgLastName = tgUser.last_name || '';
+          }
+        }
+
+        const effectiveChatId = rawChatId || tgChatId;
+
         // 1. Fetch parent & verified children
-        const pRes = await fetch(`/api/telegram/mini-app/parent?chatId=${encodeURIComponent(rawChatId)}`);
+        const pParams = new URLSearchParams();
+        if (effectiveChatId) pParams.set('chatId', effectiveChatId);
+        if (tgUsername) pParams.set('username', tgUsername);
+        if (initialParentId) pParams.set('parentId', initialParentId);
+        if (initialStudentId) pParams.set('studentId', initialStudentId);
+        if (initialLeadId) pParams.set('leadId', initialLeadId);
+        if (tgFirstName) pParams.set('tgFirstName', tgFirstName);
+        if (tgLastName) pParams.set('tgLastName', tgLastName);
+
+        const pRes = await fetch(`/api/telegram/mini-app/parent?${pParams.toString()}`);
         const pData = await pRes.json();
         if (pData.success && pData.parent) {
           setParent(pData.parent);
           setChildrenList(pData.children || []);
-          if (pData.children && pData.children.length > 0) {
+          if (initialStudentId) {
+            setSelectedChildId(initialStudentId);
+          } else if (pData.children && pData.children.length > 0) {
             setSelectedChildId(pData.children[0].id);
           }
+        } else if (pData.children && pData.children.length > 0) {
+          setChildrenList(pData.children);
+          setSelectedChildId(initialStudentId || pData.children[0].id);
         }
 
         // 2. Fetch directions
@@ -193,23 +233,33 @@ function MiniAppMainContent() {
     }
 
     initMiniAppData();
-  }, [rawChatId]);
+  }, [rawChatId, initialParentId, initialStudentId, initialLeadId]);
 
-  // Deep Link handling: if ?lessonId=... was passed, auto-select it
+  // Deep Link handling: if ?lessonId=... was passed, immediately load it and jump to confirmation screen
   useEffect(() => {
-    if (initialLessonId && groups.length > 0) {
-      for (const g of groups) {
-        const found = g.lessons?.find((l) => l.id === initialLessonId);
-        if (found) {
-          setSelectedGroup(g);
-          setSelectedLesson(found);
+    if (!initialLessonId) return;
+
+    let isMounted = true;
+    async function loadDeepLinkedLesson() {
+      try {
+        const res = await fetch(`/api/telegram/mini-app/groups?lessonId=${encodeURIComponent(initialLessonId)}`);
+        const data = await res.json();
+        if (isMounted && data.success && data.lesson && data.group) {
+          setSelectedGroup(data.group);
+          setSelectedLesson(data.lesson);
           setBookingFormat('group');
-          setCurrentStep(6); // jump directly to student selection
-          break;
+          setCurrentStep(6); // jump directly to student confirmation step
         }
+      } catch (err) {
+        console.error('Failed to load deep-linked lesson:', err);
       }
     }
-  }, [initialLessonId, groups]);
+
+    loadDeepLinkedLesson();
+    return () => {
+      isMounted = false;
+    };
+  }, [initialLessonId]);
 
   // Load groups when direction is chosen
   const loadGroupsForDirection = async (direction: DirectionItem) => {
@@ -451,11 +501,11 @@ function MiniAppMainContent() {
                   {/* Greeting Block */}
                   <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 rounded-2xl border border-blue-100/60">
                     <div className="w-12 h-12 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
-                      {parent?.firstName ? parent.firstName.charAt(0) : 'О'}
+                      {parent?.firstName ? parent.firstName.charAt(0).toUpperCase() : '👋'}
                     </div>
                     <div className="min-w-0 flex-1">
                       <h2 className="text-sm font-bold text-slate-900 truncate">
-                        Здравствуйте, {parent?.firstName || 'Ольга'}!
+                        Здравствуйте{parent?.firstName ? `, ${parent.firstName}` : ''}!
                       </h2>
                       <p className="text-[11px] text-slate-500">Выберите, что хотите сделать</p>
                     </div>
@@ -520,7 +570,7 @@ function MiniAppMainContent() {
                             Мои дети
                           </p>
                           <p className="text-[10px] text-slate-400 truncate">
-                            {childrenList.map((c) => c.firstName).join(', ') || 'Мария, Александр'}
+                            {childrenList.length > 0 ? childrenList.map((c) => c.firstName).join(', ') : 'Ученики не привязаны'}
                           </p>
                         </div>
                       </div>
@@ -1336,7 +1386,7 @@ function MiniAppMainContent() {
                         <span className="text-[10px] text-slate-400">Пн, 5 окт • 18:00</span>
                       </div>
                       <p className="text-xs font-bold text-slate-900">German B1 · Основная группа</p>
-                      <p className="text-[10px] text-slate-500">Ученик: Мария Соколова • Преподаватель: Мария Иванова</p>
+                      <p className="text-[10px] text-slate-500">Ученик: {childrenList[0]?.fullName || 'Ученик'}</p>
                       <div className="pt-1">
                         <a
                           href="https://zoom.us/j/youeurope_school"
@@ -1384,7 +1434,7 @@ function MiniAppMainContent() {
                       <p className="font-mono text-[10px] bg-slate-50 p-1.5 rounded border border-slate-100 select-all">
                         IBAN: SK89 1100 0000 0029 4829 4821
                       </p>
-                      <p>Назначение: Оплата обучения (Мария Соколова)</p>
+                      <p>Назначение: Оплата обучения {childrenList[0]?.fullName ? `(${childrenList[0].fullName})` : ''}</p>
                     </div>
                   </div>
                 </div>

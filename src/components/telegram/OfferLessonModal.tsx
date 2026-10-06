@@ -10,6 +10,9 @@ interface OfferLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
   recipientName: string;
+  recipientChatId?: string;
+  recipientId?: string;
+  recipientType?: 'student' | 'lead' | 'parent';
   onSendOffer: (messageText: string, replyMarkup?: any) => void;
 }
 
@@ -17,6 +20,9 @@ export function OfferLessonModal({
   isOpen,
   onClose,
   recipientName,
+  recipientChatId,
+  recipientId,
+  recipientType,
   onSendOffer,
 }: OfferLessonModalProps) {
   const [activeTab, setActiveTab] = useState<'group' | 'individual'>('group');
@@ -71,7 +77,16 @@ export function OfferLessonModal({
     if (!selectedLesson) return;
 
     const appBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://youeuropecrmtest.vercel.app';
-    const bookingLink = `${appBaseUrl}/mini-app?lessonId=${selectedLesson.id}`;
+    const params = new URLSearchParams();
+    params.set('lessonId', selectedLesson.id);
+    if (recipientChatId) params.set('chatId', recipientChatId);
+    if (recipientId) {
+      if (recipientType === 'student') params.set('studentId', recipientId);
+      else if (recipientType === 'parent') params.set('parentId', recipientId);
+      else if (recipientType === 'lead') params.set('leadId', recipientId);
+      else params.set('studentId', recipientId);
+    }
+    const bookingLink = `${appBaseUrl}/mini-app?${params.toString()}`;
 
     const text = [
       `Здравствуйте, ${recipientName || 'дорогой родитель'}! Предлагаем подходящее занятие:`,

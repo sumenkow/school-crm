@@ -102,7 +102,8 @@ export async function middleware(request: NextRequest) {
     }
 
     const isAuditRoute = pathname === '/settings/audit' || pathname.startsWith('/settings/audit/');
-    const allowedRoles = isAuditRoute ? ['developer', 'owner', 'admin'] : ['developer', 'owner'];
+    const isAnalyticsRoute = pathname === '/analytics' || pathname.startsWith('/analytics/');
+    const allowedRoles = (isAuditRoute || isAnalyticsRoute) ? ['developer', 'owner', 'admin'] : ['developer', 'owner'];
 
     if (!role || !allowedRoles.includes(role)) {
       if (pathname.startsWith('/api/')) {

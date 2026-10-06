@@ -17,17 +17,18 @@ import { runTelegramPersistenceTests } from './telegram_bot_supabase_persistence
 import { runP0SecurityAndSchemaHardeningTests } from './p0_security_and_schema_hardening.test';
 import { runAuditLogTests } from './audit_log.test';
 import { runTelegramMiniAppMenuAndInlineTests } from './ts39_telegram_miniapp_menu_and_inline_buttons.test';
+import { runSuite20 } from './ts40_miniapp_identity_deeplink_and_analytics_resilience.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
   console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
-  console.log('   Production Audit Log (Suite 18) & Telegram Mini App Launch (Suite 19)');
+  console.log('   Production Audit Log (Suite 18), Mini App Menu (Suite 19), Identity & Deep-Link (Suite 20)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 19;
+  const totalSuites = 20;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -137,6 +138,10 @@ async function main() {
     if (miniAppResult.failed > 0) {
       throw new Error(`Telegram Mini App suite failed with ${miniAppResult.failed} failures`);
     }
+    passedSuites++;
+
+    // Suite 20: Mini App Identity, Direct Lesson Deep-Link & Analytics Resilience
+    await runSuite20();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);

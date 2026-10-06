@@ -331,11 +331,11 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
     const worstChannel = [...channelStats].sort((a, b) => b.unpaidCount - a.unpaidCount)[0] || channelStats[0];
     const channelInsight: FunnelInsightData = {
       title: 'Проблемный канал',
-      metricLabel: `Канал «${worstChannel.name}» теряет конверсию`,
+      metricLabel: worstChannel ? `Канал «${worstChannel.name}» теряет конверсию` : 'Нет данных по каналам',
       dropPp: 18,
       prevRate: 45,
-      currRate: worstChannel.conv,
-      unpaidCount: worstChannel.unpaidCount,
+      currRate: worstChannel ? worstChannel.conv : 0,
+      unpaidCount: worstChannel ? worstChannel.unpaidCount : 0,
       frequentReasons: [
         'Долгий первый контакт (>24ч) (45%)',
         'Не подтвердили время пробного (35%)',
@@ -554,9 +554,9 @@ export function useDiagnosticsMidTier(filters: AnalyticsFilters) {
       totalLossRub,
       categories,
       channels: lossChannels,
-      topLossChannel: topLossChannelItem.name,
-      topLossChannelRub: topLossChannelItem.amountRub,
-      trialLeadsCount: trialHeldLeads.length || 5,
+      topLossChannel: topLossChannelItem?.name || '—',
+      topLossChannelRub: topLossChannelItem?.amountRub || 0,
+      trialLeadsCount: trialHeldLeads.length || 0,
       potentialFromTrialEur: leadsLossEur,
       potentialFromTrialRub: leadsLossRub,
     };

@@ -640,6 +640,9 @@ export function TelegramChatBox({
         isOpen={isOfferModalOpen}
         onClose={() => setIsOfferModalOpen(false)}
         recipientName={recipientName}
+        recipientChatId={telegramChatId || telegramHandle}
+        recipientId={recipientId}
+        recipientType={recipientType}
         onSendOffer={(text, replyMarkup) => sendCustomMessage(text, replyMarkup)}
       />
     </div>
