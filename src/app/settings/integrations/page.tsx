@@ -335,7 +335,7 @@ export default function TelegramIntegrationsPage() {
     }
   };
 
-  const handleSaveTokenFromModal = () => {
+  const handleSaveTokenFromModal = async () => {
     const trimmed = newTokenInput.trim();
     if (!trimmed || trimmed.length <= 10 || !trimmed.includes(':')) {
       setTokenError('Неверный формат токена. Токен должен содержать двоеточие (например: 123456789:ABCdefGHI...)');
@@ -346,6 +346,15 @@ export default function TelegramIntegrationsPage() {
     localStorage.setItem('crm_tg_bot_token', trimmed);
     setShowTokenModal(false);
     fetchBotSetupInfo(trimmed);
+    try {
+      await fetch('/api/telegram/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: trimmed }),
+      });
+    } catch (err) {
+      console.warn('Could not persist token to Supabase:', err);
+    }
     toast.success('Токен Telegram-бота успешно сохранён');
   };
 
