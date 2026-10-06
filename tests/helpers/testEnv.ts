@@ -60,8 +60,8 @@ export function setupTestEnv() {
   (global as any).fetch = async () => ({
     ok: true,
     status: 200,
-    json: async () => ({ success: true }),
-    text: async () => JSON.stringify({ success: true }),
+    json: async () => ({ ok: true, success: true, result: { message_id: 101, username: 'youeuropeservicebot' } }),
+    text: async () => JSON.stringify({ ok: true, success: true, result: { message_id: 101, username: 'youeuropeservicebot' } }),
   });
 
   return {

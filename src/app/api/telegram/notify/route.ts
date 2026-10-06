@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getTelegramSettingsServer } from '@/lib/telegram/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,11 @@ export async function POST(request: NextRequest) {
       customChatId,
     } = body;
 
-    const token = customBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    const serverSettings = await getTelegramSettingsServer();
+    const token = (customBotToken && customBotToken.trim().length > 10 && !customBotToken.includes('•••'))
+      ? customBotToken.trim()
+      : (serverSettings.botToken || process.env.TELEGRAM_BOT_TOKEN || '');
+
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'Telegram Bot Token не настроен' },
@@ -23,8 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     const defaultChatId = process.env.TELEGRAM_CHAT_ID;
-    const adminChatId = customAdminChatId || process.env.TELEGRAM_ADMIN_CHAT_ID || defaultChatId;
-    const ownerChatId = customOwnerChatId || process.env.TELEGRAM_OWNER_CHAT_ID || defaultChatId;
+    const adminChatId = customAdminChatId || serverSettings.adminChatId || process.env.TELEGRAM_ADMIN_CHAT_ID || defaultChatId;
+    const ownerChatId = customOwnerChatId || serverSettings.ownerChatId || process.env.TELEGRAM_OWNER_CHAT_ID || defaultChatId;
 
     const targetChatIds = new Set<string>();
 

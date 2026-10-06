@@ -57,7 +57,7 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
     setIsCheckingBot(true);
     try {
       const activeToken = tokenOverride !== undefined ? tokenOverride : (botToken || localStorage.getItem('crm_tg_bot_token') || '');
-      const query = activeToken ? `?token=${encodeURIComponent(activeToken)}` : '';
+      const query = (activeToken && !activeToken.includes('•••')) ? `?token=${encodeURIComponent(activeToken)}` : '';
       const res = await fetch(`/api/telegram/setup${query}`);
       const data = await res.json();
 
@@ -66,18 +66,13 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
         if (data.bot.username) {
           localStorage.setItem('crm_tg_bot_username', data.bot.username);
         }
-      } else {
-        setBotInfo(null);
       }
 
       if (data.webhook) {
         setWebhookInfo(data.webhook);
-      } else {
-        setWebhookInfo(null);
       }
     } catch {
-      setBotInfo(null);
-      setWebhookInfo(null);
+      // Keep existing botInfo / webhookInfo from Supabase settings
     } finally {
       setIsCheckingBot(false);
     }
@@ -95,6 +90,34 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
 
       const defaultWebhook = `${window.location.origin}/api/telegram/webhook`;
       setWebhookUrlInput(defaultWebhook);
+
+      // Fetch persistent settings from Supabase
+      fetch('/api/telegram/settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.settings) {
+            const s = data.settings;
+            if (s.adminChatId) setAdminChatId(s.adminChatId);
+            if (s.ownerChatId) setOwnerChatId(s.ownerChatId);
+            if (s.webhookUrl) setWebhookUrlInput(s.webhookUrl);
+            if (s.notificationsEnabled !== undefined) setNotificationsEnabled(s.notificationsEnabled);
+            if (s.botUsername) {
+              localStorage.setItem('crm_tg_bot_username', s.botUsername);
+            }
+            if (s.hasBotToken || s.status === 'connected') {
+              if (!savedToken) {
+                setBotToken('••••••••');
+              }
+              setBotInfo((prev) => prev || {
+                id: 1,
+                is_bot: true,
+                first_name: 'You Europe Bot',
+                username: s.botUsername || 'youeuropeservicebot',
+              });
+            }
+          }
+        })
+        .catch((err) => console.warn('Could not fetch /api/telegram/settings:', err));
 
       if (!localStorage.getItem('crm_tg_bot_username')) {
         localStorage.setItem('crm_tg_bot_username', 'youeuropeservicebot');
@@ -123,7 +146,7 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
         badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       };
     }
-    if (testStatus?.type === 'error' || (!isCheckingBot && !botInfo && botToken.trim())) {
+    if (testStatus?.type === 'error' || (!isCheckingBot && !botInfo && botToken.trim() && botToken !== '••••••••')) {
       return {
         status: 'error',
         icon: '🔴',
@@ -145,7 +168,8 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // 1. Sync locally for fast cache
     localStorage.setItem('crm_tg_bot_token', botToken.trim());
     localStorage.setItem('crm_tg_admin_chat_id', adminChatId.trim());
     localStorage.setItem('crm_tg_owner_chat_id', ownerChatId.trim());
@@ -153,6 +177,24 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
     localStorage.setItem('crm_tg_notifications_enabled', notificationsEnabled ? 'true' : 'false');
     if (botInfo?.username) {
       localStorage.setItem('crm_tg_bot_username', botInfo.username);
+    }
+
+    // 2. Persist to Supabase via /api/telegram/settings
+    try {
+      await fetch('/api/telegram/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: botToken.trim(),
+          adminChatId: adminChatId.trim(),
+          ownerChatId: ownerChatId.trim(),
+          botUsername: botInfo?.username || 'youeuropeservicebot',
+          webhookUrl: webhookUrlInput.trim(),
+          notificationsEnabled,
+        }),
+      });
+    } catch (err) {
+      console.warn('Could not persist settings to Supabase:', err);
     }
 
     toast.success('Настройки Telegram-бота успешно сохранены!');
@@ -728,12 +770,21 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const trimmed = newTokenInput.trim();
                   setBotToken(trimmed);
                   localStorage.setItem('crm_tg_bot_token', trimmed);
                   setShowTokenModal(false);
                   fetchBotSetupInfo(trimmed);
+                  try {
+                    await fetch('/api/telegram/settings', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ botToken: trimmed }),
+                    });
+                  } catch (err) {
+                    console.warn('Could not persist token to Supabase:', err);
+                  }
                   toast.success('Токен успешно обновлен');
                 }}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors cursor-pointer"

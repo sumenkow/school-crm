@@ -108,7 +108,19 @@ export function TelegramChatBox({
   const checkToken = () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('crm_tg_bot_token');
-      setHasBotToken(Boolean(token && token.trim().length > 10));
+      if (token && token.trim().length > 10) {
+        setHasBotToken(true);
+      }
+      fetch('/api/telegram/settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.settings) {
+            if (data.settings.hasBotToken || data.settings.status === 'connected') {
+              setHasBotToken(true);
+            }
+          }
+        })
+        .catch(() => {});
     }
   };
 
@@ -208,7 +220,7 @@ export function TelegramChatBox({
       return;
     }
 
-    if (!savedBotToken) {
+    if (!savedBotToken && !hasBotToken) {
       showError('Telegram Bot Token не настроен. Открываю настройки Telegram...');
       setIsSettingsModalOpen(true);
       return;

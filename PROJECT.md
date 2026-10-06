@@ -1,83 +1,102 @@
-# Project: Phase 10 — Telegram Mini App for Self-Booking by Parents
+# Project: Telegram Bot Supabase Persistence & Multi-Device Reliability
 
 ## Architecture
-- **Domain & Storage Layer (Zero New Entities)**:
-  - Reuses existing `Lesson`, `Student`, `Parent`, `Group`, `CourseDirection`, `Teacher` entities.
-  - Group Booking: Enrolls student into existing `lesson.students` of target `FullLessonData` with capacity and double-booking guards.
-  - Individual Booking: Creates standard `FullLessonData` with `isIndividual: true`, `studentId`, `teacherId`, `status: 'planned'`, validating 3-way collisions and school hours 09:00–21:00 via `collisionHelper.ts`.
-  - Trial Booking: Reuses existing `isTrial: boolean` flag without debiting paid subscriptions.
-  - Zero Premature Billing Invariant: Booking creation sets `isBilled: false` and `attendanceStatus: 'not_marked'`. Zero balance or deposit debited upon booking; billing strictly occurs upon lesson attendance/completion (`conducted`).
-- **Telegram Bot & Webhook Integration Layer**:
-  - Preserves 100% of existing pipeline (`Parent ↔ Telegram Bot ↔ Webhook ↔ CRM ChatBox ↔ Administrator`).
-  - Screen 11: Reply Keyboard (5 buttons) and `web_app` inline button ('Открыть расписание') launching `/mini-app`.
-  - Screen 12: Admin CRM Chat "Предложить занятие" in `src/components/telegram/TelegramChatBox.tsx` with modal and interactive booking card.
-  - Telegram WebApp client authentication via initData with server-side validation and parent-child ownership verification.
-- **Mini App Client Layer (Screens 1–10)**:
-  - Mobile SPA under route `/mini-app` (isolated from desktop CRM chrome in `AppShell.tsx` and `mini-app/layout.tsx`).
-  - Screen 1: Home Menu (greeting, avatar, 5 quick-action cards, 4-tab mobile bottom nav).
-  - Screen 2: Format Selection (Group, Individual, Trial).
-  - Screen 3: Direction Selection (flags, course directions).
-  - Screen 4: Group Selection (tabs 'Группы' | 'Открытые занятия', occupancy progress bar, available seats badge).
-  - Screen 5: Date & Lesson Selection (horizontal date pills, group lessons with seat status badges).
-  - Screen 6: Child Selection (radio verified child selection, '+ Добавить ребёнка' modal).
-  - Screen 7: Booking Confirmation (review card, Zoom room, Telegram reminder toggle).
-  - Screen 8: Success State (checkmark, Zoom link, .ics calendar export, navigation buttons).
-  - Screen 9: Individual Teacher Selection (cards with rating ★ 4.9, 24 reviews, subject).
-  - Screen 10: Individual Slots Selection (60-min slots in 09:00–21:00 with collision checking).
-
-## Code Layout
-- `src/lib/data/lessonStorage.ts`: Typing fixes, `bookGroupLesson`, `bookIndividualLesson`, Zero Premature Billing guards.
-- `src/app/api/telegram/mini-app/`: API routes for parent resolution, directions, groups, teachers, and booking.
-- `src/lib/telegram/telegramClient.ts`: `sendTelegramDirectMessage` with `replyMarkup?: any`.
-- `src/app/api/telegram/webhook/route.ts`: Screen 11 Reply Keyboard & WebApp launch button, message pipeline preservation.
-- `src/components/telegram/TelegramChatBox.tsx`: Screen 12 "Предложить занятие" button and modal.
-- `src/app/mini-app/layout.tsx`: Mobile SPA layout with Telegram WebApp SDK script and dev mock.
-- `src/app/mini-app/page.tsx`: Screens 1–10 SPA implementation.
-- `tests/phase10_telegram_mini_app.test.ts`: Automated test suite for Phase 10.
+- Centralized Database Store: Supabase `system_settings` table (`key TEXT PRIMARY KEY, value JSONB NOT NULL DEFAULT '{}'::jsonb, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`)
+- Key: `'telegram_bot_settings'` containing:
+  - `botToken` (string, masked in client GET response as `••••••••` if present)
+  - `adminChatId` (string)
+  - `ownerChatId` (string)
+  - `botUsername` (string, default: `youeuropeservicebot`)
+  - `webhookUrl` (string, default: `https://crm.youeurope.ru/api/telegram/webhook`)
+  - `notificationsEnabled` (boolean, default: `true`)
+  - `isConfigured` (boolean, derived)
+- Server Backend API:
+  - `GET /api/telegram/settings`: reads settings from Supabase via `createAdminClient()`. Returns JSON with status, username `@youeuropeservicebot`, chat IDs, webhookUrl, and masked token `••••••••` (or raw token to authorized admin/server callers if requested).
+  - `POST /api/telegram/settings`: atomic upsert into `system_settings` via `createAdminClient()`. Validates input, preserves existing token if masked `••••••••` is passed back.
+  - Server helper `getTelegramSettingsServer()` in `src/lib/telegram/settings.ts`: reusable direct database fetcher for server routes.
+- Server Routes Fallback:
+  - `/api/telegram/send`, `/api/telegram/setup`, `/api/telegram/webhook`, `/api/telegram/notify`: use `getTelegramSettingsServer()` when request body / params lack custom credentials, eliminating dependency on client `localStorage`.
+- Client Frontend Components:
+  - `TelegramSettingsModal.tsx`, `/settings/integrations/page.tsx`, `TelegramChatBox.tsx`, `TelegramConnectModal.tsx`: fetch settings from `/api/telegram/settings` on mount; persist atomically on save via `POST /api/telegram/settings`; fallback gracefully to `localStorage` cache; display `@youeuropeservicebot`, status `🟢 Подключён`, and masked token.
+- Automated QA Persistence Suite:
+  - `tests/telegram_bot_supabase_persistence.test.ts` integrated into `tests/run_all_tests.ts` (Suite 16).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Zero New Entities & Typing Fixes | Fix TS errors in lessonStorage.ts and reuse existing domain models | M1 | ORIGINAL_REQUEST R2 |
-| 2 | Group Booking Core Engine | Atomic capacity validation, double-booking prevention, enrollment into lesson.students | M1 | ORIGINAL_REQUEST R2, R6 |
-| 3 | Individual Booking Core Engine | Standard lesson creation with isIndividual: true, collision check, school hours 09:00–21:00 | M1 | ORIGINAL_REQUEST R2, R6 |
-| 4 | Zero Premature Billing Invariant | Booking creates lessons with 0 debits; billing strictly on conducted/attendance | M1 | ORIGINAL_REQUEST R3 |
-| 5 | IDOR & Child Ownership Guard | Server-side verification that student belongs to parent via student.parents | M1 | ORIGINAL_REQUEST R6 |
-| 6 | Slot Generator 09:00–21:00 | Update teachers/route.ts slot start hour to 09:00 according to school hours | M1 | Architecture Doc §4 |
-| 7 | Telegram Client ReplyMarkup Support | Add replyMarkup?: any to sendTelegramDirectMessage in telegramClient.ts | M2 | Architecture Doc §2 |
-| 8 | Screen 11: Telegram Bot Reply Keyboard | 5 Reply Keyboard buttons ('📅 Записаться на занятие', '📆 Мои занятия', etc.) | M2 | ORIGINAL_REQUEST R4, Screen 11 |
-| 9 | Screen 11: WebApp Inline Button Launch | Bot sends '📅 Открыть расписание' web_app inline button launching /mini-app | M2 | ORIGINAL_REQUEST R4, Screen 11 |
-| 10 | Telegram Chat Pipeline Preservation | Normal parent text messages continue flowing to CRM ChatBox without interference | M2 | ORIGINAL_REQUEST R4 |
-| 11 | Screen 12: Admin "Предложить занятие" Button | Button added above input field in TelegramChatBox.tsx | M2 | ORIGINAL_REQUEST R5, Screen 12 |
-| 12 | Screen 12: Offer Lesson Modal & Card | Modal to choose open group/slot and send interactive booking card to Telegram | M2 | ORIGINAL_REQUEST R5, Screen 12 |
-| 13 | Mobile SPA Layout Isolation | Layout for /mini-app with Telegram WebApp script, mobile viewport, and dev mock | M3 | ORIGINAL_REQUEST R1 |
-| 14 | Screen 1: Home Menu UI | Personalized greeting, avatar, 5 quick-action cards, 4-tab mobile bottom nav | M3 | ORIGINAL_REQUEST R1, Screen 1 |
-| 15 | Screen 2: Format Selection UI | Cards for Group, Individual, Trial formats | M3 | ORIGINAL_REQUEST R1, Screen 2 |
-| 16 | Screen 3: Direction Selection UI | Active course directions with flags/icons | M3 | ORIGINAL_REQUEST R1, Screen 3 |
-| 17 | Screen 4: Group Selection UI | Tabs 'Группы' \| 'Открытые занятия', progress bar, seat badges | M3 | ORIGINAL_REQUEST R1, Screen 4 |
-| 18 | Screen 5: Date & Lesson Selection UI | Horizontal date pills, lessons list, seat status badges | M3 | ORIGINAL_REQUEST R1, Screen 5 |
-| 19 | Screen 6: Child Selection UI | Radio verified child selection, '+ Добавить ребёнка' modal | M3 | ORIGINAL_REQUEST R1, Screen 6 |
-| 20 | Screen 7: Booking Confirmation UI | Review card, Zoom room, selected child, Telegram reminder toggle | M3 | ORIGINAL_REQUEST R1, Screen 7 |
-| 21 | Screen 8: Success State UI | Confirmation checkmark, Zoom link, .ics export, navigation | M3 | ORIGINAL_REQUEST R1, Screen 8 |
-| 22 | Screen 9: Individual Teacher Selection UI | Teacher cards with rating ★ 4.9, 24 reviews, subject | M3 | ORIGINAL_REQUEST R1, Screen 9 |
-| 23 | Screen 10: Individual Slots Selection UI | 60-min slots in 09:00–21:00 with conflict checking | M3 | ORIGINAL_REQUEST R1, Screen 10 |
-| 24 | E2E Test Suite (Tiers 1–4) | Comprehensive opaque-box test suite published in TEST_READY.md | M4 | Quality Criteria |
-| 25 | Adversarial Hardening (Tier 5) | Stress tests on race conditions, capacity overflows, and IDOR attacks | M4 | Quality Criteria |
+| 1 | Root Cause Documentation | Formal RCA document detailing localStorage isolation and server route dependency | M1 | Survey / RCA |
+| 2 | Supabase Migration `system_settings` | `supabase/migrations/20261005002000_system_settings.sql` with table, RLS, trigger, and default seed | M2 | R2 |
+| 3 | Server Helper & API `/api/telegram/settings` | Server helper `src/lib/telegram/settings.ts` and `GET/POST /api/telegram/settings/route.ts` with masking and atomic upsert | M2 | R2 |
+| 4 | Server Routes Supabase Integration | `/api/telegram/send`, `/api/telegram/setup`, `/api/telegram/webhook`, `/api/telegram/notify` querying Supabase via `getTelegramSettingsServer()` | M3 | R2, R3 |
+| 5 | Client Modals & Integrations UI Update | `TelegramSettingsModal`, `/settings/integrations`, `TelegramChatBox`, `TelegramConnectModal` fetching from API, saving to API, displaying `@youeuropeservicebot` & `🟢 Подключён` | M4 | R2, R3 |
+| 6 | Automated QA Persistence Suite | `tests/telegram_bot_supabase_persistence.test.ts` covering 4 mandatory tests, wired into `tests/run_all_tests.ts` | M5 | R4 |
+| 7 | Full Regression & Build Verification | All 16 test suites pass (`npm test`), `npm run check` (0 errors), `npm run build` (33+ routes clean), git commit & push | M6 | Acceptance |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Core Data, Storage Typing & Backend Booking APIs | Typing fixes in lessonStorage.ts, bookGroupLesson/bookIndividualLesson, school hours slots, billing invariants | none | PLANNED |
-| M2 | Telegram Bot Pipeline & CRM Chat "Предложить занятие" | replyMarkup in client, Screen 11 Bot Reply Keyboard & WebApp launch, Screen 12 Offer Lesson in TelegramChatBox | M1 | PLANNED |
-| M3 | Mini App Mobile SPA Shell & Client Polish | Mobile layout & SDK mock, Screens 1–10 complete Polish & verification | M1 | PLANNED |
-| M4 | Final Milestone: 100% E2E Pass & Adversarial Hardening | Phase 1: 100% pass of E2E test suite (Tiers 1–4). Phase 2: Tier 5 adversarial coverage hardening | M1, M2, M3 | PLANNED |
+| 1 | Root Cause Analysis Documentation | Finalize formal RCA in documentation | none | DONE |
+| 2 | Supabase Schema & Settings API | Migration SQL + `src/lib/telegram/settings.ts` + `/api/telegram/settings/route.ts` | M1 | IN_PROGRESS |
+| 3 | Server Routes DB Fallback | Update `/api/telegram/send`, `/setup`, `/webhook`, `/notify` | M2 | PLANNED |
+| 4 | Client UI Components Migration | Update `TelegramSettingsModal`, `integrations/page.tsx`, `TelegramChatBox`, `TelegramConnectModal` | M2, M3 | PLANNED |
+| 5 | Automated QA Suite 16 | Implement `tests/telegram_bot_supabase_persistence.test.ts` & wire to `run_all_tests.ts` | M2, M3, M4 | PLANNED |
+| 6 | Verification, Build & Delivery | Run tests, typecheck, Next.js build, commit to git & push | M5 | PLANNED |
 
 ## Interface Contracts
-### Booking Engine (`lessonStorage.ts`) ↔ API Endpoints (`/api/telegram/mini-app/book`)
-- `bookGroupLesson(lessonId: string, studentId: string, options?: { isTrial?: boolean }): Promise<{ success: boolean, lesson?: FullLessonData, error?: string }>`
-  - Verifies lesson exists; checks group capacity atomically; checks student not already enrolled; adds student to `lesson.students` with `attendanceStatus: 'not_marked'` and `isBilled: false`.
-- `bookIndividualLesson(params: { studentId: string, teacherId: string, date: string, startTime: string, endTime: string, isTrial?: boolean }): Promise<{ success: boolean, lesson?: FullLessonData, error?: string }>`
-  - Checks 3-way collision (`checkThreeWayCollision`); checks school hours (09:00–21:00); creates `FullLessonData` with `isIndividual: true`, `status: 'planned'`, `isBilled: false`.
-### Telegram Client (`telegramClient.ts`) ↔ Webhook & ChatBox
-- `sendTelegramDirectMessage(options: { token?: string, chatId: string, text: string, parseMode?: string, replyMarkup?: any }): Promise<TelegramSendResult>`
-  - Serializes `reply_markup` into Telegram Bot API JSON payload.
+### `GET /api/telegram/settings`
+- Response:
+```json
+{
+  "success": true,
+  "settings": {
+    "botToken": "••••••••",
+    "hasBotToken": true,
+    "adminChatId": "184920491",
+    "ownerChatId": "928374921",
+    "botUsername": "youeuropeservicebot",
+    "webhookUrl": "https://crm.youeurope.ru/api/telegram/webhook",
+    "notificationsEnabled": true,
+    "status": "connected",
+    "updatedAt": "2026-10-05T19:00:00.000Z"
+  }
+}
+```
+
+### `POST /api/telegram/settings`
+- Request body:
+```json
+{
+  "botToken": "string (optional, if '••••••••' or empty, preserves existing token in DB)",
+  "adminChatId": "string",
+  "ownerChatId": "string",
+  "botUsername": "string",
+  "webhookUrl": "string",
+  "notificationsEnabled": "boolean"
+}
+```
+- Response:
+```json
+{
+  "success": true,
+  "message": "Настройки Telegram бота успешно сохранены в Supabase",
+  "settings": { ... }
+}
+```
+
+### `getTelegramSettingsServer(): Promise<TelegramBotSettings>`
+- Returns complete decrypted/unmasked settings for server route execution (`send`, `webhook`, etc.).
+
+## Code Layout
+- `supabase/migrations/20261005002000_system_settings.sql` (Database migration)
+- `src/lib/telegram/settings.ts` (Server & client settings helpers, types, Supabase access)
+- `src/app/api/telegram/settings/route.ts` (Next.js GET / POST API endpoint)
+- `src/app/api/telegram/send/route.ts` (Server route updated with DB fallback)
+- `src/app/api/telegram/setup/route.ts` (Server route updated with DB fallback & persistence)
+- `src/app/api/telegram/webhook/route.ts` (Server route updated with DB fallback)
+- `src/app/api/telegram/notify/route.ts` (Server route updated with DB fallback)
+- `src/components/settings/TelegramSettingsModal.tsx` (Client modal updated with API sync)
+- `src/app/settings/integrations/page.tsx` (Integrations page updated with API sync)
+- `src/components/telegram/TelegramChatBox.tsx` (Chat box updated with async settings check)
+- `src/components/telegram/TelegramConnectModal.tsx` (Connect modal updated with API sync)
+- `tests/telegram_bot_supabase_persistence.test.ts` (Automated QA persistence suite)
+- `tests/run_all_tests.ts` (Suite 16 registration)

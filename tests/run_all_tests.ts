@@ -13,6 +13,7 @@ import { runM1Challenger1StressTests } from './stress_m1_challenger1';
 import { runM2LessonModalTests } from './m2_lesson_modal_creation_workflow.test';
 import { runM3CalendarDrawerNotificationTests } from './m3_calendar_drawer_notifications.test';
 import { runPhase10TelegramMiniAppTests } from './phase10_telegram_mini_app.test';
+import { runTelegramPersistenceTests } from './telegram_bot_supabase_persistence.test';
 
 async function main() {
   console.log('===============================================================');
@@ -22,7 +23,7 @@ async function main() {
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 15;
+  const totalSuites = 16;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -103,6 +104,13 @@ async function main() {
     const phase10Result = await runPhase10TelegramMiniAppTests();
     if (phase10Result.failed > 0) {
       throw new Error(`Phase 10 suite failed with ${phase10Result.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 16: Telegram Bot Supabase Persistence & Multi-Device Reliability
+    const persistenceResult = await runTelegramPersistenceTests();
+    if (persistenceResult.failed > 0) {
+      throw new Error(`Telegram persistence suite failed with ${persistenceResult.failed} failures`);
     }
     passedSuites++;
 

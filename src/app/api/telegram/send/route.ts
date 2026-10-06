@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendTelegramDirectMessage, resolveBotToken } from '@/lib/telegram/telegramClient';
+import { getTelegramSettingsServer } from '@/lib/telegram/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const token = resolveBotToken(customBotToken);
+    let token = resolveBotToken(customBotToken);
+    if (!token) {
+      const serverSettings = await getTelegramSettingsServer();
+      token = serverSettings.botToken || '';
+    }
+
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'Telegram Bot Token не настроен. Укажите токен в Настройках CRM.' },

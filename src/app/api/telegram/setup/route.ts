@@ -6,14 +6,23 @@ import {
   setTelegramWebhook,
   setTelegramChatMenuButton,
 } from '@/lib/telegram/telegramClient';
+import {
+  getTelegramSettingsServer,
+  saveTelegramSettingsServer,
+} from '@/lib/telegram/settings';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const customToken = searchParams.get('token') || undefined;
-    const token = resolveBotToken(customToken);
+    const url = new URL(request.url);
+    const customToken = url.searchParams.get('token') || undefined;
+    let token = resolveBotToken(customToken);
+
+    if (!token) {
+      const serverSettings = await getTelegramSettingsServer();
+      token = serverSettings.botToken || '';
+    }
 
     if (!token) {
       return NextResponse.json({
@@ -47,7 +56,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { customBotToken, webhookUrl } = body;
 
-    const token = resolveBotToken(customBotToken);
+    let token = resolveBotToken(customBotToken);
+    if (!token) {
+      const serverSettings = await getTelegramSettingsServer();
+      token = serverSettings.botToken || '';
+    }
+
     if (!token) {
       return NextResponse.json(
         { success: false, error: 'Telegram Bot Token не указан' },
@@ -69,6 +83,13 @@ export async function POST(request: NextRequest) {
         { success: false, error: res.error || 'Не удалось зарегистрировать Webhook' },
         { status: 502 }
       );
+    }
+
+    // Persist webhookUrl to Supabase system_settings
+    try {
+      await saveTelegramSettingsServer({ webhookUrl });
+    } catch (saveErr) {
+      console.warn('Could not save webhookUrl to system_settings:', saveErr);
     }
 
     // Automatically configure Menu Button for the Mini App

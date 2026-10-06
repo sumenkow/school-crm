@@ -1,5 +1,3 @@
-'use client';
-
 import { FullGroupData, INITIAL_GROUPS, FullStudentData } from './mockData';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';

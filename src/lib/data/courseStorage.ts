@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Course and Directions Domain Storage (SSOT)
  *

@@ -1053,3 +1053,50 @@ Implement the mobile SPA interface under route `/mini-app` matching `media_17912
 - [ ] Detects schedule conflicts for individual lessons using `collisionHelper.ts`.
 - [ ] Creates/updates standard `Lesson` without modifying student balances or deposits.
 - [ ] Successfully compiles with `npm run check` and `npm run build` (32+ routes clean).
+
+
+## 2026-10-05T18:59:01Z
+
+Команда тестировщиков (QA & Diagnostics Team) для поиска причины, почему слетели настройки бота @youeuropeservicebot, и внедрения гарантированного персистентного хранения в Supabase.
+
+Working directory: /Users/andreysumenkov/Documents/crm test antigravity
+Integrity mode: development
+
+## Requirements
+
+### R1. Анализ первопричины (Root Cause Analysis) и аудит изоляции
+Команда тестировщиков должна формализовать и задокументировать точные причины сброса настроек:
+- Выявить зависимость текущей реализации от браузерного `localStorage` (`crm_tg_bot_token`, `crm_tg_admin_chat_id`, `crm_tg_bot_username`), из-за которой при открытии CRM с нового компьютера, в инкогнито или под другим пользователем настройки оставались пустыми.
+- Проверить серверные маршруты (`/api/telegram/send`, `/api/telegram/setup`, `/api/telegram/webhook`) на предмет чтения настроек из централизованного источника правды.
+
+### R2. Персистентное хранилище настроек бота в Supabase
+Реализовать единый источник правды для настроек бота в базе данных Supabase:
+- Создать таблицу `system_settings` (или `app_settings`) в Supabase через миграцию (`key TEXT PRIMARY KEY, value JSONB, updated_at TIMESTAMPTZ`).
+- Создать API эндпоинт `/api/telegram/settings` (GET / POST) для чтения и атомарного сохранения параметров бота (`botToken`, `adminChatId`, `ownerChatId`, `botUsername`, `webhookUrl`, `notificationsEnabled`) через `createAdminClient()`.
+- Все клиентские компоненты (`TelegramSettingsModal`, `/settings/integrations`, `TelegramChatBox`, `TelegramConnectModal`) обязаны при монтировании запрашивать актуальные настройки из Supabase через API, а при сохранении — атомарно обновлять запись в базе.
+
+### R3. Гарантия работы с любого устройства и для любого пользователя (Multi-Device & Multi-User)
+- Новый администратор или вход с абсолютно чистого ПК / браузера без сохраненного `localStorage` должен мгновенно получать статус `🟢 Подключён` с никнеймом `@youeuropeservicebot` и всеми настроенными Chat ID из Supabase.
+- Изменение токена или настроек любым администратором должно мгновенно становиться доступным на всех остальных устройствах без ручного копирования токена.
+- Защита токена: маскирование в UI (`••••••••`), исключение утечки сервисного токена в публичные логи.
+
+### R4. Автоматизированный стресс-тест персистентности (Automated QA Suite)
+Создать тестовый комплекс `tests/telegram_bot_supabase_persistence.test.ts`:
+- Тест 1: Имитация входа с нового ПК (полностью пустой `localStorage`): проверка успешного чтения настроек из Supabase.
+- Тест 2: Имитация обновления токена/Chat ID одним пользователем и мгновенного считывания другим пользователем.
+- Тест 3: Верификация работы серверных API (`/api/telegram/send`, `/api/telegram/webhook`) при пустом клиенте за счет прямого чтения из Supabase.
+- Тест 4: Проверка сохранения целостности имени бота `@youeuropeservicebot` и URL Webhook.
+
+## Acceptance Criteria
+
+### Supabase Storage & Cross-Device Persistence
+- [ ] Таблица и миграция `system_settings` созданы и применены в Supabase.
+- [ ] При полной очистке браузера (`localStorage.clear()`) или входе с нового устройства CRM автоматически подгружает токен и Chat ID из Supabase.
+- [ ] Серверные роуты `/api/telegram/send` и `/api/telegram/webhook` берут токен из Supabase без обязательного проброса из браузера.
+- [ ] В интерфейсе настроек отображается `@youeuropeservicebot`, статус `🟢 Подключён` и актуальный Webhook.
+
+### QA Quality & Build Invariants
+- [ ] Все 15+ существующих тестовых сьютов плюс новый сьют персистентности Supabase проходят на 100% (`npm test`).
+- [ ] TypeScript компиляция (`npm run check`) — 0 ошибок.
+- [ ] Продакшн сборка Next.js (`npm run build`) собирает все 33+ маршрута без единой ошибки.
+- [ ] Изменения зафиксированы в Git и отправлены в `origin main`.

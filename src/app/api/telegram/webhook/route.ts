@@ -5,6 +5,7 @@ import {
   resolveBotToken,
   setTelegramChatMenuButton,
 } from '@/lib/telegram/telegramClient';
+import { getTelegramSettingsServer } from '@/lib/telegram/settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, skipped: 'Empty text or chatId' });
     }
 
-    const botToken = resolveBotToken();
+    const serverSettings = await getTelegramSettingsServer();
+    const botToken = serverSettings.botToken || resolveBotToken();
     const senderUsername = fromUser?.username ? `@${fromUser.username}` : '';
     const senderName = [fromUser?.first_name, fromUser?.last_name].filter(Boolean).join(' ') || senderUsername || 'Клиент Telegram';
 
@@ -382,7 +384,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward incoming message notification to Administrator
-    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+    const adminChatId = serverSettings.adminChatId || serverSettings.ownerChatId || process.env.TELEGRAM_ADMIN_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
     if (botToken && adminChatId && String(adminChatId) !== String(chatId)) {
       try {
         const clientDesc = matchedEntityName || 'Новый контакт (не привязан к CRM)';
