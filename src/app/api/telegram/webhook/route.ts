@@ -161,20 +161,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Handle interactive menu commands from Telegram Reply Keyboard (Screen 11)
+    // 2. Handle interactive menu commands and self-booking triggers (Screen 11)
     const host = request.headers.get('host');
     const proto = request.headers.get('x-forwarded-proto') || 'https';
     const origin = host ? `${proto}://${host}` : 'https://youeuropecrmtest.vercel.app';
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : origin);
     const miniAppUrl = `${appBaseUrl}/mini-app?chatId=${encodeURIComponent(chatId)}`;
 
-    if (
+    const cleanLowerText = (text || '').trim().toLowerCase();
+    const isDirectBookingCommand =
       text === '📅 Записаться на занятие' ||
-      text.startsWith('/book') ||
-      text.startsWith('/app') ||
-      text.startsWith('/menu') ||
-      text.startsWith('/mini')
-    ) {
+      cleanLowerText.startsWith('/book') ||
+      cleanLowerText.startsWith('/app') ||
+      cleanLowerText.startsWith('/menu') ||
+      cleanLowerText.startsWith('/mini') ||
+      cleanLowerText === 'записаться' ||
+      cleanLowerText === 'запись' ||
+      cleanLowerText === 'самозапись' ||
+      cleanLowerText === 'расписание' ||
+      cleanLowerText === 'мини апп' ||
+      cleanLowerText === 'миниапп' ||
+      cleanLowerText === 'онлайн запись';
+
+    if (isDirectBookingCommand) {
       if (botToken) {
         await sendTelegramDirectMessage({
           token: botToken,
@@ -396,6 +405,26 @@ export async function POST(request: NextRequest) {
         });
       } catch (forwardErr) {
         console.warn('Could not forward client message to Admin TG:', forwardErr);
+      }
+    }
+
+    // If incoming message expresses booking intent, send instant Mini App button to the user
+    const hasBookingIntent = /(запис|расписани|мини[\s-]?апп|самозапис)/i.test(text || '');
+    if (botToken && hasBookingIntent) {
+      try {
+        await sendTelegramDirectMessage({
+          token: botToken,
+          chatId,
+          text: `💡 Вы также можете посмотреть свободные места и записаться онлайн прямо сейчас:`,
+          parseMode: 'Markdown',
+          replyMarkup: {
+            inline_keyboard: [
+              [{ text: '🚀 Открыть запись в Mini App', web_app: { url: miniAppUrl } }],
+            ],
+          },
+        });
+      } catch (suggestErr) {
+        console.warn('Could not send inline mini app suggestion:', suggestErr);
       }
     }
 

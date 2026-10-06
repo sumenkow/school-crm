@@ -206,7 +206,7 @@ export function TelegramChatBox({
   }, [fetchMessages, hasTelegram]);
 
   // Unified send message handler
-  const sendCustomMessage = async (text: string) => {
+  const sendCustomMessage = async (text: string, replyMarkup?: any) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -245,6 +245,7 @@ export function TelegramChatBox({
           message: trimmed,
           authorName: userName || 'Администратор школы',
           customBotToken: savedBotToken || undefined,
+          replyMarkup: replyMarkup || undefined,
         }),
       });
 
@@ -275,7 +276,7 @@ export function TelegramChatBox({
         channel: 'telegram',
         type: 'follow_up',
         author: userName || 'Администратор школы',
-        content: `✈️ Сообщение в Telegram: «${trimmed}»`,
+        content: replyMarkup ? `✈️ Сообщение в Telegram с кнопкой Mini App: «${trimmed}»` : `✈️ Сообщение в Telegram: «${trimmed}»`,
         result: 'Отправлено в Telegram-чат',
       };
 
@@ -303,6 +304,36 @@ export function TelegramChatBox({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSendMiniAppCard = async () => {
+    const appBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://youeuropecrmtest.vercel.app';
+    const targetChatId = telegramChatId || telegramHandle;
+    const miniAppUrl = `${appBaseUrl}/mini-app${targetChatId ? `?chatId=${encodeURIComponent(targetChatId)}` : ''}`;
+
+    const text = [
+      `👋 Здравствуйте, ${recipientName || 'дорогой родитель'}!`,
+      ``,
+      `В нашем приложении вы можете в любое время:`,
+      `• Посмотреть актуальное расписание и направления`,
+      `• Выбрать преподавателя и записаться на занятие`,
+      `• Проверять посещаемость и баланс`,
+      ``,
+      `Нажмите кнопку ниже для перехода:`,
+    ].join('\n');
+
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          {
+            text: '🚀 Открыть запись в Mini App',
+            web_app: { url: miniAppUrl },
+          },
+        ],
+      ],
+    };
+
+    await sendCustomMessage(text, replyMarkup);
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -536,6 +567,14 @@ export function TelegramChatBox({
               >
                 <span>📅</span> Предложить занятие
               </button>
+              <button
+                type="button"
+                onClick={handleSendMiniAppCard}
+                className="text-[10px] font-bold rounded-lg border border-emerald-200 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-700 px-2.5 py-0.5 transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Отправить родителю ссылку на Mini App для онлайн-записи"
+              >
+                <span>📱</span> Отправить Mini App
+              </button>
               <div className="h-3 w-px bg-slate-200 mx-0.5" />
               {TEMPLATES.map((tpl, idx) => (
                 <button
@@ -601,7 +640,7 @@ export function TelegramChatBox({
         isOpen={isOfferModalOpen}
         onClose={() => setIsOfferModalOpen(false)}
         recipientName={recipientName}
-        onSendOffer={(text) => sendCustomMessage(text)}
+        onSendOffer={(text, replyMarkup) => sendCustomMessage(text, replyMarkup)}
       />
     </div>
   );

@@ -10,7 +10,7 @@ interface OfferLessonModalProps {
   isOpen: boolean;
   onClose: () => void;
   recipientName: string;
-  onSendOffer: (messageText: string) => void;
+  onSendOffer: (messageText: string, replyMarkup?: any) => void;
 }
 
 export function OfferLessonModal({
@@ -74,18 +74,28 @@ export function OfferLessonModal({
     const bookingLink = `${appBaseUrl}/mini-app?lessonId=${selectedLesson.id}`;
 
     const text = [
-      `Здравствуйте! Есть свободные занятия на этой неделе:`,
+      `Здравствуйте, ${recipientName || 'дорогой родитель'}! Предлагаем подходящее занятие:`,
       ``,
       `📚 *${selectedLesson.groupName}*`,
       `📅 ${selectedLesson.date} • ${selectedLesson.time}`,
       `👤 Преподаватель: ${selectedLesson.teacherName}`,
       `🟢 Свободно: ${selectedLesson.availableSeats} из ${selectedLesson.maxCapacity} мест`,
       ``,
-      `👉 Для быстрой записи нажмите ссылку:`,
-      bookingLink,
+      `Нажмите кнопку ниже, чтобы подтвердить запись в один клик:`,
     ].join('\n');
 
-    onSendOffer(text);
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          {
+            text: '🚀 Записаться на это занятие',
+            web_app: { url: bookingLink },
+          },
+        ],
+      ],
+    };
+
+    onSendOffer(text, replyMarkup);
     onClose();
   };
 

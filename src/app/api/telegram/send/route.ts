@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       message,
       authorName,
       customBotToken,
+      replyMarkup,
     } = body;
 
     if (!message || !message.trim()) {
@@ -63,12 +64,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send direct message via Telegram Bot API
+    // Send direct message via Telegram Bot API with optional replyMarkup
     const sendResult = await sendTelegramDirectMessage({
       token,
       chatId: targetChatId,
       text: message.trim(),
       parseMode: 'Markdown',
+      replyMarkup: replyMarkup || undefined,
     });
 
     if (!sendResult.success) {
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
           parent_id: recipientType === 'parent' ? recipientId : null,
           channel: 'telegram',
           type: 'follow_up',
-          content: `✈️ Сообщение в Telegram: «${message.trim()}»`,
+          content: replyMarkup ? `✈️ Сообщение в Telegram с кнопкой Mini App: «${message.trim()}»` : `✈️ Сообщение в Telegram: «${message.trim()}»`,
           result: `Исходящее сообщение в Telegram (${recipientName || 'Клиент'})`,
           occurred_at: sentAtIso,
         });

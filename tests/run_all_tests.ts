@@ -16,17 +16,18 @@ import { runPhase10TelegramMiniAppTests } from './phase10_telegram_mini_app.test
 import { runTelegramPersistenceTests } from './telegram_bot_supabase_persistence.test';
 import { runP0SecurityAndSchemaHardeningTests } from './p0_security_and_schema_hardening.test';
 import { runAuditLogTests } from './audit_log.test';
+import { runTelegramMiniAppMenuAndInlineTests } from './ts39_telegram_miniapp_menu_and_inline_buttons.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
   console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
-  console.log('   Production Audit Log Subsystem (Suite 18)');
+  console.log('   Production Audit Log (Suite 18) & Telegram Mini App Launch (Suite 19)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 18;
+  const totalSuites = 19;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -128,6 +129,13 @@ async function main() {
     const auditLogResult = await runAuditLogTests();
     if (auditLogResult.failed > 0) {
       throw new Error(`Audit Log suite failed with ${auditLogResult.failed} failures`);
+    }
+    passedSuites++;
+
+    // Suite 19: Telegram Mini App Menu Button & Inline Booking Touchpoints
+    const miniAppResult = await runTelegramMiniAppMenuAndInlineTests();
+    if (miniAppResult.failed > 0) {
+      throw new Error(`Telegram Mini App suite failed with ${miniAppResult.failed} failures`);
     }
     passedSuites++;
 

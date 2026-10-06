@@ -21,7 +21,8 @@ import {
   Zap,
   Lock,
   Key,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Smartphone,
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
@@ -46,12 +47,13 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
   const [newTokenInput, setNewTokenInput] = useState('');
   const [lastBackupTime, setLastBackupTime] = useState('');
 
-  // Webhook & Bot Identity
+  // Webhook & Bot Identity & Menu Button
   const [botInfo, setBotInfo] = useState<{ username?: string; first_name?: string } | null>(null);
   const [webhookInfo, setWebhookInfo] = useState<{ url?: string; pending_update_count?: number; last_error_message?: string } | null>(null);
   const [webhookUrlInput, setWebhookUrlInput] = useState('');
   const [isCheckingBot, setIsCheckingBot] = useState(false);
   const [isSettingWebhook, setIsSettingWebhook] = useState(false);
+  const [isSyncingMenuButton, setIsSyncingMenuButton] = useState(false);
 
   const fetchBotSetupInfo = async (tokenOverride?: string) => {
     setIsCheckingBot(true);
@@ -233,6 +235,44 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
       toast.error(err.message || 'Ошибка регистрации Webhook');
     } finally {
       setIsSettingWebhook(false);
+    }
+  };
+
+  const handleSyncMenuButton = async () => {
+    if (!botToken.trim()) {
+      toast.error('Сначала укажите Telegram Bot Token');
+      return;
+    }
+    setIsSyncingMenuButton(true);
+    try {
+      const res = await fetch('/api/telegram/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: botToken.trim(),
+          adminChatId: adminChatId.trim(),
+          ownerChatId: ownerChatId.trim(),
+          botUsername: botInfo?.username || 'youeuropeservicebot',
+          webhookUrl: webhookUrlInput.trim(),
+          notificationsEnabled,
+          syncMenuButton: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Ошибка синхронизации кнопки');
+      }
+
+      if (data.menuButtonSynced) {
+        toast.success('Кнопка «Запись онлайн 📱» успешно установлена в Telegram!');
+      } else {
+        toast.error(data.menuButtonError || 'Не удалось обновить кнопку меню в Telegram API');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Ошибка синхронизации кнопки меню');
+    } finally {
+      setIsSyncingMenuButton(false);
     }
   };
 
@@ -486,6 +526,38 @@ export function TelegramSettingsModal({ isOpen, onClose }: TelegramSettingsModal
                 Текущий URL в Telegram: {webhookInfo.url}
               </p>
             )}
+          </div>
+
+          {/* Mini App Menu Button Section */}
+          <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/30 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+                <Smartphone size={14} className="text-indigo-600" />
+                Кнопка Mini App в боте (Самозапись для родителей):
+              </span>
+              <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                Запись онлайн 📱
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600">
+              Постоянная кнопка меню в левом нижнем углу интерфейса Telegram у всех родителей. Открывает нативное мини-приложение с расписанием и записью на занятия.
+            </p>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] font-mono text-slate-500 truncate">
+                Эндпоинт: {webhookUrlInput ? webhookUrlInput.replace(/\/api\/telegram\/webhook\/?$/, '') : 'https://youeuropecrmtest.vercel.app'}/mini-app
+              </span>
+              <button
+                type="button"
+                onClick={handleSyncMenuButton}
+                disabled={isSyncingMenuButton}
+                className="inline-flex items-center gap-1 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 text-xs transition-colors shrink-0 cursor-pointer"
+              >
+                <RefreshCw size={12} className={isSyncingMenuButton ? 'animate-spin' : ''} />
+                {isSyncingMenuButton ? 'Синхронизация...' : 'Синхронизировать кнопку'}
+              </button>
+            </div>
           </div>
 
           {/* Admin Chat ID */}
