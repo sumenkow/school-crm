@@ -22,6 +22,7 @@ import { useToast } from '@/context/ToastContext';
 const STATUSES_OPTIONS = [
   { id: 'active', label: 'Активна' },
   { id: 'recruiting', label: 'Идет набор' },
+  { id: 'finished', label: 'Завершена' },
   { id: 'paused', label: 'Пауза' },
   { id: 'archived', label: 'Архив' },
 ];
@@ -245,6 +246,9 @@ export default function GroupsPage() {
                   onAddLesson={handleAddLesson}
                   onDelete={handleDeleteGroup}
                   onRestore={handleRestoreGroup}
+                  onStatusClick={(status) =>
+                    setSelectedStatus((prev) => (prev === status ? 'all' : status))
+                  }
                 />
               ))}
             </div>
@@ -257,6 +261,9 @@ export default function GroupsPage() {
           onAddLesson={handleAddLesson}
           onDelete={handleDeleteGroup}
           onRestore={handleRestoreGroup}
+          onStatusClick={(status) =>
+            setSelectedStatus((prev) => (prev === status ? 'all' : status))
+          }
         />
       )}
 

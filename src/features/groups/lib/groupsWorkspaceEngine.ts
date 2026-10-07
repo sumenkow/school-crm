@@ -240,7 +240,15 @@ export function getStatusBadge(status: string, isDeleted: boolean) {
       border: 'border-amber-200',
     };
   }
-  if (status === 'finished' || status === 'archived') {
+  if (status === 'finished') {
+    return {
+      label: 'Завершена',
+      bg: 'bg-slate-100',
+      text: 'text-slate-600',
+      border: 'border-slate-200',
+    };
+  }
+  if (status === 'archived') {
     return {
       label: 'Архив',
       bg: 'bg-slate-100',
@@ -296,8 +304,14 @@ export function filterAndSortGroups(params: GroupWorkspaceFilterParams): GroupPr
     if (teacherFilter !== 'all' && g.teacherName !== teacherFilter && g.teacherId !== teacherFilter) {
       return false;
     }
-    if (statusFilter !== 'all' && g.status !== statusFilter) {
-      return false;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'finished') {
+        if (g.status !== 'finished' && g.status !== 'archived') {
+          return false;
+        }
+      } else if (g.status !== statusFilter) {
+        return false;
+      }
     }
     return true;
   });

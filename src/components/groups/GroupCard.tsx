@@ -25,6 +25,7 @@ export interface GroupCardProps {
   onAddLesson: (groupId: string) => void;
   onDelete: (groupId: string, groupName: string) => void;
   onRestore: (groupId: string, groupName: string) => void;
+  onStatusClick?: (status: string) => void;
 }
 
 export function GroupCard({
@@ -33,6 +34,7 @@ export function GroupCard({
   onAddLesson,
   onDelete,
   onRestore,
+  onStatusClick,
 }: GroupCardProps) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -96,17 +98,23 @@ export function GroupCard({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Status Badge */}
-            <span
+            {/* Clickable Status Badge */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStatusClick?.(group.status);
+              }}
+              title={`Фильтровать по статусу: ${group.statusBadge.label}`}
               className={cn(
-                'rounded-full px-2.5 py-0.5 text-[10px] font-semibold border shrink-0',
+                'rounded-full px-2.5 py-0.5 text-[10px] font-semibold border shrink-0 transition-opacity hover:opacity-80 cursor-pointer',
                 group.statusBadge.bg,
                 group.statusBadge.text,
                 group.statusBadge.border
               )}
             >
               {group.statusBadge.label}
-            </span>
+            </button>
 
             {/* Context 3-Dots Menu */}
             <div className="group-card-menu relative" ref={menuRef}>
@@ -161,7 +169,7 @@ export function GroupCard({
                         className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                        <span>Удалить в архив</span>
+                        <span>В архив</span>
                       </button>
                     </>
                   ) : (
@@ -242,7 +250,7 @@ export function GroupCard({
             <div className="flex items-center gap-1.5 text-slate-700 truncate min-w-0">
               <Clock className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               <span className="truncate">
-                Ближайший урок:{' '}
+                Ближайшее занятие:{' '}
                 <strong className="text-slate-900 font-semibold">
                   {group.nextLesson.dayOfWeekLabel ? `${group.nextLesson.dayOfWeekLabel}, ` : ''}
                   {group.nextLesson.dateFormatted}
@@ -279,8 +287,7 @@ export function GroupCard({
             className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 hover:border-blue-200 py-1.5 text-xs font-semibold text-slate-700 transition-all cursor-pointer"
           >
             <Users className="h-3.5 w-3.5" />
-            <span>Открыть группу</span>
-            <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
+            <span>Открыть →</span>
           </Link>
         )}
       </div>

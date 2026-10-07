@@ -112,7 +112,7 @@ export function GroupFilterBar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Поиск по названию группы, курсу, преподавателю..."
+            placeholder="Поиск по названию группы..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-8.5 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
           />
         </div>
@@ -183,7 +183,7 @@ export function GroupFilterBar({
           <button
             type="button"
             onClick={() => onViewModeChange('cards')}
-            title="Отображение карточками (3x2)"
+            title="Card View (3x2)"
             className={cn(
               'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
               viewMode === 'cards'
@@ -192,12 +192,12 @@ export function GroupFilterBar({
             )}
           >
             <LayoutGrid className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Карточки</span>
+            <span className="hidden sm:inline">Card View</span>
           </button>
           <button
             type="button"
             onClick={() => onViewModeChange('table')}
-            title="Отображение плотной таблицей"
+            title="Table View"
             className={cn(
               'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
               viewMode === 'table'
@@ -206,7 +206,7 @@ export function GroupFilterBar({
             )}
           >
             <Table className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Таблица</span>
+            <span className="hidden sm:inline">Table View</span>
           </button>
         </div>
       </div>

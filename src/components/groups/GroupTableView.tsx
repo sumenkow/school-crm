@@ -25,6 +25,7 @@ export interface GroupTableViewProps {
   onAddLesson: (groupId: string) => void;
   onDelete: (groupId: string, groupName: string) => void;
   onRestore: (groupId: string, groupName: string) => void;
+  onStatusClick?: (status: string) => void;
 }
 
 export function GroupTableView({
@@ -33,6 +34,7 @@ export function GroupTableView({
   onAddLesson,
   onDelete,
   onRestore,
+  onStatusClick,
 }: GroupTableViewProps) {
   const router = useRouter();
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -118,10 +120,30 @@ export function GroupTableView({
 
                   {/* 2. Schedule Column */}
                   <td className="py-3 px-3 min-w-[150px]">
-                    <div className="flex items-center gap-1.5 text-slate-700 font-medium">
-                      <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{group.schedule}</span>
-                    </div>
+                    {group.scheduleBadges.length > 0 && group.scheduleBadges[0].day !== group.schedule ? (
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-1">
+                          {group.scheduleBadges.map((badge, idx) => (
+                            <span
+                              key={idx}
+                              className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 border border-slate-200/60"
+                            >
+                              {badge.day}
+                            </span>
+                          ))}
+                        </div>
+                        {group.scheduleBadges[0]?.time && (
+                          <div className="text-[11px] font-medium text-slate-600">
+                            {group.scheduleBadges[0].time}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{group.schedule}</span>
+                      </div>
+                    )}
                   </td>
 
                   {/* 3. Teacher Column */}
@@ -167,16 +189,22 @@ export function GroupTableView({
 
                   {/* 6. Status Badge */}
                   <td className="py-3 px-3 min-w-[90px] whitespace-nowrap">
-                    <span
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStatusClick?.(group.status);
+                      }}
+                      title={`Фильтровать по статусу: ${group.statusBadge.label}`}
                       className={cn(
-                        'rounded-full px-2.5 py-0.5 text-[10px] font-semibold border',
+                        'rounded-full px-2.5 py-0.5 text-[10px] font-semibold border shrink-0 transition-opacity hover:opacity-80 cursor-pointer',
                         group.statusBadge.bg,
                         group.statusBadge.text,
                         group.statusBadge.border
                       )}
                     >
                       {group.statusBadge.label}
-                    </span>
+                    </button>
                   </td>
 
                   {/* 7. Nearest Lesson Column */}
@@ -271,7 +299,7 @@ export function GroupTableView({
                                   className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-rose-500" />
-                                  <span>Удалить в архив</span>
+                                  <span>В архив</span>
                                 </button>
                               </>
                             ) : (
