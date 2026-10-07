@@ -24,6 +24,7 @@ import { runSuite23 } from './ts43_action_cockpit_dashboard.test';
 import { runSuite24 } from './ts44_situational_command_center_dashboard.test';
 import { runSuite25 } from './ts45_tasks_actions_activities_invariants.test';
 import { runSuite26 } from './ts46_teacher_workspace_invariants.test';
+import { runSuite27 } from './ts47_groups_workspace_invariants.test';
 
 async function main() {
   console.log('===============================================================');
@@ -31,11 +32,12 @@ async function main() {
   console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
   console.log('   Production Audit Log (Suite 18), Mini App Menu (Suite 19), Identity & Deep-Link (Suite 20)');
   console.log('   ADR-001 Dual-Model (Suite 25), Teacher Workspace Desktop 1440x900 (Suite 26)');
+  console.log('   Groups Workspace Card 3x2 & Dense Table View (Suite 27)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 26;
+  const totalSuites = 27;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -176,6 +178,10 @@ async function main() {
 
     // Suite 26: Teacher Workspace Invariants & Engine (TS-46)
     await runSuite26();
+    passedSuites++;
+
+    // Suite 27: Groups Workspace Invariants & Views (TS-47)
+    await runSuite27();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
