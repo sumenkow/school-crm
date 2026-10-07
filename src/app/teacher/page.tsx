@@ -24,10 +24,12 @@ import {
   Send,
   AlertCircle,
   HelpCircle,
-  FolderOpen
+  FolderOpen,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/context/LanguageContext';
+import { useRole } from '@/context/RoleContext';
 import { useTeacherWorkspaceData } from '@/features/teacher/hooks/useTeacherWorkspaceData';
 import { TeacherLessonRow, TeacherAttentionAlert } from '@/features/teacher/lib/teacherWorkspaceEngine';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
@@ -39,6 +41,9 @@ import { FullLessonData } from '@/lib/data/mockData';
 export default function TeacherWorkspacePage() {
   const { t } = useLanguage();
   const router = useRouter();
+  const { role, isOwnerAccount, isDevAccount, userName } = useRole();
+
+  const isAuthorized = role === 'teacher' || isOwnerAccount || isDevAccount;
 
   const {
     data,
@@ -48,7 +53,9 @@ export default function TeacherWorkspacePage() {
     setSelectedTeacherId,
     availableTeachers,
     refresh,
-  } = useTeacherWorkspaceData();
+  } = useTeacherWorkspaceData({
+    teacherName: role === 'teacher' && userName ? userName : undefined,
+  });
 
   // Modals & Drawers state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -77,6 +84,26 @@ export default function TeacherWorkspacePage() {
     setIsHomeworkModalOpen(true);
   };
 
+  if (!isAuthorized) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+          <ShieldAlert className="h-8 w-8 text-amber-600" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900">Доступ ограничен</h2>
+        <p className="text-sm text-slate-500 max-w-md">
+          Данный раздел предназначен исключительно для учетных записей с ролью «Преподаватель».
+        </p>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+        >
+          Вернуться на главную
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full min-h-0 flex flex-col p-4 lg:p-5 gap-3 bg-slate-50/70 text-slate-800 antialiased overflow-hidden select-none">
       {/* ─────────────────────────────────────────────────────────────
@@ -92,6 +119,25 @@ export default function TeacherWorkspacePage() {
               <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
                 {teacher.name || 'Преподаватель'}
               </span>
+
+              {/* Developer / Owner teacher switcher preview */}
+              {(isOwnerAccount || isDevAccount) && availableTeachers.length > 0 && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <span className="text-[11px] text-slate-400 font-medium">Режим проверки:</span>
+                  <select
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    className="text-xs bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-slate-700 font-semibold cursor-pointer shadow-2xs hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    title="Выбрать преподавателя (доступно владельцу / разработчику)"
+                  >
+                    {availableTeachers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               {selectedDateFormatted}

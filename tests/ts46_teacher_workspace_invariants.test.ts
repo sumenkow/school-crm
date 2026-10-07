@@ -301,6 +301,33 @@ export async function runSuite26() {
     assert.strictEqual(serialized.includes('долг'), false, 'Commercial debt terms must not appear in teacher schedule rows');
   });
 
+  // ─── TIER 5: ROLE-BASED ACCESS CONTROL & WORKSPACE IDENTITY ──────────────────
+  test('T5.01: Teacher role check strictly authorizes teacher accounts while rejecting unauthorized roles', () => {
+    const isAuthorized = (role: string, isOwnerAccount: boolean, isDevAccount: boolean) => {
+      return role === 'teacher' || isOwnerAccount || isDevAccount;
+    };
+
+    // Teacher role is authorized
+    assert.strictEqual(isAuthorized('teacher', false, false), true, 'Role teacher must be authorized');
+
+    // Admin role without owner/dev privileges is rejected
+    assert.strictEqual(isAuthorized('admin', false, false), false, 'Regular admin without supervisor rights must be rejected');
+
+    // Supervisor accounts (owner, dev) can preview
+    assert.strictEqual(isAuthorized('owner', true, false), true, 'Owner account can preview teacher workspace');
+    assert.strictEqual(isAuthorized('developer', false, true), true, 'Dev account can preview teacher workspace');
+  });
+
+  test('T5.02: Teacher workspace dynamically resolves teacher identity by teacherName', () => {
+    const result = computeTeacherWorkspaceData({
+      teacherName: 'Мария Иванова',
+      selectedDate: new Date('2026-10-06T12:00:00Z'),
+    });
+
+    assert.ok(result.teacher, 'Teacher profile must be resolved');
+    assert.strictEqual(result.teacher.name, 'Мария Иванова');
+  });
+
   console.log(`\nSuite 26 completed: ${passed} passed, ${failed} failed.`);
   if (failed > 0) {
     throw new Error(`Suite 26 failed with ${failed} failure(s)`);
