@@ -1,6 +1,6 @@
 'use client';
 
-import { FullTaskData, TimelineInteraction, INITIAL_STUDENTS, INITIAL_LEADS } from './mockData';
+import { FullTaskData, TimelineInteraction, INITIAL_STUDENTS, INITIAL_LEADS, INITIAL_TASKS } from './mockData';
 import { getStoredTasks, saveTaskToStorage } from './taskStorage';
 import { getStoredStudents } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';
@@ -14,12 +14,14 @@ export interface CreateTaskOptions {
   dueDateFormatted?: string;
   description?: string;
   assignedTo?: string;
+  assignedToUserId?: string;
   studentId?: string;
   studentName?: string;
   parentId?: string;
   parentName?: string;
   leadId?: string;
   leadName?: string;
+  createdByUserId?: string;
   createdByRole?: string;
   createdByName?: string;
   skipTimelineInteraction?: boolean;
@@ -85,6 +87,14 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
   const dueDate = options.dueDate || new Date().toISOString().slice(0, 10);
   const dueDateFormatted = options.dueDateFormatted || new Date(dueDate).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
 
+  // Clean description of any legacy HTML comments
+  const cleanDescription = options.description
+    ? options.description.replace(/<!--[\s\S]*?-->/g, '').trim() || undefined
+    : undefined;
+
+  const createdByName = options.createdByName || options.assignedTo || 'Администратор школы';
+  const createdByRole = options.createdByRole || 'admin';
+
   const newTask: FullTaskData = {
     id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     title: options.title,
@@ -96,11 +106,17 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
     leadId,
     leadName,
     assignedTo: options.assignedTo || 'Елена Менеджер',
+    assignedToUserId: options.assignedToUserId,
     dueDate,
     dueDateFormatted,
     status: 'open',
     priority: options.priority || 'medium',
-    description: options.description || undefined,
+    description: cleanDescription,
+    createdByUserId: options.createdByUserId,
+    createdByRole,
+    createdByName,
+    creator: createdByName,
+    postponeCount: 0,
   };
 
   // 4. Save to Storage (localStorage + Supabase fire-and-forget)
@@ -175,47 +191,115 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
   return newTask;
 }
 
+export interface UpdateTaskStatusOptions {
+  comment?: string;
+  result?: string;
+  completionResult?: string;
+  newDueDate?: string;
+  performedBy?: string;
+  performedByUserId?: string;
+  userRole?: string;
+  rescheduledReason?: string;
+  rescheduledBy?: string;
+  rescheduledByUserId?: string;
+}
+
 /**
  * Updates task status (done, rescheduled, open, etc.) with real-time sync & timeline recording.
  */
 export async function updateUnifiedTaskStatus(
   taskId: string,
   newStatus: FullTaskData['status'],
-  options?: {
-    comment?: string;
-    newDueDate?: string;
-    performedBy?: string;
-    userRole?: string;
-  }
+  options?: UpdateTaskStatusOptions
 ): Promise<FullTaskData | null> {
-  const tasks = typeof window !== 'undefined' ? await getStoredTasks() : [];
-  const target = tasks.find((t) => t.id === taskId);
+  const tasks = await getStoredTasks();
+  let target = tasks.find((t) => t.id === taskId);
+  if (!target) {
+    target = INITIAL_TASKS.find((t) => t.id === taskId);
+  }
   if (!target) return null;
 
   const oldStatus = target.status;
   const performerName = options?.performedBy || target.assignedTo || 'Администратор';
+  const performerUserId = options?.performedByUserId;
+
+  const isRescheduled = Boolean(options?.newDueDate || options?.rescheduledReason);
+  const nowIso = new Date().toISOString();
+
+  // 1. Completion metadata
+  let completedAt = target.completedAt;
+  let completedByName = target.completedByName || target.completedBy;
+  let completedBy = completedByName;
+  let completedByUserId = target.completedByUserId;
+  let completionResult = target.completionResult || target.result;
+  let result = completionResult;
+
+  if (newStatus === 'done') {
+    completedAt = nowIso;
+    completedByName = performerName;
+    completedBy = performerName;
+    completedByUserId = performerUserId || target.completedByUserId;
+    const finalResult = options?.completionResult || options?.result || options?.comment || target.completionResult || target.result || 'Задача выполнена';
+    completionResult = finalResult.trim();
+    result = finalResult.trim();
+  } else if (newStatus === 'open') {
+    completedAt = undefined;
+    completedByName = undefined;
+    completedBy = undefined;
+    completedByUserId = undefined;
+    completionResult = undefined;
+    result = undefined;
+  }
+
+  // 2. Rescheduling metadata
+  let dueDate = target.dueDate;
+  let dueDateFormatted = target.dueDateFormatted;
+  let rescheduledReason = target.rescheduledReason;
+  let rescheduledBy = target.rescheduledBy;
+  let rescheduledByUserId = target.rescheduledByUserId;
+  let rescheduledAt = target.rescheduledAt;
+  let postponeCount = target.postponeCount ?? 0;
+
+  if (isRescheduled) {
+    if (options?.newDueDate) {
+      dueDate = options.newDueDate;
+      if (dueDate.includes('-')) {
+        const [y, m, d] = dueDate.slice(0, 10).split('-');
+        dueDateFormatted = `${d}.${m}.${y}`;
+      } else {
+        dueDateFormatted = dueDate;
+      }
+    }
+    const finalReason = options?.rescheduledReason || options?.comment || target.rescheduledReason;
+    rescheduledReason = finalReason ? finalReason.trim() : undefined;
+    rescheduledBy = options?.rescheduledBy || performerName;
+    rescheduledByUserId = options?.rescheduledByUserId || performerUserId || target.rescheduledByUserId;
+    rescheduledAt = nowIso;
+    postponeCount = (target.postponeCount ?? 0) + 1;
+  }
 
   const updatedTask: FullTaskData = {
     ...target,
     status: newStatus,
-    dueDate: options?.newDueDate || target.dueDate,
-    dueDateFormatted: options?.newDueDate
-      ? (() => {
-          const iso = options.newDueDate;
-          if (iso.includes('-')) {
-            const [y, m, d] = iso.slice(0, 10).split('-');
-            return `${d}.${m}.${y}`;
-          }
-          return iso;
-        })()
-      : target.dueDateFormatted,
-    completedAt: newStatus === 'done' ? new Date().toISOString() : (newStatus === 'open' ? undefined : target.completedAt),
-    completedBy: newStatus === 'done' ? performerName : (newStatus === 'open' ? undefined : target.completedBy),
-    result: options?.comment && newStatus === 'done' ? options.comment : target.result,
-    rescheduledReason: options?.newDueDate && options?.comment ? options.comment : target.rescheduledReason,
-    rescheduledBy: options?.newDueDate ? performerName : target.rescheduledBy,
-    rescheduledAt: options?.newDueDate ? new Date().toISOString() : target.rescheduledAt,
+    dueDate,
+    dueDateFormatted,
+    isOverdue: newStatus === 'open' && new Date(dueDate) < new Date(new Date().setHours(0, 0, 0, 0)),
+    completedAt,
+    completedByUserId,
+    completedByName,
+    completedBy,
+    completionResult,
+    result,
+    rescheduledReason,
+    rescheduledBy,
+    rescheduledByUserId,
+    rescheduledAt,
+    postponeCount,
   };
+
+  if (isRescheduled) {
+    (updatedTask as any).isRescheduled = true;
+  }
 
   // 1. Save to Task Storage
   saveTaskToStorage(updatedTask);
@@ -263,16 +347,14 @@ export async function updateUnifiedTaskStatus(
   // Formatted exact timeline strings per spec
   let taskContent = `Задача «${target.title}» отмечена как ${label}.`;
   if (newStatus === 'done') {
-    if (options?.comment && options.comment.trim()) {
-      taskContent = `Задача закрыта: ${target.title} · Результат: ${options.comment.trim()}`;
+    if (completionResult && completionResult.trim()) {
+      taskContent = `Задача закрыта: ${target.title} · Результат: ${completionResult.trim()}`;
     } else {
       taskContent = `Задача выполнена: ${target.title}. Выполнил: ${performerName}`;
     }
-  } else if (options?.newDueDate) {
-    const formattedNewDate = options.newDueDate.includes('-')
-      ? options.newDueDate.split('-').reverse().join('.')
-      : options.newDueDate;
-    taskContent = `Срок задачи "${target.title}" изменен на ${formattedNewDate}.${options.comment ? ` Причина: ${options.comment.trim()}` : ''}`;
+  } else if (isRescheduled) {
+    const formattedNewDate = dueDateFormatted;
+    taskContent = `Срок задачи "${target.title}" изменен на ${formattedNewDate}.${rescheduledReason ? ` Причина: ${rescheduledReason.trim()}` : ''}`;
   }
 
   const timelineItem: TimelineInteraction = {
@@ -282,12 +364,12 @@ export async function updateUnifiedTaskStatus(
     parentId: resolvedParentId,
     parentName: resolvedParentName,
     occurredAt: formattedDateTime,
-    createdAt: now.toISOString(),
+    createdAt: nowIso,
     channel: 'other',
     type: 'status_change',
     author: performerName,
     content: taskContent,
-    result: options?.comment || (newStatus === 'done' ? 'Задача выполнена' : undefined),
+    result: options?.completionResult || options?.result || options?.comment || (newStatus === 'done' ? (completionResult || 'Задача выполнена') : undefined),
     targetType: target.parentId ? 'parent' : 'student',
     targetName: target.parentId ? (resolvedParentName || 'Родитель') : (resolvedStudentName || 'Ученик'),
     targetRole: target.parentId ? 'Родитель' : 'Ученик',

@@ -269,14 +269,26 @@ export interface Task {
   parentId?: string;
   leadId?: string;
   assignedTo?: string;
+  assignedToUserId?: string;
   dueDate: string;
   status: TaskStatus;
   priority: TaskPriority;
   description?: string;
+  createdByUserId?: string;
+  createdByRole?: string;
+  createdByName?: string;
+  creator?: string;
   completedAt?: string;
+  completedByUserId?: string;
+  completedByName?: string;
   completedBy?: string;
+  completionResult?: string;
   result?: string;
   rescheduledReason?: string;
+  rescheduledBy?: string;
+  rescheduledByUserId?: string;
+  rescheduledAt?: string;
+  postponeCount?: number;
 }
 
 export type PaymentStatus = 'paid' | 'expected' | 'overdue' | 'refund' | 'undefined' | 'pending' | 'failed' | 'cancelled';

@@ -310,7 +310,17 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider truncate">Просрочено</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                  activeTab === 'overdue' ? 'bg-rose-200/80 text-rose-700' : 'bg-rose-100 text-rose-600'
+                )}
+              >
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider truncate">Просрочено</span>
+            </div>
             <span
               className={cn(
                 'w-2.5 h-2.5 rounded-full shrink-0',
@@ -343,7 +353,17 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider truncate">Внимание</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                  activeTab === 'attention' ? 'bg-amber-200/80 text-amber-700' : 'bg-amber-100 text-amber-600'
+                )}
+              >
+                <Clock className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider truncate">Внимание</span>
+            </div>
             <span
               className={cn(
                 'w-2.5 h-2.5 rounded-full shrink-0',
@@ -376,7 +396,17 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider truncate">На сегодня</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                  activeTab === 'today' ? 'bg-blue-200/80 text-blue-700' : 'bg-blue-100 text-blue-600'
+                )}
+              >
+                <CheckSquare className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider truncate">На сегодня</span>
+            </div>
             <span
               className={cn(
                 'w-2.5 h-2.5 rounded-full shrink-0',
@@ -409,7 +439,17 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-purple-700 uppercase tracking-wider truncate">Уроки</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                  activeTab === 'lessons' ? 'bg-purple-200/80 text-purple-700' : 'bg-purple-100 text-purple-600'
+                )}
+              >
+                <Users className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold text-purple-700 uppercase tracking-wider truncate">Уроки</span>
+            </div>
             <span
               className={cn(
                 'w-2.5 h-2.5 rounded-full shrink-0',
@@ -442,7 +482,17 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
           )}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider truncate">Оплаты</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                  activeTab === 'payments' ? 'bg-emerald-200/80 text-emerald-700' : 'bg-emerald-100 text-emerald-600'
+                )}
+              >
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider truncate">Оплаты</span>
+            </div>
             <span
               className={cn(
                 'w-2.5 h-2.5 rounded-full shrink-0',

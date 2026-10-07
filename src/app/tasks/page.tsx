@@ -33,6 +33,8 @@ import { useLanguage } from '@/context/LanguageContext';
 // ─── Tab types ────────────────────────────────────────────────────────────────
 type ActiveTab =
   | 'all'
+  | 'delegated_to_me'
+  | 'delegated_by_me'
   | 'my'
   | 'from_owner'
   | 'overdue'
@@ -267,6 +269,8 @@ export default function TasksPage() {
   // ─── Tab counts ─────────────────────────────────────────────────────────────
   const tabCounts = useMemo(() => ({
     all: stats.total,
+    delegated_to_me: tasks.filter((t) => t.status !== 'cancelled' && (!userName || t.assignedTo === userName || t.assignedTo === 'Андрей Волков')).length,
+    delegated_by_me: tasks.filter((t) => t.status !== 'cancelled' && (t.createdByRole === 'owner' || t.createdByName === userName || t.creator === userName || t.title.toLowerCase().includes('поруч'))).length,
     my: tasks.filter((t) => t.status !== 'cancelled' && (!userName || t.assignedTo === userName || t.assignedTo === 'Андрей Волков')).length,
     from_owner: tasks.filter((t) => t.status !== 'cancelled' && (t.createdByRole === 'owner' || t.title.toLowerCase().includes('владелец') || (t.description || '').toLowerCase().includes('владелец') || t.createdByName?.toLowerCase().includes('владелец'))).length,
     overdue: stats.overdue,
@@ -281,6 +285,12 @@ export default function TasksPage() {
 
     // Tab filter
     switch (activeTab) {
+      case 'delegated_to_me':
+        list = list.filter((t) => !userName || t.assignedTo === userName || t.assignedTo === 'Андрей Волков');
+        break;
+      case 'delegated_by_me':
+        list = list.filter((t) => t.createdByRole === 'owner' || t.createdByName === userName || t.creator === userName || t.title.toLowerCase().includes('поруч'));
+        break;
       case 'my':
         list = list.filter((t) => !userName || t.assignedTo === userName || t.assignedTo === 'Андрей Волков');
         break;
@@ -351,7 +361,9 @@ export default function TasksPage() {
 
   // ─── Tabs config ─────────────────────────────────────────────────────────────
   const TABS: { key: ActiveTab; label: string; count: number }[] = [
-    { key: 'all', label: 'Все', count: tabCounts.all },
+    { key: 'all', label: 'Все задачи', count: tabCounts.all },
+    { key: 'delegated_to_me', label: 'Мне поручено', count: tabCounts.delegated_to_me },
+    { key: 'delegated_by_me', label: 'Я поручил', count: tabCounts.delegated_by_me },
     { key: 'my', label: 'Мои', count: tabCounts.my },
     { key: 'from_owner', label: 'От владельца', count: tabCounts.from_owner },
     { key: 'overdue', label: 'Просроченные', count: tabCounts.overdue },

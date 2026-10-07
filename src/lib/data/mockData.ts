@@ -1765,6 +1765,7 @@ export interface FullTaskData {
   leadId?: string;
   leadName?: string;
   assignedTo: string;
+  assignedToUserId?: string;
   dueDate: string;
   dueDateFormatted: string;
   isOverdue?: boolean;
@@ -1772,15 +1773,28 @@ export interface FullTaskData {
   priority: 'high' | 'medium' | 'low';
   description?: string;
   sourceInteractionId?: string;
-  completedAt?: string;
-  completedBy?: string;
-  result?: string;
+
+  // Author & Creation metadata (R1)
+  createdByUserId?: string;
+  createdByRole?: 'owner' | 'admin' | 'teacher' | 'developer' | string;
+  createdByName?: string;
+  creator?: string; // backward-compatibility alias (= createdByName)
+
+  // Completion metadata (R1)
+  completedAt?: string; // ISO 8601 timestamp
+  completedByUserId?: string;
+  completedByName?: string;
+  completedBy?: string; // backward-compatibility alias (= completedByName)
+  completionResult?: string;
+  result?: string; // backward-compatibility alias (= completionResult)
+
+  // Rescheduling metadata (R1)
   rescheduledReason?: string;
   rescheduledBy?: string;
+  rescheduledByUserId?: string;
   rescheduledAt?: string;
-  createdByRole?: string;
-  createdByName?: string;
-  creator?: string;
+  postponeCount?: number;
+
   tag?: string;
   subTag?: string;
   comments?: TaskComment[];
@@ -1905,6 +1919,13 @@ export const INITIAL_TASKS: FullTaskData[] = [
     status: 'done',
     priority: 'medium',
     createdByRole: 'admin',
+    createdByName: 'Анна Администратор',
+    creator: 'Анна Администратор',
+    completedAt: '2026-10-02T16:30:00.000Z',
+    completedByName: 'Андрей Волков',
+    completedBy: 'Андрей Волков',
+    completionResult: 'Расписание преподавателей уточнено и согласовано.',
+    result: 'Расписание преподавателей уточнено и согласовано.',
     description: 'Проверить availability преподавателей и согласовать окна в аудиториях.',
   },
   {

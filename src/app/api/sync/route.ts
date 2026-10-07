@@ -335,16 +335,59 @@ export async function POST(request: NextRequest) {
         const validStatuses = ['open', 'in_progress', 'done', 'cancelled'];
         const validPriorities = ['low', 'medium', 'high'];
 
-        let taskDescription = data.description || '';
-        if (data.createdByRole && !taskDescription.includes('<!--meta:')) {
-          taskDescription = (taskDescription ? taskDescription + '\n' : '') + `<!--meta:createdByRole=${data.createdByRole};createdByName=${data.createdByName || ''}-->`;
-        }
+        // Clean description — pure description without HTML-comment meta tags
+        let taskDescription = (data.description || '').replace(/<!--[\s\S]*?-->/g, '').trim();
 
-        // assigned_to in Supabase is a Foreign Key to profiles.id (UUID).
-        // If data.assignedTo is already a UUID, keep it; otherwise leave null so DB doesn't reject non-UUID string
+        // Resolve assigned_to to a valid profiles.id UUID instead of silently setting to null
+        const isUuid = (str?: string): boolean =>
+          Boolean(str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str));
+
         let dbAssignedTo: string | null = null;
-        if (data.assignedTo && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(data.assignedTo)) {
-          dbAssignedTo = data.assignedTo;
+        const rawAssignedTo = data.assignedToUserId || data.assignedTo;
+
+        if (isUuid(rawAssignedTo)) {
+          dbAssignedTo = rawAssignedTo;
+        } else if (rawAssignedTo) {
+          const assigneeName = String(rawAssignedTo).trim();
+          const lowerName = assigneeName.toLowerCase();
+
+          // Known staff mappings for Smart Academy CRM
+          const KNOWN_STAFF_UUIDS: Record<string, string> = {
+            'андрей волков': 'f1111111-1111-4111-8111-111111111111',
+            'елена менеджер': 'f2222222-2222-4222-8222-222222222222',
+            'анна смирнова': 'f3333333-3333-4333-8333-333333333333',
+            'анна администратор': 'f4444444-4444-4444-8444-444444444444',
+            'ольга куратор': 'f5555555-5555-4555-8555-555555555555',
+            'александр руководитель': 'f6666666-6666-4666-8666-666666666666',
+            'мария иванова': 'f7777777-7777-4777-8777-777777777777',
+            'администратор': 'f2222222-2222-4222-8222-222222222222',
+            'администратор школы': 'f2222222-2222-4222-8222-222222222222',
+            'система': 'f2222222-2222-4222-8222-222222222222',
+            'владелец школы': 'f6666666-6666-4666-8666-666666666666',
+          };
+
+          if (KNOWN_STAFF_UUIDS[lowerName]) {
+            dbAssignedTo = KNOWN_STAFF_UUIDS[lowerName];
+          } else {
+            // Attempt resolving from Supabase profiles table
+            try {
+              const { data: matchedProfile } = await supabase
+                .from('profiles')
+                .select('id')
+                .ilike('full_name', `%${assigneeName}%`)
+                .limit(1)
+                .maybeSingle();
+
+              if (matchedProfile?.id && isUuid(matchedProfile.id)) {
+                dbAssignedTo = matchedProfile.id;
+              } else {
+                // Deterministic pseudo-UUID mapping for custom staff
+                dbAssignedTo = toUUID(assigneeName);
+              }
+            } catch {
+              dbAssignedTo = toUUID(assigneeName);
+            }
+          }
         }
 
         const taskRow: Record<string, unknown> = {
@@ -364,18 +407,49 @@ export async function POST(request: NextRequest) {
         };
 
         // Try direct column write first (for when columns exist in Supabase)
-        const rowWithColumns = {
+        const rowWithColumns: Record<string, unknown> = {
           ...taskRow,
           ...(data.createdByRole ? { created_by_role: data.createdByRole } : {}),
-          ...(data.createdByName ? { created_by_name: data.createdByName } : {}),
+          ...(data.createdByName || data.creator ? { created_by_name: data.createdByName || data.creator } : {}),
+          ...(data.createdByUserId ? { created_by_user_id: toUUID(data.createdByUserId) } : {}),
+          ...(data.completedAt ? { completed_at: data.completedAt } : {}),
+          ...(data.completedByName || data.completedBy ? { completed_by_name: data.completedByName || data.completedBy } : {}),
+          ...(data.completedByUserId ? { completed_by_user_id: toUUID(data.completedByUserId) } : {}),
+          ...(data.completionResult || data.result ? { completion_result: data.completionResult || data.result } : {}),
+          ...(data.rescheduledReason ? { rescheduled_reason: data.rescheduledReason } : {}),
+          ...(data.rescheduledBy ? { rescheduled_by_name: data.rescheduledBy } : {}),
+          ...(data.rescheduledByUserId ? { rescheduled_by_user_id: toUUID(data.rescheduledByUserId) } : {}),
+          ...(data.rescheduledAt ? { rescheduled_at: data.rescheduledAt } : {}),
+          ...(typeof data.postponeCount === 'number' ? { postpone_count: data.postponeCount } : {}),
         };
 
-        const { error: primaryErr } = await supabase.from('tasks').upsert(rowWithColumns, { onConflict: 'id' });
+        let { error: primaryErr } = await supabase.from('tasks').upsert(rowWithColumns, { onConflict: 'id' });
+
+        // If FK constraint on assigned_to failed because resolved UUID is not yet in profiles table
+        if (primaryErr && ((primaryErr as any).code === '23503' || primaryErr.message?.includes('foreign key') || primaryErr.message?.includes('tasks_assigned_to_fkey'))) {
+          rowWithColumns.assigned_to = null;
+          taskRow.assigned_to = null;
+          const retryRes = await supabase.from('tasks').upsert(rowWithColumns, { onConflict: 'id' });
+          primaryErr = retryRes.error;
+        }
 
         if (primaryErr) {
-          if (primaryErr.message?.includes('created_by_role') || (primaryErr as any).code === 'PGRST204') {
+          if (
+            primaryErr.message?.includes('column') ||
+            primaryErr.message?.includes('created_by_') ||
+            primaryErr.message?.includes('completed_') ||
+            primaryErr.message?.includes('rescheduled_') ||
+            primaryErr.message?.includes('result') ||
+            (primaryErr as any).code === 'PGRST204' ||
+            (primaryErr as any).code === '42703'
+          ) {
             // Column does not exist in Supabase yet — fallback to standard taskRow
-            const { error: fallbackErr } = await supabase.from('tasks').upsert(taskRow, { onConflict: 'id' });
+            let { error: fallbackErr } = await supabase.from('tasks').upsert(taskRow, { onConflict: 'id' });
+            if (fallbackErr && ((fallbackErr as any).code === '23503' || fallbackErr.message?.includes('foreign key') || fallbackErr.message?.includes('tasks_assigned_to_fkey'))) {
+              taskRow.assigned_to = null;
+              const retryFallback = await supabase.from('tasks').upsert(taskRow, { onConflict: 'id' });
+              fallbackErr = retryFallback.error;
+            }
             if (fallbackErr) throw fallbackErr;
           } else {
             throw primaryErr;

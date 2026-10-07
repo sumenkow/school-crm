@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CockpitActionItem, sanitizePhoneForWhatsApp, sanitizeTelegramUsername } from '../lib/cockpitPriorityEngine';
+import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 
 interface CockpitSlideOverDrawerProps {
   item: CockpitActionItem | null;
@@ -60,6 +61,52 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
   };
 
   const priorityBadge = priorityColorMap[item.priority] || priorityColorMap.P2;
+
+  const handleLogCommunication = (channel: 'whatsapp' | 'telegram' | 'phone') => {
+    try {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const dateStr = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+      const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const formattedDateTime = `${dateStr}, ${timeStr}`;
+
+      const channelTitles: Record<string, string> = {
+        whatsapp: 'WhatsApp',
+        telegram: 'Telegram',
+        phone: 'Телефонный звонок',
+      };
+
+      const interactionItem = {
+        id: `int_comm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        studentId: item.studentId,
+        studentName: item.studentName,
+        parentId: item.parentId,
+        parentName: item.parentName,
+        occurredAt: formattedDateTime,
+        createdAt: now.toISOString(),
+        channel: (channel === 'phone' ? 'phone' : (channel === 'whatsapp' ? 'whatsapp' : 'telegram')) as any,
+        type: (channel === 'phone' ? 'call' : 'message') as any,
+        author: 'Администратор',
+        content: `${channelTitles[channel] || channel}: обращение по вопросу «${item.title}»`,
+        result: 'Контакт инициирован из Кокпита',
+        targetType: (item.parentId ? 'parent' : (item.leadId ? 'lead' : 'student')) as any,
+        targetName: item.parentName || item.studentName || item.leadName || 'Клиент',
+        targetRole: item.parentId ? 'Родитель' : 'Клиент',
+      };
+
+      if (item.leadId) {
+        (interactionItem as any).leadId = item.leadId;
+        (interactionItem as any).leadName = item.leadName;
+      }
+
+      saveInteractionToStorage(interactionItem as any);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm-timeline-interactions-changed', { detail: interactionItem }));
+      }
+    } catch (e) {
+      console.warn('Could not log communication interaction:', e);
+    }
+  };
 
   return (
     <>
@@ -256,6 +303,7 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
                 href={`https://wa.me/${cleanPhone}?text=${getWaText()}`}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => handleLogCommunication('whatsapp')}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
                 title="Написать в WhatsApp"
               >
@@ -269,6 +317,7 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
                 href={`https://t.me/${telegramHandle}`}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => handleLogCommunication('telegram')}
                 className="inline-flex items-center gap-1 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
                 title="Написать в Telegram"
               >
@@ -280,6 +329,7 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
             {rawPhone && (
               <a
                 href={`tel:${cleanPhone}`}
+                onClick={() => handleLogCommunication('phone')}
                 className="inline-flex items-center gap-1 p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
                 title="Позвонить"
               >

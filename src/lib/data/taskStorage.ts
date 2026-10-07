@@ -35,19 +35,41 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
         const initialMatch = INITIAL_TASKS.find(it => it.id === task.id);
         const fallback = localMatch || initialMatch;
 
-        // Parse creator metadata from direct column or description meta
+        // Clean legacy HTML comments and read creator metadata directly
         let rawDescription = task.description || fallback?.description || '';
         let extractedCreatedByRole = task.created_by_role || fallback?.createdByRole;
         let extractedCreatedByName = task.created_by_name || fallback?.createdByName;
 
-        if (rawDescription && rawDescription.includes('<!--meta:')) {
-          const metaMatch = rawDescription.match(/<!--meta:createdByRole=([^;]+);createdByName=([^>]*)-->/);
-          if (metaMatch) {
-            extractedCreatedByRole = metaMatch[1];
-            extractedCreatedByName = metaMatch[2];
-            rawDescription = rawDescription.replace(/\n?<!--meta:.*-->/, '').trim();
+        // Strip any legacy HTML comments from description
+        if (rawDescription && rawDescription.includes('<!--')) {
+          if (!extractedCreatedByRole || !extractedCreatedByName) {
+            const metaMatch = rawDescription.match(/<!--meta:createdByRole=([^;]+);createdByName=([^>]*)-->/);
+            if (metaMatch) {
+              if (!extractedCreatedByRole) extractedCreatedByRole = metaMatch[1];
+              if (!extractedCreatedByName) extractedCreatedByName = metaMatch[2];
+            }
           }
+          rawDescription = rawDescription.replace(/<!--[\s\S]*?-->/g, '').trim();
         }
+
+        // Direct lifecycle attributes from DB with fallback to local metadata
+        const createdByUserId = task.created_by_user_id || fallback?.createdByUserId;
+        const createdByRole = extractedCreatedByRole;
+        const createdByName = extractedCreatedByName || fallback?.creator;
+        const creator = createdByName;
+
+        const completedAt = task.completed_at || fallback?.completedAt;
+        const completedByUserId = task.completed_by_user_id || fallback?.completedByUserId;
+        const completedByName = task.completed_by_name || fallback?.completedByName || fallback?.completedBy;
+        const completedBy = completedByName;
+        const completionResult = task.completion_result || task.result || fallback?.completionResult || fallback?.result;
+        const result = completionResult;
+
+        const rescheduledReason = task.rescheduled_reason || fallback?.rescheduledReason;
+        const rescheduledBy = task.rescheduled_by_name || task.rescheduled_by || fallback?.rescheduledBy;
+        const rescheduledByUserId = task.rescheduled_by_user_id || fallback?.rescheduledByUserId;
+        const rescheduledAt = task.rescheduled_at || fallback?.rescheduledAt;
+        const postponeCount = (typeof task.postpone_count === 'number' ? task.postpone_count : undefined) ?? fallback?.postponeCount ?? 0;
 
         // Resolve Assigned To Name — never display UUID
         let resolvedAssignee = task.profile?.full_name || fallback?.assignedTo;
@@ -99,25 +121,34 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
           status: task.status as 'open' | 'in_progress' | 'done' | 'cancelled',
           priority: task.priority as 'low' | 'medium' | 'high',
           assignedTo: resolvedAssignee,
+          assignedToUserId: task.assigned_to || fallback?.assignedToUserId,
           description: rawDescription || undefined,
-          completedAt: fallback?.completedAt,
-          completedBy: fallback?.completedBy,
-          result: fallback?.result,
-          rescheduledReason: fallback?.rescheduledReason,
-          rescheduledBy: fallback?.rescheduledBy,
-          rescheduledAt: fallback?.rescheduledAt,
+          createdByUserId,
+          createdByRole,
+          createdByName,
+          creator,
+          completedAt,
+          completedByUserId,
+          completedByName,
+          completedBy,
+          completionResult,
+          result,
+          rescheduledReason,
+          rescheduledBy,
+          rescheduledByUserId,
+          rescheduledAt,
+          postponeCount,
           isOverdue: task.status === 'open' && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0)),
-          createdByRole: extractedCreatedByRole,
-          createdByName: extractedCreatedByName,
-          creator: extractedCreatedByName,
           tag: fallback?.tag,
           subTag: fallback?.subTag,
           comments: fallback?.comments,
         };
       });
 
-      // Also include any local tasks not in db yet
-      const missingInDb = localTasks.filter(lt => !mappedDbTasks.some(mt => mt.id === lt.id));
+      // Also include any local tasks not in db yet, sanitized
+      const missingInDb = localTasks
+        .filter(lt => !mappedDbTasks.some(mt => mt.id === lt.id))
+        .map(sanitizeTask);
       return [...mappedDbTasks, ...missingInDb];
     }
   } catch (e) {
@@ -125,10 +156,39 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
   }
 
   if (localTasks.length > 0) {
-    return [...localTasks, ...INITIAL_TASKS.filter(it => !localTasks.some(p => p.id === it.id))];
+    const combined = [...localTasks, ...INITIAL_TASKS.filter(it => !localTasks.some(p => p.id === it.id))];
+    return combined.map(sanitizeTask);
   }
 
-  return INITIAL_TASKS;
+  return INITIAL_TASKS.map(sanitizeTask);
+}
+
+function sanitizeTask(task: FullTaskData): FullTaskData {
+  let desc = task.description;
+  let extractedRole = task.createdByRole;
+  let extractedName = task.createdByName || task.creator;
+  if (desc && desc.includes('<!--')) {
+    if (!extractedRole || !extractedName) {
+      const match = desc.match(/<!--meta:createdByRole=([^;]+);createdByName=([^>]*)-->/);
+      if (match) {
+        if (!extractedRole) extractedRole = match[1];
+        if (!extractedName) extractedName = match[2];
+      }
+    }
+    desc = desc.replace(/<!--[\s\S]*?-->/g, '').trim() || undefined;
+  }
+  return {
+    ...task,
+    description: desc,
+    createdByRole: extractedRole,
+    createdByName: extractedName,
+    creator: extractedName,
+    completedBy: task.completedBy || task.completedByName,
+    completedByName: task.completedByName || task.completedBy,
+    result: task.result || task.completionResult,
+    completionResult: task.completionResult || task.result,
+    postponeCount: task.postponeCount ?? 0,
+  };
 }
 
 /**
@@ -136,12 +196,14 @@ export async function getStoredTasks(): Promise<FullTaskData[]> {
  * Dispatches crm-tasks-changed event.
  */
 export function saveTaskToStorage(task: FullTaskData): void {
+  const sanitizedTask = sanitizeTask(task);
+
   // 1. In-memory update
-  const existingIndex = INITIAL_TASKS.findIndex(t => t.id === task.id);
+  const existingIndex = INITIAL_TASKS.findIndex(t => t.id === sanitizedTask.id);
   if (existingIndex >= 0) {
-    INITIAL_TASKS[existingIndex] = task;
+    INITIAL_TASKS[existingIndex] = sanitizedTask;
   } else {
-    INITIAL_TASKS.unshift(task);
+    INITIAL_TASKS.unshift(sanitizedTask);
   }
 
   // 2. Direct write to localStorage & Supabase
@@ -149,22 +211,22 @@ export function saveTaskToStorage(task: FullTaskData): void {
     try {
       const saved = localStorage.getItem(TASKS_STORAGE_KEY);
       let localTasks: FullTaskData[] = saved ? JSON.parse(saved) : [];
-      const idx = localTasks.findIndex((t) => t.id === task.id);
+      const idx = localTasks.findIndex((t) => t.id === sanitizedTask.id);
       if (idx >= 0) {
-        localTasks[idx] = task;
+        localTasks[idx] = sanitizedTask;
       } else {
-        localTasks.unshift(task);
+        localTasks.unshift(sanitizedTask);
       }
       localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(localTasks));
     } catch (e) {
       console.error('Error writing tasks to localStorage:', e);
     }
 
-    persistEntityToCloud('task', task);
+    persistEntityToCloud('task', sanitizedTask);
 
     // 3. Dispatch global event for immediate reactive updates in UI
     try {
-      window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: task }));
+      window.dispatchEvent(new CustomEvent('crm-tasks-changed', { detail: sanitizedTask }));
     } catch (e) {}
   }
 }

@@ -22,17 +22,19 @@ import { runSuite21 } from './ts41_diagnostic_issue_card_layout_and_formulations
 import { runSuite22 } from './ts42_currency_eur_unification.test';
 import { runSuite23 } from './ts43_action_cockpit_dashboard.test';
 import { runSuite24 } from './ts44_situational_command_center_dashboard.test';
+import { runSuite25 } from './ts45_tasks_actions_activities_invariants.test';
 
 async function main() {
   console.log('===============================================================');
   console.log('   SMART ACADEMY CRM — AUTOMATED CRITICAL VERIFICATION SUITE   ');
   console.log('   Validating P0 & P1 Hardening (TS-01..TS-26) & Phase 8, 9, 10, 11');
   console.log('   Production Audit Log (Suite 18), Mini App Menu (Suite 19), Identity & Deep-Link (Suite 20)');
+  console.log('   ADR-001 Dual-Model Tasks/Actions/Activities/Events (Suite 25)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 24;
+  const totalSuites = 25;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -165,6 +167,10 @@ async function main() {
 
     // Suite 24: Situational Command Center Dashboard (TS-44)
     await runSuite24();
+    passedSuites++;
+
+    // Suite 25: Tasks vs Actions vs Activities vs Events Invariants (TS-45)
+    await runSuite25();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
