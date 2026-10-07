@@ -105,12 +105,16 @@ export function QuickFinanceWidget({
             </div>
 
             {/* Просрочено */}
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1 text-slate-500 font-medium text-[11px]">
+            <div
+              onClick={() => router.push('/finance?tab=debts')}
+              className="flex items-center justify-between cursor-pointer group/debt hover:opacity-80 transition-opacity"
+              title="Открыть раздел задолженностей"
+            >
+              <span className="flex items-center gap-1 text-slate-500 font-medium text-[11px] group-hover/debt:text-rose-600 transition-colors">
                 <span className="w-1.5 h-1.5 rounded-[2px] bg-rose-500 shrink-0"></span>
                 Просрочено
               </span>
-              <span className="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md text-[11px]">
+              <span className="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md text-[11px] group-hover/debt:bg-rose-100 transition-colors">
                 {overdueAmountFormatted}
               </span>
             </div>

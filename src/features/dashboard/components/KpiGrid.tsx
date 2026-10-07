@@ -359,7 +359,7 @@ export function KpiGrid({
 
       {/* 5. Дебиторская задолженность */}
       <div
-        onClick={() => router.push('/finance')}
+        onClick={() => router.push('/finance?tab=debts')}
         className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
       >
         <div className="flex items-center justify-between">

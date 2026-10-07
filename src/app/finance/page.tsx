@@ -36,6 +36,7 @@ function FinanceContent() {
   const { canViewStudentFinancialAmounts, canViewSchoolFinances, canManageStudentPayments } = usePermissions();
   const searchParams = useSearchParams();
   const filterParam = searchParams.get('filter');
+  const tabParam = searchParams.get('tab');
   const rate = getEurRubRate();
 
   // Primary State
@@ -47,9 +48,11 @@ function FinanceContent() {
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'subscriptions' | 'debts'>(() => {
-    if (filterParam === 'overdue' || filterParam === 'debts') return 'debts';
-    if (filterParam === 'invoices') return 'invoices';
-    if (filterParam === 'subscriptions') return 'subscriptions';
+    const target = tabParam || filterParam;
+    if (target === 'overdue' || target === 'debts' || target === 'debt') return 'debts';
+    if (target === 'invoices' || target === 'invoice') return 'invoices';
+    if (target === 'subscriptions' || target === 'subscription') return 'subscriptions';
+    if (target === 'payments' || target === 'payment') return 'payments';
     return 'payments';
   });
 
@@ -94,14 +97,17 @@ function FinanceContent() {
   }, [syncFinanceData]);
 
   useEffect(() => {
-    if (filterParam === 'overdue' || filterParam === 'debts') {
+    const target = tabParam || filterParam;
+    if (target === 'overdue' || target === 'debts' || target === 'debt') {
       setActiveTab('debts');
-    } else if (filterParam === 'invoices') {
+    } else if (target === 'invoices' || target === 'invoice') {
       setActiveTab('invoices');
-    } else if (filterParam === 'subscriptions') {
+    } else if (target === 'subscriptions' || target === 'subscription') {
       setActiveTab('subscriptions');
+    } else if (target === 'payments' || target === 'payment') {
+      setActiveTab('payments');
     }
-  }, [filterParam]);
+  }, [tabParam, filterParam]);
 
   // Handlers
   const handlePaymentRecorded = (newPayment: FullPaymentData) => {
@@ -267,6 +273,10 @@ function FinanceContent() {
           debtorsCount={topKpiData.debtorsCount}
           depositBalanceEur={topKpiData.depositBalanceEur}
           depositStudentsCount={topKpiData.depositStudentsCount}
+          onSelectTab={(tab) => {
+            setActiveTab(tab);
+            setSelectedDrawerDetail(null);
+          }}
         />
       )}
 

@@ -12,6 +12,7 @@ interface FinanceTopKpisProps {
   debtorsCount: number;
   depositBalanceEur: number;
   depositStudentsCount: number;
+  onSelectTab?: (tab: 'invoices' | 'payments' | 'subscriptions' | 'debts') => void;
 }
 
 export function FinanceTopKpis({
@@ -23,13 +24,17 @@ export function FinanceTopKpis({
   debtorsCount,
   depositBalanceEur,
   depositStudentsCount,
+  onSelectTab,
 }: FinanceTopKpisProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
       {/* 1. Общая выручка */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div
+        onClick={() => onSelectTab?.('payments')}
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+      >
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <BarChart2 className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -50,9 +55,12 @@ export function FinanceTopKpis({
       </div>
 
       {/* 2. Ожидаемые поступления */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div
+        onClick={() => onSelectTab?.('invoices')}
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+      >
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <Clock className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -73,9 +81,12 @@ export function FinanceTopKpis({
       </div>
 
       {/* 3. Общий долг */}
-      <div className="rounded-2xl border border-rose-200/80 bg-rose-50/20 p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div
+        onClick={() => onSelectTab?.('debts')}
+        className="rounded-2xl border border-rose-200/80 bg-rose-50/20 p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+      >
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <AlertCircle className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -96,9 +107,12 @@ export function FinanceTopKpis({
       </div>
 
       {/* 4. Баланс учеников */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-shadow">
+      <div
+        onClick={() => onSelectTab?.('payments')}
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs hover:shadow-xs transition-all cursor-pointer group"
+      >
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
             <Wallet className="h-5 w-5" />
           </div>
           <div className="min-w-0">

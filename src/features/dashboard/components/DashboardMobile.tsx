@@ -223,7 +223,7 @@ export function DashboardMobile({ data, actions }: DashboardMobileProps) {
 
         {/* Карточка 4: Долги */}
         <div 
-          onClick={() => router.push('/finance')}
+          onClick={() => router.push('/finance?tab=debts')}
           className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs cursor-pointer active:scale-[0.98] transition-transform space-y-1"
         >
           <div className="flex items-center justify-between text-slate-400">

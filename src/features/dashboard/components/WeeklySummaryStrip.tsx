@@ -112,10 +112,15 @@ export function WeeklySummaryStrip({
           )}
 
           {stats.totalDebtEur > 0 ? (
-            <div className="flex items-center gap-1.5 text-rose-600 font-medium">
+            <button
+              type="button"
+              onClick={() => router.push('/finance?tab=debts')}
+              className="flex items-center gap-1.5 text-rose-600 font-medium hover:text-rose-700 hover:underline cursor-pointer"
+              title="Открыть раздел задолженностей"
+            >
               <AlertCircle className="w-3.5 h-3.5" />
               <span>-{stats.totalDebtEur.toLocaleString('ru-RU')} € задолженность</span>
-            </div>
+            </button>
           ) : (
             <div className="flex items-center gap-1.5 text-slate-400 font-medium">
               <AlertCircle className="w-3.5 h-3.5 text-slate-300" />
