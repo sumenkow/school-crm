@@ -7,6 +7,7 @@ import { getStoredLeads } from '@/lib/data/leadStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStoredPayments } from '@/lib/data/paymentStorage';
+import { getStoredInvoices, EuropeanInvoiceData } from '@/lib/data/invoiceStorage';
 import { getUpcomingPayments, UpcomingPaymentItem } from '@/lib/data/upcomingPaymentsHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
 import {
@@ -21,7 +22,9 @@ export function useCockpitSSOT() {
   const [lessons, setLessons] = useState<FullLessonData[]>([]);
   const [students, setStudents] = useState<FullStudentData[]>([]);
   const [payments, setPayments] = useState<FullPaymentData[]>([]);
+  const [invoices, setInvoices] = useState<EuropeanInvoiceData[]>([]);
   const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPaymentItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
 
   // Active item opened in Slide-over Drawer
@@ -30,13 +33,14 @@ export function useCockpitSSOT() {
   // Load all SSOT records
   const refreshData = useCallback(async () => {
     try {
-      const [allTasks, allLeads, allLessons, allStudents, allPayments, allUpcoming] = await Promise.all([
+      const [allTasks, allLeads, allLessons, allStudents, allPayments, allUpcoming, allInvoices] = await Promise.all([
         getStoredTasks(),
         Promise.resolve(getStoredLeads(true, true)),
         Promise.resolve(getStoredLessons()),
         Promise.resolve(getStoredStudents()),
         Promise.resolve(getStoredPayments()),
         Promise.resolve(getUpcomingPayments()),
+        Promise.resolve(getStoredInvoices()),
       ]);
 
       setTasks(allTasks);
@@ -45,6 +49,7 @@ export function useCockpitSSOT() {
       setStudents(allStudents);
       setPayments(allPayments);
       setUpcomingPayments(allUpcoming);
+      setInvoices(allInvoices);
     } catch (err) {
       console.error('Error fetching Cockpit SSOT data:', err);
     } finally {
@@ -65,6 +70,7 @@ export function useCockpitSSOT() {
     window.addEventListener('crm-lessons-changed', handleDataChange);
     window.addEventListener('crm-students-changed', handleDataChange);
     window.addEventListener('crm-payments-changed', handleDataChange);
+    window.addEventListener('crm-invoices-changed', handleDataChange);
     window.addEventListener('focus', handleDataChange);
 
     return () => {
@@ -73,6 +79,7 @@ export function useCockpitSSOT() {
       window.removeEventListener('crm-lessons-changed', handleDataChange);
       window.removeEventListener('crm-students-changed', handleDataChange);
       window.removeEventListener('crm-payments-changed', handleDataChange);
+      window.removeEventListener('crm-invoices-changed', handleDataChange);
       window.removeEventListener('focus', handleDataChange);
     };
   }, [refreshData]);
@@ -85,9 +92,11 @@ export function useCockpitSSOT() {
       lessons,
       students,
       payments,
+      invoices,
       upcomingPayments,
+      selectedDate,
     });
-  }, [tasks, leads, lessons, students, payments, upcomingPayments]);
+  }, [tasks, leads, lessons, students, payments, invoices, upcomingPayments, selectedDate]);
 
   // Action: Complete task inline with immediate optimistic removal & SSOT persistence
   const completeTask = useCallback(async (taskId: string) => {
@@ -137,6 +146,8 @@ export function useCockpitSSOT() {
   return {
     isLoading,
     aggregated,
+    selectedDate,
+    setSelectedDate,
     activeDrawerItem,
     setActiveDrawerItem,
     completeTask,
@@ -148,6 +159,7 @@ export function useCockpitSSOT() {
       lessons,
       students,
       payments,
+      invoices,
     },
   };
 }

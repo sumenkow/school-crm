@@ -21,6 +21,7 @@ import { runSuite20 } from './ts40_miniapp_identity_deeplink_and_analytics_resil
 import { runSuite21 } from './ts41_diagnostic_issue_card_layout_and_formulations.test';
 import { runSuite22 } from './ts42_currency_eur_unification.test';
 import { runSuite23 } from './ts43_action_cockpit_dashboard.test';
+import { runSuite24 } from './ts44_situational_command_center_dashboard.test';
 
 async function main() {
   console.log('===============================================================');
@@ -31,7 +32,7 @@ async function main() {
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 23;
+  const totalSuites = 24;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -160,6 +161,10 @@ async function main() {
 
     // Suite 23: Operational Action Cockpit Dashboard (TS-43)
     await runSuite23();
+    passedSuites++;
+
+    // Suite 24: Situational Command Center Dashboard (TS-44)
+    await runSuite24();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
