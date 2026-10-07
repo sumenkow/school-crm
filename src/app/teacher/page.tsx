@@ -2,488 +2,749 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
-  Check,
-  X,
-  RotateCcw,
-  AlertTriangle,
   CheckCircle2,
-  ChevronRight,
-  MessageSquare,
+  AlertTriangle,
   BookOpen,
-  Sparkles,
-  Mail,
+  Users,
+  Video,
+  ExternalLink,
   Plus,
+  ClipboardList,
+  ChevronRight,
+  TrendingUp,
+  UserCheck,
+  Laptop,
+  MoreVertical,
+  X,
+  FileText,
+  Send,
+  AlertCircle,
+  HelpCircle,
+  FolderOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
-import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
-import { recordLessonAttendanceBatch, getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
-import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
-import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTeacherWorkspaceData } from '@/features/teacher/hooks/useTeacherWorkspaceData';
+import { TeacherLessonRow, TeacherAttentionAlert } from '@/features/teacher/lib/teacherWorkspaceEngine';
+import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
+import SendHomeworkModal from '@/components/lessons/SendHomeworkModal';
+import { LessonDetailsDrawer } from '@/components/calendar/LessonDetailsDrawer';
+import { getStoredLessonById } from '@/lib/data/lessonStorage';
+import { FullLessonData } from '@/lib/data/mockData';
 
-interface StudentAttendanceItem {
-  id: string;
-  name: string;
-  status: 'present' | 'absent' | 'rescheduled' | 'not_marked';
-  note?: string;
-  consecutiveAbsences?: number;
-}
+export default function TeacherWorkspacePage() {
+  const { t } = useLanguage();
+  const router = useRouter();
 
-export default function TeacherMobileDashboard() {
-  const { t, language } = useLanguage();
-  const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
-  const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
-  const [selectedLessonId, setSelectedLessonId] = useState<string>('l5'); // Today's lesson (03.09.2026)
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
+  const {
+    data,
+    selectedDate,
+    setSelectedDate,
+    selectedTeacherId,
+    setSelectedTeacherId,
+    availableTeachers,
+    refresh,
+  } = useTeacherWorkspaceData();
+
+  // Modals & Drawers state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isHomeworkModalOpen, setIsHomeworkModalOpen] = useState(false);
+  const [homeworkLessonId, setHomeworkLessonId] = useState<string | null>(null);
+  const [selectedDrawerLesson, setSelectedDrawerLesson] = useState<FullLessonData | null>(null);
+  const [activeMenuLessonId, setActiveMenuLessonId] = useState<string | null>(null);
 
-  // Teacher's lessons
-  const allStoredLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
-  const myLessons = allStoredLessons.filter((l) => l.teacherId === 't1' || l.teacherName?.includes('Мария'));
+  const { teacher, selectedDateFormatted, kpis, nextLesson, todayLessons, groups, attentionAlerts } = data;
 
-  // Today's lessons
-  const todayLessons = myLessons.filter((l) => l.date === '2026-09-03' || l.date === new Date().toISOString().slice(0, 10));
-
-  // Students for the active lesson (Zero technical IDs shown to teacher)
-  const [studentsList, setStudentsList] = useState<StudentAttendanceItem[]>([
-    { id: '1', name: 'Иван Смирнов', status: 'present', consecutiveAbsences: 0 },
-    { id: '4', name: 'Сергей Попов', status: 'present', consecutiveAbsences: 0 },
-    { id: 's5', name: 'Алина Белова', status: 'present', consecutiveAbsences: 0 },
-    { id: 's6', name: 'Максим Захаров', status: 'absent', note: 'Заболел, предупредили', consecutiveAbsences: 2 },
-    { id: 's7', name: 'Полина Григорьева', status: 'present', consecutiveAbsences: 0 },
-    { id: 's8', name: 'Егор Романов', status: 'present', consecutiveAbsences: 0 },
-    { id: 's9', name: 'София Федорова', status: 'present', consecutiveAbsences: 0 },
-  ]);
-
-  const [lessonTopic, setLessonTopic] = useState('Modal verbs of deduction (must / might / can’t)');
-  const [homework, setHomework] = useState('Workbook p. 18-19, упр. 4-6');
-
-  const currentLesson = myLessons.find((l) => l.id === selectedLessonId) || myLessons[0];
-
-  const setStudentStatus = (studentId: string, newStatus: 'present' | 'absent' | 'rescheduled') => {
-    setStudentsList((prev) =>
-      prev.map((s) => {
-        if (s.id !== studentId) return s;
-        const nextStatus = s.status === newStatus ? 'not_marked' : newStatus;
-        return { ...s, status: nextStatus };
-      })
-    );
-    setSaveSuccess(false);
+  const handleOpenLesson = (lessonId: string) => {
+    const full = getStoredLessonById(lessonId);
+    if (full) {
+      setSelectedDrawerLesson(full);
+    } else {
+      router.push(`/calendar/lessons/${lessonId}`);
+    }
   };
 
-  const handleUpdateNote = (studentId: string, noteText: string) => {
-    setStudentsList((prev) =>
-      prev.map((s) => (s.id === studentId ? { ...s, note: noteText } : s))
-    );
+  const handleOpenJournal = (lessonId: string) => {
+    router.push(`/teacher/attendance?lessonId=${lessonId}`);
   };
 
-  const handleSaveAttendance = () => {
-    recordLessonAttendanceBatch({
-      lessonId: selectedLessonId,
-      topic: lessonTopic,
-      homework,
-      teacherName: 'Мария Иванова',
-      studentRecords: studentsList.map((s) => ({
-        studentId: s.id,
-        studentName: s.name,
-        status: s.status,
-        note: s.note,
-      })),
-    });
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 4000);
+  const handleOpenHomework = (lessonId: string) => {
+    setHomeworkLessonId(lessonId);
+    setIsHomeworkModalOpen(true);
   };
-
-  const presentCount = studentsList.filter((s) => s.status === 'present').length;
-  const absentCount = studentsList.filter((s) => s.status === 'absent').length;
-  const rescheduledCount = studentsList.filter((s) => s.status === 'rescheduled').length;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-20">
-      {/* Teacher Header Banner */}
-      <div className="rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-700 p-5 text-white shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-blue-200">
-            {t('role.teacherCabinet', 'Кабинет преподавателя')}
-          </span>
+    <div className="h-full min-h-0 flex flex-col p-4 lg:p-5 gap-3 bg-slate-50/70 text-slate-800 antialiased overflow-hidden select-none">
+      {/* ─────────────────────────────────────────────────────────────
+          1. HEADER BAR
+      ───────────────────────────────────────────────────────────── */}
+      <header className="flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 leading-tight">
+                Кабинет преподавателя
+              </h1>
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-50 text-blue-700 border border-blue-200/80">
+                {teacher.name || 'Преподаватель'}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              {selectedDateFormatted}
+            </p>
+          </div>
+        </div>
+
+        {/* Header Compact Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Добавить занятие</span>
+          </button>
+
           <Link
             href="/teacher/attendance"
-            className="rounded-lg bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-white/25 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-colors shadow-2xs"
           >
-            {t('teacher.summaryAttendance', 'Сводный табель')} →
+            <ClipboardList className="w-3.5 h-3.5 text-slate-500" />
+            <span>Журнал посещаемости</span>
+          </Link>
+
+          <Link
+            href="/groups"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-colors shadow-2xs"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+            <span>Мои группы</span>
           </Link>
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-3">
-          <p className="text-xs text-blue-100">
-            {t('teacher.todaySubtitle', 'Сегодня:')} <strong>3 {t('calendar.dateRangeSept', 'сентября')}</strong> • {todayLessons.length} {t('calendar.lessonsCount', 'занятие')}
-          </p>
-          <button
-            type="button"
-            onClick={() => setIsScheduleModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-50 transition-colors cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            {t('action.scheduleLesson', 'Запланировать занятие')}
-          </button>
+      </header>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. COMPACT KPI STRIP (4 METRICS)
+      ───────────────────────────────────────────────────────────── */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0" aria-label="Показатели дня">
+        {/* KPI 1: Уроков сегодня */}
+        <div className="flex items-center gap-3 p-2.5 px-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <CalendarIcon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-slate-900 leading-none tabular-nums">
+                {kpis.lessonsTodayCount}
+              </span>
+              <span className="text-xs font-medium text-slate-600 truncate">уроков сегодня</span>
+            </div>
+            <p className="text-[11px] text-emerald-600 font-semibold truncate mt-0.5">
+              {kpis.lessonsTodayChangeLabel || 'активное расписание'}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Main Tab Switcher («Сегодня» vs «Моя неделя») */}
-      <div className="flex rounded-xl bg-slate-200/80 p-1 text-xs font-bold">
-        <button
-          onClick={() => setActiveTab('today')}
-          className={cn(
-            'flex-1 rounded-lg py-2 transition-all text-center cursor-pointer',
-            activeTab === 'today' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          {t('calendar.today', 'Сегодня')} ({todayLessons.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('week')}
-          className={cn(
-            'flex-1 rounded-lg py-2 transition-all text-center cursor-pointer',
-            activeTab === 'week' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-          )}
-        >
-          {t('teacher.myWeek', 'Моя неделя')} ({myLessons.length})
-        </button>
-      </div>
+        {/* KPI 2: Моих групп */}
+        <div className="flex items-center gap-3 p-2.5 px-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <Users className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-slate-900 leading-none tabular-nums">
+                {kpis.groupsCount}
+              </span>
+              <span className="text-xs font-medium text-slate-600 truncate">моих групп</span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+              Всего {kpis.totalGroupStudentsCount} учеников
+            </p>
+          </div>
+        </div>
 
-      {/* TAB 1: СЕГОДНЯ (ОСНОВНОЙ СЦЕНАРИЙ УЧИТЕЛЯ В 1 КЛИК) */}
-      {activeTab === 'today' && (
-        <div className="space-y-5">
-          {/* Today Lessons selector */}
-          <div className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {t('teacher.selectLessonToMark', 'Выберите занятие для отметки:')}
-            </h2>
-            {todayLessons.map((lesson) => {
-              const isSelected = lesson.id === selectedLessonId;
+        {/* KPI 3: Учеников сегодня */}
+        <div className="flex items-center gap-3 p-2.5 px-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+            <UserCheck className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-slate-900 leading-none tabular-nums">
+                {kpis.studentsTodayCount}
+              </span>
+              <span className="text-xs font-medium text-slate-600 truncate">учеников сегодня</span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+              из {kpis.activeStudentsPoolCount} активных
+            </p>
+          </div>
+        </div>
 
-              return (
-                <div
-                  key={lesson.id}
-                  onClick={() => setSelectedLessonId(lesson.id)}
-                  className={cn(
-                    'rounded-2xl border p-4 transition-all shadow-xs cursor-pointer',
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50/40 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  )}
+        {/* KPI 4: Посещаемость */}
+        <div className="flex items-center gap-3 p-2.5 px-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-slate-900 leading-none tabular-nums">
+                {kpis.attendanceRate30d}%
+              </span>
+              <span className="text-xs font-medium text-slate-600 truncate">посещаемость</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] mt-0.5">
+              <span className="text-slate-400 truncate">за 30 дней</span>
+              {kpis.attendanceDeltaLabel && (
+                <span className="text-emerald-600 font-semibold">{kpis.attendanceDeltaLabel}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          3. MAIN 2-COLUMN WORKSPACE GRID (Desktop Zero-Scroll)
+      ───────────────────────────────────────────────────────────── */}
+      <main className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3.5 overflow-hidden">
+        {/* ── LEFT COLUMN (8 cols / ~68% width) ── */}
+        <div className="lg:col-span-8 flex flex-col gap-3 min-h-0 overflow-hidden">
+          {/* 3.1. FOCUS BLOCK: СЛЕДУЮЩИЙ УРОК (P0) */}
+          <section
+            className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between shrink-0 relative overflow-hidden"
+            aria-label="Следующий урок"
+          >
+            {/* Header / Subhead */}
+            <div className="flex items-center justify-between gap-2 pb-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  Следующий урок
+                </h2>
+                {nextLesson?.timeUntilFormatted && (
+                  <span className="px-2.5 py-0.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                    {nextLesson.timeUntilFormatted}
+                  </span>
+                )}
+              </div>
+
+              {nextLesson && (
+                <button
+                  onClick={() => handleOpenLesson(nextLesson.id)}
+                  className="text-xs text-slate-500 hover:text-blue-600 font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-blue-600">{lesson.startTime} – {lesson.endTime}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-500">{lesson.room}</span>
+                  {nextLesson.isTrial ? 'Пробное занятие' : `${nextLesson.presentCount || nextLesson.studentsCount} из ${nextLesson.studentsCount} подтвердили`}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {nextLesson ? (
+              <div className="space-y-3">
+                {/* Main Lesson Body */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 text-xs font-bold font-mono rounded-lg bg-slate-100 text-slate-800 border border-slate-200">
+                        {nextLesson.timeRangeFormatted}
+                      </span>
                       <Link
-                        href={`/calendar/lessons/${lesson.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[11px] font-bold text-blue-600 hover:underline bg-white px-2 py-0.5 rounded-md border border-blue-200 shadow-2xs"
+                        href={`/groups/${nextLesson.groupId}`}
+                        className="text-lg font-bold text-slate-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1 truncate"
                       >
-                        {t('action.viewCard', 'Карточка урока')} ↗
+                        {nextLesson.groupName}
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
                       </Link>
                     </div>
+
+                    {/* Metadata strip */}
+                    <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                      <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                        <Video className="w-3.5 h-3.5 text-blue-600" />
+                        {nextLesson.room}
+                      </span>
+                      <span>•</span>
+                      <span>{nextLesson.studentsCount} учеников</span>
+                      <span>•</span>
+                      <span>{nextLesson.isIndividual ? 'Индивидуально' : 'Группа'}</span>
+                    </div>
+
+                    {/* Topic */}
+                    <div className="text-xs text-slate-600 line-clamp-1">
+                      <span className="font-semibold text-slate-700">Тема:</span>{' '}
+                      <span className="text-slate-800">{nextLesson.topic}</span>
+                    </div>
                   </div>
-                  <h3 className="text-base font-extrabold text-slate-900 mt-1">{lesson.groupName}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{lesson.courseName}</p>
-                </div>
-              );
-            })}
-          </div>
 
-          {/* ATTENDANCE CARD (Section 11 UX) */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            {/* Header with lesson info */}
-            <div className="border-b border-slate-100 bg-slate-50/70 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-blue-600">{t('teacher.lessonJournal', 'Журнал занятия')}</span>
-                  <h3 className="text-base font-extrabold text-slate-900">{currentLesson.groupName}</h3>
+                  {/* Icon illustration box */}
+                  <div className="hidden sm:flex w-16 h-16 rounded-2xl bg-blue-50/80 border border-blue-100 text-blue-600 items-center justify-center shrink-0">
+                    <Laptop className="w-8 h-8 opacity-80" />
+                  </div>
+
+                  {/* Actions Stack */}
+                  <div className="flex flex-col gap-1.5 shrink-0 w-36">
+                    <button
+                      onClick={() => handleOpenJournal(nextLesson.id)}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>Открыть журнал</span>
+                    </button>
+
+                    {nextLesson.onlineMeetingUrl && (
+                      <a
+                        href={nextLesson.onlineMeetingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 text-xs font-semibold rounded-xl border border-blue-200 transition-colors shadow-2xs"
+                      >
+                        <Video className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Перейти в Zoom</span>
+                      </a>
+                    )}
+
+                    <button
+                      onClick={() => handleOpenLesson(nextLesson.id)}
+                      className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-xl border border-slate-200 transition-colors"
+                    >
+                      <FileText className="w-3 h-3 text-slate-400" />
+                      <span>Карточка урока</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
-                    {currentLesson.startTime} – {currentLesson.endTime}
-                  </span>
-                  <Link
-                    href={`/calendar/lessons/${currentLesson.id}`}
-                    className="text-xs font-bold text-blue-600 hover:underline bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs"
-                  >
-                    {t('action.viewCard', 'Карточка урока')} ↗
-                  </Link>
-                </div>
+
+                {/* Optional Warning alert callout */}
+                {nextLesson.unconfirmedCount && nextLesson.unconfirmedCount > 0 ? (
+                  <div className="flex items-center justify-between p-2 px-3 rounded-xl bg-amber-50 border border-amber-200/90 text-amber-800 text-xs">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span className="font-semibold">
+                        {nextLesson.unconfirmedCount} ученика не подтвердили участие
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleOpenLesson(nextLesson.id)}
+                      className="font-bold text-amber-700 hover:underline inline-flex items-center"
+                    >
+                      Детали <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-slate-400 text-xs">
+                На выбранную дату нет запланированных уроков.
+              </div>
+            )}
+          </section>
+
+          {/* 3.2. SCHEDULE TODAY TABLE (P1) */}
+          <section
+            className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden"
+            aria-label="Расписание на сегодня"
+          >
+            {/* Table Header */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <h2 className="text-sm font-bold text-slate-900">Расписание на сегодня</h2>
+                <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  {todayLessons.length}
+                </span>
               </div>
 
-              {/* Topic and Homework */}
-              <div className="mt-3 space-y-2">
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600">{t('hero.topic', 'Тема занятия')}:</label>
-                  <input
-                    type="text"
-                    value={lessonTopic}
-                    onChange={(e) => setLessonTopic(e.target.value)}
-                    placeholder={t('teacher.topicPlaceholder', 'Тема урока...')}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-600">{t('hero.homework', 'Домашнее задание')}:</label>
-                  <input
-                    type="text"
-                    value={homework}
-                    onChange={(e) => setHomework(e.target.value)}
-                    placeholder={t('teacher.homeworkPlaceholder', 'Задание на дом...')}
-                    className="mt-0.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              <Link
+                href="/calendar"
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
+              >
+                Все занятия →
+              </Link>
+            </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] text-slate-400">{t('teacher.hwSavedToCard', 'ДЗ сохраняется в карточку урока')}</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsHomeworkModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 text-xs font-bold hover:bg-indigo-100 transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Mail className="h-3.5 w-3.5 text-indigo-600" />
-                    {t('action.sendHomework', 'Разослать ДЗ родителям')}
-                  </button>
+            {/* Table Head Row */}
+            <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-50/80 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+              <div className="col-span-2">Время</div>
+              <div className="col-span-5">Группа / урок</div>
+              <div className="col-span-1 text-center">Ученики</div>
+              <div className="col-span-2 text-center">Статус</div>
+              <div className="col-span-2 text-right">Действия</div>
+            </div>
+
+            {/* Table Scrollable Body (Strictly Chronological & Deduped) */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 min-h-0">
+              {todayLessons.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  На сегодня уроков нет.
                 </div>
+              ) : (
+                todayLessons.map((lesson) => {
+                  const isCurrent = lesson.operationalState === 'in_progress';
+                  const isStartingSoon = lesson.operationalState === 'starting_soon';
+
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={cn(
+                        'grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-slate-50/90 transition-colors text-xs relative group',
+                        isCurrent && 'bg-blue-50/40 font-medium',
+                        isStartingSoon && 'bg-amber-50/30'
+                      )}
+                    >
+                      {/* Colored vertical status line */}
+                      <div
+                        className={cn(
+                          'absolute left-0 inset-y-1 w-1 rounded-r-full',
+                          lesson.operationalState === 'completed' && 'bg-emerald-500',
+                          lesson.operationalState === 'in_progress' && 'bg-blue-500',
+                          lesson.operationalState === 'starting_soon' && 'bg-amber-500',
+                          lesson.operationalState === 'planned' && 'bg-slate-300',
+                          lesson.operationalState === 'journal_missing' && 'bg-amber-500',
+                          lesson.operationalState === 'cancelled' && 'bg-slate-300'
+                        )}
+                      />
+
+                      {/* 1. Time */}
+                      <div className="col-span-2 font-mono font-semibold text-slate-900 pl-1.5">
+                        {lesson.timeRangeFormatted}
+                      </div>
+
+                      {/* 2. Group & Course/Topic */}
+                      <div className="col-span-5 min-w-0 pr-2">
+                        <div className="font-bold text-slate-900 truncate">
+                          <Link
+                            href={`/groups/${lesson.groupId}`}
+                            className="hover:text-blue-600 transition-colors"
+                          >
+                            {lesson.groupName}
+                          </Link>
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                          {lesson.topic || lesson.courseName}
+                        </div>
+                      </div>
+
+                      {/* 3. Students count */}
+                      <div className="col-span-1 text-center font-bold text-slate-700 tabular-nums">
+                        {lesson.studentsCount}
+                      </div>
+
+                      {/* 4. Operational Status Badge */}
+                      <div className="col-span-2 flex justify-center">
+                        <span
+                          className={cn(
+                            'px-2 py-0.5 text-[11px] font-semibold rounded-full border truncate',
+                            lesson.stateBadge.bg,
+                            lesson.stateBadge.text,
+                            lesson.stateBadge.border
+                          )}
+                        >
+                          {lesson.stateBadge.label}
+                        </span>
+                      </div>
+
+                      {/* 5. Context Actions */}
+                      <div className="col-span-2 flex items-center justify-end gap-1.5">
+                        {lesson.primaryAction.type === 'fill_journal' || lesson.primaryAction.type === 'view_journal' || lesson.primaryAction.type === 'open_journal' ? (
+                          <button
+                            onClick={() => handleOpenJournal(lesson.id)}
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors shadow-2xs cursor-pointer',
+                              lesson.primaryAction.style === 'primary' && 'bg-blue-600 hover:bg-blue-700 text-white',
+                              lesson.primaryAction.style === 'warning' && 'bg-amber-500 hover:bg-amber-600 text-white',
+                              lesson.primaryAction.style === 'secondary' && 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            )}
+                          >
+                            <BookOpen className="w-3 h-3" />
+                            <span>{lesson.primaryAction.label}</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenLesson(lesson.id)}
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors shadow-2xs cursor-pointer',
+                              lesson.primaryAction.style === 'primary' && 'bg-blue-600 hover:bg-blue-700 text-white',
+                              lesson.primaryAction.style === 'secondary' && 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            )}
+                          >
+                            <FileText className="w-3 h-3" />
+                            <span>{lesson.primaryAction.label}</span>
+                          </button>
+                        )}
+
+                        {/* Secondary Dropdown Menu Trigger */}
+                        <div className="relative">
+                          <button
+                            onClick={() =>
+                              setActiveMenuLessonId(activeMenuLessonId === lesson.id ? null : lesson.id)
+                            }
+                            className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-200/60 transition-colors"
+                            title="Дополнительно"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+
+                          {activeMenuLessonId === lesson.id && (
+                            <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-30 animate-in fade-in zoom-in-95">
+                              <button
+                                onClick={() => {
+                                  setActiveMenuLessonId(null);
+                                  handleOpenLesson(lesson.id);
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Карточка урока</span>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setActiveMenuLessonId(null);
+                                  handleOpenJournal(lesson.id);
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                              >
+                                <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Журнал посещаемости</span>
+                              </button>
+
+                              {lesson.onlineMeetingUrl && (
+                                <a
+                                  href={lesson.onlineMeetingUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={() => setActiveMenuLessonId(null)}
+                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                  <Video className="w-3.5 h-3.5 text-blue-500" />
+                                  <span>Ссылка Zoom</span>
+                                </a>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setActiveMenuLessonId(null);
+                                  handleOpenHomework(lesson.id);
+                                }}
+                                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                              >
+                                <Send className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>Домашнее задание</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* ── RIGHT COLUMN (4 cols / ~32% width) ── */}
+        <div className="lg:col-span-4 flex flex-col gap-3 min-h-0 overflow-hidden">
+          {/* 3.3. МОИ ГРУППЫ (P2) */}
+          <section
+            className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden"
+            aria-label="Мои группы"
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <h2 className="text-sm font-bold text-slate-900">Мои группы</h2>
+                <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                  {groups.length}
+                </span>
+              </div>
+
+              <Link
+                href="/groups"
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 transition-colors"
+              >
+                Все группы →
+              </Link>
+            </div>
+
+            {/* Groups list */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 min-h-0 p-1">
+              {groups.length === 0 ? (
+                <div className="p-6 text-center text-slate-400 text-xs">
+                  У вас пока нет активных групп.
+                </div>
+              ) : (
+                groups.map((grp, idx) => {
+                  const dotColors = [
+                    'bg-blue-500',
+                    'bg-emerald-500',
+                    'bg-amber-500',
+                    'bg-purple-500',
+                    'bg-sky-500',
+                    'bg-rose-500',
+                  ];
+                  const dotColor = dotColors[idx % dotColors.length];
+
+                  return (
+                    <Link
+                      key={grp.id}
+                      href={`/groups/${grp.id}`}
+                      className="flex items-center justify-between p-2.5 hover:bg-slate-50 rounded-xl transition-colors text-xs group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                        <span className={cn('w-2 h-2 rounded-full shrink-0', dotColor)} />
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                            {grp.name}
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate">
+                            {grp.courseName}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="font-bold text-slate-700 tabular-nums">
+                          {grp.studentsCount} уч.
+                        </div>
+                        <div className="text-[11px] text-slate-400 font-medium">
+                          {grp.scheduleFormatted}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          {/* 3.4. ТРЕБУЕТ ВНИМАНИЯ (P1) */}
+          <section
+            className="p-3.5 bg-amber-50/40 rounded-2xl border border-amber-200/90 shadow-2xs flex flex-col shrink-0"
+            aria-label="Требует внимания"
+          >
+            <div className="flex items-center justify-between pb-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <h2 className="text-sm font-bold text-slate-900">Требует внимания</h2>
+                <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[11px] font-bold flex items-center justify-center">
+                  {attentionAlerts.length}
+                </span>
               </div>
             </div>
 
-            {/* Attendance summary pill */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">{t('teacher.marked', 'Отмечено')}:</span>
-              <div className="flex items-center gap-3 font-bold text-xs">
-                <span className="text-emerald-700">{t('status.present', 'Был')}: {presentCount}</span>
-                <span className="text-rose-700">{t('status.absent', 'Не был')}: {absentCount}</span>
-                <span className="text-amber-700">{t('status.rescheduled', 'Перенос')}: {rescheduledCount}</span>
-              </div>
-            </div>
-
-            {/* Students List with 1-click status pills (Requirement 11) */}
-            <div className="p-4 space-y-3">
-              {studentsList.map((student) => (
-                <div
-                  key={student.id}
-                  className={cn(
-                    'rounded-xl border p-3.5 transition-all space-y-2',
-                    student.status === 'present' && 'border-emerald-200 bg-emerald-50/40',
-                    student.status === 'absent' && 'border-rose-200 bg-rose-50/40',
-                    student.status === 'rescheduled' && 'border-amber-200 bg-amber-50/40',
-                    student.status === 'not_marked' && 'border-slate-200 bg-white'
-                  )}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-sm">{student.name}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        {(() => {
-                          const payStatus = getStudentLessonPaymentStatus(student.id);
-                          return (
-                            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold border', payStatus.badgeClass)}>
-                              {payStatus.label}
-                            </span>
-                          );
-                        })()}
-                        {/* Warning if student missed multiple lessons (Requirement 11 & Dashboard alert) */}
-                        {student.consecutiveAbsences && student.consecutiveAbsences >= 2 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-                            <AlertTriangle className="h-3 w-3" />
-                            {student.consecutiveAbsences} {t('teacher.consecutiveMisses', 'пропуска подряд!')}
-                          </span>
+            <div className="space-y-2 mt-1">
+              {attentionAlerts.length === 0 ? (
+                <div className="p-3 text-center text-xs text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-200 font-medium">
+                  ✅ Все журналы и задания заполнены вовремя
+                </div>
+              ) : (
+                attentionAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="p-2.5 bg-white rounded-xl border border-amber-200/80 shadow-2xs flex items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          'w-2 h-2 rounded-full mt-1.5 shrink-0',
+                          alert.severity === 'critical' && 'bg-rose-500',
+                          alert.severity === 'warning' && 'bg-amber-500',
+                          alert.severity === 'info' && 'bg-blue-500'
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 leading-snug truncate">
+                          {alert.title}
+                        </div>
+                        {alert.subtitle && (
+                          <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                            {alert.subtitle}
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {/* 1-Click Action Buttons */}
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setStudentStatus(student.id, 'present')}
-                        className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
-                          student.status === 'present'
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700'
-                        )}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        {t('status.present', 'Был')}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setStudentStatus(student.id, 'absent')}
-                        className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
-                          student.status === 'absent'
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700'
-                        )}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        {t('status.absent', 'Н/Б')}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setStudentStatus(student.id, 'rescheduled')}
-                        className={cn(
-                          'flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer',
-                          student.status === 'rescheduled'
-                            ? 'bg-amber-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700'
-                        )}
-                      >
-                        <RotateCcw className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Optional Note / Teacher Comment on Student */}
-                  <div>
-                    <input
-                      type="text"
-                      value={student.note || ''}
-                      onChange={(e) => handleUpdateNote(student.id, e.target.value)}
-                      placeholder={t('lesson.teacherNotePlaceholder', 'Комментарии преподавателя...')}
-                      className="w-full rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Bottom Save Button with Feedback */}
-            <div className="border-t border-slate-100 bg-slate-50/70 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div>
-                {saveSuccess ? (
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 animate-fade-in">
-                    <CheckCircle2 className="h-4 w-4" /> {t('teacher.attendanceSaved', 'Посещаемость сохранена и статистика обновлена!')}
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-slate-400">
-                    {t('teacher.statsAutoUpdate', 'Статистика учеников и групп обновится автоматически')}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsHomeworkModalOpen(true)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-100 transition-all cursor-pointer"
-                >
-                  <Mail className="h-4 w-4 text-indigo-600" />
-                  {t('lesson.sendHomeworkEmail', 'Разослать ДЗ на Email')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveAttendance}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 active:scale-98 transition-all cursor-pointer"
-                >
-                  <Check className="h-4 w-4" />
-                  {t('teacher.saveAttendance', 'Сохранить посещаемость')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: МОЯ НЕДЕЛЯ */}
-      {activeTab === 'week' && (
-        <div className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            {t('teacher.weeklyScheduleTitle', 'Расписание занятий на текущую неделю:')}
-          </h2>
-
-          <div className="space-y-3">
-            {myLessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:shadow-md transition-all flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-blue-600">{lesson.dateFormatted}</span>
-                    <span className="text-slate-400">•</span>
-                    <span className="font-semibold text-slate-800">{lesson.startTime} – {lesson.endTime}</span>
-                  </div>
-                  <h3 className="font-extrabold text-slate-900 text-sm mt-1">{lesson.groupName}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">{lesson.room} • {lesson.students.length} {t('calendar.studentsCount', 'учеников')}</p>
-                  <p className="text-xs text-slate-600 mt-1 font-medium">{t('hero.topic', 'Тема')}: {lesson.topic}</p>
-                </div>
-
-                <div className="text-right">
-                  <span
-                    className={cn(
-                      'rounded-full px-2.5 py-0.5 text-[10px] font-semibold inline-block mb-2',
-                      lesson.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                    )}
-                  >
-                    {lesson.status === 'completed' ? t('status.completed', 'Завершён') : t('status.scheduled', 'Запланирован')}
-                  </span>
-                  <div className="flex items-center justify-end gap-2">
                     <button
                       onClick={() => {
-                        setSelectedLessonId(lesson.id);
-                        setIsHomeworkModalOpen(true);
+                        if (alert.lessonId) {
+                          if (alert.actionType === 'open_journal') {
+                            handleOpenJournal(alert.lessonId);
+                          } else if (alert.actionType === 'send_homework') {
+                            handleOpenHomework(alert.lessonId);
+                          } else {
+                            handleOpenLesson(alert.lessonId);
+                          }
+                        }
                       }}
-                      className="text-xs font-semibold text-indigo-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      className="text-xs text-blue-600 hover:text-blue-800 font-bold shrink-0 inline-flex items-center cursor-pointer"
                     >
-                      <Mail size={12} />
-                      {t('hero.homework', 'ДЗ')} →
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedLessonId(lesson.id);
-                        setActiveTab('today');
-                      }}
-                      className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
-                    >
-                      {t('teacher.lessonJournal', 'Журнал урока')} →
+                      {alert.actionLabel}
                     </button>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                ))
+              )}
+            </div>
+          </section>
         </div>
-      )}
+      </main>
 
-      {/* MODAL: Send Homework Email */}
+      {/* ─────────────────────────────────────────────────────────────
+          4. INTEGRATED MODALS & DRAWERS
+      ───────────────────────────────────────────────────────────── */}
+      {/* Schedule Lesson Modal */}
+      <ScheduleLessonModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onScheduled={() => {
+          setIsScheduleModalOpen(false);
+          refresh();
+        }}
+        initialTeacherId={selectedTeacherId}
+      />
+
+      {/* Send Homework Modal */}
       {isHomeworkModalOpen && (
         <SendHomeworkModal
           isOpen={isHomeworkModalOpen}
           onClose={() => setIsHomeworkModalOpen(false)}
-          lesson={{
-            id: currentLesson.id,
-            groupName: currentLesson.groupName,
-            courseName: currentLesson.courseName,
-            date: currentLesson.dateFormatted || currentLesson.date,
-            startTime: currentLesson.startTime,
-            endTime: currentLesson.endTime,
-            teacherName: currentLesson.teacherName,
-            topic: lessonTopic || currentLesson.topic,
-            homework: homework || currentLesson.homework,
-            students: studentsList.map((s) => ({ id: s.id, name: s.name })),
+          lesson={
+            (() => {
+              const target = todayLessons.find((l) => l.id === homeworkLessonId) || nextLesson;
+              return {
+                id: target?.id || 'l5',
+                groupName: target?.groupName || 'English B1 Teens',
+                courseName: target?.courseName || 'Английский язык',
+                date: target?.date || new Date().toISOString().slice(0, 10),
+                startTime: target?.startTime || '18:45',
+                endTime: target?.endTime || '20:15',
+                teacherName: teacher.name || 'Мария Иванова',
+                topic: target?.topic || 'Тема урока',
+                homework: target?.homework,
+              };
+            })()
+          }
+          onSentSuccess={() => {
+            setIsHomeworkModalOpen(false);
+            refresh();
           }}
         />
       )}
 
-      {/* MODAL: Schedule Lesson */}
-      <ScheduleLessonModal
-        isOpen={isScheduleModalOpen}
-        onClose={() => setIsScheduleModalOpen(false)}
-        onScheduled={() => setRefreshTrigger((prev) => prev + 1)}
-      />
+      {/* Lesson Details Drawer */}
+      {selectedDrawerLesson && (
+        <LessonDetailsDrawer
+          lesson={selectedDrawerLesson}
+          isOpen={Boolean(selectedDrawerLesson)}
+          onClose={() => setSelectedDrawerLesson(null)}
+          onEdit={() => {}}
+          onLessonUpdated={() => {
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
