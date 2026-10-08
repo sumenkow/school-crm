@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
   Calendar,
   Users,
-  Video,
   Clock,
   MoreHorizontal,
   Edit,
@@ -191,7 +190,7 @@ export function GroupCard({
           </div>
         </div>
 
-        {/* Metadata Rows: Schedule, Teacher, Room */}
+        {/* Metadata Rows: Schedule, Teacher */}
         <div className="mt-3 space-y-1.5 text-xs text-slate-600">
           <div className="flex items-center gap-2 min-w-0">
             <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -202,10 +201,6 @@ export function GroupCard({
             <span className="truncate min-w-0">
               Преподаватель: <strong className="text-slate-800 font-semibold">{group.teacherName}</strong>
             </span>
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <Video className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-            <span className="text-blue-700 font-medium truncate min-w-0">{group.room}</span>
           </div>
         </div>
 

@@ -304,6 +304,23 @@ export async function runSuite27() {
   }
   console.log('  ✓ [T4.01] All Presentation Items satisfy interface contracts for both Card & Table views.');
 
+  // 4.2 Verify absence of Zoom links on overview cards (Reference A requirement)
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const groupCardSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/groups/GroupCard.tsx'),
+    'utf-8'
+  );
+  assert.ok(
+    !groupCardSource.includes('group.room'),
+    'GroupCard.tsx must not render group.room on group overview card'
+  );
+  assert.ok(
+    !groupCardSource.includes('https://zoom.us'),
+    'GroupCard.tsx must not render Zoom links on group overview card'
+  );
+  console.log('  ✓ [T4.02] Zoom links strictly excluded from group overview cards (Reference A compliant).');
+
   // -------------------------------------------------------------
   // TIER 5: Color Psychology & Brand Standards
   // -------------------------------------------------------------
