@@ -3,10 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Users, AlertTriangle, Check, Phone, MessageSquare, Sparkles, BookOpen, GraduationCap, School } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, TimelineInteraction, splitFullName, buildFullName } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, FullStudentData, INITIAL_GROUPS, FullGroupData, TimelineInteraction, splitFullName, buildFullName } from '@/lib/data/mockData';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
-import { saveStudentToStorage, settleDebtsFromDeposit, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { saveStudentToStorage, settleDebtsFromDeposit, reconcileAllStudentDepositsAndDebts, getStoredStudents } from '@/lib/data/studentStorage';
 import { qualifyAndConvertLead } from '@/lib/data/leadStorage';
+import { getStoredGroups, enrollStudentToGroup } from '@/lib/data/groupStorage';
+import { getStoredParents } from '@/lib/data/parentStorage';
+import { useToast } from '@/context/ToastContext';
 
 export interface NewStudentData {
   id: string;
@@ -66,6 +69,7 @@ export function CreateStudentModal({
   onCreated,
   initialData,
 }: CreateStudentModalProps) {
+  const toast = useToast();
   // Student fields
   const [studentType, setStudentType] = useState<'school_student' | 'adult_student'>('school_student');
   const [studentFullName, setStudentFullName] = useState('');
@@ -78,7 +82,12 @@ export function CreateStudentModal({
   const [telegram, setTelegram] = useState('');
   const [status, setStatus] = useState('active');
   const [notes, setNotes] = useState('');
-  const [group, setGroup] = useState('English B1 Teens');
+  const [availableGroups, setAvailableGroups] = useState<FullGroupData[]>(() =>
+    typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS
+  );
+  const [selectedGroupId, setSelectedGroupId] = useState(
+    availableGroups[0]?.id || ''
+  );
 
   // Parent fields
   const [parentMode, setParentMode] = useState<'new' | 'existing'>('new');
@@ -90,60 +99,108 @@ export function CreateStudentModal({
   const [relationshipType, setRelationshipType] = useState('Мама');
   const [preferredChannel, setPreferredChannel] = useState('telegram');
   const [selectedParentId, setSelectedParentId] = useState('');
+  const [existingParents, setExistingParents] = useState<Array<{ id: string; name: string; phone: string; telegram?: string; relationshipType?: string }>>([]);
 
   useEffect(() => {
-    if (isOpen && initialData) {
-      setStudentType(initialData.studentType || 'school_student');
-      const initialSName = [initialData.lastName, initialData.firstName].filter(Boolean).join(' ');
-      setStudentFullName(initialSName || '');
-      setFirstName(initialData.firstName || '');
-      setLastName(initialData.lastName || '');
-      setBirthDate(initialData.birthDate || '');
-      if (initialData.grade) {
-        const num = parseInt(initialData.grade.replace(/\D/g, '')) || 5;
-        setGradeNumber(num);
-        setGrade(`${num} класс`);
+    if (isOpen) {
+      const gList = typeof window !== 'undefined' ? getStoredGroups() : INITIAL_GROUPS;
+      setAvailableGroups(gList);
+
+      // Existing parents gathering
+      const pList: Array<{ id: string; name: string; phone: string; telegram?: string; relationshipType?: string }> = [];
+      const seen = new Set<string>();
+      const storedParents = typeof window !== 'undefined' ? getStoredParents() : [];
+      for (const p of storedParents) {
+        if (p.id && !seen.has(p.id)) {
+          seen.add(p.id);
+          pList.push({
+            id: p.id,
+            name: p.name,
+            phone: p.phone,
+            telegram: p.telegram,
+            relationshipType: p.relationshipType || 'Родитель',
+          });
+        }
+      }
+      const stList = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+      for (const st of stList) {
+        if (st.parents) {
+          for (const p of st.parents) {
+            if (p.id && !seen.has(p.id)) {
+              seen.add(p.id);
+              pList.push({
+                id: p.id,
+                name: (p as any).name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Родитель',
+                phone: p.phone || '',
+                telegram: p.telegram,
+                relationshipType: p.relationshipType || 'Родитель',
+              });
+            }
+          }
+        }
+      }
+      setExistingParents(pList);
+
+      if (initialData) {
+        setStudentType(initialData.studentType || 'school_student');
+        const initialSName = [initialData.lastName, initialData.firstName].filter(Boolean).join(' ');
+        setStudentFullName(initialSName || '');
+        setFirstName(initialData.firstName || '');
+        setLastName(initialData.lastName || '');
+        setBirthDate(initialData.birthDate || '');
+        if (initialData.grade) {
+          const num = parseInt(initialData.grade.replace(/\D/g, '')) || 5;
+          setGradeNumber(num);
+          setGrade(`${num} класс`);
+        } else {
+          setGradeNumber(5);
+          setGrade('5 класс');
+        }
+        setPhone(initialData.phone || '');
+        setTelegram(initialData.telegram || '');
+        setStatus(initialData.status || 'active');
+        setNotes(initialData.notes || '');
+        if (initialData.group) {
+          const matchedGroup = gList.find((g) => g.id === initialData.group || g.name === initialData.group);
+          if (matchedGroup) setSelectedGroupId(matchedGroup.id);
+        } else if (gList.length > 0) {
+          setSelectedGroupId(gList[0].id);
+        }
+        if (initialData.parentMode) setParentMode(initialData.parentMode);
+        const initialPName = [initialData.parentLastName, initialData.parentFirstName].filter(Boolean).join(' ');
+        setParentFullName(initialPName || '');
+        setParentFirstName(initialData.parentFirstName || '');
+        setParentLastName(initialData.parentLastName || '');
+        setParentPhone(initialData.parentPhone || '');
+        setParentTelegram(initialData.parentTelegram || '');
+        if (initialData.relationshipType) setRelationshipType(initialData.relationshipType);
+        if (initialData.preferredChannel) setPreferredChannel(initialData.preferredChannel);
       } else {
+        // Reset
+        setStudentType('school_student');
+        setStudentFullName('');
+        setFirstName('');
+        setLastName('');
+        setBirthDate('');
         setGradeNumber(5);
         setGrade('5 класс');
+        setPhone('');
+        setTelegram('');
+        setStatus('active');
+        setNotes('');
+        if (gList.length > 0) {
+          setSelectedGroupId(gList[0].id);
+        }
+        setParentMode('new');
+        setParentFullName('');
+        setParentFirstName('');
+        setParentLastName('');
+        setParentPhone('');
+        setParentTelegram('');
+        setRelationshipType('Мама');
+        setPreferredChannel('telegram');
+        setSelectedParentId('');
       }
-      setPhone(initialData.phone || '');
-      setTelegram(initialData.telegram || '');
-      setStatus(initialData.status || 'active');
-      setNotes(initialData.notes || '');
-      if (initialData.group) setGroup(initialData.group);
-      if (initialData.parentMode) setParentMode(initialData.parentMode);
-      const initialPName = [initialData.parentLastName, initialData.parentFirstName].filter(Boolean).join(' ');
-      setParentFullName(initialPName || '');
-      setParentFirstName(initialData.parentFirstName || '');
-      setParentLastName(initialData.parentLastName || '');
-      setParentPhone(initialData.parentPhone || '');
-      setParentTelegram(initialData.parentTelegram || '');
-      if (initialData.relationshipType) setRelationshipType(initialData.relationshipType);
-      if (initialData.preferredChannel) setPreferredChannel(initialData.preferredChannel);
-    } else if (isOpen && !initialData) {
-      // Reset
-      setStudentType('school_student');
-      setStudentFullName('');
-      setFirstName('');
-      setLastName('');
-      setBirthDate('');
-      setGradeNumber(5);
-      setGrade('5 класс');
-      setPhone('');
-      setTelegram('');
-      setStatus('active');
-      setNotes('');
-      setGroup('English B1 Teens');
-      setParentMode('new');
-      setParentFullName('');
-      setParentFirstName('');
-      setParentLastName('');
-      setParentPhone('');
-      setParentTelegram('');
-      setRelationshipType('Мама');
-      setPreferredChannel('telegram');
-      setSelectedParentId('');
     }
   }, [isOpen, initialData]);
 
@@ -156,7 +213,7 @@ export function CreateStudentModal({
     const effStudentLastName = sLast || '';
 
     if (!studentFullName.trim() || !effStudentFirstName) {
-      alert('Пожалуйста, укажите ФИО ученика');
+      toast.error('Пожалуйста, укажите ФИО ученика');
       return;
     }
 
@@ -170,11 +227,11 @@ export function CreateStudentModal({
         ? selectedParentId
         : (initialData as any)?.parentId || `p_${Date.now()}`;
     const fullName = studentFullName.trim();
-    const courseName = group.includes('English')
-      ? 'Английский язык'
-      : group.includes('Robotics')
-      ? 'Робототехника'
-      : 'Математика';
+    const chosenGroup = availableGroups.find((g) => g.id === selectedGroupId) || availableGroups[0];
+    const effGroupName = chosenGroup ? chosenGroup.name : 'Основная группа';
+    const courseName = chosenGroup ? (chosenGroup.courseName || chosenGroup.name) : 'Общий курс';
+    const effTeacherName = chosenGroup ? (chosenGroup.teacherName || '') : '';
+    const effSchedule = chosenGroup ? (chosenGroup.schedule || '—') : '—';
 
     const effParentFullName = parentMode === 'existing'
       ? `${parentFirstName.trim()} ${parentLastName.trim()}`.trim()
@@ -202,8 +259,8 @@ export function CreateStudentModal({
       type: 'status_change',
       author: 'Администратор школы',
       content: initialData?.sourceLeadId
-        ? `Ученик успешно зачислен из карточки лида (${isAdult ? 'Студент' : 'Школьник'}). Заполнена карточка и создал профиль.`
-        : `Создана карточка (${isAdult ? 'Студент' : 'Школьник'}) в CRM и прикреплен к группе «${group}».`,
+        ? `Ученик успешно зачислен из карточки лида (${isAdult ? 'Студент' : 'Школьник'}). Заполнена карточка и создан профиль.`
+        : `Создана карточка (${isAdult ? 'Студент' : 'Школьник'}) в CRM и прикреплен к группе «${effGroupName}».`,
       result: 'Карточка ученика сохранена',
       targetType: isAdult ? 'student' : 'parent',
       targetName: isAdult ? fullName : (effParentFullName || 'Родитель'),
@@ -254,17 +311,19 @@ export function CreateStudentModal({
               isPrimary: true,
             },
           ],
-      groups: [
-        {
-          id: `g_${Date.now()}`,
-          name: group,
-          courseName,
-          teacherName: group.includes('English') ? 'Мария Иванова' : 'Денис Смирнов',
-          schedule: 'Пн, Чт • 18:45–20:15',
-          status: 'active',
-          joinedAt: new Date().toLocaleDateString('ru-RU'),
-        },
-      ],
+      groups: chosenGroup
+        ? [
+            {
+              id: chosenGroup.id,
+              name: effGroupName,
+              courseName: courseName,
+              teacherName: effTeacherName,
+              schedule: effSchedule,
+              status: 'active',
+              joinedAt: new Date().toLocaleDateString('ru-RU'),
+            },
+          ]
+        : [],
       attendanceStats: {
         totalLessons: 0,
         presentCount: 0,
@@ -286,18 +345,18 @@ export function CreateStudentModal({
             }
           : undefined,
         activeSubscription: {
-          period: '01.09.2026 – 30.09.2026',
+          period: now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
           price: '80 €',
           status: 'active',
           lessonsAttended: '0 из 8 занятий',
-          renewalDate: '28.09.2026',
+          renewalDate: new Date(now.getTime() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
         },
         payments: [
           {
             id: `pay_${Date.now()}`,
             date: new Date().toLocaleDateString('ru-RU'),
             amount: '80 €',
-            period: 'Сентябрь 2026',
+            period: now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
             method: 'Банковская карта',
             status: 'paid',
           },
@@ -321,6 +380,14 @@ export function CreateStudentModal({
     reconcileAllStudentDepositsAndDebts();
     combinedInteractions.forEach((i) => saveInteractionToStorage(i));
 
+    if (chosenGroup) {
+      enrollStudentToGroup({
+        groupId: chosenGroup.id,
+        studentId: newStudentId,
+        allowOverflow: true,
+      });
+    }
+
     if (initialData?.sourceLeadId) {
       qualifyAndConvertLead(initialData.sourceLeadId, newStudentId, parentId);
     }
@@ -329,19 +396,7 @@ export function CreateStudentModal({
       window.dispatchEvent(new CustomEvent('crm-students-changed'));
       window.dispatchEvent(new CustomEvent('crm-leads-changed'));
       window.dispatchEvent(new CustomEvent('crm-payments-changed'));
-    }
-
-    // Update group enrollment count in INITIAL_GROUPS if found
-    const targetGroup = INITIAL_GROUPS.find((g) => g.name === group || g.name.includes(group.split(' ')[0]));
-    if (targetGroup && !targetGroup.students.some((s) => s.id === newStudentId)) {
-      targetGroup.students.push({
-        id: newStudentId,
-        name: fullName,
-        status: 'active',
-        attendanceRate: '100%',
-        parentPhone: parentPhone || '—',
-        joinedAt: new Date().toLocaleDateString('ru-RU'),
-      });
+      window.dispatchEvent(new CustomEvent('crm-groups-changed'));
     }
 
     const createdStudent: NewStudentData = {
@@ -354,12 +409,12 @@ export function CreateStudentModal({
       parent: parentFirstName ? `${parentFirstName.trim()} ${parentLastName.trim()} (${relationshipType})` : (studentType === 'adult_student' ? 'Самостоятельный студент' : 'Контакт не указан'),
       parentId: parentId,
       parentPhone: parentPhone || '—',
-      group,
+      group: effGroupName,
       course: courseName,
-      teacher: group.includes('English') ? 'Мария Иванова' : 'Денис Смирнов',
+      teacher: effTeacherName,
       attendanceRate: '100%',
       paymentStatus: 'paid',
-      subscriptionEnd: '30.09.2026',
+      subscriptionEnd: new Date(now.getTime() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
       notes: notes.trim() || undefined,
       convertedFromLeadId: initialData?.sourceLeadId,
     };
@@ -540,13 +595,20 @@ export function CreateStudentModal({
             <div>
               <label className="text-xs font-medium text-slate-700">Выберите учебную группу</label>
               <select
-                value={group}
-                onChange={(e) => setGroup(e.target.value)}
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none font-medium text-slate-800"
               >
-                <option value="English B1 Teens">English B1 Teens (Пн/Чт 18:45) • Свободно 1 место</option>
-                <option value="Robotics Junior">Robotics Junior (Ср/Сб 15:00) • Свободно 4 места</option>
-                <option value="Kids Math Safari">Kids Math Safari (Чт 16:00) • Свободно 1 место</option>
+                {availableGroups.map((g) => {
+                  const count = g.students ? g.students.length : 0;
+                  const capacity = g.capacity || 8;
+                  const free = Math.max(0, capacity - count);
+                  return (
+                    <option key={g.id} value={g.id}>
+                      {g.name} ({g.schedule || '—'}) • Свободно {free} {free === 1 ? 'место' : free < 5 ? 'места' : 'мест'}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
@@ -643,36 +705,23 @@ export function CreateStudentModal({
                   onChange={(e) => {
                     const selected = e.target.value;
                     setSelectedParentId(selected);
-                    if (selected === 'p1') {
-                      setParentFirstName('Ольга');
-                      setParentLastName('Смирнова');
-                      setParentPhone('+7 (999) 123-45-67');
-                      setPreferredChannel('telegram');
-                    } else if (selected === 'p3') {
-                      setParentFirstName('Дмитрий');
-                      setParentLastName('Кузнецов');
-                      setParentPhone('+7 (999) 234-56-78');
-                      setParentTelegram('@dkuznetsov');
-                      setPreferredChannel('whatsapp');
-                    } else if (selected === 'p4') {
-                      setParentFirstName('Елена');
-                      setParentLastName('Васильева');
-                      setParentPhone('+7 (999) 345-67-89');
-                      setPreferredChannel('phone');
-                    } else if (selected === 'p5') {
-                      setParentFirstName('Наталья');
-                      setParentLastName('Захарова');
-                      setParentPhone('+7 (916) 777-33-22');
-                      setParentTelegram('@zakharova_n');
-                      setPreferredChannel('telegram');
+                    const found = existingParents.find((p) => p.id === selected);
+                    if (found) {
+                      const parts = (found.name || '').trim().split(' ');
+                      setParentFirstName(parts[0] || 'Родитель');
+                      setParentLastName(parts.slice(1).join(' ') || '');
+                      setParentPhone(found.phone || '');
+                      if (found.telegram) setParentTelegram(found.telegram);
+                      if (found.relationshipType) setRelationshipType(found.relationshipType);
                     }
                   }}
                 >
                   <option value="">-- Выберите родителя --</option>
-                  <option value="p3">Дмитрий Кузнецов (+7 999 234-56-78) — Дети: Мария, Артём</option>
-                  <option value="p1">Ольга Смирнова (+7 999 123-45-67) — Семья Смирновых (Иван)</option>
-                  <option value="p5">Наталья Захарова (+7 916 777-33-22) — Максим</option>
-                  <option value="p4">Елена Васильева (+7 999 345-67-89) — Дочь: Анна</option>
+                  {existingParents.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.phone ? `(${p.phone})` : ''} — {p.relationshipType || 'Родитель'}
+                    </option>
+                  ))}
                 </select>
                 <p className="mt-2 text-[11px] text-slate-500">
                   💡 Привязка к существующему родителю автоматически объединит детей в единый семейный профиль.

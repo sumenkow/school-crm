@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { INITIAL_TEACHERS } from '@/lib/data/mockData';
 
 interface TeacherQuickViewModalProps {
   teacherId: string | null;
@@ -17,6 +18,10 @@ export function TeacherQuickViewModal({
   onClose,
 }: TeacherQuickViewModalProps) {
   if (!teacherId) return null;
+
+  const foundTeacher = INITIAL_TEACHERS.find(
+    (t) => t.id === teacherId || t.name === teacherName
+  );
 
   const initials = teacherName
     .split(' ')
@@ -43,7 +48,9 @@ export function TeacherQuickViewModal({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-base">{teacherName}</h3>
-              <p className="text-xs text-slate-500">Преподаватель • +7 (999) 000-00-00</p>
+              <p className="text-xs text-slate-500">
+                Преподаватель{foundTeacher?.phone ? ` • ${foundTeacher.phone}` : ''}
+              </p>
             </div>
           </div>
           <button

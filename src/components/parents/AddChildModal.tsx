@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   UserPlus,
@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { useToast } from '@/context/ToastContext';
 
 export interface AddedChildData {
   id: string;
@@ -101,6 +103,7 @@ export function AddChildModal({
   existingChildrenIds = [],
 }: AddChildModalProps) {
   const [activeTab, setActiveTab] = useState<'create' | 'link'>('create');
+  const toast = useToast();
 
   // Derive initial last name from parent name
   const parentLastName = parentName.split(' ')[1] || '';
@@ -130,13 +133,30 @@ export function AddChildModal({
   const [relationshipType, setRelationshipType] = useState('Мама');
   const [notes, setNotes] = useState('');
 
-  // Link existing student state
-  const availableExistingStudents = INITIAL_STUDENTS.filter(
-    (s) => !existingChildrenIds.includes(s.id)
+  const [allStudents, setAllStudents] = useState<FullStudentData[]>(() =>
+    typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setAllStudents(typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS);
+    }
+  }, [isOpen]);
+
+  const availableExistingStudents = useMemo(
+    () => allStudents.filter((s) => !existingChildrenIds.includes(s.id)),
+    [allStudents, existingChildrenIds]
+  );
+
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState(
     availableExistingStudents[0]?.id || ''
   );
+
+  useEffect(() => {
+    if (availableExistingStudents.length > 0 && !availableExistingStudents.some((s) => s.id === selectedExistingStudentId)) {
+      setSelectedExistingStudentId(availableExistingStudents[0].id);
+    }
+  }, [availableExistingStudents, selectedExistingStudentId]);
   const [linkRelationshipType, setLinkRelationshipType] = useState('Мама');
 
   if (!isOpen) return null;
@@ -167,7 +187,7 @@ export function AddChildModal({
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) {
-      alert('Пожалуйста, укажите имя и фамилию ребенка');
+      toast.error('Пожалуйста, укажите имя и фамилию ребенка');
       return;
     }
 
@@ -213,11 +233,11 @@ export function AddChildModal({
       lastName: existing.lastName,
       age: existing.birthDate ? `${new Date().getFullYear() - new Date(existing.birthDate).getFullYear()} лет` : '12 лет',
       birthDate: existing.birthDate,
-      group: existing.groups?.[0]?.name || 'English B1 Teens',
-      course: existing.groups?.[0]?.courseName || 'Английский язык',
-      teacher: existing.groups?.[0]?.teacherName || 'Мария Иванова',
+      group: existing.groups?.[0]?.name || 'Без группы',
+      course: existing.groups?.[0]?.courseName || 'Курс не назначен',
+      teacher: existing.groups?.[0]?.teacherName || 'Преподаватель не назначен',
       status: existing.status === 'active' ? 'active' : 'trial',
-      attendance: existing.attendanceStats?.attendanceRate || '95%',
+      attendance: existing.attendanceStats?.attendanceRate || '100%',
       relationshipType: linkRelationshipType,
       subscriptionType: 'Стандартный (8 уроков/мес)',
       price: existing.finance?.activeSubscription?.price || '80 €',

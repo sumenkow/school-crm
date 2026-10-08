@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { INITIAL_GROUPS, FullGroupData, INITIAL_STUDENTS, INITIAL_LESSONS, FullLessonData } from '@/lib/data/mockData';
+import { INITIAL_GROUPS, FullGroupData, INITIAL_STUDENTS, INITIAL_LESSONS, FullLessonData, FullStudentData } from '@/lib/data/mockData';
 import {
   ArrowLeft,
   Calendar,
@@ -36,16 +36,17 @@ import {
   excludeStudentFromGroup,
   enrollStudentToGroup,
 } from '@/lib/data/groupStorage';
-import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, normalizeStudent } from '@/lib/data/studentStorage';
 import { getStoredLessons, generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
 import { getStudentLessonPaymentStatus } from '@/lib/data/lessonPaymentStatusHelper';
+import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 
 export default function GroupDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { success } = useToast();
+  const { success, error } = useToast();
   const { role, userName } = useRole();
   const { t } = useLanguage();
   const groupId = params.id as string;
@@ -232,6 +233,13 @@ export default function GroupDetailsPage() {
   const freeSpots = group.capacity - enrolledCount;
   const occupancyPercent = Math.min(100, Math.round((enrolledCount / group.capacity) * 100));
 
+  const groupDebtorsCount = React.useMemo(() => {
+    return group.students.filter((st) => {
+      const summary = getStudentFinancialSummary(st.id);
+      return summary.debt > 0 || summary.isNegative;
+    }).length;
+  }, [group.students]);
+
   // Quick enroll student state
   const [enrollMode, setEnrollMode] = useState<'db' | 'new'>('db');
   const [selectedDbStudentId, setSelectedDbStudentId] = useState('');
@@ -265,12 +273,18 @@ export default function GroupDetailsPage() {
     } else {
       if (!newStudentName.trim()) return;
 
+      const parts = newStudentName.trim().split(' ');
+      const firstName = parts[0] || 'Ученик';
+      const lastName = parts.slice(1).join(' ') || '';
+      const studentId = `std_${Date.now()}`;
+      const phone = newStudentPhone.trim() || '';
+
       const newStudent = {
-        id: `std_${Date.now()}`,
+        id: studentId,
         name: newStudentName.trim(),
         status: 'active',
         attendanceRate: '100%',
-        parentPhone: newStudentPhone.trim() || '+7 (999) 000-00-00',
+        parentPhone: phone,
         joinedAt: new Date().toLocaleDateString('ru-RU'),
       };
 
@@ -281,6 +295,46 @@ export default function GroupDetailsPage() {
       setGroup(updatedWithNew);
       saveGroupToStorage(updatedWithNew);
 
+      // Persist full student entity to studentStorage (G-02)
+      const fullStudent: FullStudentData = normalizeStudent({
+        id: studentId,
+        firstName,
+        lastName,
+        studentType: 'school_student',
+        status: 'active',
+        phone: phone || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        groups: [
+          {
+            id: group.id,
+            name: group.name,
+            courseName: group.courseName || group.name,
+            teacherName: group.teacherName || '',
+            schedule: group.schedule || '',
+            status: 'active',
+            joinedAt: new Date().toLocaleDateString('ru-RU'),
+          },
+        ],
+        parents: phone
+          ? [
+              {
+                id: `par_${studentId}`,
+                firstName: 'Родитель',
+                lastName: lastName || '',
+                phone: phone,
+                preferredChannel: 'phone' as const,
+                relationshipType: 'Родитель',
+                isPrimary: true,
+              },
+            ]
+          : [],
+      });
+
+      saveStudentToStorage(fullStudent);
+      window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: fullStudent }));
+      window.dispatchEvent(new Event('crm-parents-changed'));
+
       setNewStudentName('');
       setNewStudentPhone('');
       success(`Новый ученик «${newStudent.name}» зачислен в группу!`);
@@ -288,6 +342,10 @@ export default function GroupDetailsPage() {
   };
 
   const handleRemoveStudent = (id: string, studentName?: string) => {
+    if (role === 'teacher') {
+      error('Преподаватель не имеет прав на исключение учеников');
+      return;
+    }
     if (confirm('Исключить ученика из состава этой группы?')) {
       const { updatedGroup } = excludeStudentFromGroup({
         groupId: group.id,
@@ -399,26 +457,30 @@ export default function GroupDetailsPage() {
               <Calendar className="h-3.5 w-3.5" />
               {t('groups.nearestLesson', 'Ближайший урок в календаре →')}
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsScheduleLessonOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Запланировать новое занятие
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenEdit}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              <Edit className="h-3.5 w-3.5 text-slate-500" />
-              {t('action.edit', 'Изменить')}
-            </button>
+            {role !== 'teacher' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsScheduleLessonOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Запланировать новое занятие
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenEdit}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <Edit className="h-3.5 w-3.5 text-slate-500" />
+                  {t('action.edit', 'Изменить')}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Dynamic Capacity Calculation Bar (Section 9 requirement) */}
+        {/* Dynamic Capacity Calculation Bar (Section 9 requirement & Emerald full capacity) */}
         <div className="mt-6 rounded-xl bg-slate-50 p-4 border border-slate-200/80">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
             <div>
@@ -432,7 +494,7 @@ export default function GroupDetailsPage() {
                 className={cn(
                   'rounded-full px-3 py-1 font-bold text-xs border',
                   freeSpots === 0
-                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                     : freeSpots <= 2
                     ? 'bg-amber-50 text-amber-700 border-amber-200'
                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -446,23 +508,48 @@ export default function GroupDetailsPage() {
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-500',
-                freeSpots === 0 ? 'bg-rose-500' : occupancyPercent >= 75 ? 'bg-emerald-500' : 'bg-blue-500'
+                freeSpots === 0 ? 'bg-emerald-600' : occupancyPercent >= 75 ? 'bg-emerald-500' : 'bg-blue-500'
               )}
               style={{ width: `${occupancyPercent}%` }}
             />
           </div>
         </div>
 
-        {/* Group Payment Status Strip (Clean status instead of raw tariffs) */}
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-emerald-50/70 p-3.5 border border-emerald-200/80 text-xs">
+        {/* Group Payment Status Strip (Dynamic calculation from student financial summaries) */}
+        <div
+          className={cn(
+            'mt-4 flex items-center justify-between rounded-xl p-3.5 border text-xs',
+            groupDebtorsCount === 0
+              ? 'bg-emerald-50/70 border-emerald-200/80'
+              : 'bg-amber-50/70 border-amber-200/80'
+          )}
+        >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span className="font-semibold text-emerald-900">
-              {t('groups.paymentSummary', 'Оплата занятий: Все оплачено / Без долгов')}
+            {groupDebtorsCount === 0 ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+            )}
+            <span
+              className={cn(
+                'font-semibold',
+                groupDebtorsCount === 0 ? 'text-emerald-900' : 'text-amber-900'
+              )}
+            >
+              {groupDebtorsCount === 0
+                ? t('groups.paymentSummary', 'Оплата занятий: Все оплачено / Без долгов')
+                : `Оплата занятий: Есть задолженности (${groupDebtorsCount} из ${group.students.length} учеников)`}
             </span>
           </div>
-          <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-800 border border-emerald-200 shadow-2xs">
-            {t('status.paid', 'Оплачено')}
+          <span
+            className={cn(
+              'rounded-full px-3 py-1 text-[11px] font-bold border shadow-2xs',
+              groupDebtorsCount === 0
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                : 'bg-amber-100 text-amber-800 border-amber-200'
+            )}
+          >
+            {groupDebtorsCount === 0 ? t('status.paid', 'Оплачено') : 'Задолженность'}
           </span>
         </div>
       </div>
@@ -492,100 +579,102 @@ export default function GroupDetailsPage() {
       {/* TAB 1: СОСТАВ ГРУППЫ */}
       {activeTab === 'students' && (
         <div className="space-y-6">
-          {/* Quick Add Student (if spots available) */}
-          {freeSpots > 0 ? (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-800">{t('groups.enrollStudent', 'Зачислить ученика:')}</span>
-                  <div className="flex rounded-lg bg-white p-0.5 border border-slate-200 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setEnrollMode('db')}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md transition-all font-semibold',
-                        enrollMode === 'db' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                      )}
-                    >
-                      {t('groups.fromSchoolDb', 'Из базы школы')} ({availableStudentsFromDb.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEnrollMode('new')}
-                      className={cn(
-                        'px-2.5 py-1 rounded-md transition-all font-semibold',
-                        enrollMode === 'new' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                      )}
-                    >
-                      {t('groups.newStudent', 'Новый ученик')}
-                    </button>
-                  </div>
-                </div>
-                <span className="text-[11px] font-semibold text-blue-700">
-                  {t('groups.spotsLeft', 'Осталось мест:')} <strong>{freeSpots}</strong>
-                </span>
-              </div>
-
-              <form onSubmit={handleQuickEnroll} className="flex flex-col sm:flex-row items-center gap-2.5">
-                {enrollMode === 'db' ? (
-                  <div className="flex-1 w-full">
-                    {availableStudentsFromDb.length > 0 ? (
-                      <select
-                        value={selectedDbStudentId || availableStudentsFromDb[0]?.id}
-                        onChange={(e) => setSelectedDbStudentId(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          {/* Quick Add Student (if spots available and user is not teacher) */}
+          {role !== 'teacher' && (
+            freeSpots > 0 ? (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800">{t('groups.enrollStudent', 'Зачислить ученика:')}</span>
+                    <div className="flex rounded-lg bg-white p-0.5 border border-slate-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setEnrollMode('db')}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md transition-all font-semibold',
+                          enrollMode === 'db' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                        )}
                       >
-                        {availableStudentsFromDb.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? t('students.filterAdult', 'Студент') : t('students.filterSchool', 'Школьник')} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic p-2 bg-white rounded-xl border border-slate-200">
-                        {t('parents.emptyChildren', 'Все действующие ученики школы уже состоят в этой группе.')}
-                      </p>
-                    )}
+                        {t('groups.fromSchoolDb', 'Из базы школы')} ({availableStudentsFromDb.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEnrollMode('new')}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md transition-all font-semibold',
+                          enrollMode === 'new' ? 'bg-blue-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                        )}
+                      >
+                        {t('groups.newStudent', 'Новый ученик')}
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex-1 w-full">
-                      <input
-                        type="text"
-                        required
-                        value={newStudentName}
-                        onChange={(e) => setNewStudentName(e.target.value)}
-                        placeholder="Имя и фамилия нового ученика..."
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="w-full sm:w-56">
-                      <input
-                        type="tel"
-                        value={newStudentPhone}
-                        onChange={(e) => setNewStudentPhone(e.target.value)}
-                        placeholder={t('groups.parentPhone', 'Телефон родителя')}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </>
-                )}
+                  <span className="text-[11px] font-semibold text-blue-700">
+                    {t('groups.spotsLeft', 'Осталось мест:')} <strong>{freeSpots}</strong>
+                  </span>
+                </div>
 
-                <button
-                  type="submit"
-                  disabled={enrollMode === 'db' && availableStudentsFromDb.length === 0}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('groups.enrollAction', 'Зачислить в группу')}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
-              <span>{t('groups.limitReached', 'Лимит мест исчерпан. Чтобы добавить ученика, увеличьте лимит мест группы.')}</span>
-            </div>
+                <form onSubmit={handleQuickEnroll} className="flex flex-col sm:flex-row items-center gap-2.5">
+                  {enrollMode === 'db' ? (
+                    <div className="flex-1 w-full">
+                      {availableStudentsFromDb.length > 0 ? (
+                        <select
+                          value={selectedDbStudentId || availableStudentsFromDb[0]?.id}
+                          onChange={(e) => setSelectedDbStudentId(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          {availableStudentsFromDb.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.firstName} {s.lastName} ({s.studentType === 'adult_student' ? t('students.filterAdult', 'Студент') : t('students.filterSchool', 'Школьник')} • {s.phone || s.parents?.[0]?.phone || 'тел. не указан'})
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="text-xs text-slate-500 italic p-2 bg-white rounded-xl border border-slate-200">
+                          {t('parents.emptyChildren', 'Все действующие ученики школы уже состоят в этой группе.')}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 w-full">
+                        <input
+                          type="text"
+                          required
+                          value={newStudentName}
+                          onChange={(e) => setNewStudentName(e.target.value)}
+                          placeholder="Имя и фамилия нового ученика..."
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="w-full sm:w-56">
+                        <input
+                          type="tel"
+                          value={newStudentPhone}
+                          onChange={(e) => setNewStudentPhone(e.target.value)}
+                          placeholder={t('groups.parentPhone', 'Телефон родителя')}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={enrollMode === 'db' && availableStudentsFromDb.length === 0}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t('groups.enrollAction', 'Зачислить в группу')}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 text-xs text-rose-800 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{t('groups.limitReached', 'Лимит мест исчерпан. Чтобы добавить ученика, увеличьте лимит мест группы.')}</span>
+              </div>
+            )
           )}
 
           {/* Students Table */}
@@ -633,12 +722,16 @@ export default function GroupDetailsPage() {
                       <td className="px-3 py-3 text-slate-500">{student.joinedAt}</td>
                       <td className="px-3 py-3 text-center font-bold text-slate-800">{student.attendanceRate}</td>
                       <td className="py-3 pl-3 pr-4 text-right">
-                        <button
-                          onClick={() => handleRemoveStudent(student.id)}
-                          className="text-xs text-rose-500 hover:text-rose-700 hover:underline"
-                        >
-                          {t('groups.exclude', 'Исключить')}
-                        </button>
+                        {role !== 'teacher' ? (
+                          <button
+                            onClick={() => handleRemoveStudent(student.id, student.name)}
+                            className="text-xs text-rose-500 hover:text-rose-700 hover:underline cursor-pointer"
+                          >
+                            {t('groups.exclude', 'Исключить')}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                     </tr>
                   );

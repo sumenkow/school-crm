@@ -18,6 +18,7 @@ import {
   GroupPresentationItem,
 } from '@/features/groups/lib/groupsWorkspaceEngine';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
 
 const STATUSES_OPTIONS = [
   { id: 'active', label: 'Активна' },
@@ -29,6 +30,7 @@ const STATUSES_OPTIONS = [
 
 export default function GroupsPage() {
   const toast = useToast();
+  const { role } = useRole();
 
   // 1. Core SSOT Data States
   const [groups, setGroups] = useState<FullGroupData[]>(() => {
@@ -156,6 +158,10 @@ export default function GroupsPage() {
   };
 
   const handleEditGroup = (groupId: string) => {
+    if (role === 'teacher') {
+      toast.error('Преподаватель не имеет прав на редактирование группы');
+      return;
+    }
     const target = groups.find((g) => g.id === groupId) || null;
     setEditingGroup(target);
   };
@@ -165,6 +171,10 @@ export default function GroupsPage() {
   };
 
   const handleDeleteGroup = (groupId: string, groupName: string) => {
+    if (role === 'teacher') {
+      toast.error('Преподаватель не имеет прав на архивацию групп');
+      return;
+    }
     if (
       confirm(
         `Вы уверены, что хотите переместить группу «${groupName}» в архив / удаленные? Ее можно восстановить в любой момент.`
@@ -177,6 +187,10 @@ export default function GroupsPage() {
   };
 
   const handleRestoreGroup = (groupId: string, groupName: string) => {
+    if (role === 'teacher') {
+      toast.error('Преподаватель не имеет прав на восстановление групп');
+      return;
+    }
     restoreGroup(groupId);
     refreshData();
     toast.success(`Группа «${groupName}» восстановлена`);
@@ -205,6 +219,7 @@ export default function GroupsPage() {
         onSortChange={setSortBy}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
+        canCreateGroup={role !== 'teacher'}
         onCreateGroup={() => setIsCreateModalOpen(true)}
       />
 

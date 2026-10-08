@@ -9,6 +9,7 @@ import {
   Download,
   Trash2,
   X,
+  Send,
 } from 'lucide-react';
 
 interface BulkActionsBarProps {
@@ -70,7 +71,7 @@ export function BulkActionsBar({
             onClick={onSendHomework}
             className="h-8 px-3 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200/80 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-2xs"
           >
-            <span className="text-xs leading-none">🚀</span>
+            <Send className="w-3.5 h-3.5 text-slate-500" />
             <span>Отправить ДЗ</span>
           </button>
         )}

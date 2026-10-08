@@ -5,8 +5,10 @@ import { X, CheckSquare, Calendar, Clock, User, Check, Users, Bot, Bell } from '
 import { cn } from '@/lib/utils';
 import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredLeads } from '@/lib/data/leadStorage';
 import { createUnifiedTask } from '@/lib/data/taskManager';
 import { useRole } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 import { DatePicker } from '@/components/common/DatePicker';
 
 export interface StudentTaskScope {
@@ -85,6 +87,12 @@ export function CreateTaskModal({
   const [notifyContactInTelegram, setNotifyContactInTelegram] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const toast = useToast();
+
+  const allLeads = React.useMemo(() => {
+    return typeof window !== 'undefined' ? getStoredLeads() : INITIAL_LEADS;
+  }, []);
+
   const contactTelegram = React.useMemo(() => {
     const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
     if (studentScope) {
@@ -96,18 +104,18 @@ export function CreateTaskModal({
       return st?.telegram || (st as any)?.telegramChatId || '';
     }
     if (relatedEntity === 'lead' && selectedEntityId) {
-      const ld = INITIAL_LEADS.find((l) => l.id === selectedEntityId);
+      const ld = allLeads.find((l) => l.id === selectedEntityId);
       return ld?.telegram || '';
     }
     return '';
-  }, [studentScope, relatedEntity, selectedEntityId]);
+  }, [studentScope, relatedEntity, selectedEntityId, allLeads]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      alert('Укажите название задачи');
+      toast.error('Укажите название задачи');
       return;
     }
 
@@ -152,7 +160,7 @@ export function CreateTaskModal({
     } else if (relatedEntity === 'parent') {
       parentId = selectedEntityId;
     } else if (relatedEntity === 'lead') {
-      const ld = INITIAL_LEADS.find((l) => l.id === selectedEntityId);
+      const ld = allLeads.find((l) => l.id === selectedEntityId);
       leadId = selectedEntityId;
       leadName = ld ? ld.name : undefined;
     }
@@ -448,7 +456,7 @@ export function CreateTaskModal({
                   onChange={(e) => setSelectedEntityId(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
                 >
-                  {INITIAL_LEADS.map((l) => (
+                  {allLeads.map((l) => (
                     <option key={l.id} value={l.id}>{l.name} — {l.directionOrCourse}</option>
                   ))}
                 </select>

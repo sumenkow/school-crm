@@ -22,6 +22,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { useRole, usePermissions } from '@/context/RoleContext';
+import { useToast } from '@/context/ToastContext';
 
 const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
@@ -75,6 +76,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
 }`;
 
 export default function DatabaseBackupPage() {
+  const toast = useToast();
   const { role, isOwner } = useRole();
   const { canExportDatabase } = usePermissions();
   const [downloading, setDownloading] = useState(false);
@@ -117,8 +119,9 @@ export default function DatabaseBackupPage() {
       const nowStr = new Date().toLocaleString('ru-RU');
       setLastBackupTime(nowStr);
       localStorage.setItem('school_crm_last_backup_time', nowStr);
+      toast.success('Резервная копия успешно скачана');
     } catch (err: any) {
-      alert('Не удалось скачать резервную копию: ' + err.message);
+      toast.error('Не удалось скачать резервную копию: ' + err.message);
     } finally {
       setDownloading(false);
     }
@@ -133,7 +136,7 @@ export default function DatabaseBackupPage() {
   const handleSaveAndSync = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!webhookUrl.trim()) {
-      alert('Пожалуйста, вставьте URL вебхука Google Таблицы');
+      toast.error('Пожалуйста, вставьте URL вебхука Google Таблицы');
       return;
     }
 

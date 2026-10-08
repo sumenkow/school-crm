@@ -66,6 +66,7 @@ interface LessonStudentRowProps {
   onSetAttendance: (studentId: string, status: 'present' | 'absent' | 'excused' | 'rescheduled') => void;
   onUpdateNotes: (studentId: string, notes: string) => void;
   t: (key: string, fallback: string) => string;
+  readOnly?: boolean;
 }
 
 function LessonStudentAttendanceRow({
@@ -74,6 +75,7 @@ function LessonStudentAttendanceRow({
   onSetAttendance,
   onUpdateNotes,
   t,
+  readOnly = false,
 }: LessonStudentRowProps) {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -138,9 +140,11 @@ function LessonStudentAttendanceRow({
         <div className="flex items-center justify-end gap-1.5 shrink-0 w-[360px]">
           <button
             type="button"
+            disabled={readOnly}
             onClick={() => onSetAttendance(student.id, 'present')}
             className={cn(
-              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
+              readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
               currentStatus === 'present'
                 ? 'bg-emerald-600 text-white shadow-2xs ring-2 ring-emerald-600/30 font-bold'
                 : 'bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
@@ -152,9 +156,11 @@ function LessonStudentAttendanceRow({
 
           <button
             type="button"
+            disabled={readOnly}
             onClick={() => onSetAttendance(student.id, 'excused')}
             className={cn(
-              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
+              readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
               currentStatus === 'excused'
                 ? 'bg-amber-600 text-white shadow-2xs ring-2 ring-amber-600/30 font-bold'
                 : 'bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-800'
@@ -166,9 +172,11 @@ function LessonStudentAttendanceRow({
 
           <button
             type="button"
+            disabled={readOnly}
             onClick={() => onSetAttendance(student.id, 'absent')}
             className={cn(
-              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
+              readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
               currentStatus === 'absent'
                 ? 'bg-rose-600 text-white shadow-2xs ring-2 ring-rose-600/30 font-bold'
                 : 'bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-700'
@@ -180,9 +188,11 @@ function LessonStudentAttendanceRow({
 
           <button
             type="button"
+            disabled={readOnly}
             onClick={() => onSetAttendance(student.id, 'rescheduled')}
             className={cn(
-              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition-all',
+              readOnly ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
               currentStatus === 'rescheduled'
                 ? 'bg-purple-600 text-white shadow-2xs ring-2 ring-purple-600/30 font-bold'
                 : 'bg-slate-100 text-slate-600 hover:bg-purple-50 hover:text-purple-700'
@@ -203,8 +213,12 @@ function LessonStudentAttendanceRow({
               type="text"
               placeholder="Заметка для родителей (успехи, сложности, рекомендация к уроку)..."
               value={student.notes || ''}
+              disabled={readOnly}
               onChange={(e) => onUpdateNotes(student.id, e.target.value)}
-              className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={cn(
+                "rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 placeholder:text-slate-400 w-full focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500",
+                readOnly && "cursor-not-allowed opacity-70 bg-slate-100"
+              )}
             />
           </div>
           <div className="flex flex-wrap items-center gap-1 pl-5.5">
@@ -212,12 +226,16 @@ function LessonStudentAttendanceRow({
               <button
                 key={chip}
                 type="button"
+                disabled={readOnly}
                 onClick={() => {
                   const cur = student.notes?.trim() || '';
                   const updated = cur ? `${cur}. ${chip}` : chip;
                   onUpdateNotes(student.id, updated);
                 }}
-                className="text-[9px] font-medium bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50 transition-colors cursor-pointer"
+                className={cn(
+                  "text-[9px] font-medium bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200/50 transition-colors",
+                  readOnly ? "cursor-not-allowed opacity-50" : "hover:bg-blue-50 hover:text-blue-700 cursor-pointer"
+                )}
               >
                 + {chip}
               </button>
@@ -359,6 +377,12 @@ export default function LessonDetailsPage() {
   const authorName = userName || (role === 'teacher' ? lesson.teacherName : 'Елена Менеджер');
   const locale = language === 'en' ? 'en-US' : language === 'de' ? 'de-DE' : 'ru-RU';
 
+  const isTeacher = role === 'teacher';
+  const isOwnLesson = !isTeacher || Boolean(
+    (userName && lesson.teacherName && lesson.teacherName.toLowerCase().trim() === userName.toLowerCase().trim()) ||
+    (lesson.teacherId && userName && lesson.teacherId === 't1' && userName.toLowerCase().includes('мария'))
+  );
+
   // Keep lesson synchronized with storage events
   React.useEffect(() => {
     const handleLessonSync = (e: any) => {
@@ -388,6 +412,10 @@ export default function LessonDetailsPage() {
 
   // Status Change Handler with immediate DB persistence and unified event
   const handleStatusChange = (newStatus: FullLessonData['status']) => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может изменять статус только своих занятий');
+      return;
+    }
     if (newStatus === status) return;
 
     // State machine check: disallow completed -> rescheduled
@@ -474,6 +502,10 @@ export default function LessonDetailsPage() {
 
   // Handle Reschedule Event
   const handleRescheduleConfirmed = (info: LessonRescheduleInfo) => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может переносить только свои занятия');
+      return;
+    }
     // State machine check: disallow completed -> rescheduled
     if (status === 'completed' || lesson.status === 'completed') {
       toast.error(t('lesson.cannotRescheduleCompleted', 'Проведенный урок нельзя перенести'));
@@ -554,6 +586,11 @@ export default function LessonDetailsPage() {
   const handleSaveDetails = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может редактировать только свои занятия');
+      return;
+    }
+
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
       timestamp: new Date().toLocaleDateString(locale, {
@@ -620,6 +657,10 @@ export default function LessonDetailsPage() {
     studentId: string,
     newStatus: 'present' | 'absent' | 'excused' | 'rescheduled' | 'not_marked'
   ) => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может отмечать посещаемость только своих занятий');
+      return;
+    }
     setLesson((prev) => {
       const studentCurrent = prev.students.find((s) => s.id === studentId);
       if (studentCurrent?.attendanceStatus === newStatus) {
@@ -665,6 +706,10 @@ export default function LessonDetailsPage() {
   };
 
   const handleUpdateStudentNotes = (studentId: string, notes: string) => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может редактировать только свои занятия');
+      return;
+    }
     setLesson((prev) => {
       const updated: FullLessonData = {
         ...prev,
@@ -678,6 +723,10 @@ export default function LessonDetailsPage() {
 
   // Quick 1-click actions for whole group
   const handleMarkAllPresent = () => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может отмечать посещаемость только своих занятий');
+      return;
+    }
     const newEvent: LessonTimelineEvent = {
       id: `ev_${Date.now()}`,
       timestamp: new Date().toLocaleDateString(locale, {
@@ -727,6 +776,10 @@ export default function LessonDetailsPage() {
   };
 
   const handleResetAttendance = () => {
+    if (isTeacher && !isOwnLesson) {
+      toast.error('Преподаватель может сбрасывать посещаемость только своих занятий');
+      return;
+    }
     if (!lesson) return;
     try {
       const { restoredCount } = restoreLessonBilling(lesson.id);
@@ -834,6 +887,19 @@ export default function LessonDetailsPage() {
         </span>
       </div>
 
+      {/* Teacher Role Boundary Banner */}
+      {isTeacher && !isOwnLesson && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 flex items-center gap-2.5 shadow-2xs">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+          <span>
+            {t(
+              'lesson.readOnlyNotice',
+              `Режим только для чтения: это занятие ведёт другой преподаватель (${lesson.teacherName || '—'}). Редактирование параметров и отметка посещаемости ограничены.`
+            )}
+          </span>
+        </div>
+      )}
+
       {/* Hero Lesson Header */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -900,8 +966,19 @@ export default function LessonDetailsPage() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer"
+                onClick={() => {
+                  if (isTeacher && !isOwnLesson) {
+                    toast.error('Преподаватель может редактировать только свои занятия');
+                    return;
+                  }
+                  setIsEditModalOpen(true);
+                }}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/80 px-3.5 py-1.5 text-xs font-bold text-blue-700 shadow-2xs transition-all',
+                  isTeacher && !isOwnLesson
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-blue-100 hover:border-blue-300 cursor-pointer'
+                )}
               >
                 <Edit className="h-3.5 w-3.5 text-blue-600" />
                 <span>{t('lesson.editLessonBtn', 'Редактировать')}</span>
@@ -1087,7 +1164,13 @@ export default function LessonDetailsPage() {
 
           <button
             type="submit"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+            disabled={isTeacher && !isOwnLesson}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors",
+              isTeacher && !isOwnLesson
+                ? "bg-slate-400 cursor-not-allowed opacity-60"
+                : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            )}
           >
             <Save className="h-3.5 w-3.5" />
             {t('lesson.saveTopicStatus', 'Сохранить тему и статус урока')}
@@ -1112,16 +1195,28 @@ export default function LessonDetailsPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              disabled={isTeacher && !isOwnLesson}
               onClick={handleMarkAllPresent}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors",
+                isTeacher && !isOwnLesson
+                  ? "bg-slate-400 cursor-not-allowed opacity-60"
+                  : "bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
+              )}
             >
               <Check className="h-4 w-4" />
               {t('lesson.markAllPresent', 'Отметить всех присутствующими')}
             </button>
             <button
               type="button"
+              disabled={isTeacher && !isOwnLesson}
               onClick={handleResetAttendance}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors",
+                isTeacher && !isOwnLesson
+                  ? "bg-slate-100 cursor-not-allowed opacity-50 text-slate-400"
+                  : "bg-white hover:bg-slate-50 cursor-pointer"
+              )}
               title={t('lesson.reset', 'Сбросить все статусы')}
             >
               <RotateCcw className="h-3.5 w-3.5 text-slate-400" />
@@ -1170,6 +1265,7 @@ export default function LessonDetailsPage() {
               onSetAttendance={handleSetStudentAttendance}
               onUpdateNotes={handleUpdateStudentNotes}
               t={t}
+              readOnly={isTeacher && !isOwnLesson}
             />
           ))}
         </div>

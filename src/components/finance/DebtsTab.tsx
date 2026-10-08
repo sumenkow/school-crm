@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { FullPaymentData } from '@/lib/data/mockData';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { WhatsAppIcon, TelegramIcon } from '@/components/crm/LeadDetailsModal';
 import { DebtorDetailData } from './FinanceDetailDrawer';
 
 interface DebtsTabProps {
@@ -295,7 +296,7 @@ export function DebtsTab({
                             className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
                             title="Написать в WhatsApp"
                           >
-                            <MessageSquare className="h-3.5 w-3.5" />
+                            <WhatsAppIcon className="h-3.5 w-3.5 text-[#25D366]" />
                           </button>
 
                           {/* Telegram icon button */}
@@ -312,7 +313,7 @@ export function DebtsTab({
                             className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors cursor-pointer"
                             title="Написать в Telegram"
                           >
-                            <MessageSquare className="h-3.5 w-3.5" />
+                            <TelegramIcon className="h-3.5 w-3.5 text-[#229ED9]" />
                           </button>
 
                           {/* Settle Payment button */}

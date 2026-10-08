@@ -18,8 +18,11 @@ import {
 } from '@/components/settings/audit/AuditFilterControls';
 import { AuditEventsTable } from '@/components/settings/audit/AuditEventsTable';
 import { AuditEventDetailsModal } from '@/components/settings/audit/AuditEventDetailsModal';
+import { usePermissions, useRole } from '@/context/RoleContext';
 
 export default function AuditSettingsPage() {
+  const { role } = useRole();
+  const { canViewAuditLog } = usePermissions();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [totalEvents, setTotalEvents] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -39,6 +42,10 @@ export default function AuditSettingsPage() {
   const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
 
   const fetchAuditEvents = useCallback(async () => {
+    if (role === 'teacher' || !canViewAuditLog) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setErrorMessage(null);
     try {
@@ -157,6 +164,28 @@ export default function AuditSettingsPage() {
     setRoleFilter(role);
     setPage(1);
   };
+
+  if (role === 'teacher' || !canViewAuditLog) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center space-y-4 max-w-lg mx-auto">
+        <div className="h-12 w-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+          <AlertTriangle className="h-6 w-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-slate-900">Доступ ограничен</h2>
+          <p className="text-xs text-slate-500">
+            У вас нет прав для просмотра журнала действий (Audit Trail). Раздел доступен только администраторам и владельцу школы.
+          </p>
+        </div>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
+        >
+          Вернуться на рабочий стол
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 md:p-8 space-y-6 max-w-7xl mx-auto">

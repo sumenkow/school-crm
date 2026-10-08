@@ -25,7 +25,11 @@ export function triggerWhatsAppContact(params: ContactWorkflowParams): void {
 
   if (!cleanPhone) {
     if (typeof window !== 'undefined') {
-      alert('У контакта не указан номер телефона');
+      window.dispatchEvent(
+        new CustomEvent('crm-toast', {
+          detail: { type: 'error', message: 'У контакта не указан номер телефона' },
+        })
+      );
     }
     return;
   }
@@ -88,7 +92,11 @@ export function triggerTelegramContact(params: ContactWorkflowParams): void {
 
   if (!url) {
     if (typeof window !== 'undefined') {
-      alert('У контакта не указан Telegram или телефон');
+      window.dispatchEvent(
+        new CustomEvent('crm-toast', {
+          detail: { type: 'error', message: 'У контакта не указан Telegram или телефон' },
+        })
+      );
     }
     return;
   }

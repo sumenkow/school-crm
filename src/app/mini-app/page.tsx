@@ -22,6 +22,7 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
 
 // Types
 interface ChildInfo {
@@ -113,6 +114,7 @@ export default function TelegramMiniAppPage() {
 }
 
 function MiniAppMainContent() {
+  const toast = useToast();
   const searchParams = useSearchParams();
   const rawChatId = searchParams.get('chatId') || searchParams.get('telegram') || '';
   const initialLessonId = searchParams.get('lessonId') || '';
@@ -604,7 +606,7 @@ function MiniAppMainContent() {
                         if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
                           (window as any).Telegram.WebApp.close();
                         } else {
-                          alert('Вы можете отправить текстовое сообщение прямо в чате с ботом — администратор ответит вам в рабочее время!');
+                          toast.info('Вы можете отправить текстовое сообщение прямо в чате с ботом — администратор ответит вам в рабочее время!');
                         }
                       }}
                       className="w-full text-left p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm transition-all flex items-center justify-between group cursor-pointer"

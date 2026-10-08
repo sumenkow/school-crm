@@ -59,6 +59,7 @@ import { useToast } from '@/context/ToastContext';
 import { useRole, usePermissions } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { LinkParentModal } from '@/components/students/LinkParentModal';
 import { getTasksForStudent, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { getUpcomingPaymentForStudent } from '@/lib/data/upcomingPaymentsHelper';
@@ -701,6 +702,36 @@ export default function StudentDetailsPage() {
     }
 
     toast.success(`Ученик исключен из группы «${groupName}»`);
+  };
+
+  // Link Parent Modal state & handler (S-01)
+  const [isLinkParentModalOpen, setIsLinkParentModalOpen] = useState(false);
+
+  const handleParentLinked = (linkedParent: any) => {
+    const currentParents = student.parents || [];
+    let updatedParents = [...currentParents];
+    if (linkedParent.isPrimary) {
+      updatedParents = updatedParents.map((p) => ({ ...p, isPrimary: false }));
+    }
+    const idx = updatedParents.findIndex((p) => p.id === linkedParent.id);
+    if (idx >= 0) {
+      updatedParents[idx] = { ...updatedParents[idx], ...linkedParent };
+    } else {
+      updatedParents.push(linkedParent);
+    }
+
+    const updatedStudent: FullStudentData = {
+      ...student,
+      parents: updatedParents,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setStudent(updatedStudent);
+    saveStudentToStorage(updatedStudent);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: updatedStudent }));
+    window.dispatchEvent(new Event('crm-parents-changed'));
+    toast.success('Родитель успешно привязан к профилю ученика!');
+    setIsLinkParentModalOpen(false);
   };
 
   // Adult Student Conversion Modal state
@@ -1980,7 +2011,11 @@ export default function StudentDetailsPage() {
                   <Users className="h-4 w-4 text-blue-600" />
                   Родители и контактные лица ({(student.parents || []).length})
                 </h3>
-                <button className="text-xs font-semibold text-blue-600 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => setIsLinkParentModalOpen(true)}
+                  className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                >
                   + Привязать родителя
                 </button>
               </div>
@@ -4190,7 +4225,7 @@ export default function StudentDetailsPage() {
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Mail className="h-5 w-5 text-blue-600" />
-                ✉ Отправка выписки на e-mail
+                Отправка выписки на e-mail
               </h3>
               <button
                 type="button"
@@ -4279,6 +4314,15 @@ export default function StudentDetailsPage() {
           setStudent(updated);
           saveStudentToStorage(updated);
         }}
+      />
+
+      {/* Link Parent Modal (S-01) */}
+      <LinkParentModal
+        isOpen={isLinkParentModalOpen}
+        onClose={() => setIsLinkParentModalOpen(false)}
+        studentId={student.id}
+        studentName={`${student.firstName} ${student.lastName}`.trim()}
+        onParentLinked={handleParentLinked}
       />
     </div>
   );

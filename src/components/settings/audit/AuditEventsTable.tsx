@@ -76,7 +76,7 @@ export function AuditEventsTable({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
       {/* 1440x900 DESKTOP TABLE WITH EXACT COLUMN BUDGET */}
-      <div className="w-full overflow-x-hidden">
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse table-fixed">
           <thead>
             <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">

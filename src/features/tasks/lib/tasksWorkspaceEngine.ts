@@ -227,8 +227,10 @@ export function filterTasksByCriteria(
     (t) => Boolean(t) && typeof t === 'object' && t.status !== 'cancelled'
   );
 
-  // Directional tab
-  if (f.tab && f.tab !== 'all') {
+  // Directional tab & Role Boundary (SET-13)
+  if (f.userContext?.role === 'teacher') {
+    list = filterTasksByDirection(list, 'assigned_to_me', f.userContext);
+  } else if (f.tab && f.tab !== 'all') {
     list = filterTasksByDirection(list, f.tab, f.userContext);
   }
 

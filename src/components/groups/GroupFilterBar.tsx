@@ -26,6 +26,7 @@ export interface GroupFilterBarProps {
   viewMode: 'cards' | 'table';
   onViewModeChange: (m: 'cards' | 'table') => void;
   onCreateGroup: () => void;
+  canCreateGroup?: boolean;
 }
 
 export function GroupFilterBar({
@@ -49,6 +50,7 @@ export function GroupFilterBar({
   viewMode,
   onViewModeChange,
   onCreateGroup,
+  canCreateGroup = true,
 }: GroupFilterBarProps) {
   return (
     <div className="space-y-4 w-full min-w-0">
@@ -92,14 +94,16 @@ export function GroupFilterBar({
           </div>
 
           {/* Primary Action: Create Group */}
-          <button
-            type="button"
-            onClick={onCreateGroup}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer"
-          >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span>Создать группу</span>
-          </button>
+          {canCreateGroup && (
+            <button
+              type="button"
+              onClick={onCreateGroup}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span>Создать группу</span>
+            </button>
+          )}
         </div>
       </div>
 

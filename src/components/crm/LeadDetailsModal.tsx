@@ -883,7 +883,7 @@ export function LeadDetailsModal({
                       <span>{lead.trialDate ? 'Изменить запись' : 'Записать'}</span>
                     </button>
                     <Link
-                      href="/schedule"
+                      href="/calendar"
                       className="py-1.5 px-2.5 rounded-lg border border-purple-200 bg-white hover:bg-purple-50 text-purple-700 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
                     >
                       <ExternalLink className="w-3 h-3" />

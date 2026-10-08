@@ -16,8 +16,9 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData, LessonTimelineEvent } from '@/lib/data/mockData';
+import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData, FullTeacherData, LessonTimelineEvent } from '@/lib/data/mockData';
 import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage';
+import { getStoredTeachers } from '@/lib/data/teacherStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
@@ -171,6 +172,9 @@ export default function CalendarPage() {
   const [lessons, setLessons] = useState<FullLessonData[]>(() => {
     return typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
   });
+  const [teachers, setTeachers] = useState<FullTeacherData[]>(() => {
+    return typeof window !== 'undefined' ? getStoredTeachers() : INITIAL_TEACHERS;
+  });
   const [selectedLessonForDesktop, setSelectedLessonForDesktop] = useState<FullLessonData | null>(null);
   const [selectedLessonForDrawer, setSelectedLessonForDrawer] = useState<FullLessonData | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -213,8 +217,13 @@ export default function CalendarPage() {
     const handleSync = () => {
       setLessons(getStoredLessons());
     };
+    const handleTeacherSync = () => {
+      setTeachers(getStoredTeachers());
+    };
     handleSync();
+    handleTeacherSync();
     window.addEventListener('crm-lessons-changed', handleSync);
+    window.addEventListener('crm-teachers-changed', handleTeacherSync);
 
     try {
       const supabase = createClient();
@@ -250,11 +259,13 @@ export default function CalendarPage() {
 
       return () => {
         window.removeEventListener('crm-lessons-changed', handleSync);
+        window.removeEventListener('crm-teachers-changed', handleTeacherSync);
         supabase.removeChannel(channel);
       };
     } catch {
       return () => {
         window.removeEventListener('crm-lessons-changed', handleSync);
+        window.removeEventListener('crm-teachers-changed', handleTeacherSync);
       };
     }
   }, []);
@@ -352,6 +363,12 @@ export default function CalendarPage() {
       );
     });
 
+    if (hasConflict) {
+      toast.error(`Перенос заблокирован: коллизия расписания! Преподаватель или группа уже заняты в это время.`);
+      setDraggedLessonId(null);
+      return;
+    }
+
     const now = new Date();
     const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -363,7 +380,7 @@ export default function CalendarPage() {
         author: 'Администратор',
         role: 'Администратор',
         type: 'rescheduled',
-        comment: `Перенос занятия (Drag & Drop) на ${targetDateStr} (${targetStartTime}–${targetEndTime})${hasConflict ? ' [Внимание: пересечение расписания]' : ''}`,
+        comment: `Перенос занятия (Drag & Drop) на ${targetDateStr} (${targetStartTime}–${targetEndTime})`,
       },
     ];
 
@@ -403,11 +420,7 @@ export default function CalendarPage() {
     window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
     setDraggedLessonId(null);
 
-    if (hasConflict) {
-      toast.info(`Занятие перенесено на ${targetDateStr} ${targetStartTime}, но обнаружено пересечение по времени`);
-    } else {
-      toast.success(`Занятие «${targetLesson.groupName.split('(')[0].trim()}» перенесено на ${targetDateStr}, ${targetStartTime}–${targetEndTime}`);
-    }
+    toast.success(`Занятие «${targetLesson.groupName.split('(')[0].trim()}» перенесено на ${targetDateStr}, ${targetStartTime}–${targetEndTime}`);
   };
 
   const todayStr = getTodayDateStr();
@@ -564,7 +577,7 @@ export default function CalendarPage() {
   };
 
   const teachersList = useMemo(() => {
-    return INITIAL_TEACHERS.map((teacher, idx) => {
+    return teachers.map((teacher, idx) => {
       const initials = teacher.name
         .trim()
         .split(' ')
@@ -575,7 +588,7 @@ export default function CalendarPage() {
 
       const bg = teacherColorMap[teacher.id] || (idx % 4 === 0 ? 'bg-rose-500' : idx % 4 === 1 ? 'bg-amber-500' : idx % 4 === 2 ? 'bg-emerald-500' : 'bg-indigo-500');
 
-      const count = currentRangeLessons.filter((l) => l.teacherId === teacher.id).length;
+      const count = currentRangeLessons.filter((l) => l.teacherId === teacher.id || l.teacherName === teacher.name).length;
 
       return {
         id: teacher.id,
@@ -585,7 +598,7 @@ export default function CalendarPage() {
         count,
       };
     });
-  }, [currentRangeLessons]);
+  }, [teachers, currentRangeLessons]);
 
   const nowHours = now.getHours();
   const nowMinutes = now.getMinutes();

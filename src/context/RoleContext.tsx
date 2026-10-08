@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { permissions, PermissionsMap, getPermissionsForRole, AppRole } from '@/lib/auth/permissions';
+import { getRolePermissions } from '@/lib/data/rolePermissions';
 import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 export interface UserProfileData {
@@ -370,7 +371,24 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   };
 
-  const currentPermissions = React.useMemo(() => getPermissionsForRole(role as AppRole), [role]);
+  const [rolePermissionsMatrix, setRolePermissionsMatrix] = React.useState<Record<string, Record<string, boolean>> | undefined>(() =>
+    typeof window !== 'undefined' ? getRolePermissions() : undefined
+  );
+
+  React.useEffect(() => {
+    const handlePermissionsChanged = () => {
+      setRolePermissionsMatrix(getRolePermissions());
+    };
+    window.addEventListener('crm-permissions-changed', handlePermissionsChanged);
+    return () => {
+      window.removeEventListener('crm-permissions-changed', handlePermissionsChanged);
+    };
+  }, []);
+
+  const currentPermissions = React.useMemo(
+    () => getPermissionsForRole(role as AppRole, rolePermissionsMatrix),
+    [role, rolePermissionsMatrix]
+  );
 
   return (
     <RoleContext.Provider

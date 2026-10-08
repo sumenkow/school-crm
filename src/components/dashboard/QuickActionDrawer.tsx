@@ -227,11 +227,11 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
                </div>
                <div className="bg-emerald-50 p-3 rounded-lg flex flex-col items-center justify-center text-center">
                   <p className="text-[10px] text-emerald-600 font-bold uppercase">Retention</p>
-                  <p className="text-lg font-black text-emerald-800">94%</p>
+                  <p className="text-lg font-black text-emerald-800">{data.retention || data.attendanceRate || '—'}</p>
                </div>
                <div className="bg-purple-50 p-3 rounded-lg flex flex-col items-center justify-center text-center">
                   <p className="text-[10px] text-purple-600 font-bold uppercase">Пробные</p>
-                  <p className="text-lg font-black text-purple-800">8/10</p>
+                  <p className="text-lg font-black text-purple-800">{data.trials || '—'}</p>
                </div>
             </div>
 

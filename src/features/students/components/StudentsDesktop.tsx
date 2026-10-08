@@ -473,13 +473,22 @@ export function StudentsDesktop({
                     {student.parentId || student.parentName ? (
                       <div className="flex items-center justify-between gap-1.5 min-w-0">
                         <div className="min-w-0 flex-1">
-                          <Link
-                            href={student.parentId ? `/parents/${student.parentId}` : '#'}
-                            className="text-xs font-semibold text-slate-800 hover:text-blue-600 truncate block transition-colors"
-                            title={parentCleanName || 'Представитель'}
-                          >
-                            {parentCleanName || 'Представитель'}
-                          </Link>
+                          {student.parentId ? (
+                            <Link
+                              href={`/parents/${student.parentId}`}
+                              className="text-xs font-semibold text-slate-800 hover:text-blue-600 truncate block transition-colors"
+                              title={parentCleanName || 'Представитель'}
+                            >
+                              {parentCleanName || 'Представитель'}
+                            </Link>
+                          ) : (
+                            <span
+                              className="text-xs font-semibold text-slate-800 truncate block"
+                              title={parentCleanName || 'Представитель'}
+                            >
+                              {parentCleanName || 'Представитель'}
+                            </span>
+                          )}
                           <div
                             className="text-[11px] text-slate-600 font-mono whitespace-nowrap mt-0.5"
                             title={formatPhone(student.parentPhone)}

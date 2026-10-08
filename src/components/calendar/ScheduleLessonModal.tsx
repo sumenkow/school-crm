@@ -26,7 +26,9 @@ import {
   INITIAL_TEACHERS,
   FullStudentData,
   FullGroupData,
+  FullTeacherData,
 } from '@/lib/data/mockData';
+import { getStoredTeachers } from '@/lib/data/teacherStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { saveLessonToStorage, getStoredLessons } from '@/lib/data/lessonStorage';
@@ -147,7 +149,7 @@ export function ScheduleLessonModal({
   const [groups, setGroups] = useState<FullGroupData[]>(() =>
     typeof window !== 'undefined' ? getStoredGroups() : []
   );
-  const [groupId, setGroupId] = useState(defaultGroupId || '1');
+  const [groupId, setGroupId] = useState(defaultGroupId || '');
   const [showEnrolledStudents, setShowEnrolledStudents] = useState(false);
 
   // Individual Flow states (F17)
@@ -160,8 +162,23 @@ export function ScheduleLessonModal({
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   // Teacher State & Role Locking (F14)
-  const [teacherId, setTeacherId] = useState('t1');
-  const [teacherName, setTeacherName] = useState('Мария Иванова');
+  const [teachers, setTeachers] = useState<FullTeacherData[]>(() =>
+    typeof window !== 'undefined' ? getStoredTeachers() : INITIAL_TEACHERS
+  );
+  const [teacherId, setTeacherId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const storedT = getStoredTeachers();
+      return storedT[0]?.id || 't1';
+    }
+    return 't1';
+  });
+  const [teacherName, setTeacherName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const storedT = getStoredTeachers();
+      return storedT[0]?.name || '';
+    }
+    return '';
+  });
 
   // Schedule & Timing states (F18)
   const [date, setDate] = useState(initialDate || new Date().toISOString().slice(0, 10));
@@ -266,21 +283,24 @@ export function ScheduleLessonModal({
       setCreatedLessonData(null);
 
       // Handle Teacher Role Locking (F14)
+      const storedTeachers = getStoredTeachers();
+      setTeachers(storedTeachers);
+
       if (isTeacher) {
-        const found = INITIAL_TEACHERS.find(
+        const found = storedTeachers.find(
           (t) =>
             t.name.toLowerCase() === (userName || '').toLowerCase() ||
             (initialTeacherId && t.id === initialTeacherId)
         );
-        const lockedId = found ? found.id : initialTeacherId || 't1';
-        const lockedName = found ? found.name : userName || 'Мария Иванова';
+        const lockedId = found ? found.id : initialTeacherId || storedTeachers[0]?.id || 't1';
+        const lockedName = found ? found.name : userName || storedTeachers[0]?.name || '';
         setTeacherId(lockedId);
         setTeacherName(lockedName);
         setOnlineUrl(getTeacherZoomUrl(lockedName));
       } else {
-        const tId = initialTeacherId || 't1';
+        const tId = initialTeacherId || storedTeachers[0]?.id || 't1';
         setTeacherId(tId);
-        const found = INITIAL_TEACHERS.find((t) => t.id === tId);
+        const found = storedTeachers.find((t) => t.id === tId) || storedTeachers[0];
         if (found) {
           setTeacherName(found.name);
           setOnlineUrl(getTeacherZoomUrl(found.name));
@@ -298,7 +318,7 @@ export function ScheduleLessonModal({
         setSelectedStudent(null);
       }
 
-      const targetGroupId = defaultGroupId || (stored.length > 0 ? stored[0].id : '1');
+      const targetGroupId = defaultGroupId || (stored.length > 0 ? stored[0].id : '');
       setGroupId(targetGroupId);
       applyGroupDefaults(targetGroupId, stored, initialStartTime);
 
@@ -329,13 +349,13 @@ export function ScheduleLessonModal({
     return (
       groups.find((g) => g.id === groupId) ||
       groups[0] || {
-        id: '1',
-        name: 'English B1 Teens',
-        courseName: 'Английский язык',
-        teacherId: 't1',
-        teacherName: 'Мария Иванова',
+        id: '',
+        name: '',
+        courseName: '',
+        teacherId: '',
+        teacherName: '',
         students: [],
-        schedule: 'Пн, Чт • 18:45–20:00',
+        schedule: '',
         capacity: 8,
       }
     );
@@ -365,7 +385,7 @@ export function ScheduleLessonModal({
   const handleTeacherChange = (newTeacherId: string) => {
     if (isTeacher) return; // Strict role lock
     setTeacherId(newTeacherId);
-    const found = INITIAL_TEACHERS.find((t) => t.id === newTeacherId);
+    const found = teachers.find((t) => t.id === newTeacherId);
     if (found) {
       setTeacherName(found.name);
       setOnlineUrl(getTeacherZoomUrl(found.name));
@@ -398,7 +418,7 @@ export function ScheduleLessonModal({
     if (st.groups && st.groups.length > 0) {
       const g = st.groups[0];
       if (!isTeacher && g.teacherName) {
-        const found = INITIAL_TEACHERS.find(
+        const found = teachers.find(
           (t) => t.name.toLowerCase() === g.teacherName.toLowerCase()
         );
         if (found) {
@@ -571,8 +591,8 @@ export function ScheduleLessonModal({
           lessonType === 'group'
             ? selectedGroup.courseName
             : selectedStudent?.groups?.[0]?.courseName || 'Индивидуальный курс',
-        teacherId: teacherId || 't1',
-        teacherName: teacherName || 'Мария Иванова',
+        teacherId: teacherId || teachers[0]?.id || 't1',
+        teacherName: teacherName || teachers[0]?.name || '',
         date,
         dateFormatted,
         dayOfWeek,
@@ -930,7 +950,7 @@ export function ScheduleLessonModal({
                   onChange={(e) => handleTeacherChange(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 font-semibold text-slate-800 shadow-2xs cursor-pointer"
                 >
-                  {INITIAL_TEACHERS.map((t) => (
+                  {teachers.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.role || 'Преподаватель'})
                     </option>

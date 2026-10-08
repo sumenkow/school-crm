@@ -200,7 +200,7 @@ export function PermissionsMatrixTable({ onOpenRoleDrawer }: PermissionsMatrixTa
                                   type="button"
                                   onClick={() => handleTogglePermission(roleId, item.id)}
                                   className={cn(
-                                    'inline-flex items-center justify-center h-7 w-7 rounded-lg border transition-all',
+                                    'inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg border transition-all cursor-pointer',
                                     isGranted
                                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                       : 'bg-slate-50 text-slate-300 border-slate-200 hover:border-slate-300 hover:text-slate-400'

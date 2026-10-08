@@ -41,6 +41,8 @@ import {
 } from '@/lib/data/studentStorage';
 import { parsePaymentAmountEUR } from '@/lib/data/currencyHelper';
 import { AddChildModal } from '@/components/parents/AddChildModal';
+import { getStoredParents, saveParentToStorage } from '@/lib/data/parentStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { cn, isEntityNew } from '@/lib/utils';
 
 const WhatsAppIcon = ({ className = 'w-3.5 h-3.5' }: { className?: string }) => (
@@ -266,7 +268,7 @@ function getMergedParents(): ParentRecord[] {
       parentMap.set(key, {
         id: rawParent.id,
         name: rawParent.name,
-        phone: rawParent.phone || '+7 (999) 000-00-00',
+        phone: rawParent.phone || '',
         telegram: rawParent.telegram,
         whatsapp: rawParent.whatsapp,
         email: rawParent.email,
@@ -315,7 +317,7 @@ function getMergedParents(): ParentRecord[] {
         addOrMergeParent({
           id: pr.id || `pr_${st.id}`,
           name: fullName,
-          phone: pr.phone || '+7 (999) 000-00-00',
+          phone: pr.phone || '',
           telegram: pr.telegram,
           whatsapp: pr.whatsapp,
           email: pr.email,
@@ -333,7 +335,15 @@ function getMergedParents(): ParentRecord[] {
     }
   }
 
-  // 2. Only fallback seed from INITIAL_PARENTS if storage was empty
+  // 2. Seed standalone parents from parentStorage (persisted childless or created parents)
+  if (typeof window !== 'undefined') {
+    const standaloneParents = getStoredParents();
+    for (const sp of standaloneParents) {
+      addOrMergeParent(sp);
+    }
+  }
+
+  // 3. Only fallback seed from INITIAL_PARENTS if storage was empty
   if (parentMap.size === 0) {
     for (const init of INITIAL_PARENTS) {
       addOrMergeParent({ ...init });
@@ -621,7 +631,8 @@ export default function ParentsPage() {
   };
 
   const handleCreateParent = (created: ParentRecord) => {
-    setParents((prev) => [created, ...prev]);
+    saveParentToStorage(created);
+    setParents((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
     success(`Контакт ${created.name} добавлен в базу`);
     setIsCreateModalOpen(false);
   };
@@ -993,7 +1004,7 @@ export default function ParentsPage() {
                           <div className="space-y-2">
                             {p.children.map((c) => {
                               const groups = cleanGroupName(c.group);
-                              const mainGroup = groups[0] || 'English B1 Teens';
+                              const mainGroup = groups[0] || '—';
                               const hasExtra = groups.length > 1;
                               const popoverKey = `${p.id}_${c.id}`;
 
@@ -1705,7 +1716,8 @@ function CreateParentModal({
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [newChildFirstName, setNewChildFirstName] = useState('');
   const [newChildLastName, setNewChildLastName] = useState('');
-  const [newChildGroup, setNewChildGroup] = useState('English B1 Teens');
+  const [newChildGroup, setNewChildGroup] = useState('');
+  const [availableGroups, setAvailableGroups] = useState<any[]>([]);
 
   const [availableStudents, setAvailableStudents] = useState<FullStudentData[]>([]);
 
@@ -1714,6 +1726,11 @@ function CreateParentModal({
     setAvailableStudents(list);
     if (list.length > 0) {
       setSelectedStudentId(list[0].id);
+    }
+    const grps = getStoredGroups();
+    setAvailableGroups(grps);
+    if (grps.length > 0) {
+      setNewChildGroup(grps[0].name);
     }
   }, []);
 
@@ -1757,7 +1774,7 @@ function CreateParentModal({
           id: newParentId,
           firstName: prFirstName,
           lastName: prLastName,
-          phone: phone || '+7 (999) 000-00-00',
+          phone: phone ? phone.trim() : '',
           telegram: telegram || undefined,
           whatsapp: whatsapp || undefined,
           email: email || undefined,
@@ -1796,7 +1813,7 @@ function CreateParentModal({
             id: newParentId,
             firstName: prFirstName,
             lastName: prLastName,
-            phone: phone || '+7 (999) 000-00-00',
+            phone: phone ? phone.trim() : '',
             telegram: telegram || undefined,
             whatsapp: whatsapp || undefined,
             email: email || undefined,
@@ -1880,6 +1897,7 @@ function CreateParentModal({
       isDeleted: false,
     };
 
+    saveParentToStorage(created);
     onCreate(created);
     window.dispatchEvent(new Event('crm-parents-changed'));
     window.dispatchEvent(new Event('crm-students-changed'));
@@ -2118,10 +2136,15 @@ function CreateParentModal({
                     onChange={(e) => setNewChildGroup(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:outline-none"
                   >
-                    <option value="English B1 Teens">English B1 Teens</option>
-                    <option value="Robotics Junior">Robotics Junior</option>
-                    <option value="Kids Math Safari">Kids Math Safari</option>
-                    <option value="Kids English A1">Kids English A1</option>
+                    {availableGroups.length > 0 ? (
+                      availableGroups.map((g) => (
+                        <option key={g.id} value={g.name}>
+                          {g.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">— Нет доступных групп</option>
+                    )}
                   </select>
                 </div>
               </div>

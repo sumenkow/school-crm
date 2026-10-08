@@ -62,35 +62,70 @@ export function HeaderGreeting({
         </p>
       </div>
 
-      {/* Compact Month Switcher */}
-      <div className="flex items-center gap-1 bg-white border border-slate-200/90 rounded-lg px-2 py-0.5 shadow-2xs">
-        <button
-          type="button"
-          onClick={onPrevMonth}
-          className="p-1 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-          title="Предыдущий месяц"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onResetMonth}
-          className={cn(
-            "text-xs font-bold px-1 select-none transition-colors cursor-pointer",
-            isCurrentMonth ? "text-slate-800" : "text-blue-600 hover:underline"
-          )}
-          title={isCurrentMonth ? undefined : "Вернуться к текущему месяцу"}
-        >
-          {currentMonthName} {currentYear}
-        </button>
-        <button
-          type="button"
-          onClick={onNextMonth}
-          className="p-1 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-          title="Следующий месяц"
-        >
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+      {/* Action Buttons & Month Switcher */}
+      <div className="flex items-center gap-2">
+        {onOpenCreateLead && (
+          <button
+            type="button"
+            onClick={onOpenCreateLead}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-2xs transition-colors cursor-pointer"
+          >
+            <span>+ Новый лид</span>
+          </button>
+        )}
+
+        {onOpenReport && (
+          <button
+            type="button"
+            onClick={onOpenReport}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200/90 rounded-lg hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+            title="Отчет по итогам дня"
+          >
+            <span>Итоги дня</span>
+          </button>
+        )}
+
+        {onOpenExecutiveReport && (role === 'owner' || role === 'admin') && (
+          <button
+            type="button"
+            onClick={onOpenExecutiveReport}
+            className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 shadow-2xs transition-colors cursor-pointer"
+            title="Управленческий отчет"
+          >
+            <span>Отчет руководителя</span>
+          </button>
+        )}
+
+        {/* Compact Month Switcher */}
+        <div className="flex items-center gap-1 bg-white border border-slate-200/90 rounded-lg px-2 py-0.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={onPrevMonth}
+            className="p-1 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            title="Предыдущий месяц"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onResetMonth}
+            className={cn(
+              "text-xs font-bold px-1 select-none transition-colors cursor-pointer",
+              isCurrentMonth ? "text-slate-800" : "text-blue-600 hover:underline"
+            )}
+            title={isCurrentMonth ? undefined : "Вернуться к текущему месяцу"}
+          >
+            {currentMonthName} {currentYear}
+          </button>
+          <button
+            type="button"
+            onClick={onNextMonth}
+            className="p-1 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            title="Следующий месяц"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );

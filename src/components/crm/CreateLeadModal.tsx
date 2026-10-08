@@ -6,6 +6,7 @@ import { X, Phone, Check, Zap, UserPlus, School, GraduationCap } from 'lucide-re
 import { FullLeadData, INITIAL_LEADS, splitFullName } from '@/lib/data/mockData';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/context/ToastContext';
 
 interface CreateLeadModalProps {
   isOpen: boolean;
@@ -116,6 +117,8 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     return () => window.removeEventListener('close-all-modals', handleCloseAll);
   }, [onClose]);
 
+  const toast = useToast();
+
   if (!isOpen || !mounted) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -126,11 +129,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     const effectiveStudentName = studentFullName.trim() || parentFullName.trim();
 
     if (!effectiveName) {
-      alert('Пожалуйста, укажите имя клиента или учащегося');
+      toast.error('Пожалуйста, укажите имя клиента или учащегося');
       return;
     }
     if ((!contact || contact.trim() === '+') && !telegram.trim()) {
-      alert('Укажите контактный телефон или Telegram для связи');
+      toast.error('Укажите контактный телефон или Telegram для связи');
       return;
     }
 
@@ -222,6 +225,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
       console.error('Failed to schedule background task for lead', err);
     }
 
+    toast.success('Лид успешно добавлен в воронку');
     onCreated(createdLead);
     onClose();
   };

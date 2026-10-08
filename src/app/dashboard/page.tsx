@@ -54,6 +54,7 @@ import { INITIAL_LESSONS, FullLessonData, INITIAL_PAYMENTS, FullPaymentData, INI
 import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 import { calculateMultiCurrencyTotals, getEurRubRate } from '@/lib/data/currencyHelper';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { updateUnifiedTaskStatus } from '@/lib/data/taskManager';
@@ -213,6 +214,11 @@ function SmartActionHub() {
     }
   }
 
+  const debtorStudent = firstOverdue && typeof window !== 'undefined'
+    ? getStoredStudents().find((s) => s.id === firstOverdue.studentId)
+    : null;
+  const debtorPhone = debtorStudent?.phone || debtorStudent?.parentPhone || '';
+
   const debtTask = firstOverdue
     ? {
         id: 'task_debt_1',
@@ -223,8 +229,8 @@ function SmartActionHub() {
         deadline: firstOverdue.paymentDate || 'Срочно',
         subtitle: firstOverdue.parentName ? `Родитель: ${firstOverdue.parentName}` : 'Счет на оплату',
         highlight: debtHighlight,
-        phone: '+79992345678',
-        waUrl: 'https://wa.me/79992345678?text=Здравствуйте!%20Напоминаем%20об%20оплате%20абонемента%20в%20школе.',
+        phone: debtorPhone || undefined,
+        waUrl: debtorPhone ? `https://wa.me/${debtorPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Здравствуйте! Напоминаем об оплате обучения ученика ${firstOverdue.studentName}.`)}` : undefined,
         profileUrl: `/students/${firstOverdue.studentId}`,
         actionLabel: `Открыть карточку ученика (${firstOverdue.studentName})`,
         description: 'Истек срок действия абонемента. Занятия посещаются регулярно, требуется согласовать оплату нового периода.',
@@ -283,7 +289,8 @@ function SmartActionHub() {
         description: 'Все входящие обращения оперативно обработаны менеджерами.',
       };
 
-  const trialLessons = INITIAL_LESSONS.filter((l) => (l.trialStudentsCount && l.trialStudentsCount > 0) || l.students.some((s) => s.isTrial));
+  const allLessons = typeof window !== 'undefined' ? getStoredLessons() : INITIAL_LESSONS;
+  const trialLessons = allLessons.filter((l) => (l.trialStudentsCount && l.trialStudentsCount > 0) || l.students.some((s) => s.isTrial));
   const totalTrialCount = trialLessons.reduce((sum, l) => sum + (l.trialStudentsCount || l.students.filter((s) => s.isTrial).length || 1), 0);
 
   interface UrgentActionTask {

@@ -8,6 +8,7 @@ import { useRole } from '@/context/RoleContext';
 import { GroupScheduleBuilder, ScheduleBuilderState } from '@/components/groups/GroupScheduleBuilder';
 import { generateLessonsForGroupSchedule } from '@/lib/data/lessonStorage';
 import { CoursesSettingsModal, CourseSettingItem, deduplicateCourseItems } from '@/components/settings/CoursesSettingsModal';
+import { useToast } from '@/context/ToastContext';
 
 interface EditGroupModalProps {
   group: FullGroupData | null;
@@ -17,6 +18,7 @@ interface EditGroupModalProps {
 }
 
 export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupModalProps) {
+  const toast = useToast();
   const { role, isOwner } = useRole();
   const canManageCourses = isOwner || role === 'owner' || role === 'developer';
 
@@ -125,7 +127,7 @@ export function EditGroupModal({ group, isOpen, onClose, onSaved }: EditGroupMod
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Пожалуйста, укажите название группы');
+      toast.error('Пожалуйста, укажите название группы');
       return;
     }
 

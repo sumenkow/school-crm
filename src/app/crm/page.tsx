@@ -41,6 +41,7 @@ import { getEurRubRate, convertEurToRub, convertRubToEur } from '@/lib/data/curr
 import { CreateLeadModal } from '@/components/crm/CreateLeadModal';
 import { LeadDetailsModal, WhatsAppIcon, TelegramIcon } from '@/components/crm/LeadDetailsModal';
 import { ConvertLeadModal } from '@/components/crm/ConvertLeadModal';
+import { PipelineSettingsModal } from '@/components/crm/PipelineSettingsModal';
 import { softDeleteLead, restoreLead, getStoredLeads, syncLeadToSupabase, saveLeadToStorage } from '@/lib/data/leadStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -91,6 +92,10 @@ export default function CrmPage() {
   const [mobileStageFilter, setMobileStageFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [directionFilter, setDirectionFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [assignedFilter, setAssignedFilter] = useState('all');
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const [isPipelineSettingsOpen, setIsPipelineSettingsOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedLeadForDrawer, setSelectedLeadForDrawer] = useState<FullLeadData | null>(null);
   const [leadForConvertModal, setLeadForConvertModal] = useState<FullLeadData | null>(null);
@@ -376,8 +381,10 @@ export default function CrmPage() {
         contactStr.includes(search) ||
         studentStr.includes(search);
       const matchesDirection = directionFilter === 'all' || lead.directionOrCourse === directionFilter;
+      const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter;
+      const matchesAssigned = assignedFilter === 'all' || lead.assignedTo === assignedFilter;
 
-      if (!matchesSearch || !matchesDirection) return false;
+      if (!matchesSearch || !matchesDirection || !matchesSource || !matchesAssigned) return false;
 
       // Segment filter
       if (tabFilter === 'active' && segmentFilter !== 'all') {
@@ -398,7 +405,7 @@ export default function CrmPage() {
 
       return true;
     });
-  }, [tabFilter, activeLeads, deletedLeads, searchTerm, directionFilter, segmentFilter]);
+  }, [tabFilter, activeLeads, deletedLeads, searchTerm, directionFilter, sourceFilter, assignedFilter, segmentFilter]);
 
   // Calculate total potential volume of active funnel
   const funnelTotalEur = useMemo(() => {
@@ -463,7 +470,7 @@ export default function CrmPage() {
 
     for (const l of displayedLeads) {
       if (!l) continue;
-      const key = (l.status === 'no_response' ? 'lost' : l.status) as string;
+      const key = (l.status === 'no_response' ? 'lost' : (l.status as string) === 'enrolled' ? 'paid' : l.status) as string;
       if (!stats[key]) stats[key] = { count: 0, sumEur: 0, actionsCount: 0 };
       stats[key].count += 1;
       stats[key].sumEur += getCachedLeadEur(l, rate);
@@ -487,7 +494,7 @@ export default function CrmPage() {
           У вас установлена роль Преподавателя. Раздел CRM и база потенциальных клиентов доступны только администраторам и владельцу школы.
         </p>
         <Link
-          href="/schedule"
+          href="/calendar"
           className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 transition-colors"
         >
           Перейти к расписанию
@@ -668,6 +675,7 @@ export default function CrmPage() {
 
           <button
             type="button"
+            onClick={() => setIsPipelineSettingsOpen(true)}
             title="Настройки воронки"
             className="w-9 h-9 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
           >
@@ -800,14 +808,77 @@ export default function CrmPage() {
 
           <button
             type="button"
-            onClick={() => setDirectionFilter('all')}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            onClick={() => setIsAdvancedFiltersOpen((prev) => !prev)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
+              isAdvancedFiltersOpen || sourceFilter !== 'all' || assignedFilter !== 'all'
+                ? 'border-blue-200 bg-blue-50 text-blue-700 font-bold'
+                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+            )}
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
             <span>Фильтры</span>
+            {(sourceFilter !== 'all' || assignedFilter !== 'all') && (
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+            )}
           </button>
         </div>
       </div>
+
+      {/* Advanced Filters Panel */}
+      {isAdvancedFiltersOpen && (
+        <div className="flex flex-wrap items-center gap-3 bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
+          {/* Source Filter */}
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="font-semibold text-slate-500">Источник:</span>
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="all">Все источники</option>
+              <option value="Сайт">Сайт</option>
+              <option value="Заявка с сайта">Заявка с сайта</option>
+              <option value="Telegram">Telegram</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="ВКонтакте">ВКонтакте</option>
+              <option value="Рекомендация">Рекомендация</option>
+              <option value="Реклама Я.Директ">Реклама Я.Директ</option>
+            </select>
+          </div>
+
+          {/* Assigned Filter */}
+          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="font-semibold text-slate-500">Ответственный:</span>
+            <select
+              value={assignedFilter}
+              onChange={(e) => setAssignedFilter(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="all">Все ответственные</option>
+              <option value="Анна Смирнова">Анна Смирнова</option>
+              <option value="Елена Менеджер">Елена Менеджер</option>
+              <option value="Анна Администратор">Анна Администратор</option>
+              <option value="Анастасия (Админ)">Анастасия (Админ)</option>
+            </select>
+          </div>
+
+          {(directionFilter !== 'all' || sourceFilter !== 'all' || assignedFilter !== 'all' || searchTerm) && (
+            <button
+              type="button"
+              onClick={() => {
+                setDirectionFilter('all');
+                setSourceFilter('all');
+                setAssignedFilter('all');
+                setSearchTerm('');
+              }}
+              className="text-xs font-medium text-rose-600 hover:text-rose-800 hover:underline ml-auto cursor-pointer"
+            >
+              Сбросить фильтры
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Mobile Horizontal Stage Filter */}
       {tabFilter === 'active' && (
@@ -825,7 +896,7 @@ export default function CrmPage() {
             Все ({displayedLeads.length})
           </button>
           {columns.map((col) => {
-            const count = displayedLeads.filter((l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response')).length;
+            const count = displayedLeads.filter((l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response') || (col.key === 'paid' && (l.status as string) === 'enrolled')).length;
             return (
               <button
                 key={col.key}
@@ -907,7 +978,7 @@ export default function CrmPage() {
           {(() => {
             const mobileLeads = mobileStageFilter === 'all'
               ? displayedLeads
-              : displayedLeads.filter((l) => l.status === mobileStageFilter || (mobileStageFilter === 'lost' && (l.status as string) === 'no_response'));
+              : displayedLeads.filter((l) => l.status === mobileStageFilter || (mobileStageFilter === 'lost' && (l.status as string) === 'no_response') || (mobileStageFilter === 'paid' && (l.status as string) === 'enrolled'));
 
             if (mobileLeads.length === 0) {
               return (
@@ -941,7 +1012,7 @@ export default function CrmPage() {
 
           const renderColumn = (col: (typeof columns)[number]) => {
             const colLeads = displayedLeads.filter(
-              (l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response')
+              (l) => l.status === col.key || (col.key === 'lost' && (l.status as string) === 'no_response') || (col.key === 'paid' && (l.status as string) === 'enrolled')
             );
             const stats = stageStats[col.key] || { count: 0, sumEur: 0, actionsCount: 0 };
             const isOver = dragOverColKey === col.key;
@@ -1240,6 +1311,12 @@ export default function CrmPage() {
           </div>
         </div>
       )}
+
+      {/* Pipeline Settings Modal */}
+      <PipelineSettingsModal
+        isOpen={isPipelineSettingsOpen}
+        onClose={() => setIsPipelineSettingsOpen(false)}
+      />
     </div>
   );
 }
@@ -1428,6 +1505,12 @@ function LeadCard({
 
         {/* Direction tag & Source */}
         <div className="mt-2 flex items-center gap-1.5 text-xs flex-wrap">
+          {(lead.status as string) === 'enrolled' && (
+            <span className="bg-emerald-50 text-emerald-700 font-bold text-[11px] px-2 py-0.5 rounded-md border border-emerald-200 truncate flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3 text-emerald-600 inline shrink-0" />
+              Зачислен
+            </span>
+          )}
           <span className="bg-purple-50 text-purple-700 font-semibold text-[11px] px-2.5 py-0.5 rounded-md border border-purple-100 truncate">
             {lead.directionOrCourse || 'Курс не указан'}
           </span>
@@ -1457,6 +1540,10 @@ function LeadCard({
                 rel="noreferrer"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!lead.contact) {
+                    toast.error('У контакта не указан номер телефона');
+                    return;
+                  }
                   triggerWhatsAppContact({
                     phone: lead.contact,
                     leadId: lead.id,
@@ -1477,6 +1564,10 @@ function LeadCard({
                 rel="noreferrer"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!lead.telegram && !lead.contact) {
+                    toast.error('У контакта не указан Telegram или телефон');
+                    return;
+                  }
                   triggerTelegramContact({
                     telegram: lead.telegram,
                     phone: lead.contact,

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useParams } from 'next/navigation';
 import { INITIAL_STUDENTS, FullStudentData, TimelineInteraction, FullTaskData, FullLessonData } from '@/lib/data/mockData';
-import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts } from '@/lib/data/studentStorage';
+import { getStoredStudents, saveStudentToStorage, reconcileAllStudentDepositsAndDebts, getStudentById } from '@/lib/data/studentStorage';
+import { getStoredParents } from '@/lib/data/parentStorage';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { enrollStudentToGroup, getStoredGroups } from '@/lib/data/groupStorage';
 import { INITIAL_GROUPS } from '@/lib/data/mockData';
@@ -119,10 +120,10 @@ export default function ParentDetailsPage() {
     const linkedChildren = uniqueStudents.map((s) => ({
       id: s.id,
       name: `${s.firstName} ${s.lastName}`,
-      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
-      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
-      teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : 'Возраст не указан',
+      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Без группы',
+      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Курс не указан',
+      teacher: s.groups[0]?.teacherName || '—',
       groups: s.groups || [],
       status: s.status,
       attendance: s.attendanceStats?.attendanceRate || '100%',
@@ -134,38 +135,24 @@ export default function ParentDetailsPage() {
       matchedStudents.some((s) => isEntityNew(s.createdAt, (s as any).isNewUntil))
     );
 
+    const storedParent = typeof window !== 'undefined' ? getStoredParents().find((p) => p.id === parentId || isMatchingParent(p as any)) : undefined;
+
     return {
       id: parentId,
-      firstName: matchedParent?.firstName || 'Ольга',
-      lastName: matchedParent?.lastName || 'Смирнова',
-      phone: matchedParent?.phone || '+7 (999) 123-45-67',
-      telegram: matchedParent?.telegram || '@olga_smirnova',
-      whatsapp: matchedParent?.whatsapp || '+79991234567',
-      email: matchedParent?.email || 'olga.smirnova@example.com',
-      preferredChannel: matchedParent?.preferredChannel || 'Telegram',
+      firstName: matchedParent?.firstName || (storedParent?.name ? storedParent.name.split(' ')[0] : '') || '',
+      lastName: matchedParent?.lastName || (storedParent?.name ? storedParent.name.split(' ').slice(1).join(' ') : '') || '',
+      phone: matchedParent?.phone || storedParent?.phone || '',
+      telegram: matchedParent?.telegram || storedParent?.telegram || '',
+      whatsapp: matchedParent?.whatsapp || storedParent?.whatsapp || '',
+      email: matchedParent?.email || storedParent?.email || '',
+      preferredChannel: matchedParent?.preferredChannel || storedParent?.preferredChannel || 'Telegram',
       notifyWhatsapp: (matchedParent as any)?.notifyWhatsapp !== false,
       notifyTelegram: (matchedParent as any)?.notifyTelegram !== false,
       notifyEmail: (matchedParent as any)?.notifyEmail !== false,
-      notes: matchedParent?.notes || 'Предпочитает общение в Telegram после 18:00.',
+      notes: matchedParent?.notes || (storedParent as any)?.notes || '',
       isNew: isParentNew,
-      children: linkedChildren.length > 0 ? linkedChildren : [
-        {
-          id: '1',
-          name: 'Иван Смирнов',
-          age: '14 лет',
-          group: 'English B1 Teens',
-          course: 'Английский язык',
-          teacher: 'Мария Иванова',
-          groups: [
-            { id: '1', name: 'English B1 Teens', courseName: 'Английский язык', teacherName: 'Мария Иванова', schedule: 'Пн, Чт • 18:45–20:15', status: 'active', joinedAt: '01.09.2026' },
-          ],
-          status: 'active',
-          attendance: '94%',
-        },
-      ],
-      payments: [
-        { id: 'pay1', studentName: linkedChildren[0]?.name || 'Иван Смирнов', date: '01.09.2026', amount: '80 €', period: 'Сентябрь 2026', status: 'paid' },
-      ],
+      children: linkedChildren,
+      payments: [] as { id: string; studentName: string; date: string; amount: string; period: string; status: string }[],
     };
   });
 
@@ -299,27 +286,30 @@ export default function ParentDetailsPage() {
     const linkedChildren = uniqueStudents.map((s) => ({
       id: s.id,
       name: `${s.firstName} ${s.lastName}`,
-      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : '14 лет',
-      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Онлайн-группа',
-      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Общий курс',
-      teacher: s.groups[0]?.teacherName || 'Мария Иванова',
+      age: s.birthDate ? `${new Date().getFullYear() - parseInt(s.birthDate.split('-')[0])} лет` : 'Возраст не указан',
+      group: (s.groups || []).map((g: any) => g.name).filter(Boolean).join(', ') || 'Без группы',
+      course: Array.from(new Set((s.groups || []).map((g: any) => g.courseName || g.name).filter(Boolean))).join(', ') || 'Курс не указан',
+      teacher: s.groups[0]?.teacherName || '—',
       groups: s.groups || [],
       status: s.status,
       attendance: s.attendanceStats?.attendanceRate || '100%',
+      isNew: isEntityNew(s.createdAt, (s as any).isNewUntil),
     }));
 
-    if (matchedParent || linkedChildren.length > 0) {
+    const storedParent = typeof window !== 'undefined' ? getStoredParents().find((p) => p.id === parentId || isMatchingParent(p as any)) : undefined;
+
+    if (matchedParent || storedParent || linkedChildren.length >= 0) {
       setParent((prev) => ({
         ...prev,
-        firstName: matchedParent?.firstName ?? prev.firstName,
-        lastName: matchedParent?.lastName ?? prev.lastName,
-        phone: matchedParent?.phone ?? prev.phone,
-        telegram: matchedParent?.telegram ?? prev.telegram,
-        whatsapp: matchedParent?.whatsapp ?? prev.whatsapp,
-        email: matchedParent?.email ?? prev.email,
-        preferredChannel: matchedParent?.preferredChannel ?? prev.preferredChannel,
-        notes: matchedParent?.notes !== undefined ? matchedParent.notes : prev.notes,
-        children: linkedChildren.length > 0 ? linkedChildren : prev.children,
+        firstName: matchedParent?.firstName || (storedParent?.name ? storedParent.name.split(' ')[0] : prev.firstName),
+        lastName: matchedParent?.lastName || (storedParent?.name ? storedParent.name.split(' ').slice(1).join(' ') : prev.lastName),
+        phone: matchedParent?.phone || storedParent?.phone || prev.phone,
+        telegram: matchedParent?.telegram || storedParent?.telegram || prev.telegram,
+        whatsapp: matchedParent?.whatsapp || storedParent?.whatsapp || prev.whatsapp,
+        email: matchedParent?.email || storedParent?.email || prev.email,
+        preferredChannel: matchedParent?.preferredChannel || storedParent?.preferredChannel || prev.preferredChannel,
+        notes: matchedParent?.notes !== undefined ? matchedParent.notes : (storedParent as any)?.notes !== undefined ? (storedParent as any).notes : prev.notes,
+        children: linkedChildren,
       }));
     }
     setRefreshTrigger((prev) => prev + 1);
@@ -331,9 +321,11 @@ export default function ParentDetailsPage() {
     refreshParent();
     window.addEventListener('crm-students-changed', refreshParent);
     window.addEventListener('crm-payments-changed', refreshParent);
+    window.addEventListener('crm-parents-changed', refreshParent);
     return () => {
       window.removeEventListener('crm-students-changed', refreshParent);
       window.removeEventListener('crm-payments-changed', refreshParent);
+      window.removeEventListener('crm-parents-changed', refreshParent);
     };
   }, [refreshParent]);
 
@@ -543,7 +535,8 @@ export default function ParentDetailsPage() {
   const [addChildMode, setAddChildMode] = useState<'existing' | 'new'>('existing');
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState('');
   const [newChildNameInEdit, setNewChildNameInEdit] = useState('');
-  const [newChildGroupInEdit, setNewChildGroupInEdit] = useState('English B1 Teens');
+  const [availableGroupsInEdit] = useState<any[]>(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
+  const [newChildGroupInEdit, setNewChildGroupInEdit] = useState(() => (typeof window !== 'undefined' ? getStoredGroups()[0]?.name || '' : ''));
 
   // Enroll child in a new course/group modal
   const [enrollModalChildId, setEnrollModalChildId] = useState<string | null>(null);
@@ -598,6 +591,7 @@ export default function ParentDetailsPage() {
         groups: st.groups || [],
         status: st.status,
         attendance: st.attendanceStats?.attendanceRate || '100%',
+        isNew: isEntityNew(st.createdAt, (st as any).isNewUntil),
       },
     ]);
 
@@ -609,34 +603,39 @@ export default function ParentDetailsPage() {
     if (!newChildNameInEdit.trim()) return;
 
     const newChildId = `std_${Date.now()}`;
-    const course = newChildGroupInEdit.includes('English')
+    const realGroup = typeof window !== 'undefined'
+      ? getStoredGroups().find((g) => g.name === newChildGroupInEdit || g.id === newChildGroupInEdit)
+      : undefined;
+    const realTeacherName = realGroup?.teacherName || '—';
+    const course = realGroup?.courseName || (newChildGroupInEdit.includes('English')
       ? 'Английский язык'
       : newChildGroupInEdit.includes('Robotics')
       ? 'Робототехника'
-      : 'Математика';
+      : 'Математика');
 
     setEditChildren((prev) => [
       ...prev,
       {
         id: newChildId,
         name: newChildNameInEdit.trim(),
-        age: '12 лет',
+        age: 'Возраст не указан',
         group: newChildGroupInEdit,
         course,
-        teacher: 'Мария Иванова',
+        teacher: realTeacherName,
         groups: [
           {
-            id: `g_${Date.now()}`,
+            id: realGroup?.id || `g_${Date.now()}`,
             name: newChildGroupInEdit,
             courseName: course,
-            teacherName: 'Мария Иванова',
-            schedule: '—',
+            teacherName: realTeacherName,
+            schedule: realGroup?.schedule || '—',
             status: 'active',
             joinedAt: new Date().toLocaleDateString('ru-RU'),
           },
         ],
         status: 'active',
         attendance: '100%',
+        isNew: false,
       },
     ]);
 
@@ -669,6 +668,7 @@ export default function ParentDetailsPage() {
           ],
           status: newChild.status,
           attendance: newChild.attendance,
+          isNew: true,
         },
       ],
       payments: newChild.paymentStatus === 'paid'
@@ -709,93 +709,114 @@ export default function ParentDetailsPage() {
     setInteractions((prev) => [childInteraction, ...prev]);
     saveInteractionToStorage(childInteraction);
 
-    const newStudentEntity: FullStudentData = {
-      id: newChild.id,
-      firstName: newChild.firstName || newChild.name.split(' ')[0] || 'Ребенок',
-      lastName: newChild.lastName || newChild.name.split(' ')[1] || parent.lastName,
-      studentType: 'school_student',
-      birthDate: newChild.birthDate || '2014-05-15',
-      phone: newChild.phone || parent.phone,
-      telegram: newChild.telegram || parent.telegram,
-      status: (newChild.status as any) || 'active',
-      notes: newChild.notes,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      parents: [
-        {
-          id: parent.id,
-          firstName: parent.firstName,
-          lastName: parent.lastName,
-          phone: parent.phone,
-          telegram: parent.telegram,
-          whatsapp: parent.whatsapp,
-          email: parent.email,
-          preferredChannel: (parent.preferredChannel as any) || 'telegram',
-          relationshipType: newChild.relationshipType || 'Родитель',
-          isPrimary: true,
-        },
-      ],
-      groups: [
-        {
-          id: `g_${Date.now()}`,
-          name: newChild.group,
-          courseName: newChild.course,
-          teacherName: newChild.teacher,
-          schedule: '—',
-          status: 'active',
-          joinedAt: new Date().toLocaleDateString('ru-RU'),
-        },
-      ],
-      finance: {
-        deposit: {
-          balance: newChild.paymentStatus === 'paid' ? 120 : 0,
-          balanceFormatted: newChild.paymentStatus === 'paid' ? '120 €' : '0 €',
-          currency: 'EUR',
-        },
-        activeSubscription: {
-          period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
-          price: newChild.price,
-          status: 'active',
-          lessonsAttended: '0 из 8 занятий',
-          renewalDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
-        },
-        payments: newChild.paymentStatus === 'paid'
-          ? [
-              {
-                id: `pay_${Date.now()}`,
-                date: new Date().toLocaleDateString('ru-RU'),
-                amount: newChild.price,
-                period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
-                status: 'paid',
-                method: 'Банковская карта',
-              },
-            ]
-          : [
-              {
-                id: `pay_${Date.now()}`,
-                date: new Date().toLocaleDateString('ru-RU'),
-                amount: newChild.price,
-                period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
-                status: 'overdue',
-                method: 'Счёт на оплату',
-              },
-            ],
-      },
-      attendanceStats: {
-        totalLessons: 0,
-        presentCount: 0,
-        absentCount: 0,
-        rescheduledCount: 0,
-        attendanceRate: '100%',
-        history: [],
-      },
-      interactions: [childInteraction],
-      teacherComments: [],
-      tasks: [],
+    const parentContactObj = {
+      id: parent.id,
+      name: `${parent.firstName} ${parent.lastName}`.trim(),
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      phone: parent.phone || '',
+      telegram: parent.telegram,
+      whatsapp: parent.whatsapp,
+      email: parent.email,
+      preferredChannel: (parent.preferredChannel as any) || 'telegram',
+      relationshipType: newChild.relationshipType || 'Родитель',
+      isPrimary: true,
     };
 
-    saveStudentToStorage(newStudentEntity);
-    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: newStudentEntity }));
+    const existingStudent = getStudentById(newChild.id) || getStoredStudents().find((s) => s.id === newChild.id);
+    let finalStudentEntity: FullStudentData;
+
+    if (existingStudent) {
+      const alreadyHasParent = (existingStudent.parents || []).some(
+        (p) => p.id === parent.id || (p.phone && parent.phone && p.phone === parent.phone)
+      );
+      const updatedParents = alreadyHasParent
+        ? existingStudent.parents
+        : [parentContactObj, ...(existingStudent.parents || [])];
+
+      finalStudentEntity = {
+        ...existingStudent,
+        parents: updatedParents,
+        updatedAt: new Date().toISOString(),
+        interactions: [childInteraction, ...(existingStudent.interactions || [])],
+      };
+    } else {
+      finalStudentEntity = {
+        id: newChild.id,
+        firstName: newChild.firstName || newChild.name.split(' ')[0] || 'Ребенок',
+        lastName: newChild.lastName || newChild.name.split(' ')[1] || parent.lastName,
+        studentType: 'school_student',
+        birthDate: newChild.birthDate || '2014-05-15',
+        phone: newChild.phone || parent.phone,
+        telegram: newChild.telegram || parent.telegram,
+        status: (newChild.status as any) || 'active',
+        notes: newChild.notes,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        parents: [parentContactObj],
+        groups: [
+          {
+            id: `g_${Date.now()}`,
+            name: newChild.group,
+            courseName: newChild.course,
+            teacherName: newChild.teacher,
+            schedule: '—',
+            status: 'active',
+            joinedAt: new Date().toLocaleDateString('ru-RU'),
+          },
+        ],
+        finance: {
+          deposit: {
+            balance: newChild.paymentStatus === 'paid' ? 120 : 0,
+            balanceFormatted: newChild.paymentStatus === 'paid' ? '120 €' : '0 €',
+            currency: 'EUR',
+          },
+          activeSubscription: {
+            period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+            price: newChild.price,
+            status: 'active',
+            lessonsAttended: '0 из 8 занятий',
+            renewalDate: new Date(Date.now() + 30 * 24 * 3600 * 1000).toLocaleDateString('ru-RU'),
+          },
+          payments: newChild.paymentStatus === 'paid'
+            ? [
+                {
+                  id: `pay_${Date.now()}`,
+                  date: new Date().toLocaleDateString('ru-RU'),
+                  amount: newChild.price,
+                  period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+                  status: 'paid',
+                  method: 'Банковская карта',
+                },
+              ]
+            : [
+                {
+                  id: `pay_${Date.now()}`,
+                  date: new Date().toLocaleDateString('ru-RU'),
+                  amount: newChild.price,
+                  period: new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }),
+                  status: 'overdue',
+                  method: 'Счёт на оплату',
+                },
+              ],
+        },
+        attendanceStats: {
+          totalLessons: 0,
+          presentCount: 0,
+          absentCount: 0,
+          rescheduledCount: 0,
+          attendanceRate: '100%',
+          history: [],
+        },
+        interactions: [childInteraction],
+        teacherComments: [],
+        tasks: [],
+      };
+    }
+
+    saveStudentToStorage(finalStudentEntity);
+    window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: finalStudentEntity }));
+    window.dispatchEvent(new Event('crm-parents-changed'));
     success(`Ребенок «${newChild.name}» успешно добавлен в карточку семьи!`);
   };
 
@@ -2436,9 +2457,15 @@ export default function ParentDetailsPage() {
                             onChange={(e) => setNewChildGroupInEdit(e.target.value)}
                             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800"
                           >
-                            <option value="English B1 Teens">English B1 Teens</option>
-                            <option value="Robotics Junior">Robotics Junior</option>
-                            <option value="Kids Math Safari">Kids Math Safari</option>
+                            {availableGroupsInEdit.length > 0 ? (
+                              availableGroupsInEdit.map((g) => (
+                                <option key={g.id} value={g.name}>
+                                  {g.name}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="">— Нет групп</option>
+                            )}
                           </select>
                         </div>
                         <div className="flex justify-end gap-1.5">

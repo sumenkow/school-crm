@@ -290,9 +290,14 @@ export function FinanceDetailDrawer({
 
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Чек / файл</span>
-                <span className="inline-flex items-center gap-1 text-blue-600 font-semibold cursor-pointer hover:underline">
+                <Link
+                  href={`/invoices/${detail.data.id}`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 text-blue-600 font-semibold cursor-pointer hover:underline"
+                >
                   <FileText className="h-3.5 w-3.5" /> Чек #{detail.data.id.slice(0, 6)}.pdf
-                </span>
+                  <ExternalLink className="h-3 w-3 text-blue-400" />
+                </Link>
               </div>
             </>
           )}

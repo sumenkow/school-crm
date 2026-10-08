@@ -17,7 +17,9 @@ import { getStoredPayments, savePaymentToStorage } from '@/lib/data/paymentStora
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredInvoices, EuropeanInvoiceData, markInvoiceAsPaid } from '@/lib/data/invoiceStorage';
+import { getStoredSubscriptions, saveSubscriptionToStorage, freezeSubscriptionInStorage } from '@/lib/data/subscriptionStorage';
 import { convertRubToEur, getEurRubRate } from '@/lib/data/currencyHelper';
+import { useToast } from '@/context/ToastContext';
 
 import { FinanceHeader } from '@/components/finance/FinanceHeader';
 import { FinanceGlobalFilters, FinanceFiltersState } from '@/components/finance/FinanceGlobalFilters';
@@ -38,13 +40,16 @@ function FinanceContent() {
   const filterParam = searchParams.get('filter');
   const tabParam = searchParams.get('tab');
   const rate = getEurRubRate();
+  const toast = useToast();
 
   // Primary State
   const [students, setStudents] = useState(() => (typeof window !== 'undefined' ? getStoredStudents() : []));
   const [groups, setGroups] = useState<FullGroupData[]>(() => (typeof window !== 'undefined' ? getStoredGroups() : []));
   const [payments, setPayments] = useState<FullPaymentData[]>(() => (typeof window !== 'undefined' ? getStoredPayments() : INITIAL_PAYMENTS));
   const [invoices, setInvoices] = useState<EuropeanInvoiceData[]>(() => (typeof window !== 'undefined' ? getStoredInvoices() : []));
-  const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(INITIAL_SUBSCRIPTIONS);
+  const [subscriptions, setSubscriptions] = useState<FullSubscriptionData[]>(() =>
+    typeof window !== 'undefined' ? getStoredSubscriptions() : INITIAL_SUBSCRIPTIONS
+  );
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'subscriptions' | 'debts'>(() => {
@@ -78,6 +83,7 @@ function FinanceContent() {
     setInvoices(getStoredInvoices());
     setStudents(getStoredStudents());
     setGroups(getStoredGroups());
+    setSubscriptions(getStoredSubscriptions());
   }, []);
 
   useFocusSync(syncFinanceData);
@@ -88,11 +94,13 @@ function FinanceContent() {
     window.addEventListener('crm-students-changed', syncFinanceData);
     window.addEventListener('crm-invoices-changed', syncFinanceData);
     window.addEventListener('crm-groups-changed', syncFinanceData);
+    window.addEventListener('crm-subscriptions-changed', syncFinanceData);
     return () => {
       window.removeEventListener('crm-payments-changed', syncFinanceData);
       window.removeEventListener('crm-students-changed', syncFinanceData);
       window.removeEventListener('crm-invoices-changed', syncFinanceData);
       window.removeEventListener('crm-groups-changed', syncFinanceData);
+      window.removeEventListener('crm-subscriptions-changed', syncFinanceData);
     };
   }, [syncFinanceData]);
 
@@ -116,13 +124,13 @@ function FinanceContent() {
   };
 
   const handleSubCreated = (newSub: FullSubscriptionData) => {
-    setSubscriptions((prev) => [newSub, ...prev]);
+    saveSubscriptionToStorage(newSub);
+    setSubscriptions(getStoredSubscriptions());
   };
 
   const handleFreezeSub = (id: string) => {
-    setSubscriptions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: s.status === 'frozen' ? 'active' : 'frozen' } : s))
-    );
+    freezeSubscriptionInStorage(id);
+    setSubscriptions(getStoredSubscriptions());
   };
 
   const handleMarkInvoicePaid = (invoiceId: string) => {
@@ -183,7 +191,7 @@ function FinanceContent() {
     };
   }, [payments, invoices, students, rate]);
 
-  // Debts mapping by Family
+  // Debts mapping by Family (FIN-01: dynamic metrics, no mock phone)
   const debtorGroups: DebtorDetailData[] = useMemo(() => {
     const overduePayments = payments.filter((p) => p.status === 'overdue');
     const map = new Map<string, DebtorDetailData>();
@@ -191,12 +199,41 @@ function FinanceContent() {
     overduePayments.forEach((p) => {
       const matchedStudent = students.find((st) => st.id === p.studentId);
       const parent = matchedStudent?.parents?.[0];
-      const contactPhone = parent?.phone || matchedStudent?.parentPhone || matchedStudent?.phone || '+7 (999) 000-00-00';
+      const contactPhone = parent?.phone || matchedStudent?.parentPhone || matchedStudent?.phone || '';
       const parentName = p.parentName || (parent ? `${parent.firstName} ${parent.lastName}` : 'Родитель');
-      const familyKey = p.parentId || parent?.id || contactPhone;
+      const familyKey = p.parentId || parent?.id || contactPhone || p.studentId;
 
       const numAmount = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
       const eurVal = p.currency === 'EUR' || String(p.amount).includes('€') ? numAmount : convertRubToEur(numAmount, rate);
+
+      // Compute actual daysOverdue from payment date
+      let daysOverdue = 1;
+      const rawDate = p.paymentDate;
+      if (rawDate) {
+        let pDateMs = 0;
+        if (rawDate.includes('.')) {
+          const parts = rawDate.split('.');
+          if (parts.length === 3) {
+            pDateMs = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+          }
+        } else {
+          pDateMs = new Date(rawDate).getTime();
+        }
+        if (!isNaN(pDateMs) && pDateMs > 0) {
+          const diffMs = Date.now() - pDateMs;
+          daysOverdue = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        }
+      }
+
+      // Compute lastPaymentDate from student's paid payments if any, else payment date
+      const studentPaidPayments = payments.filter((item) => item.studentId === p.studentId && item.status === 'paid');
+      const lastPaymentDate = studentPaidPayments.length > 0
+        ? studentPaidPayments[studentPaidPayments.length - 1].paymentDate
+        : p.paymentDate || '—';
+
+      // Matched group teacher or group assigned teacher
+      const matchedGroup = groups.find((g) => g.name === p.groupName);
+      const responsibleName = matchedGroup?.teacherName || (matchedStudent?.groups?.[0]?.teacherName) || 'Администратор';
 
       const existing = map.get(familyKey);
       if (existing) {
@@ -205,6 +242,9 @@ function FinanceContent() {
           existing.studentNames.push(p.studentName);
         }
         existing.totalEur += eurVal;
+        if (daysOverdue > existing.daysOverdue) {
+          existing.daysOverdue = daysOverdue;
+        }
       } else {
         map.set(familyKey, {
           familyKey,
@@ -215,16 +255,81 @@ function FinanceContent() {
           studentId: p.studentId,
           groupName: p.groupName,
           totalEur: eurVal,
-          daysOverdue: 14,
-          lastPaymentDate: '01.09.2026',
-          responsibleName: 'Анна Петрова',
+          daysOverdue,
+          lastPaymentDate,
+          responsibleName,
           payments: [p],
         });
       }
     });
 
     return Array.from(map.values());
-  }, [payments, students, rate]);
+  }, [payments, students, groups, rate]);
+
+  // Dynamic revenue growth rate calculation (FIN-02)
+  const revenueGrowthPct = useMemo(() => {
+    let octRev = 0;
+    let sepRev = 0;
+    payments.filter((p) => p.status === 'paid').forEach((p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      const dStr = p.paymentDate || (p as any).date || '';
+      let m = -1;
+      if (dStr.includes('.')) m = parseInt(dStr.split('.')[1], 10) - 1;
+      else if (dStr.includes('-')) m = parseInt(dStr.split('-')[1], 10) - 1;
+      if (m === 9) octRev += num;
+      else if (m === 8) sepRev += num;
+      else octRev += num;
+    });
+    if (sepRev > 0) return Math.round(((octRev - sepRev) / sepRev) * 100);
+    if (octRev > 0) return 100;
+    return 0;
+  }, [payments]);
+
+  const handleExportCsv = () => {
+    let csvContent = '';
+    let fileName = '';
+
+    if (activeTab === 'debts') {
+      fileName = `finance_debts_${new Date().toISOString().slice(0, 10)}.csv`;
+      const headers = ['Родитель', 'Телефон', 'Ученики', 'Группа', 'Сумма (€)', 'Дней просрочки', 'Последняя оплата', 'Ответственный'];
+      const rows = debtorGroups.map((d) => [
+        `"${d.parentName}"`,
+        `"${d.contactPhone}"`,
+        `"${d.studentNames.join('; ')}"`,
+        `"${d.groupName || ''}"`,
+        d.totalEur,
+        d.daysOverdue,
+        `"${d.lastPaymentDate || ''}"`,
+        `"${d.responsibleName || ''}"`,
+      ]);
+      csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    } else {
+      fileName = `finance_payments_${new Date().toISOString().slice(0, 10)}.csv`;
+      const headers = ['ID', 'Ученик', 'Группа', 'Сумма', 'Способ оплаты', 'Статус', 'Дата оплаты', 'Чек'];
+      const rows = payments.map((p) => [
+        `"${p.id}"`,
+        `"${p.studentName}"`,
+        `"${p.groupName || ''}"`,
+        p.amount,
+        `"${p.paymentMethod}"`,
+        `"${p.status}"`,
+        `"${p.paymentDate || ''}"`,
+        `"${(p as any).receiptNumber || p.id}"`,
+      ]);
+      csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    }
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success(`Файл ${fileName} успешно экспортирован`);
+  };
 
   if (!canViewStudentFinancialAmounts) {
     return (
@@ -242,7 +347,7 @@ function FinanceContent() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto pb-16">
-      {/* 1. Header with Title and 3 Action Buttons */}
+      {/* 1. Header with Title and Action Buttons */}
       <FinanceHeader
         canManage={Boolean(canManageStudentPayments)}
         onOpenInvoiceModal={() => setIsInvoiceModalOpen(true)}
@@ -252,6 +357,7 @@ function FinanceContent() {
           setIsPaymentModalOpen(true);
         }}
         onOpenSubscriptionModal={() => setIsSubModalOpen(true)}
+        onExportCsv={handleExportCsv}
       />
 
       {/* 2. Global Filters Bar */}
@@ -273,6 +379,7 @@ function FinanceContent() {
           debtorsCount={topKpiData.debtorsCount}
           depositBalanceEur={topKpiData.depositBalanceEur}
           depositStudentsCount={topKpiData.depositStudentsCount}
+          revenueGrowthPct={revenueGrowthPct}
           onSelectTab={(tab) => {
             setActiveTab(tab);
             setSelectedDrawerDetail(null);

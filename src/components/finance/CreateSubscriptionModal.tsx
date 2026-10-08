@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Calendar, Clock, DollarSign, Check } from 'lucide-react';
 import { FullSubscriptionData, INITIAL_STUDENTS } from '@/lib/data/mockData';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { saveSubscriptionToStorage } from '@/lib/data/subscriptionStorage';
 
 interface CreateSubscriptionModalProps {
   isOpen: boolean;
@@ -11,9 +13,22 @@ interface CreateSubscriptionModalProps {
 }
 
 export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSubscriptionModalProps) {
-  const [studentId, setStudentId] = useState('1');
-  const [startDate, setStartDate] = useState('2026-10-01');
-  const [endDate, setEndDate] = useState('2026-10-31');
+  const students = useMemo(() => {
+    return typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+  }, []);
+
+  const defaultDates = useMemo(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const firstDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+    const lastDayObj = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const lastDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDayObj.getDate())}`;
+    return { firstDay, lastDay };
+  }, []);
+
+  const [studentId, setStudentId] = useState(() => students[0]?.id || '1');
+  const [startDate, setStartDate] = useState(() => defaultDates.firstDay);
+  const [endDate, setEndDate] = useState(() => defaultDates.lastDay);
   const [price, setPrice] = useState('80');
   const [lessonsTotal, setLessonsTotal] = useState(8);
   const [status, setStatus] = useState<FullSubscriptionData['status']>('active');
@@ -21,7 +36,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
 
   if (!isOpen) return null;
 
-  const selectedStudent = INITIAL_STUDENTS.find((s) => s.id === studentId) || INITIAL_STUDENTS[0];
+  const selectedStudent = students.find((s) => s.id === studentId) || students[0] || INITIAL_STUDENTS[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +59,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
       notes: notes || `Абонемент на ${lessonsTotal} уроков`,
     };
 
+    saveSubscriptionToStorage(newSub);
     onCreated(newSub);
     onClose();
   };
@@ -74,7 +90,7 @@ export function CreateSubscriptionModal({ isOpen, onClose, onCreated }: CreateSu
               onChange={(e) => setStudentId(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {INITIAL_STUDENTS.map((s) => (
+              {students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.firstName} {s.lastName} ({s.groups[0]?.name || 'Ученик'})
                 </option>

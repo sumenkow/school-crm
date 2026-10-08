@@ -11,8 +11,8 @@ const PUBLIC_ROUTES = [
   '/api/backup/cron',
 ];
 
-// Routes restricted to owner / developer only
-const OWNER_ONLY_ROUTES = ['/analytics', '/settings', '/api/database/seed', '/api/school/settings'];
+// Routes restricted to owner / developer / admin (finance, analytics, settings)
+const OWNER_ONLY_ROUTES = ['/analytics', '/settings', '/finance', '/api/database/seed', '/api/school/settings'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -4,7 +4,7 @@ import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 const LEADS_STORAGE_KEY = 'crm_leads_v2';
 
-export function getStoredLeads(includeConverted: boolean = false, includeDeleted: boolean = false): FullLeadData[] {
+export function getStoredLeads(includeConverted: boolean = true, includeDeleted: boolean = false): FullLeadData[] {
   const filterLeads = (leads: FullLeadData[]) => {
     let res = leads;
     if (!includeDeleted) {

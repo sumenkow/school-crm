@@ -235,17 +235,20 @@ export function ParentProfileDesktop({
     for (const child of parent.children) {
       const childGroups = (child.groups && child.groups.length > 0)
         ? child.groups
-        : [{ id: '1', name: child.group || 'English B1 Teens', teacherName: child.teacher || 'Мария Иванова' }];
+        : child.group
+        ? [{ id: `cg_${child.id}`, name: child.group, teacherName: child.teacher || '—' }]
+        : [];
 
       const seenGroupForChild = new Set<string>();
 
       for (const grp of childGroups) {
-        const rawName = grp.name || grp.courseName || 'English B1 Teens';
+        const rawName = grp.name || grp.courseName || '';
+        if (!rawName) continue;
         const cleanName = rawName
           .replace(/^Английский:\s*/i, '')
           .split(' (')[0]
           .trim();
-        const groupObj = storedGroups.find((g) => g.id === grp.id || g.name === grp.name || g.name === cleanName) || { id: grp.id || '1', name: cleanName };
+        const groupObj = storedGroups.find((g) => g.id === grp.id || g.name === grp.name || g.name === cleanName) || { id: grp.id || cleanName, name: cleanName };
         const key = groupObj.id || cleanName;
 
         if (!seenGroupForChild.has(key)) {

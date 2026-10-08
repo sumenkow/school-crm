@@ -33,7 +33,7 @@ export function RecordPaymentModal({
   allowedStudents,
   lockStudent,
 }: RecordPaymentModalProps) {
-  const { success } = useToast();
+  const { success, error } = useToast();
   const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
 
   const defaultId = initialStudentId || allowedStudents?.[0]?.id || allStudents[0]?.id || '1';
@@ -162,7 +162,7 @@ export function RecordPaymentModal({
     const cleanAmount = String(effectiveAmountStr).replace(',', '.').trim();
     const numAmountRaw = parseFloat(cleanAmount);
     if (isNaN(numAmountRaw) || numAmountRaw <= 0) {
-      alert('Укажите корректную сумму платежа');
+      error('Укажите корректную сумму платежа');
       return;
     }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, LogOut, ChevronDown, User, Calendar, Globe } from 'lucide-react';
+import { Search, LogOut, ChevronDown, User, Calendar, Globe, Menu } from 'lucide-react';
 import { useRole } from '@/context/RoleContext';
 import { useLanguage, LANGUAGE_LABELS, SupportedLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
@@ -89,8 +89,19 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   return (
     <header
-      className="hidden md:flex sticky top-0 z-20 items-center h-12 px-4 gap-2.5 transition-all duration-200 border-b border-slate-200/80 bg-white"
+      className="flex sticky top-0 z-20 items-center h-12 px-3 sm:px-4 gap-2.5 transition-all duration-200 border-b border-slate-200/80 bg-white"
     >
+      {/* Mobile Hamburger menu button (SET-03) */}
+      <button
+        type="button"
+        onClick={onOpenMobile}
+        className="md:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer shrink-0"
+        title="Открыть меню"
+        aria-label="Открыть навигационное меню"
+      >
+        <Menu size={18} className="text-slate-700" />
+      </button>
+
       {/* Search button with Cmd+K */}
       <button
         type="button"

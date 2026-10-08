@@ -14,6 +14,7 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { FullPaymentData } from '@/lib/data/mockData';
+import { useToast } from '@/context/ToastContext';
 
 interface PaymentsTabProps {
   payments: FullPaymentData[];
@@ -28,6 +29,7 @@ export function PaymentsTab({
   selectedPaymentId,
   onSelectPayment,
 }: PaymentsTabProps) {
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'expected' | 'overdue'>('all');
   const [methodFilter, setMethodFilter] = useState<string>('all');
@@ -77,6 +79,36 @@ export function PaymentsTab({
         const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
         return sum + num;
       }, 0);
+  }, [payments]);
+
+  // Dynamic monthly chart calculations (FIN-02)
+  const dynamicMonthlyStats = useMemo(() => {
+    const sums = new Array(10).fill(0);
+    payments
+      .filter((p) => p.status === 'paid')
+      .forEach((p) => {
+        const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+        const dStr = p.paymentDate || (p as any).date || '';
+        let m = -1;
+        if (dStr.includes('.')) m = parseInt(dStr.split('.')[1], 10) - 1;
+        else if (dStr.includes('-')) m = parseInt(dStr.split('-')[1], 10) - 1;
+        if (m >= 0 && m < 10) {
+          sums[m] += num;
+        } else {
+          sums[9] += num;
+        }
+      });
+    const maxVal = Math.max(...sums, 1);
+    const heights = sums.map((val) => (val > 0 ? Math.max(15, Math.round((val / maxVal) * 100)) : 10));
+    const octRev = sums[9];
+    const sepRev = sums[8];
+    let diffPct = 0;
+    if (sepRev > 0) {
+      diffPct = Math.round(((octRev - sepRev) / sepRev) * 100);
+    } else if (octRev > 0) {
+      diffPct = 100;
+    }
+    return { heights, diffPct };
   }, [payments]);
 
   const hasActiveFilters =
@@ -283,14 +315,15 @@ export function PaymentsTab({
                       </td>
 
                       <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => alert(`Чек для ${p.studentName} сформирован`)}
-                          className="p-1 text-slate-400 hover:text-slate-700 rounded transition-colors"
+                        <Link
+                          href={`/invoices/${p.id}`}
+                          target="_blank"
+                          onClick={() => toast.success(`Чек #${p.id.slice(0, 8)} открыт`)}
+                          className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors inline-block"
                           title="Просмотреть фискальный чек"
                         >
                           <FileText className="h-3.5 w-3.5 mx-auto" />
-                        </button>
+                        </Link>
                       </td>
 
                       <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -371,7 +404,7 @@ export function PaymentsTab({
 
         {/* Minimalist Bar Chart Graphic */}
         <div className="flex items-end gap-2.5 h-16 w-full max-w-sm px-4">
-          {[25, 30, 40, 35, 45, 55, 60, 68, 75, 100].map((height, idx) => (
+          {dynamicMonthlyStats.heights.map((height, idx) => (
             <div key={MONTH_LABELS[idx]} className="flex-1 flex flex-col items-center gap-1">
               <div
                 className={`w-full rounded-t-sm transition-all ${
@@ -395,7 +428,7 @@ export function PaymentsTab({
             Выручка за октябрь 2026
           </span>
           <span className="text-[11px] font-bold text-emerald-700 block mt-0.5">
-            ↑ +12% к сентябрю • {payments.filter((p) => p.status === 'paid').length} платежа
+            {dynamicMonthlyStats.diffPct >= 0 ? `↑ +${dynamicMonthlyStats.diffPct}%` : `↓ ${dynamicMonthlyStats.diffPct}%`} к сентябрю • {payments.filter((p) => p.status === 'paid').length} {payments.filter((p) => p.status === 'paid').length === 1 ? 'платеж' : payments.filter((p) => p.status === 'paid').length < 5 ? 'платежа' : 'платежей'}
           </span>
         </div>
       </div>

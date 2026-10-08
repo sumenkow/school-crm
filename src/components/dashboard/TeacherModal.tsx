@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Calendar, MessageCircle, Send, Award, Users, CheckCircle, Clock } from 'lucide-react';
+import { X, Calendar, Send, Clock, BookOpen } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 
 interface TeacherModalProps {
   isOpen: boolean;
@@ -13,10 +14,54 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
   const router = useRouter();
   const toast = useToast();
 
+  const teacherLessons = useMemo(() => {
+    if (!teacherData || typeof window === 'undefined') return [];
+    const all = getStoredLessons();
+    return all.filter((l) => l.teacherId === teacherData.id || l.teacherName === teacherData.name);
+  }, [teacherData]);
+
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const todayLessons = useMemo(() => {
+    return teacherLessons.filter((l) => l.date === todayStr);
+  }, [teacherLessons, todayStr]);
+
+  const stats = useMemo(() => {
+    const total = teacherLessons.length;
+    const completed = teacherLessons.filter((l) => l.status === 'completed').length;
+    let totalRecords = 0;
+    let presentRecords = 0;
+    for (const l of teacherLessons) {
+      if (l.students) {
+        for (const s of l.students) {
+          if (s.attendanceStatus && s.attendanceStatus !== 'not_marked') {
+            totalRecords++;
+            if (s.attendanceStatus === 'present') presentRecords++;
+          }
+        }
+      }
+    }
+    const attendanceRate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 100;
+    return {
+      total,
+      completed,
+      attendanceRate,
+    };
+  }, [teacherLessons]);
+
   if (!isOpen || !teacherData) return null;
 
+  const handleTelegramClick = () => {
+    if (teacherData.telegram) {
+      const cleanTg = teacherData.telegram.replace(/^@/, '').trim();
+      window.open(`https://t.me/${cleanTg}`, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.info('Telegram контакт не указан в профиле преподавателя');
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="fixed inset-0" onClick={onClose} />
       <div className="relative w-full h-[100dvh] sm:h-auto sm:max-w-xl bg-white sm:rounded-2xl shadow-xl p-6 z-10 flex flex-col space-y-6 overflow-y-auto">
         
@@ -28,12 +73,14 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-800">{teacherData.name}</h3>
-              <p className="text-xs text-slate-500 font-medium">{teacherData.role || 'Преподаватель'} • Активен</p>
+              <p className="text-xs text-slate-500 font-medium">
+                {teacherData.role || 'Преподаватель'}{teacherData.subject ? ` • ${teacherData.subject}` : ''}
+              </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
@@ -41,22 +88,22 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
 
         {/* KPI Metrics */}
         <div>
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Метрики эффективности (KPI)</h4>
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2.5">Показатели учебной работы</h4>
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100/80 text-center">
-              <p className="text-[10px] font-bold text-emerald-600 uppercase">Retention</p>
-              <p className="text-xl font-black text-emerald-800 mt-0.5">94%</p>
-              <p className="text-[9px] text-emerald-600 mt-0.5">Удержание учеников</p>
+              <p className="text-[10px] font-bold text-emerald-600 uppercase">Посещаемость</p>
+              <p className="text-xl font-black text-emerald-800 mt-0.5">{stats.attendanceRate}%</p>
+              <p className="text-[9px] text-emerald-600 mt-0.5">Явка на уроках</p>
             </div>
             <div className="bg-purple-50 p-3 rounded-xl border border-purple-100/80 text-center">
-              <p className="text-[10px] font-bold text-purple-600 uppercase">Конверсия</p>
-              <p className="text-xl font-black text-purple-800 mt-0.5">80%</p>
-              <p className="text-[9px] text-purple-600 mt-0.5">Пробные в оплат</p>
+              <p className="text-[10px] font-bold text-purple-600 uppercase">Всего уроков</p>
+              <p className="text-xl font-black text-purple-800 mt-0.5">{stats.total}</p>
+              <p className="text-[9px] text-purple-600 mt-0.5">В расписании</p>
             </div>
             <div className="bg-blue-50 p-3 rounded-xl border border-blue-100/80 text-center">
-              <p className="text-[10px] font-bold text-blue-600 uppercase">Посещаемость</p>
-              <p className="text-xl font-black text-blue-800 mt-0.5">98%</p>
-              <p className="text-[9px] text-blue-600 mt-0.5">Без срывов и отмен</p>
+              <p className="text-[10px] font-bold text-blue-600 uppercase">Проведено</p>
+              <p className="text-xl font-black text-blue-800 mt-0.5">{stats.completed}</p>
+              <p className="text-[9px] text-blue-600 mt-0.5">Завершено уроков</p>
             </div>
           </div>
         </div>
@@ -64,36 +111,41 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
         {/* Schedule Today */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Нагрузка на сегодня</h4>
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Занятия на сегодня</h4>
             <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-              {teacherData.count || 12} учеников
+              {todayLessons.length} {todayLessons.length === 1 ? 'урок' : 'уроков'}
             </span>
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-              <div className="flex items-center gap-2">
-                <Clock size={14} className="text-slate-400" />
-                <span className="font-bold text-slate-700">14:00 - 15:30</span>
-                <span className="text-slate-500">• Группа Английский A2</span>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Завершено</span>
+          {todayLessons.length > 0 ? (
+            <div className="space-y-2">
+              {todayLessons.map((l) => (
+                <div key={l.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Clock size={14} className="text-slate-400 shrink-0" />
+                    <span className="font-bold text-slate-700 shrink-0">{l.startTime} - {l.endTime}</span>
+                    <span className="text-slate-500 truncate">• {l.groupName || l.courseName}</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${
+                    l.status === 'completed' ? 'text-emerald-600 bg-emerald-50' : 'text-blue-600 bg-blue-50'
+                  }`}>
+                    {l.status === 'completed' ? 'Проведен' : 'Запланирован'}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-              <div className="flex items-center gap-2">
-                <Clock size={14} className="text-slate-400" />
-                <span className="font-bold text-slate-700">16:00 - 17:30</span>
-                <span className="text-slate-500">• Группа Английский B1</span>
-              </div>
-              <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Идет урок</span>
+          ) : (
+            <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-xs text-slate-400">
+              <BookOpen className="w-5 h-5 mx-auto mb-1 text-slate-300" />
+              Сегодня у преподавателя нет запланированных уроков
             </div>
-          </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="pt-2 border-t border-slate-100 flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => toast.success('Переход в Telegram...')}
+            onClick={handleTelegramClick}
             className="flex-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send size={14} /> Написать в Telegram

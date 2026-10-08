@@ -28,9 +28,11 @@ import { BulkActionsBar } from '@/components/students/BulkActionsBar';
 import { StudentsDesktop } from '@/features/students/components/StudentsDesktop';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
+import { INITIAL_STUDENTS, INITIAL_TEACHERS, FullStudentData } from '@/lib/data/mockData';
 import { getStoredStudents, restoreStudent, saveStudentToStorage, softDeleteStudent } from '@/lib/data/studentStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredTeachers } from '@/lib/data/teacherStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
 import { getStudentFinancialSummary } from '@/lib/data/balanceHelper';
 import { BulkChangeGroupModal, BulkChangeStatusModal, BulkDeleteModal } from '@/components/students/BulkModals';
 import { usePermissions } from '@/context/RoleContext';
@@ -110,28 +112,40 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
   const telegram = primaryParent?.telegram || s.telegram;
 
   const rawGroups = s.groups || [];
-  const groupsList: GroupEnrollment[] = rawGroups.map((g, idx) => ({
-    id: g.id || `g_${idx}`,
-    name: g.name || 'Группа',
-    schedule: g.schedule || 'Пн/Чт 18:45',
-    room: (g as any).room || 'Ауд. 204',
-    teacherName: g.teacherName || 'Мария Иванова',
-    nextLessonId: `l_${s.id}_g_${g.id || idx}`,
-    nextLessonDate: 'Ср 21 сен, 18:45',
-  }));
+  const storedLessons = typeof window !== 'undefined' ? getStoredLessons() : [];
+  const groupsList: GroupEnrollment[] = rawGroups.map((g, idx) => {
+    const groupLesson = storedLessons.find(
+      (l) => (l.status === 'scheduled' || l.status === 'rescheduled') && l.groupId === g.id
+    );
+    return {
+      id: g.id || `g_${idx}`,
+      name: g.name || 'Группа',
+      schedule: g.schedule || '',
+      room: (g as any).room || '',
+      teacherName: g.teacherName || '',
+      nextLessonId: groupLesson?.id,
+      nextLessonDate: groupLesson
+        ? `${groupLesson.dateFormatted || groupLesson.date}, ${groupLesson.startTime}`
+        : g.schedule || undefined,
+    };
+  });
 
   const firstGroup = groupsList[0];
   const groupId = firstGroup?.id;
   const groupName = firstGroup ? `${firstGroup.name}` : undefined;
-  const teacherName = firstGroup?.teacherName || 'Мария Иванова';
+  const teacherName = firstGroup?.teacherName || '';
 
-  let teacherId = 't1';
-  if (teacherName.toLowerCase().includes('денис')) teacherId = 't2';
-  else if (teacherName.toLowerCase().includes('ольга')) teacherId = 't3';
-  else if (teacherName.toLowerCase().includes('анна') || teacherName.toLowerCase().includes('алексей')) teacherId = 't4';
+  const studentNextLesson = storedLessons.find(
+    (l) =>
+      (l.status === 'scheduled' || l.status === 'rescheduled') &&
+      (l.students?.some((st) => st.id === s.id) || (groupId && l.groupId === groupId))
+  );
+  const nextLessonId = studentNextLesson?.id;
+  const nextLessonDate = studentNextLesson
+    ? `${studentNextLesson.dateFormatted || studentNextLesson.date}, ${studentNextLesson.startTime}`
+    : firstGroup?.schedule || undefined;
 
-  const nextLessonId = `l_${s.id}_next`;
-  const nextLessonDate = 'Ср 21 сен, 18:45';
+  let teacherId = firstGroup ? (rawGroups[0] as any)?.teacherId || 't1' : 't1';
 
   const attendanceRateStr = s.attendanceStats?.attendanceRate || '100%';
   const attendanceRateNum = parseInt(attendanceRateStr.replace(/\D/g, ''), 10) || 100;
@@ -198,13 +212,13 @@ export function mapFullStudentToListItem(s: FullStudentData): StudentListItem {
 type SortField = 'name' | 'attendanceRate' | 'finance';
 type SortOrder = 'default' | 'asc' | 'desc';
 
-const teachersList = [
-  { id: 'all', name: 'Все преподаватели' },
-  { id: 't1', name: 'Мария Иванова' },
-  { id: 't2', name: 'Денис Смирнов' },
-  { id: 't3', name: 'Ольга Соколова' },
-  { id: 't4', name: 'Анна Кузнецова' },
-];
+export function getDynamicTeachersList() {
+  const stored = typeof window !== 'undefined' ? getStoredTeachers() : INITIAL_TEACHERS;
+  return [
+    { id: 'all', name: 'Все преподаватели' },
+    ...stored.map((t) => ({ id: t.id, name: t.name })),
+  ];
+}
 
 function StudentsContent() {
   const router = useRouter();
@@ -213,6 +227,7 @@ function StudentsContent() {
   const { t } = useLanguage();
   const { canViewStudentFinancialAmounts } = usePermissions();
 
+  const [teachersList, setTeachersList] = useState(() => getDynamicTeachersList());
   const activeStudentIdFromUrl = searchParams.get('id');
   const activeTabFromUrl = (searchParams.get('tab') as 'profile' | 'learning' | 'finance' | 'attendance') || 'profile';
   const activeTeacherIdFromUrl = searchParams.get('teacherId');
@@ -259,6 +274,7 @@ function StudentsContent() {
     const list = getStoredStudents();
     setStudents(list.map(mapFullStudentToListItem));
     setGroups(getStoredGroups());
+    setTeachersList(getDynamicTeachersList());
   }, []);
 
   useFocusSync(refreshStudents);
@@ -269,11 +285,12 @@ function StudentsContent() {
     window.addEventListener('crm-students-changed', refreshStudents);
     window.addEventListener('crm-payments-changed', refreshStudents);
     window.addEventListener('crm-groups-changed', refreshStudents);
-
+    window.addEventListener('crm-teachers-changed', refreshStudents);
     return () => {
       window.removeEventListener('crm-students-changed', refreshStudents);
       window.removeEventListener('crm-payments-changed', refreshStudents);
       window.removeEventListener('crm-groups-changed', refreshStudents);
+      window.removeEventListener('crm-teachers-changed', refreshStudents);
     };
   }, [refreshStudents]);
 
@@ -539,8 +556,8 @@ function StudentsContent() {
               id: targetGroupObj.id,
               name: targetGroupObj.name,
               courseName: (targetGroupObj as any).courseName || targetGroupObj.name,
-              teacherName: (targetGroupObj as any).teacherName || 'Мария Иванова',
-              schedule: (targetGroupObj as any).schedule || 'Пн/Чт 18:45',
+              teacherName: (targetGroupObj as any).teacherName || '',
+              schedule: (targetGroupObj as any).schedule || '',
               status: 'active',
               joinedAt: new Date().toISOString().split('T')[0],
             },

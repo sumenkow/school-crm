@@ -12,6 +12,7 @@ interface FinanceTopKpisProps {
   debtorsCount: number;
   depositBalanceEur: number;
   depositStudentsCount: number;
+  revenueGrowthPct?: number;
   onSelectTab?: (tab: 'invoices' | 'payments' | 'subscriptions' | 'debts') => void;
 }
 
@@ -24,6 +25,7 @@ export function FinanceTopKpis({
   debtorsCount,
   depositBalanceEur,
   depositStudentsCount,
+  revenueGrowthPct,
   onSelectTab,
 }: FinanceTopKpisProps) {
   return (
@@ -47,7 +49,9 @@ export function FinanceTopKpis({
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-          <span className="text-emerald-700 font-bold">↑ +12% к сентябрю</span>
+          <span className={`font-bold ${(revenueGrowthPct ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {(revenueGrowthPct ?? 0) >= 0 ? `↑ +${revenueGrowthPct ?? 0}%` : `↓ ${revenueGrowthPct}%`} к сентябрю
+          </span>
           <span className="text-slate-400 font-medium">
             {paidPaymentsCount} {paidPaymentsCount === 1 ? 'платеж' : paidPaymentsCount < 5 ? 'платежа' : 'платежей'}
           </span>

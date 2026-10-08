@@ -42,6 +42,7 @@ import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
@@ -849,10 +850,15 @@ export default function LeadDetailsPage() {
       }
     }
 
-    let matchedGroup = 'English B1 Teens';
+    const storedGroups = typeof window !== 'undefined' ? getStoredGroups() : [];
     const dLower = (lead.directionOrCourse || '').toLowerCase();
-    if (dLower.includes('робот')) matchedGroup = 'Robotics Junior';
-    else if (dLower.includes('мат')) matchedGroup = 'Kids Math Safari';
+    const foundGroup = storedGroups.find(
+      (g) =>
+        (lead.directionOrCourse && (g.courseName?.toLowerCase().includes(dLower) || g.name.toLowerCase().includes(dLower))) ||
+        (dLower.includes('робот') && g.name.toLowerCase().includes('робот')) ||
+        (dLower.includes('мат') && g.name.toLowerCase().includes('мат'))
+    );
+    const matchedGroup = foundGroup ? foundGroup.name : storedGroups[0]?.name || lead.directionOrCourse || '';
 
     return {
       studentType: isAdult ? 'adult_student' : 'school_student',

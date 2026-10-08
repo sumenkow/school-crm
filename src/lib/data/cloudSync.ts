@@ -311,7 +311,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
           name: st ? `${st.first_name} ${st.last_name}` : 'Ученик',
           status: 'active' as const,
           attendanceRate: '100%',
-          parentPhone: st?.phone || '+7 (999) 000-00-00',
+          parentPhone: st?.phone || '',
           joinedAt: en.joined_at || '01.09.2026',
         };
       });

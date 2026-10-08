@@ -39,29 +39,13 @@ export function TodayScheduleWidget({
     const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const todayRu = today.toLocaleDateString('ru-RU');
 
-    let filtered = lessons.filter(l => {
+    const filtered = lessons.filter(l => {
       if (!l.date) return false;
       return l.date === todayIso || l.dateFormatted === todayRu || l.date.includes(todayIso);
     });
 
-    if (filtered.length === 0) {
-      filtered = lessons.slice(0, 4);
-    }
-
-    const defaultTimes = ['10:00', '12:00', '15:00', '17:00'];
-
-    // Map unique start times if missing or identical
-    const withTimes = filtered.map((l, idx) => {
-      let time = l.startTime || (l as any).start_time || '';
-      // If time is missing or equals fallback '18:45', assign varied slots for realism
-      if (!time || time === '18:45') {
-        time = defaultTimes[idx % defaultTimes.length];
-      }
-      return { ...l, startTime: time };
-    });
-
     // Sort strictly ascending by startTime
-    const sorted = [...withTimes].sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
       return (a.startTime || '00:00').localeCompare(b.startTime || '00:00');
     });
 
@@ -71,10 +55,10 @@ export function TodayScheduleWidget({
     return {
       todayLessons: sorted,
       stats: {
-        total: totalCount || 4,
+        total: totalCount,
         trials: trialsCount,
-        expectedPayments: 1,
-        tasks: 3,
+        expectedPayments: 0,
+        tasks: 0,
       },
     };
   }, [lessons]);
@@ -151,47 +135,55 @@ export function TodayScheduleWidget({
           </button>
         </div>
 
-        {/* Вертикальный таймлайн — строки py-1.5 */}
-        <div className="space-y-0.5 relative before:absolute before:left-[43px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
-          {todayLessons.slice(0, 3).map((event, idx) => {
-            const isOnline = !event.room || event.onlineMeetingUrl || (event.room && event.room.toLowerCase().includes('онлайн')) || idx !== 2;
-            const time = event.startTime || (idx === 0 ? '10:00' : idx === 1 ? '12:00' : '15:00');
-            const title = event.isTrial ? 'Пробный урок · Python' : `${event.courseName || 'Английский'} · ${event.groupName || 'Группа B1'}`;
-            const teacher = event.teacherName || (idx === 0 ? 'Мария Иванова' : idx === 1 ? 'Новый ученик' : 'Елена Васильева');
-            const format = isOnline ? 'Онлайн' : 'Офлайн';
+        {todayLessons.length === 0 ? (
+          <div className="py-6 flex flex-col items-center justify-center text-center bg-slate-50/60 rounded-xl border border-slate-100 my-1">
+            <Calendar className="w-5 h-5 text-slate-300 mb-1" />
+            <p className="text-xs font-semibold text-slate-700">На сегодня занятий не запланировано</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">В расписании на сегодня нет занятий</p>
+          </div>
+        ) : (
+          /* Вертикальный таймлайн — строки py-1.5 */
+          <div className="space-y-0.5 relative before:absolute before:left-[43px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+            {todayLessons.slice(0, 3).map((event, idx) => {
+              const isOnline = !event.room || event.onlineMeetingUrl || (event.room && event.room.toLowerCase().includes('онлайн'));
+              const time = event.startTime || '—';
+              const title = event.isTrial ? 'Пробный урок' : `${event.courseName || event.groupName || 'Занятие'}`;
+              const teacher = event.teacherName || 'Преподаватель не назначен';
+              const format = isOnline ? 'Онлайн' : 'Офлайн';
 
-            const iconColor = idx === 0 ? 'bg-emerald-100 text-emerald-700' : idx === 1 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
+              const iconColor = idx === 0 ? 'bg-emerald-100 text-emerald-700' : idx === 1 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
 
-            return (
-              <div
-                key={event.id || idx}
-                onClick={() => {
-                  if (onSelectLesson) onSelectLesson(event);
-                  else router.push('/calendar');
-                }}
-                className="flex items-center gap-2 relative cursor-pointer group py-1.5"
-              >
-                <span className="text-[11px] font-bold text-slate-500 w-8 shrink-0 text-right">{time}</span>
-                <div className="w-2 h-2 rounded-full bg-blue-500 ring-4 ring-white shrink-0 z-10" />
-                <div className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0', iconColor)}>
-                  <BookOpen className="w-3 h-3" />
+              return (
+                <div
+                  key={event.id || idx}
+                  onClick={() => {
+                    if (onSelectLesson) onSelectLesson(event);
+                    else router.push('/calendar');
+                  }}
+                  className="flex items-center gap-2 relative cursor-pointer group py-1.5"
+                >
+                  <span className="text-[11px] font-bold text-slate-500 w-8 shrink-0 text-right">{time}</span>
+                  <div className="w-2 h-2 rounded-full bg-blue-500 ring-4 ring-white shrink-0 z-10" />
+                  <div className={cn('w-5 h-5 rounded-md flex items-center justify-center shrink-0', iconColor)}>
+                    <BookOpen className="w-3 h-3" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate leading-tight">
+                      {title}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate leading-tight">{teacher}</p>
+                  </div>
+                  <span className={cn(
+                    'text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
+                    isOnline ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-slate-600 bg-slate-100 border border-slate-200'
+                  )}>
+                    {format}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors truncate leading-tight">
-                    {title}
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate leading-tight">{teacher}</p>
-                </div>
-                <span className={cn(
-                  'text-[9px] font-semibold px-1.5 py-0.5 rounded-full shrink-0',
-                  isOnline ? 'text-blue-600 bg-blue-50 border border-blue-100' : 'text-slate-600 bg-slate-100 border border-slate-200'
-                )}>
-                  {format}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

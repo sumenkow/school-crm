@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useFocusSync } from '@/hooks/useFocusSync';
 import { useRouter } from 'next/navigation';
@@ -40,6 +40,9 @@ import { cn } from '@/lib/utils';
 import { INITIAL_LEADS, FullLeadData, INITIAL_COURSES, INITIAL_GROUPS, INITIAL_TEACHERS } from '@/lib/data/mockData';
 import { getStoredLeads } from '@/lib/data/leadStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
+import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredLessons } from '@/lib/data/lessonStorage';
+import { getStoredPayments } from '@/lib/data/paymentStorage';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { DetailedReportsSection } from '@/features/analytics/components/DetailedReportsSection';
@@ -74,19 +77,32 @@ export default function AnalyticsPage() {
   });
   const [statusMenuOpenLeadId, setStatusMenuOpenLeadId] = useState<string | null>(null);
 
-  const syncAnalyticsLeads = useCallback(() => {
+  const [students, setStudents] = useState(() => (typeof window !== 'undefined' ? getStoredStudents() : []));
+  const [allLessons, setAllLessons] = useState(() => (typeof window !== 'undefined' ? getStoredLessons() : []));
+  const [allPayments, setAllPayments] = useState(() => (typeof window !== 'undefined' ? getStoredPayments() : []));
+
+  const syncAnalyticsData = useCallback(() => {
     setLeads(getStoredLeads(true, true));
+    setStudents(getStoredStudents());
+    setAllLessons(getStoredLessons());
+    setAllPayments(getStoredPayments());
   }, []);
 
-  useFocusSync(syncAnalyticsLeads);
+  useFocusSync(syncAnalyticsData);
 
   useEffect(() => {
-    syncAnalyticsLeads();
-    window.addEventListener('crm-leads-changed', syncAnalyticsLeads);
+    syncAnalyticsData();
+    window.addEventListener('crm-leads-changed', syncAnalyticsData);
+    window.addEventListener('crm-students-changed', syncAnalyticsData);
+    window.addEventListener('crm-lessons-changed', syncAnalyticsData);
+    window.addEventListener('crm-payments-changed', syncAnalyticsData);
     return () => {
-      window.removeEventListener('crm-leads-changed', syncAnalyticsLeads);
+      window.removeEventListener('crm-leads-changed', syncAnalyticsData);
+      window.removeEventListener('crm-students-changed', syncAnalyticsData);
+      window.removeEventListener('crm-lessons-changed', syncAnalyticsData);
+      window.removeEventListener('crm-payments-changed', syncAnalyticsData);
     };
-  }, [syncAnalyticsLeads]);
+  }, [syncAnalyticsData]);
 
   if (role !== 'owner' && role !== 'developer' && role !== 'admin') {
     return (
@@ -228,237 +244,112 @@ export default function AnalyticsPage() {
     },
   ];
 
-  // Retention cohorts
-  const cohorts = [
-    { cohort: 'Июнь 2026', startStudents: 24, m0: '100%', m1: '91.6%', m2: '87.5%', m3: '83.3%' },
-    { cohort: 'Июль 2026', startStudents: 30, m0: '100%', m1: '93.3%', m2: '86.6%', m3: '—' },
-    { cohort: 'Август 2026', startStudents: 35, m0: '100%', m1: '94.2%', m2: '—', m3: '—' },
-    { cohort: 'Сентябрь 2026', startStudents: 42, m0: '100%', m1: '—', m2: '—', m3: '—' },
-  ];
 
-  // Teacher revenue performance
-  const teacherRevenueByRange = {
-    month: {
-      total: '9 456 €',
-      teachers: [
-        {
-          id: 't1',
-          name: 'Мария Иванова',
-          subject: 'Английский язык',
-          role: 'Ведущий преподаватель',
-          avatarColor: 'from-blue-500 to-indigo-600',
-          students: 28,
-          hours: 32,
-          lessons: 16,
-          revenue: '4 864 €',
-          avgPerStudent: '174 €',
-          share: 51.4,
-          trend: '+8.4%',
-          color: 'bg-blue-600',
-        },
-        {
-          id: 't2',
-          name: 'Денис Смирнов',
-          subject: 'Робототехника и IT',
-          role: 'Преподаватель робототехники',
-          avatarColor: 'from-indigo-500 to-purple-600',
-          students: 14,
-          hours: 16,
-          lessons: 8,
-          revenue: '2 688 €',
-          avgPerStudent: '192 €',
-          share: 28.4,
-          trend: '+12.1%',
-          color: 'bg-indigo-600',
-        },
-        {
-          id: 't3',
-          name: 'Ольга Соколова',
-          subject: 'Олимпиадная математика',
-          role: 'Эксперт олимпиад',
-          avatarColor: 'from-teal-500 to-emerald-600',
-          students: 18,
-          hours: 24,
-          lessons: 12,
-          revenue: '1 904 €',
-          avgPerStudent: '106 €',
-          share: 20.2,
-          trend: '+4.5%',
-          color: 'bg-teal-600',
-        },
-        {
-          id: 't4',
-          name: 'Анна Кузнецова',
-          subject: 'Немецкий язык',
-          role: 'Преподаватель немецкого языка',
-          avatarColor: 'from-purple-500 to-pink-600',
-          students: 0,
-          hours: 0,
-          lessons: 0,
-          revenue: '0 €',
-          avgPerStudent: '0 €',
-          share: 0,
-          trend: 'Идет набор',
-          color: 'bg-purple-600',
-        },
-      ],
-    },
-    quarter: {
-      total: '27 700 €',
-      teachers: [
-        {
-          id: 't1',
-          name: 'Мария Иванова',
-          subject: 'Английский язык',
-          role: 'Ведущий преподаватель',
-          avatarColor: 'from-blue-500 to-indigo-600',
-          students: 31,
-          hours: 96,
-          lessons: 48,
-          revenue: '14 200 €',
-          avgPerStudent: '458 €',
-          share: 51.3,
-          trend: '+10.2%',
-          color: 'bg-blue-600',
-        },
-        {
-          id: 't2',
-          name: 'Денис Смирнов',
-          subject: 'Робототехника и IT',
-          role: 'Преподаватель робототехники',
-          avatarColor: 'from-indigo-500 to-purple-600',
-          students: 16,
-          hours: 48,
-          lessons: 24,
-          revenue: '7 900 €',
-          avgPerStudent: '494 €',
-          share: 28.5,
-          trend: '+15.4%',
-          color: 'bg-indigo-600',
-        },
-        {
-          id: 't3',
-          name: 'Ольга Соколова',
-          subject: 'Олимпиадная математика',
-          role: 'Эксперт олимпиад',
-          avatarColor: 'from-teal-500 to-emerald-600',
-          students: 19,
-          hours: 72,
-          lessons: 36,
-          revenue: '5 600 €',
-          avgPerStudent: '295 €',
-          share: 20.2,
-          trend: '+6.8%',
-          color: 'bg-teal-600',
-        },
-        {
-          id: 't4',
-          name: 'Анна Кузнецова',
-          subject: 'Немецкий язык',
-          role: 'Преподаватель немецкого языка',
-          avatarColor: 'from-purple-500 to-pink-600',
-          students: 0,
-          hours: 0,
-          lessons: 0,
-          revenue: '0 €',
-          avgPerStudent: '0 €',
-          share: 0,
-          trend: 'Идет набор',
-          color: 'bg-purple-600',
-        },
-      ],
-    },
-    year: {
-      total: '83 100 €',
-      teachers: [
-        {
-          id: 't1',
-          name: 'Мария Иванова',
-          subject: 'Английский язык',
-          role: 'Ведущий преподаватель',
-          avatarColor: 'from-blue-500 to-indigo-600',
-          students: 48,
-          hours: 288,
-          lessons: 144,
-          revenue: '42 500 €',
-          avgPerStudent: '885 €',
-          share: 51.1,
-          trend: '+14.0%',
-          color: 'bg-blue-600',
-        },
-        {
-          id: 't2',
-          name: 'Денис Смирнов',
-          subject: 'Робототехника и IT',
-          role: 'Преподаватель робототехники',
-          avatarColor: 'from-indigo-500 to-purple-600',
-          students: 26,
-          hours: 144,
-          lessons: 72,
-          revenue: '23 800 €',
-          avgPerStudent: '915 €',
-          share: 28.6,
-          trend: '+18.2%',
-          color: 'bg-indigo-600',
-        },
-        {
-          id: 't3',
-          name: 'Ольга Соколова',
-          subject: 'Олимпиадная математика',
-          role: 'Эксперт олимпиад',
-          avatarColor: 'from-teal-500 to-emerald-600',
-          students: 29,
-          hours: 216,
-          lessons: 108,
-          revenue: '16 800 €',
-          avgPerStudent: '579 €',
-          share: 20.3,
-          trend: '+9.1%',
-          color: 'bg-teal-600',
-        },
-        {
-          id: 't4',
-          name: 'Анна Кузнецова',
-          subject: 'Немецкий язык',
-          role: 'Преподаватель немецкого языка',
-          avatarColor: 'from-purple-500 to-pink-600',
-          students: 0,
-          hours: 0,
-          lessons: 0,
-          revenue: '0 €',
-          avgPerStudent: '0 €',
-          share: 0,
-          trend: 'Идет набор',
-          color: 'bg-purple-600',
-        },
-      ],
-    },
-  };
 
-  // Course performance by range
-  const coursesByRange = {
-    month: [
-      { name: 'Английский язык', students: 64, revenue: '4 864 €', share: 51.4, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 32, revenue: '2 688 €', share: 28.4, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 28, revenue: '1 904 €', share: 20.2, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
-    ],
-    quarter: [
-      { name: 'Английский язык', students: 78, revenue: '14 200 €', share: 51.3, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 42, revenue: '7 900 €', share: 28.5, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 35, revenue: '5 600 €', share: 20.2, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
-    ],
-    year: [
-      { name: 'Английский язык', students: 120, revenue: '42 500 €', share: 51.1, color: 'bg-blue-600' },
-      { name: 'Робототехника', students: 65, revenue: '23 800 €', share: 28.6, color: 'bg-indigo-600' },
-      { name: 'Олимпиадная математика', students: 54, revenue: '16 800 €', share: 20.3, color: 'bg-teal-600' },
-      { name: 'Немецкий язык', students: 0, revenue: '0 €', share: 0, color: 'bg-purple-600' },
-    ],
-  };
+  // Dynamic Teacher Performance Calculation (ANA-02)
+  const dynamicTeacherData = useMemo(() => {
+    const paidPayments = allPayments.filter((p) => p.status === 'paid');
+    const teacherStats = teachers.map((teacher, idx) => {
+      const teacherGroups = groups.filter(
+        (g) => g.teacherId === teacher.id || g.teacherName === teacher.name
+      );
+      const groupNames = new Set(teacherGroups.map((g) => g.name));
 
-  const currentTeacherData = teacherRevenueByRange[timeRange];
-  const mockCoursesStats = coursesByRange[timeRange];
+      const teacherLessons = allLessons.filter(
+        (l) => l.teacherId === teacher.id || l.teacherName === teacher.name || groupNames.has(l.groupName)
+      );
+
+      const uniqueStudentIds = new Set<string>();
+      teacherGroups.forEach((g) => (g.students || []).forEach((st) => uniqueStudentIds.add(st.id)));
+      teacherLessons.forEach((l) => (l.students || []).forEach((st) => uniqueStudentIds.add(st.id)));
+
+      const hours = Math.round(teacherLessons.length * 1.5);
+
+      const teacherSubject = teacher.activeGroups?.[0]?.courseName || 'Основной курс';
+      const teacherPayments = paidPayments.filter(
+        (p) => groupNames.has(p.groupName) || (teacherSubject && p.courseName?.includes(teacherSubject))
+      );
+      const revNum = teacherPayments.reduce((sum, p) => {
+        const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+        return sum + num;
+      }, 0);
+
+      const studentsCount = uniqueStudentIds.size;
+      const avgPerStudent = studentsCount > 0 ? Math.round(revNum / studentsCount) : 0;
+
+      const colors = ['bg-blue-600', 'bg-indigo-600', 'bg-teal-600', 'bg-purple-600'];
+      const avatarColors = [
+        'from-blue-500 to-indigo-600',
+        'from-indigo-500 to-purple-600',
+        'from-teal-500 to-emerald-600',
+        'from-purple-500 to-pink-600',
+      ];
+
+      return {
+        id: teacher.id,
+        name: teacher.name,
+        subject: teacherSubject,
+        role: teacher.role || 'Преподаватель',
+        avatarColor: avatarColors[idx % avatarColors.length],
+        students: studentsCount,
+        hours,
+        lessons: teacherLessons.length,
+        revenueNum: revNum,
+        revenue: `${Math.round(revNum).toLocaleString('ru-RU')} €`,
+        avgPerStudent: `${avgPerStudent.toLocaleString('ru-RU')} €`,
+        trend: teacherLessons.length > 0 ? '+10%' : 'Идет набор',
+        color: colors[idx % colors.length],
+      };
+    });
+
+    const totalRev = teacherStats.reduce((sum, t) => sum + t.revenueNum, 0);
+
+    const teachersWithShare = teacherStats.map((t) => ({
+      ...t,
+      share: totalRev > 0 ? parseFloat(((t.revenueNum / totalRev) * 100).toFixed(1)) : 0,
+    }));
+
+    return {
+      total: `${Math.round(totalRev).toLocaleString('ru-RU')} €`,
+      teachers: teachersWithShare,
+    };
+  }, [teachers, groups, allLessons, allPayments]);
+
+  // Dynamic Course Performance Calculation
+  const dynamicCoursesStats = useMemo(() => {
+    const paidPayments = allPayments.filter((p) => p.status === 'paid');
+    const totalRev = paidPayments.reduce((sum, p) => {
+      const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+      return sum + num;
+    }, 0);
+
+    const colors = ['bg-blue-600', 'bg-indigo-600', 'bg-teal-600', 'bg-purple-600'];
+
+    return courses.map((c, idx) => {
+      const cGroups = groups.filter((g) => g.courseId === c.id || g.courseName === c.name);
+      const cGroupNames = new Set(cGroups.map((g) => g.name));
+      const cPayments = paidPayments.filter(
+        (p) => c.name === p.courseName || cGroupNames.has(p.groupName)
+      );
+
+      const cRev = cPayments.reduce((sum, p) => {
+        const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+        return sum + num;
+      }, 0);
+
+      const uniqueStudentIds = new Set<string>();
+      cGroups.forEach((g) => (g.students || []).forEach((st) => uniqueStudentIds.add(st.id)));
+      const share = totalRev > 0 ? parseFloat(((cRev / totalRev) * 100).toFixed(1)) : 0;
+
+      return {
+        name: c.name,
+        students: uniqueStudentIds.size,
+        revenue: `${Math.round(cRev).toLocaleString('ru-RU')} €`,
+        share,
+        color: colors[idx % colors.length],
+      };
+    });
+  }, [courses, groups, allPayments]);
 
   const handleExport = () => {
     try {
@@ -472,14 +363,31 @@ export default function AnalyticsPage() {
       csvRows.push(`Дата и время выгрузки:;${nowStr}`);
       csvRows.push('');
 
-      // 1. KPI
+      // 1. KPI (Dynamic calculations)
+      const totalStudents = students.length;
+      const activeStudents = students.filter((s) => s.status === 'active').length;
+      const retentionPct = totalStudents > 0 ? ((activeStudents / totalStudents) * 100).toFixed(1) : '100.0';
+
+      const totalLeads = leads.length;
+      const paidLeads = leads.filter((l) => l.status === 'paid' || (l.status as string) === 'enrolled').length;
+      const conversionPct = totalLeads > 0 ? ((paidLeads / totalLeads) * 100).toFixed(1) : '0.0';
+
+      const paidPayments = allPayments.filter((p) => p.status === 'paid');
+      const totalPaidRevenue = paidPayments.reduce((sum, p) => {
+        const num = typeof p.amount === 'number' ? p.amount : parseFloat(String(p.amount).replace(/[^\d.]/g, '')) || 0;
+        return sum + num;
+      }, 0);
+      const payingStudentIds = new Set(paidPayments.map((p) => p.studentId).filter(Boolean));
+      const avgLtvVal = payingStudentIds.size > 0 ? Math.round(totalPaidRevenue / payingStudentIds.size) : 0;
+      const activeGroupStudentsCount = dynamicCoursesStats.reduce((acc, c) => acc + c.students, 0);
+
       csvRows.push('=== 1. КЛЮЧЕВЫЕ МЕТРИКИ (KPI) ===');
       csvRows.push('Показатель;Значение;Динамика / Пояснение');
-      csvRows.push('Удержание учеников (Retention);91.4%;+2.1% к прошлому периоду');
-      csvRows.push('Сквозная конверсия CRM;35.7%;10 оплат из 28 обращений');
-      csvRows.push('Средний LTV ученика;456 €;+5.4%');
-      csvRows.push(`Совокупная выручка за период;${currentTeacherData.total};100% от плана`);
-      csvRows.push(`Учеников в активных группах;${mockCoursesStats.reduce((acc, c) => acc + c.students, 0)};чел.`);
+      csvRows.push(`Удержание учеников (Retention);${retentionPct}%;${activeStudents} активных из ${totalStudents} учеников`);
+      csvRows.push(`Сквозная конверсия CRM;${conversionPct}%;${paidLeads} оплат/зачислений из ${totalLeads} обращений`);
+      csvRows.push(`Средний LTV ученика;${avgLtvVal.toLocaleString('ru-RU')} €;На основе ${payingStudentIds.size} платящих учеников`);
+      csvRows.push(`Совокупная выручка за период;${dynamicTeacherData.total};Оплаченные абонементы и занятия`);
+      csvRows.push(`Учеников в активных группах;${activeGroupStudentsCount};чел.`);
       csvRows.push('');
 
       // 2. Funnel
@@ -493,7 +401,7 @@ export default function AnalyticsPage() {
       // 3. Teachers
       csvRows.push('=== 3. ВЫРУЧКА И НАГРУЗКА ПРЕПОДАВАТЕЛЕЙ ===');
       csvRows.push('Преподаватель;Направление;Выручка;Доля от выручки;Учеников;Часов;Занятий;Динамика');
-      currentTeacherData.teachers.forEach((t) => {
+      dynamicTeacherData.teachers.forEach((t) => {
         csvRows.push(`"${t.name}";"${t.subject}";${t.revenue};${t.share}%;${t.students};${t.hours};${t.lessons};${t.trend}`);
       });
       csvRows.push('');
@@ -501,7 +409,7 @@ export default function AnalyticsPage() {
       // 4. Courses
       csvRows.push('=== 4. НАПРАВЛЕНИЯ ОБУЧЕНИЯ И КУРСЫ ===');
       csvRows.push('Курс;Учеников;Выручка;Доля выручки');
-      mockCoursesStats.forEach((c) => {
+      dynamicCoursesStats.forEach((c) => {
         csvRows.push(`"${c.name}";${c.students};${c.revenue};${c.share}%`);
       });
       csvRows.push('');

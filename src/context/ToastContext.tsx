@@ -45,6 +45,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const error = useCallback((message: string, duration?: number) => showToast(message, 'error', duration), [showToast]);
   const info = useCallback((message: string, duration?: number) => showToast(message, 'info', duration), [showToast]);
 
+  React.useEffect(() => {
+    const handleCustomToast = (e: any) => {
+      const detail = e?.detail;
+      if (detail?.message) {
+        showToast(detail.message, detail.type || 'info', detail.duration);
+      }
+    };
+    window.addEventListener('crm-toast', handleCustomToast);
+    return () => window.removeEventListener('crm-toast', handleCustomToast);
+  }, [showToast]);
+
   return (
     <ToastContext.Provider value={{ showToast, success, error, info }}>
       {children}

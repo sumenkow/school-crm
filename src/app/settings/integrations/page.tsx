@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
+import { getStoredStudents } from '@/lib/data/studentStorage';
 
 type IntegrationsTab = 'main' | 'notifications' | 'channels' | 'testing';
 
@@ -66,6 +67,26 @@ export default function TelegramIntegrationsPage() {
   const [notifyScheduleChanges, setNotifyScheduleChanges] = useState(true);
   const [notifyChurnRisk, setNotifyChurnRisk] = useState(true);
   const [notifyMorningDigest, setNotifyMorningDigest] = useState(true);
+
+  // Dynamic connected students calculation (SET-20)
+  const studentConnectionStats = React.useMemo(() => {
+    if (typeof window === 'undefined') return { connected: 0, total: 0 };
+    const allSt = getStoredStudents();
+    const activeSt = allSt.filter(
+      (s) => !s.isDeleted && (s.status as string) !== 'archived' && s.status !== 'churned'
+    );
+    const connectedSt = activeSt.filter((s) => {
+      return Boolean(
+        s.telegram ||
+        s.parents?.some((p) => p.telegram) ||
+        (s as any).parentTelegram
+      );
+    });
+    return {
+      connected: connectedSt.length,
+      total: activeSt.length,
+    };
+  }, []);
 
   // Testing form
   const [testTarget, setTestTarget] = useState<'admin' | 'owner' | 'both'>('admin');
@@ -941,7 +962,7 @@ export default function TelegramIntegrationsPage() {
                     </p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                    14 из 18 активных учеников подключены
+                    {studentConnectionStats.connected} из {studentConnectionStats.total} активных учеников подключены
                   </span>
                 </div>
 
