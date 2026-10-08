@@ -242,7 +242,7 @@ export async function updateUnifiedTaskStatus(
     const finalResult = options?.completionResult || options?.result || options?.comment || target.completionResult || target.result || 'Задача выполнена';
     completionResult = finalResult.trim();
     result = finalResult.trim();
-  } else if (newStatus === 'open') {
+  } else if (newStatus === 'open' || newStatus === 'in_progress') {
     completedAt = undefined;
     completedByName = undefined;
     completedBy = undefined;
