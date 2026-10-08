@@ -89,7 +89,7 @@ export function TopBar({ onOpenMobile }: TopBarProps) {
 
   return (
     <header
-      className="flex sticky top-0 z-20 items-center h-12 px-3 sm:px-4 gap-2.5 transition-all duration-200 border-b border-slate-200/80 bg-white"
+      className="flex md:hidden sticky top-0 z-20 items-center h-12 px-3 sm:px-4 gap-2.5 transition-all duration-200 border-b border-slate-200/80 bg-white"
     >
       {/* Mobile Hamburger menu button (SET-03) */}
       <button

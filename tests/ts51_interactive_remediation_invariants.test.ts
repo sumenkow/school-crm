@@ -685,6 +685,30 @@ export async function runSuite31(): Promise<{ passed: number; failed: number }> 
     assert.ok(!studentPageSource.includes('✉ Отправка'), 'students/[id]/page.tsx must not contain textual ✉ emoji in title');
   });
 
+  await test('[T4.04] Desktop layout isolation: TopBar is strictly md:hidden, all controls live in Sidebar', () => {
+    const appShellSource = fs.readFileSync(path.resolve(__dirname, '../src/components/layout/AppShell.tsx'), 'utf-8');
+    assert.ok(
+      appShellSource.includes('md:hidden flex-shrink-0 print:hidden') && appShellSource.includes('<TopBar'),
+      'AppShell must hide TopBar on desktop (md:hidden) to prevent duplicate headers'
+    );
+
+    const topBarSource = fs.readFileSync(path.resolve(__dirname, '../src/components/layout/TopBar.tsx'), 'utf-8');
+    assert.ok(
+      topBarSource.includes('flex md:hidden sticky'),
+      'TopBar header must have md:hidden to strictly avoid rendering on desktop'
+    );
+
+    const sidebarSource = fs.readFileSync(path.resolve(__dirname, '../src/components/layout/Sidebar.tsx'), 'utf-8');
+    assert.ok(
+      sidebarSource.includes('onOpenPalette') && sidebarSource.includes('⌘K'),
+      'Sidebar must host the desktop search trigger'
+    );
+    assert.ok(
+      sidebarSource.includes('NotificationCenter') && sidebarSource.includes('CountryFlag'),
+      'Sidebar must host notifications and language switcher on desktop'
+    );
+  });
+
   // =========================================================================
   // TIER 5: ZERO MOCK DATA BAN
   // =========================================================================
