@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { AuditEvent, AuditEventsResponse } from '@/lib/audit/types';
+import { getLocalAuditEvents } from '@/lib/audit/clientAudit';
 import {
   AuditFilterControls,
   AuditTabType,
@@ -50,18 +51,74 @@ export default function AuditSettingsPage() {
       if (sourceFilter) params.set('source', sourceFilter);
       if (roleFilter) params.set('role', roleFilter);
 
-      const res = await fetch(`/api/audit-events?${params.toString()}`);
-      if (!res.ok) {
-        if (res.status === 403 || res.status === 401) {
-          throw new Error('Доступ запрещен: требуется роль администратора или владельца');
+      let serverEvents: AuditEvent[] = [];
+      let serverTotal = 0;
+
+      try {
+        const res = await fetch(`/api/audit-events?${params.toString()}`);
+        if (res.ok) {
+          const data: AuditEventsResponse = await res.json();
+          serverEvents = data.events || [];
+          serverTotal = data.total || 0;
         }
-        throw new Error(`Ошибка загрузки журнала (${res.status})`);
+      } catch {
+        // Fallback to local
       }
 
-      const data: AuditEventsResponse = await res.json();
-      setEvents(data.events || []);
-      setTotalEvents(data.total || 0);
-      setTotalPages(data.totalPages || 1);
+      const localEvents = getLocalAuditEvents();
+
+      // Merge and deduplicate by id
+      const seenIds = new Set<string>();
+      const combined: AuditEvent[] = [];
+      for (const e of [...localEvents, ...serverEvents]) {
+        if (e && e.id && !seenIds.has(e.id)) {
+          seenIds.add(e.id);
+          combined.push(e);
+        }
+      }
+
+      // Sort chronologically descending
+      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // Apply client-side filters for instant responsiveness
+      let filtered = combined;
+      if (currentTab === 'changes') {
+        filtered = filtered.filter((e) => e.changed_fields && Object.keys(e.changed_fields).length > 0);
+      } else if (currentTab === 'finance') {
+        filtered = filtered.filter((e) => ['payment', 'payments', 'invoice', 'invoices', 'subscription', 'subscriptions', 'finance', 'refund'].includes(e.entity_type));
+      } else if (currentTab === 'security') {
+        filtered = filtered.filter((e) => e.action.startsWith('AUTH_') || e.action.startsWith('ROLE_') || e.action.startsWith('USER_') || ['user', 'users', 'profile', 'auth', 'roles'].includes(e.entity_type));
+      } else if (currentTab === 'calendar') {
+        filtered = filtered.filter((e) => ['lesson', 'lessons', 'group', 'groups', 'schedule', 'courses', 'course', 'tasks', 'task'].includes(e.entity_type));
+      } else if (currentTab === 'students') {
+        filtered = filtered.filter((e) => ['student', 'students', 'parent', 'parents', 'lead', 'leads'].includes(e.entity_type));
+      } else if (currentTab === 'telegram') {
+        filtered = filtered.filter((e) => ['TELEGRAM', 'TELEGRAM_MINI_APP'].includes(e.source) || e.entity_type === 'telegram');
+      } else if (currentTab === 'errors') {
+        filtered = filtered.filter((e) => e.result === 'FAILURE');
+      }
+
+      if (roleFilter) filtered = filtered.filter((e) => (e.actor_role_snapshot || '').toLowerCase() === roleFilter.toLowerCase());
+      if (resultFilter) filtered = filtered.filter((e) => e.result === resultFilter);
+      if (sourceFilter) filtered = filtered.filter((e) => e.source === sourceFilter);
+      if (searchQuery.trim()) {
+        const s = searchQuery.trim().toLowerCase();
+        filtered = filtered.filter((e) =>
+          e.actor_name_snapshot?.toLowerCase().includes(s) ||
+          e.entity_name_snapshot?.toLowerCase().includes(s) ||
+          e.description?.toLowerCase().includes(s) ||
+          e.action?.toLowerCase().includes(s) ||
+          e.entity_id?.toLowerCase().includes(s)
+        );
+      }
+
+      const total = filtered.length;
+      const startIndex = (page - 1) * pageSize;
+      const paginated = filtered.slice(startIndex, startIndex + pageSize);
+
+      setEvents(paginated);
+      setTotalEvents(total);
+      setTotalPages(Math.ceil(total / pageSize) || 1);
     } catch (err: any) {
       console.error('Fetch audit events failed:', err);
       setErrorMessage(err.message || 'Не удалось загрузить события аудита');
@@ -72,6 +129,8 @@ export default function AuditSettingsPage() {
 
   useEffect(() => {
     fetchAuditEvents();
+    window.addEventListener('crm-audit-events-changed', fetchAuditEvents);
+    return () => window.removeEventListener('crm-audit-events-changed', fetchAuditEvents);
   }, [fetchAuditEvents]);
 
   const handleTabChange = (tab: AuditTabType) => {

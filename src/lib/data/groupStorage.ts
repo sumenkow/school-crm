@@ -3,6 +3,7 @@ import { getStoredStudents, saveStudentToStorage } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';
 import { persistEntityToCloud } from './cloudSync';
 import type { TimelineInteraction } from './mockData';
+import { recordClientAuditEvent } from '../audit/clientAudit';
 
 const GROUPS_STORAGE_KEY = 'crm_groups_master_v2';
 
@@ -122,6 +123,18 @@ export function saveGroupToStorage(group: FullGroupData): void {
 
       // Dispatch event
       window.dispatchEvent(new CustomEvent('crm-groups-changed', { detail: group }));
+
+      try {
+        recordClientAuditEvent({
+          action: existingIdx === -1 ? 'GROUP_CREATE' : 'GROUP_UPDATE',
+          entityType: 'group',
+          entityId: group.id,
+          entityNameSnapshot: group.name,
+          description: existingIdx === -1
+            ? `Создана группа «${group.name}» (Преподаватель: ${group.teacherName})`
+            : `Обновлены параметры группы «${group.name}»`,
+        });
+      } catch {}
     } catch (err) {
       console.error('Failed to save group to storage:', err);
     }

@@ -5,6 +5,7 @@ import { getStoredTasks, saveTaskToStorage } from './taskStorage';
 import { getStoredStudents } from './studentStorage';
 import { saveInteractionToStorage } from './timelineStorage';
 import { notifyAdminOnTaskAssigned, notifyOwnerOnTaskStatusChange, notifyContactOnTask } from '@/lib/telegram/botNotifier';
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 export interface CreateTaskOptions {
   title: string;
@@ -121,6 +122,18 @@ export async function createUnifiedTask(options: CreateTaskOptions): Promise<Ful
 
   // 4. Save to Storage (localStorage + Supabase fire-and-forget)
   saveTaskToStorage(newTask);
+
+  // 4.1 Audit Trail
+  recordClientAuditEvent({
+    action: 'TASK_CREATE',
+    entityType: 'tasks',
+    entityId: newTask.id,
+    entityNameSnapshot: newTask.title,
+    actorName: createdByName,
+    actorRole: createdByRole,
+    description: `Создана задача: «${newTask.title}» (Срок: ${dueDateFormatted}, Исполнитель: ${newTask.assignedTo})`,
+    afterData: newTask,
+  });
 
   // 5. Create cross-entity Timeline interaction (unless skipped for auto-followup tasks)
   if (!options.skipTimelineInteraction) {
@@ -304,7 +317,6 @@ export async function updateUnifiedTaskStatus(
   // 1. Save to Task Storage
   saveTaskToStorage(updatedTask);
 
-  // 2. Add Timeline event with full cross-entity linking
   const statusLabels: Record<string, string> = {
     done: 'выполнена',
     in_progress: 'взята в работу',
@@ -313,6 +325,26 @@ export async function updateUnifiedTaskStatus(
     open: 'открыта заново',
   };
   const label = statusLabels[newStatus] || newStatus;
+
+  // 1.1 Audit Trail
+  const auditAction = newStatus === 'done' ? 'TASK_COMPLETE' : isRescheduled ? 'TASK_POSTPONE' : 'TASK_STATUS_UPDATE';
+  recordClientAuditEvent({
+    action: auditAction,
+    entityType: 'tasks',
+    entityId: updatedTask.id,
+    entityNameSnapshot: updatedTask.title,
+    actorName: performerName,
+    actorRole: options?.userRole,
+    description: newStatus === 'done'
+      ? `Выполнена задача: «${updatedTask.title}» (${performerName}). Результат: ${completionResult || 'Задача выполнена'}`
+      : isRescheduled
+      ? `Перенесен срок задачи «${updatedTask.title}» на ${dueDateFormatted}${rescheduledReason ? `. Причина: ${rescheduledReason}` : ''}`
+      : `Статус задачи «${updatedTask.title}» изменен на «${label}»`,
+    beforeData: target,
+    afterData: updatedTask,
+  });
+
+  // 2. Add Timeline event with full cross-entity linking
 
   // Resolve cross-entity links if missing
   let resolvedStudentId = target.studentId;

@@ -5,6 +5,7 @@ import { saveInteractionToStorage, sortTimelineChronologicalDesc } from './timel
 import { savePaymentToStorage } from './paymentStorage';
 import { syncStudentNameCascade, syncParentNameCascade } from './nameCascadeSync';
 import { persistEntityToCloud } from './cloudSync';
+import { recordClientAuditEvent } from '../audit/clientAudit';
 
 const STUDENTS_STORAGE_KEY = 'crm_students_v2';
 
@@ -443,6 +444,18 @@ export function saveStudentToStorage(student: FullStudentData): void {
       // Notify other views if not currently reconciling
       if (!isReconcilingGlobally) {
         window.dispatchEvent(new CustomEvent('crm-students-changed', { detail: studentToSave }));
+
+        try {
+          recordClientAuditEvent({
+            action: sIdx === -1 ? 'STUDENT_CREATE' : 'STUDENT_UPDATE',
+            entityType: 'student',
+            entityId: studentToSave.id,
+            entityNameSnapshot: `${studentToSave.firstName} ${studentToSave.lastName}`.trim(),
+            description: sIdx === -1
+              ? `Создан профиль ученика ${studentToSave.firstName} ${studentToSave.lastName}`.trim()
+              : `Обновлены данные ученика ${studentToSave.firstName} ${studentToSave.lastName}`.trim(),
+          });
+        } catch {}
       }
     } catch (err) {
       console.error('Failed to save student to storage:', err);

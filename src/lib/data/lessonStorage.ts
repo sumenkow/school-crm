@@ -4,6 +4,7 @@ import { checkThreeWayCollision, CollisionResult } from './collisionHelper';
 import { getStoredStudents, saveStudentToStorage } from './studentStorage';
 import { saveInteractionToStorage, getEquivalentIds } from './timelineStorage';
 import { persistEntityToCloud } from './cloudSync';
+import { recordClientAuditEvent } from '../audit/clientAudit';
 
 const LESSONS_STORAGE_KEY = 'crm_lessons_master_v2';
 const SEED_LESSON_IDS = new Set<string>(INITIAL_LESSONS.map((l) => l.id));
@@ -151,6 +152,18 @@ export function saveLessonToStorage(
 
       localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(updated));
       window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: { lessonId: lesson.id } }));
+
+      try {
+        recordClientAuditEvent({
+          action: existingIdx === -1 ? 'LESSON_CREATE' : 'LESSON_UPDATE',
+          entityType: 'lesson',
+          entityId: lesson.id,
+          entityNameSnapshot: `${lesson.courseName || lesson.groupName || 'Урок'} (${lesson.date} ${lesson.startTime})`,
+          description: existingIdx === -1
+            ? `Создано занятие «${lesson.courseName || lesson.groupName || 'Урок'}» на ${lesson.date} ${lesson.startTime} (Преподаватель: ${lesson.teacherName || 'не назначен'})`
+            : `Обновлены данные занятия «${lesson.courseName || lesson.groupName || 'Урок'}» на ${lesson.date} ${lesson.startTime}`,
+        });
+      } catch {}
     } catch (err) {
       console.error('Failed to save lesson to localStorage:', err);
     }
@@ -550,6 +563,21 @@ export function recordLessonAttendanceBatch(params: {
       lessonId: params.lessonId,
       studentIdsToBill: presentStudentIds,
     });
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const finalLesson = getStoredLessonById(params.lessonId) || updatedLesson;
+      recordClientAuditEvent({
+        action: 'ATTENDANCE_RECORD',
+        entityType: 'attendance',
+        entityId: params.lessonId,
+        entityNameSnapshot: `${finalLesson.courseName || finalLesson.groupName || 'Урок'} (${finalLesson.date})`,
+        description: `Отмечена посещаемость занятия «${finalLesson.courseName || finalLesson.groupName || 'Урок'}» (${params.studentRecords.length} учеников, Преподаватель: ${params.teacherName || finalLesson.teacherName || 'Преподаватель'})`,
+        actorName: params.teacherName || finalLesson.teacherName,
+        actorRole: 'teacher',
+      });
+    } catch {}
   }
 
   return { updatedLesson: getStoredLessonById(params.lessonId) || updatedLesson };

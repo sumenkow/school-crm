@@ -3,6 +3,7 @@
 import { FullPaymentData, INITIAL_PAYMENTS } from './mockData';
 import { getEurRubRate, getCurrencyRateMeta } from './currencyHelper';
 import { persistEntityToCloud } from './cloudSync';
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 const PAYMENTS_STORAGE_KEY = 'crm_payments_v2';
 
@@ -136,6 +137,17 @@ export function savePaymentToStorage(payment: FullPaymentData): void {
   if (typeof window !== 'undefined') {
     try {
       persistEntityToCloud('payment', paymentWithRate);
+
+      // Audit Trail
+      recordClientAuditEvent({
+        action: idx !== -1 ? 'PAYMENT_UPDATE' : 'PAYMENT_CREATE',
+        entityType: 'payments',
+        entityId: paymentWithRate.id,
+        entityNameSnapshot: `Оплата ${paymentWithRate.amountFormatted || `${paymentWithRate.amount} €`}`,
+        actorName: paymentWithRate.recordedBy,
+        description: `Зафиксирована оплата: ${paymentWithRate.amountFormatted || `${paymentWithRate.amount} €`} (${paymentWithRate.studentName || 'Ученик'}, ${paymentWithRate.periodLabel || 'Абонемент'})`,
+        afterData: paymentWithRate,
+      });
 
       // Notify all views
       window.dispatchEvent(new CustomEvent('crm-payments-changed', { detail: payment }));

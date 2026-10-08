@@ -10,6 +10,8 @@
  * - Reuses existing trial mechanics via isTrialAvailable: boolean (Zero New Entities)
  */
 
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
+
 export type CourseFormat = 'group' | 'individual';
 export type CourseStatus = 'active' | 'archived';
 export type CourseSubject =
@@ -834,6 +836,19 @@ export function saveCourse(course: Partial<CourseDirection> & { name: string }):
       console.warn('Failed to save courses to localStorage:', e);
     }
 
+    // Audit Trail
+    recordClientAuditEvent({
+      action: existingIndex >= 0 ? 'COURSE_UPDATE' : 'COURSE_CREATE',
+      entityType: 'courses',
+      entityId: normalized.id,
+      entityNameSnapshot: normalized.name,
+      description: existingIndex >= 0
+        ? `Обновлен курс: «${normalized.name}» (${normalized.subject})`
+        : `Создан новый курс: «${normalized.name}» (${normalized.subject})`,
+      beforeData: existingIndex >= 0 ? current[existingIndex] : null,
+      afterData: normalized,
+    });
+
     // Background cloud sync to Supabase via /api/courses
     syncCourseToCloud(normalized).catch((err) => {
       console.warn('Background sync to /api/courses note:', err);
@@ -855,6 +870,7 @@ export function saveCourseToStorage(course: CourseDirection): CourseDirection {
  */
 export function deleteCourse(id: string): boolean {
   const current = getCourses();
+  const targetCourse = current.find((c) => c.id === id);
   const filtered = current.filter((c) => c.id !== id);
 
   if (filtered.length === current.length) {
@@ -869,6 +885,16 @@ export function deleteCourse(id: string): boolean {
     } catch (e) {
       console.warn('Failed to delete course in localStorage:', e);
     }
+
+    // Audit Trail
+    recordClientAuditEvent({
+      action: 'COURSE_DELETE',
+      entityType: 'courses',
+      entityId: id,
+      entityNameSnapshot: targetCourse?.name || id,
+      description: `Удален курс: «${targetCourse?.name || id}»`,
+      beforeData: targetCourse,
+    });
 
     syncDeletionToCloud(id).catch((err) => {
       console.warn('Background sync delete note:', err);
@@ -893,12 +919,26 @@ export function archiveCourse(id: string): CourseDirection | null {
   if (!course) return null;
 
   const newStatus: CourseStatus = course.status === 'active' ? 'archived' : 'active';
-  return saveCourse({
+  const updated = saveCourse({
     ...course,
     status: newStatus,
     is_active: newStatus === 'active',
     isActive: newStatus === 'active',
   });
+
+  recordClientAuditEvent({
+    action: newStatus === 'archived' ? 'COURSE_ARCHIVE' : 'COURSE_UNARCHIVE',
+    entityType: 'courses',
+    entityId: id,
+    entityNameSnapshot: course.name,
+    description: newStatus === 'archived'
+      ? `Курс «${course.name}» перемещен в архив`
+      : `Курс «${course.name}» восстановлен из архива`,
+    beforeData: course,
+    afterData: updated,
+  });
+
+  return updated;
 }
 
 /**

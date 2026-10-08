@@ -1,5 +1,6 @@
 import { FullLeadData, INITIAL_LEADS } from './mockData';
 import { persistEntityToCloud } from './cloudSync';
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 const LEADS_STORAGE_KEY = 'crm_leads_v2';
 
@@ -62,6 +63,9 @@ export function getStoredLeads(includeConverted: boolean = false, includeDeleted
 export function saveLeadToStorage(lead: FullLeadData): void {
   const currentLeads = getStoredLeads(true);
   const idx = currentLeads.findIndex((l) => l.id === lead.id);
+  const isNew = idx === -1;
+  const oldLead = !isNew ? currentLeads[idx] : undefined;
+
   if (idx !== -1) {
     currentLeads[idx] = lead;
   } else {
@@ -85,6 +89,27 @@ export function saveLeadToStorage(lead: FullLeadData): void {
     }
   }
 
+  // Audit Trail
+  const actionType = isNew
+    ? 'LEAD_CREATE'
+    : oldLead?.status !== lead.status
+    ? 'LEAD_STATUS_UPDATE'
+    : 'LEAD_UPDATE';
+
+  recordClientAuditEvent({
+    action: actionType,
+    entityType: 'leads',
+    entityId: lead.id,
+    entityNameSnapshot: lead.name,
+    description: isNew
+      ? `Создан новый лид: ${lead.name} (${lead.directionOrCourse || 'Курс'}, источник: ${lead.source || 'Прямой'})`
+      : oldLead?.status !== lead.status
+      ? `Статус лида ${lead.name} изменен: «${oldLead?.status || ''}» → «${lead.status}»`
+      : `Обновлены данные лида: ${lead.name}`,
+    beforeData: oldLead,
+    afterData: lead,
+  });
+
   persistEntityToCloud('lead', lead);
 }
 
@@ -100,6 +125,15 @@ export function qualifyAndConvertLead(leadId: string, convertedStudentId: string
     targetLead.convertedStudentId = convertedStudentId;
     if (convertedParentId) targetLead.convertedParentId = convertedParentId;
     saveLeadToStorage(targetLead);
+
+    recordClientAuditEvent({
+      action: 'LEAD_CONVERT',
+      entityType: 'leads',
+      entityId: leadId,
+      entityNameSnapshot: targetLead.name,
+      description: `Лид ${targetLead.name} успешно конвертирован в ученика школы`,
+      afterData: targetLead,
+    });
   }
 }
 
@@ -114,6 +148,15 @@ export function softDeleteLead(leadId: string): void {
     targetLead.deleted_at = now;
     saveLeadToStorage(targetLead);
     persistEntityToCloud('lead', { id: leadId }, 'delete');
+
+    recordClientAuditEvent({
+      action: 'LEAD_DELETE',
+      entityType: 'leads',
+      entityId: leadId,
+      entityNameSnapshot: targetLead.name,
+      description: `Лид ${targetLead.name} перемещен в архив/удален`,
+      afterData: targetLead,
+    });
   }
 }
 
@@ -127,6 +170,15 @@ export function restoreLead(leadId: string): void {
     targetLead.deleted_at = undefined;
     saveLeadToStorage(targetLead);
     persistEntityToCloud('lead', targetLead);
+
+    recordClientAuditEvent({
+      action: 'LEAD_RESTORE',
+      entityType: 'leads',
+      entityId: leadId,
+      entityNameSnapshot: targetLead.name,
+      description: `Лид ${targetLead.name} восстановлен из архива`,
+      afterData: targetLead,
+    });
   }
 }
 

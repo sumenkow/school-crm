@@ -1,6 +1,7 @@
 'use client';
 
 import { createClient } from '@/lib/supabase/client';
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 export interface SchoolProfileData {
   name: string;
@@ -130,8 +131,20 @@ export function saveSchoolSettings(data: SchoolProfileData): void {
   if (typeof window === 'undefined') return;
 
   try {
+    const oldSettings = getSchoolSettings();
     localStorage.setItem(SCHOOL_SETTINGS_STORAGE_KEY, JSON.stringify(data));
     window.dispatchEvent(new CustomEvent('crm-school-settings-changed', { detail: data }));
+
+    // Audit Trail
+    recordClientAuditEvent({
+      action: 'SETTINGS_UPDATE',
+      entityType: 'school_settings',
+      entityId: 'school_profile',
+      entityNameSnapshot: data.name || 'Профиль школы',
+      description: `Обновлены настройки школы «${data.name}»`,
+      beforeData: oldSettings,
+      afterData: data,
+    });
 
     // 1. Send to cloud API route
     fetch('/api/school/settings', {

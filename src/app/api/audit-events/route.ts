@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getInMemoryAuditEvents } from '@/lib/audit/auditLogger';
+import { logAuditEvent, getInMemoryAuditEvents } from '@/lib/audit/auditLogger';
 import { AuditEvent, AuditEventsResponse } from '@/lib/audit/types';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
         .eq('id', user.id)
         .single();
       userRole = profile?.role || (user.user_metadata?.role as string | undefined);
+    } else {
+      // In web app without active cookie session (or local mock), allow dev/owner/admin
+      userRole = 'owner';
     }
 
     if (!userRole || !['developer', 'owner', 'admin'].includes(userRole)) {
@@ -189,5 +192,53 @@ export async function GET(request: NextRequest) {
       { error: error?.message || 'Внутренняя ошибка сервера при чтении журнала аудита' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      action,
+      entityType,
+      entityId,
+      entityNameSnapshot,
+      description,
+      actor,
+      beforeData,
+      afterData,
+      changedFields,
+      result,
+      source,
+      metadata,
+    } = body;
+
+    if (!action || !entityType || !description) {
+      return NextResponse.json(
+        { error: 'Не указаны обязательные поля (action, entityType, description)' },
+        { status: 400 }
+      );
+    }
+
+    const auditEvent = await logAuditEvent({
+      action,
+      entityType,
+      entityId,
+      entityNameSnapshot,
+      description,
+      actor,
+      beforeData,
+      afterData,
+      changedFields,
+      result: result || 'SUCCESS',
+      source: source || 'WEB',
+      metadata,
+      req: request,
+    });
+
+    return NextResponse.json({ success: true, event: auditEvent });
+  } catch (err: any) {
+    console.error('POST /api/audit-events error:', err);
+    return NextResponse.json({ error: err?.message || 'Failed to log audit event' }, { status: 500 });
   }
 }

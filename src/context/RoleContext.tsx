@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types';
 import { permissions, PermissionsMap, getPermissionsForRole, AppRole } from '@/lib/auth/permissions';
+import { recordClientAuditEvent } from '@/lib/audit/clientAudit';
 
 export interface UserProfileData {
   role: UserRole;
@@ -248,6 +249,16 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, role: newRole }));
       document.cookie = `crm_role=${newRole}; path=/; max-age=31536000; SameSite=Lax`;
       window.dispatchEvent(new CustomEvent('crm-role-changed', { detail: { role: newRole } }));
+
+      recordClientAuditEvent({
+        action: 'USER_ROLE_SWITCH',
+        entityType: 'user_role',
+        entityId: newRole,
+        entityNameSnapshot: newRole === 'owner' ? 'Владелец' : newRole === 'admin' ? 'Администратор' : 'Преподаватель',
+        description: `Переключение режима рабочего пространства на: ${newRole === 'owner' ? 'Владелец школы' : newRole === 'admin' ? 'Администратор' : 'Преподаватель'}`,
+        actorRole: accountRole || role,
+        actorName: userName || 'Владелец школы',
+      });
     } catch {}
 
     // Sync to Supabase in background
