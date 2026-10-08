@@ -9,7 +9,6 @@ import {
   Building2,
   Phone,
   Mail,
-  Globe,
   Clock,
   Landmark,
   Lock,
@@ -19,13 +18,9 @@ import {
   ExternalLink,
   Shield,
   Euro,
-  Users,
-  BookOpen,
-  GraduationCap,
   Sparkles,
   MoreVertical,
   CheckCircle2,
-  Video,
   FileText,
   RotateCcw
 } from 'lucide-react';
@@ -38,8 +33,6 @@ import {
   saveSchoolSettings,
   fetchSchoolSettingsFromCloud
 } from '@/lib/data/schoolSettingsStorage';
-import { getStoredCourses } from '@/lib/data/courseStorage';
-import { getStoredStudents } from '@/lib/data/studentStorage';
 
 type ProfileTab = 'general' | 'contacts' | 'hours' | 'banking';
 
@@ -54,13 +47,6 @@ export default function SchoolProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-
-  // Stats dynamically computed from storage
-  const [stats, setStats] = useState({
-    staffCount: 4,
-    directionsCount: 6,
-    activeStudentsCount: 18,
-  });
 
   // Days of week state
   const [activeDays, setActiveDays] = useState<string[]>(() => {
@@ -80,21 +66,6 @@ export default function SchoolProfilePage() {
         setFormData(cloud);
       }
     });
-
-    // Compute dynamic stats
-    try {
-      const courses = getStoredCourses();
-      const students = getStoredStudents();
-      const activeCount = students.filter((s) => s.status === 'active').length;
-
-      setStats({
-        staffCount: 4, // 1 owner + 1 admin + 2 teachers
-        directionsCount: courses.length > 0 ? courses.length : 6,
-        activeStudentsCount: activeCount > 0 ? activeCount : 18,
-      });
-    } catch {
-      // fallback
-    }
 
     const handleSync = (e: any) => {
       if (e.detail) {
@@ -166,6 +137,7 @@ export default function SchoolProfilePage() {
     }));
   };
 
+  // Архитектурная фиксация: Системное ограничение (Zero Classrooms). Школа работает только в онлайн-формате.
   const handleSave = () => {
     setIsSaving(true);
     const cleaned: SchoolProfileData = {
@@ -866,92 +838,7 @@ export default function SchoolProfilePage() {
 
         {/* Right 1/3 Sidebar Widgets */}
         <div className="lg:col-span-4 space-y-5">
-          {/* Widget 1: Статус школы */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Статус школы
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                Активна
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 font-medium">
-              Школа работает только в онлайн-формате.
-            </p>
-            <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] text-slate-500">
-              <div className="flex items-center justify-between">
-                <span>Формат обучения:</span>
-                <span className="font-bold text-slate-800">100% Онлайн</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Ограничение:</span>
-                <span className="font-semibold text-blue-700">Системное ограничение (Zero Classrooms)</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Синхронизация с облаком:</span>
-                <span className="font-semibold text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Активна
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Widget 2: Основная валюта */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Основная валюта
-              </span>
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                <Euro className="h-4 w-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-lg font-black text-slate-900 tracking-tight">EUR (€)</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Используется для цен, платежей и счетов
-              </p>
-            </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              Единый стандарт расчетов в зоне евро (SEPA).
-            </div>
-          </div>
-
-          {/* Widget 3: Статистика */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-              Статистика школы
-            </span>
-            <div className="grid grid-cols-3 gap-2 text-center pt-1">
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex justify-center text-slate-400 mb-1">
-                  <Users className="h-3.5 w-3.5" />
-                </div>
-                <p className="text-base font-black text-slate-900">{stats.staffCount}</p>
-                <p className="text-[10px] font-semibold text-slate-500 mt-0.5">сотрудника</p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex justify-center text-slate-400 mb-1">
-                  <BookOpen className="h-3.5 w-3.5" />
-                </div>
-                <p className="text-base font-black text-slate-900">{stats.directionsCount}</p>
-                <p className="text-[10px] font-semibold text-slate-500 mt-0.5">направлений</p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex justify-center text-slate-400 mb-1">
-                  <GraduationCap className="h-3.5 w-3.5" />
-                </div>
-                <p className="text-base font-black text-slate-900">{stats.activeStudentsCount}</p>
-                <p className="text-[10px] font-semibold text-slate-500 mt-0.5">учеников</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Widget 4: Быстрые действия */}
+          {/* Быстрые действия */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-2.5">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
               Быстрые действия
