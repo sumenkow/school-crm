@@ -41,7 +41,7 @@ import {
 import { getStoredCourses } from '@/lib/data/courseStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 
-type ProfileTab = 'general' | 'contacts' | 'online' | 'hours' | 'banking';
+type ProfileTab = 'general' | 'contacts' | 'hours' | 'banking';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -396,21 +396,6 @@ export default function SchoolProfilePage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('online')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
-              activeTab === 'online'
-                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-            }`}
-          >
-            <Globe className="h-4 w-4" />
-            <span>Онлайн-формат</span>
-            <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full">
-              Zoom
-            </span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('hours')}
             className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
               activeTab === 'hours'
@@ -629,89 +614,7 @@ export default function SchoolProfilePage() {
             </div>
           )}
 
-          {/* TAB 3: ОНЛАЙН-ФОРМАТ */}
-          {activeTab === 'online' && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 animate-in fade-in duration-150">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 text-slate-500">
-                  <Globe className="h-4 w-4 text-blue-600" />
-                  Онлайн-формат обучения (100% дистанционно)
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Строгая архитектурная фиксация: отсутствие физических филиалов и аудиторий
-                </p>
-              </div>
-
-              {/* Read-only плашка с замком */}
-              <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/50 p-4 sm:p-5 flex items-start gap-3.5">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shrink-0 shadow-xs">
-                  <Lock className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-extrabold text-blue-950">Онлайн-школа</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-200">
-                      Системное ограничение (Zero Classrooms)
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-900 font-medium">
-                    Школа работает только в онлайн-формате.
-                  </p>
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Все занятия, группы, пробные уроки и консультации проводятся строго дистанционно через видеоконференции. Отсутствуют расходы на аренду классов и офлайн-адреса.
-                  </p>
-                </div>
-              </div>
-
-              {/* Платформа Zoom */}
-              <div className="rounded-xl border border-slate-200 p-4 bg-slate-50/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
-                      <Video className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-xs font-bold text-slate-900">Основная онлайн-платформа: Zoom</h3>
-                      <p className="text-[11px] text-slate-500">
-                        Используется для проведения групповых и индивидуальных занятий
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    Подключено
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-[11px]">
-                  <div className="p-3 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      Групповые комнаты
-                    </span>
-                    <p className="text-slate-500">До 100 участников в HD качестве</p>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      Облачная запись
-                    </span>
-                    <p className="text-slate-500">Автосохранение архива уроков</p>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-white border border-slate-200 space-y-1">
-                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      Интерактивные доски
-                    </span>
-                    <p className="text-slate-500">Совместная работа с материалами</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: РАБОЧИЕ ЧАСЫ */}
+          {/* TAB 3: РАБОЧИЕ ЧАСЫ */}
           {activeTab === 'hours' && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 animate-in fade-in duration-150">
               <div className="border-b border-slate-100 pb-3">
@@ -975,12 +878,16 @@ export default function SchoolProfilePage() {
               </span>
             </div>
             <p className="text-xs text-slate-600 font-medium">
-              Школа работает и доступна для учеников.
+              Школа работает только в онлайн-формате.
             </p>
             <div className="pt-2 border-t border-slate-100 space-y-1.5 text-[11px] text-slate-500">
               <div className="flex items-center justify-between">
                 <span>Формат обучения:</span>
                 <span className="font-bold text-slate-800">100% Онлайн</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Ограничение:</span>
+                <span className="font-semibold text-blue-700">Системное ограничение (Zero Classrooms)</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Синхронизация с облаком:</span>
