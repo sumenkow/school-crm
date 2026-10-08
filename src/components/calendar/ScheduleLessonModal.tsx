@@ -422,9 +422,62 @@ export function ScheduleLessonModal({
   const handleCollisionSlotSelect = (slot: AvailableSlot) => {
     setStartTime(slot.startTime);
     setEndTime(slot.endTime);
+    if (slot.date) setDate(slot.date);
     setIsCollisionModalOpen(false);
     toast.success(`Выбрано свободное время: ${slot.startTime} – ${slot.endTime}`);
   };
+
+  // Real-time 3-Way Collision Check (F23, F24, F25)
+  const inlineCollision = useMemo(() => {
+    if (!isOpen || !date || !startTime || !endTime) {
+      return { hasConflict: false, conflicts: [], nearestSlots: [] };
+    }
+    const existingLessons = getStoredLessons();
+    const enrolledStudents: FullLessonData['students'] =
+      lessonType === 'individual' && selectedStudent
+        ? [
+            {
+              id: selectedStudent.id,
+              name: getStudentFullName(selectedStudent),
+              attendanceStatus: 'not_marked' as const,
+              isTrial,
+            },
+          ]
+        : (selectedGroup?.students || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            attendanceStatus: 'not_marked' as const,
+            isTrial,
+          }));
+
+    const candidateLesson: CandidateLesson = {
+      date,
+      startTime,
+      endTime,
+      teacherId,
+      teacherName,
+      isIndividual: lessonType === 'individual',
+      groupId: lessonType === 'group' ? selectedGroup?.id : undefined,
+      groupName: lessonType === 'group' ? selectedGroup?.name : undefined,
+      studentId: lessonType === 'individual' ? selectedStudent?.id : undefined,
+      studentName: lessonType === 'individual' && selectedStudent ? getStudentFullName(selectedStudent) : undefined,
+      students: enrolledStudents,
+      room: 'Онлайн (Zoom)',
+    };
+
+    return checkThreeWayCollision(existingLessons, candidateLesson);
+  }, [
+    isOpen,
+    date,
+    startTime,
+    endTime,
+    teacherId,
+    teacherName,
+    lessonType,
+    selectedGroup,
+    selectedStudent,
+    isTrial,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -996,6 +1049,44 @@ export function ScheduleLessonModal({
                 )
               </span>
             </p>
+
+            {/* Inline 3-Way Collision Warning Banner & 1-Click Free Slot Chips */}
+            {inlineCollision.hasConflict && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 space-y-2 animate-in fade-in duration-150">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-0.5">
+                    <div className="font-bold text-amber-950">
+                      ⚠️ Обнаружена накладка в расписании
+                    </div>
+                    <div className="text-[11px] text-amber-800">
+                      {inlineCollision.conflicts.map((c) => c.message).join('. ')}
+                    </div>
+                  </div>
+                </div>
+
+                {inlineCollision.nearestSlots.length > 0 && (
+                  <div className="pt-1 border-t border-amber-200/80">
+                    <div className="text-[11px] font-semibold text-amber-900 mb-1.5 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Свободное время в рабочих часах (кликните для выбора):</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {inlineCollision.nearestSlots.map((slot, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => handleCollisionSlotSelect(slot)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:border-blue-500 hover:bg-blue-50 text-blue-900 text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                        >
+                          <span>🕒 {slot.startTime} – {slot.endTime}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ONLINE ZOOM URL (F19) */}

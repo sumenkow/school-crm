@@ -26,6 +26,7 @@ import { runSuite25 } from './ts45_tasks_actions_activities_invariants.test';
 import { runSuite26 } from './ts46_teacher_workspace_invariants.test';
 import { runSuite27 } from './ts47_groups_workspace_invariants.test';
 import { runSuite28 } from './ts48_crm_lifecycle_e2e_invariants.test';
+import { runSuite29 } from './ts49_collision_guard_invariants.test';
 
 async function main() {
   console.log('===============================================================');
@@ -35,11 +36,12 @@ async function main() {
   console.log('   ADR-001 Dual-Model (Suite 25), Teacher Workspace Desktop 1440x900 (Suite 26)');
   console.log('   Groups Workspace Card 3x2 & Dense Table View (Suite 27)');
   console.log('   CRM Complete Lifecycle End-to-End Invariants (Suite 28)');
+  console.log('   3-Way Collision Guard & Shield Invariants (Suite 29)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 28;
+  const totalSuites = 29;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -188,6 +190,10 @@ async function main() {
 
     // Suite 28: CRM Complete Lifecycle End-to-End Invariants (TS-48)
     await runSuite28();
+    passedSuites++;
+
+    // Suite 29: 3-Way Collision Guard & Shield Invariants (TS-49)
+    await runSuite29();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);

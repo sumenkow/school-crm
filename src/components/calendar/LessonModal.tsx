@@ -42,6 +42,7 @@ import {
   deleteLessonFromStorage,
   recordLessonAttendanceBatch,
   getStoredLessonById,
+  getStoredLessons,
   restoreLessonBilling,
 } from '@/lib/data/lessonStorage';
 import { getStoredGroups } from '@/lib/data/groupStorage';
@@ -53,6 +54,13 @@ import { useLanguage } from '@/context/LanguageContext';
 import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import {
+  checkThreeWayCollision,
+  CandidateLesson,
+  ConflictDetail,
+  AvailableSlot,
+} from '@/lib/data/collisionHelper';
+import { CollisionWarningModal } from './CollisionWarningModal';
 import { ScheduleLessonModal } from './ScheduleLessonModal';
 
 export type LessonModalTab = 'main' | 'attendance' | 'feedback' | 'history';
@@ -170,6 +178,11 @@ export function LessonModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isCollisionModalOpen, setIsCollisionModalOpen] = useState(false);
+  const [collisionData, setCollisionData] = useState<{
+    conflicts: ConflictDetail[];
+    nearestSlots: AvailableSlot[];
+  } | null>(null);
 
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -269,6 +282,30 @@ export function LessonModal({
 
     return false;
   }, [lesson, date, startTime, endTime, topic, homework, zoomUrl, generalLessonNote, currentStatus, attendance]);
+
+  // Real-time 3-Way Collision Check (F23, F24, F25)
+  const inlineCollision = useMemo(() => {
+    if (!lesson || !isOpen || !date || !startTime || !endTime) {
+      return { hasConflict: false, conflicts: [], nearestSlots: [] };
+    }
+    const existingLessons = getStoredLessons();
+    const candidate: CandidateLesson = {
+      id: lesson.id,
+      date,
+      startTime,
+      endTime,
+      teacherId: teacherId || lesson.teacherId,
+      teacherName: teacherName || lesson.teacherName,
+      groupId: lesson.groupId,
+      groupName: lesson.groupName,
+      studentId: lesson.studentId,
+      studentName: lesson.studentName,
+      students: lesson.students,
+      isIndividual: lesson.isIndividual,
+      room: lesson.room || 'Онлайн (Zoom)',
+    };
+    return checkThreeWayCollision(existingLessons, candidate);
+  }, [lesson, isOpen, date, startTime, endTime, teacherId, teacherName]);
 
   // Safe Close with Confirmation
   const handleSafeClose = () => {
@@ -437,6 +474,17 @@ export function LessonModal({
         newStatus = 'rescheduled';
       }
 
+      // Collision Guard: verify 3-way collision & school hours when saving / rescheduling
+      if (inlineCollision.hasConflict && newStatus !== 'cancelled') {
+        setCollisionData({
+          conflicts: inlineCollision.conflicts,
+          nearestSlots: inlineCollision.nearestSlots,
+        });
+        setIsCollisionModalOpen(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       // If status is changing to 'cancelled' from 'completed', restore billing
       const storedLessonBeforeAtt = getStoredLessonById(lesson.id);
       const prevLessonState = storedLessonBeforeAtt || lesson;
@@ -580,7 +628,7 @@ export function LessonModal({
       };
 
       // 4. Persist to storage
-      saveLessonToStorage(updatedLesson);
+      saveLessonToStorage(updatedLesson, { bypassCollisionCheck: true });
 
       // 5. Supabase sync
       try {
@@ -1287,6 +1335,49 @@ export function LessonModal({
                     Изменение даты или времени перенесёт только это занятие. Регулярное расписание группы не изменится.
                   </span>
                 </div>
+
+                {/* Inline 3-Way Collision Warning Banner & 1-Click Free Slot Chips */}
+                {inlineCollision.hasConflict && currentStatus !== 'cancelled' && (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 space-y-2 animate-in fade-in duration-150">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-0.5">
+                        <div className="font-bold text-amber-950">
+                          ⚠️ Обнаружена накладка в расписании
+                        </div>
+                        <div className="text-[11px] text-amber-800">
+                          {inlineCollision.conflicts.map((c) => c.message).join('. ')}
+                        </div>
+                      </div>
+                    </div>
+
+                    {inlineCollision.nearestSlots.length > 0 && (
+                      <div className="pt-1 border-t border-amber-200/80">
+                        <div className="text-[11px] font-semibold text-amber-900 mb-1.5 flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Свободное время в рабочих часах (кликните для выбора):</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {inlineCollision.nearestSlots.map((slot, sIdx) => (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => {
+                                setStartTime(slot.startTime);
+                                setEndTime(slot.endTime);
+                                if (slot.date) setDate(slot.date);
+                                toast.success(`Выбрано свободное время: ${slot.startTime} – ${slot.endTime}`);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:border-blue-500 hover:bg-blue-50 text-blue-900 text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center gap-1"
+                            >
+                              <span>🕒 {slot.startTime} – {slot.endTime}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Row 3: Тема занятия */}
@@ -2071,6 +2162,24 @@ export function LessonModal({
           </div>
         </div>
       )}
+
+      {/* 3-Way Collision Warning & Alternative Slots Modal */}
+      <CollisionWarningModal
+        isOpen={isCollisionModalOpen}
+        onClose={() => setIsCollisionModalOpen(false)}
+        conflicts={collisionData?.conflicts || []}
+        nearestSlots={collisionData?.nearestSlots || []}
+        candidateDate={date}
+        candidateStartTime={startTime}
+        candidateEndTime={endTime}
+        onSelectSlot={(slot) => {
+          setStartTime(slot.startTime);
+          setEndTime(slot.endTime);
+          if (slot.date) setDate(slot.date);
+          setIsCollisionModalOpen(false);
+          toast.success(`Применено свободное время: ${slot.startTime} – ${slot.endTime}`);
+        }}
+      />
     </div>,
     document.body
   );
