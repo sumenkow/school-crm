@@ -22,6 +22,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WhatsAppIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
 
 export interface UrgentTaskItem {
@@ -448,9 +449,9 @@ export function TaskDetailsCardModal({
                   href={`https://wa.me/${cleanPhone.replace('+', '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700 transition-colors shadow-2xs"
                 >
-                  <MessageSquare size={12} />
+                  <WhatsAppIcon className="w-3 h-3 fill-white" />
                   WhatsApp
                 </a>
               </div>

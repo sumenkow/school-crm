@@ -25,6 +25,7 @@ import {
   BookOpen,
   CalendarClock,
 } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/common/MessengerIcons';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
@@ -447,7 +448,7 @@ export default function GroupDetailsPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
               title="WhatsApp"
             >
-              <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+              <WhatsAppIcon className="h-3.5 w-3.5 text-emerald-600" />
               {t('groups.groupWhatsapp', 'WhatsApp группы')}
             </a>
             <Link

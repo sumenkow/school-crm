@@ -20,7 +20,7 @@ import {
 } from '@/features/tasks/lib/tasksWorkspaceEngine';
 import { TasksKpiCards } from '@/components/tasks/TasksKpiCards';
 import { TasksFilterBar } from '@/components/tasks/TasksFilterBar';
-import { TaskRow } from '@/components/tasks/TaskRow';
+import { TaskRow, TaskTableHeader } from '@/components/tasks/TaskRow';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { CompleteTaskModal } from '@/components/tasks/CompleteTaskModal';
@@ -300,7 +300,7 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-0 px-6 pt-5 pb-6 text-slate-800 antialiased overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col gap-0 text-slate-800 antialiased overflow-hidden">
       {/* ── 1. Page Header (R1) ── */}
       <div className="flex items-center justify-between pb-3 shrink-0">
         <div>
@@ -341,125 +341,143 @@ export default function TasksPage() {
         onViewModeChange={setViewMode}
       />
 
-      {/* ── 4. Main Workspace: Dense Task List + Right Detail Drawer (R3 & R4) ── */}
+      {/* ── 4. Main Workspace: Compact Task Table + Right Detail Drawer (R2 & R3) ── */}
       <div className="flex flex-1 min-h-0 gap-4 overflow-hidden">
-        {/* Left: Task Rows List / Calendar View */}
-        <div className="flex-1 min-w-0 overflow-y-auto pr-1 space-y-2.5">
-          {visibleTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 rounded-2xl border border-dashed border-slate-200 bg-white/50 text-slate-400">
-              <ListTodo className="h-10 w-10 opacity-30" />
-              <p className="text-xs font-medium">
-                {searchQuery
-                  ? 'Ничего не найдено по вашему запросу'
-                  : 'Нет задач в выбранном направлении'}
-              </p>
-            </div>
-          ) : viewMode === 'calendar' ? (
-            <div className="space-y-4">
-              {[
-                {
-                  id: 'overdue',
-                  title: 'Просрочено',
-                  color: 'text-rose-700 bg-rose-50 border-rose-200',
-                  dot: 'bg-rose-500',
-                  items: visibleTasks.filter((t) => {
-                    if (t.status === 'done') return false;
-                    const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
-                    return Boolean(
-                      t.isOverdue ||
-                        (dIso && dIso < todayIso) ||
+        {/* Left: Table Container / Calendar Grouped Table */}
+        <div
+          role="table"
+          aria-label="Таблица задач"
+          className="flex-1 min-w-0 flex flex-col rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden"
+        >
+          <div
+            role="rowgroup"
+            className="flex-1 min-h-0 overflow-y-auto"
+          >
+            <TaskTableHeader />
+
+            {visibleTasks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-24 text-slate-400">
+                <ListTodo className="h-10 w-10 opacity-30 stroke-[1.5]" />
+                <p className="text-xs font-medium">
+                  {searchQuery
+                    ? 'Ничего не найдено по вашему запросу'
+                    : 'Нет задач в выбранном направлении'}
+                </p>
+              </div>
+            ) : viewMode === 'calendar' ? (
+              <div>
+                {[
+                  {
+                    id: 'overdue',
+                    title: 'Просрочено',
+                    color: 'text-rose-700 bg-rose-50/70 border-rose-200/60',
+                    dot: 'bg-rose-500',
+                    items: visibleTasks.filter((t) => {
+                      if (t.status === 'done') return false;
+                      const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
+                      return Boolean(
+                        t.isOverdue ||
+                          (dIso && dIso < todayIso) ||
+                          (typeof t.dueDateFormatted === 'string' &&
+                            t.dueDateFormatted.toLowerCase().includes('просрочено'))
+                      );
+                    }),
+                  },
+                  {
+                    id: 'today',
+                    title: 'Сегодня',
+                    color: 'text-amber-800 bg-amber-50/70 border-amber-200/60',
+                    dot: 'bg-amber-500',
+                    items: visibleTasks.filter((t) => {
+                      if (t.status === 'done') return false;
+                      const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
+                      const isOver = Boolean(t.isOverdue || (dIso && dIso < todayIso));
+                      return (
+                        !isOver &&
+                        (dIso === todayIso ||
+                          (typeof t.dueDateFormatted === 'string' &&
+                            t.dueDateFormatted.toLowerCase().includes('сегодня')))
+                      );
+                    }),
+                  },
+                  {
+                    id: 'upcoming',
+                    title: 'Ближайшие дни',
+                    color: 'text-blue-700 bg-blue-50/70 border-blue-200/60',
+                    dot: 'bg-blue-500',
+                    items: visibleTasks.filter((t) => {
+                      if (t.status === 'done') return false;
+                      const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
+                      const isOver = Boolean(t.isOverdue || (dIso && dIso < todayIso));
+                      const isTod =
+                        dIso === todayIso ||
                         (typeof t.dueDateFormatted === 'string' &&
-                          t.dueDateFormatted.toLowerCase().includes('просрочено'))
-                    );
-                  }),
-                },
-                {
-                  id: 'today',
-                  title: 'Сегодня',
-                  color: 'text-amber-800 bg-amber-50 border-amber-200',
-                  dot: 'bg-amber-500',
-                  items: visibleTasks.filter((t) => {
-                    if (t.status === 'done') return false;
-                    const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
-                    const isOver = Boolean(t.isOverdue || (dIso && dIso < todayIso));
-                    return (
-                      !isOver &&
-                      (dIso === todayIso ||
-                        (typeof t.dueDateFormatted === 'string' &&
-                          t.dueDateFormatted.toLowerCase().includes('сегодня')))
-                    );
-                  }),
-                },
-                {
-                  id: 'upcoming',
-                  title: 'Ближайшие дни',
-                  color: 'text-blue-700 bg-blue-50 border-blue-200',
-                  dot: 'bg-blue-500',
-                  items: visibleTasks.filter((t) => {
-                    if (t.status === 'done') return false;
-                    const dIso = t.dueDate ? String(t.dueDate).slice(0, 10) : '';
-                    const isOver = Boolean(t.isOverdue || (dIso && dIso < todayIso));
-                    const isTod =
-                      dIso === todayIso ||
-                      (typeof t.dueDateFormatted === 'string' &&
-                        t.dueDateFormatted.toLowerCase().includes('сегодня'));
-                    return !isOver && !isTod && Boolean(dIso);
-                  }),
-                },
-                {
-                  id: 'other',
-                  title: 'Выполненные и без срока',
-                  color: 'text-slate-700 bg-slate-50 border-slate-200',
-                  dot: 'bg-slate-400',
-                  items: visibleTasks.filter((t) => {
-                    if (t.status === 'done') return true;
-                    return !t.dueDate;
-                  }),
-                },
-              ]
-                .filter((group) => group.items.length > 0)
-                .map((group) => (
-                  <div key={group.id} className="space-y-2">
-                    <div className={cn('inline-flex items-center gap-2 px-3 py-1 rounded-xl text-xs font-bold border', group.color)}>
-                      <span className={cn('w-2 h-2 rounded-full', group.dot)} />
-                      <span>{group.title}</span>
-                      <span className="opacity-70">({group.items.length})</span>
+                          t.dueDateFormatted.toLowerCase().includes('сегодня'));
+                      return !isOver && !isTod && Boolean(dIso);
+                    }),
+                  },
+                  {
+                    id: 'other',
+                    title: 'Выполненные и без срока',
+                    color: 'text-slate-700 bg-slate-50/70 border-slate-200/60',
+                    dot: 'bg-slate-400',
+                    items: visibleTasks.filter((t) => {
+                      if (t.status === 'done') return true;
+                      return !t.dueDate;
+                    }),
+                  },
+                ]
+                  .filter((group) => group.items.length > 0)
+                  .map((group) => (
+                    <div key={group.id} className="border-b border-slate-100 last:border-b-0">
+                      <div
+                        className={cn(
+                          'px-4 py-1.5 text-xs font-semibold border-y flex items-center gap-2 select-none sticky top-10 z-10',
+                          group.color
+                        )}
+                      >
+                        <span className={cn('w-2 h-2 rounded-full', group.dot)} />
+                        <span>{group.title}</span>
+                        <span className="opacity-70 text-[11px] font-medium">
+                          ({group.items.length})
+                        </span>
+                      </div>
+                      <div>
+                        {group.items.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            isSelected={selectedTask?.id === task.id}
+                            todayIso={todayIso}
+                            onSelect={setSelectedTask}
+                            onCompleteClick={setCompletingTask}
+                            onReopenClick={handleReopenTask}
+                            onEditClick={setEditingTask}
+                            onPostponeClick={setPostponingTask}
+                            onDeleteClick={handleDeleteTask}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {group.items.map((task) => (
-                        <TaskRow
-                          key={task.id}
-                          task={task}
-                          isSelected={selectedTask?.id === task.id}
-                          todayIso={todayIso}
-                          onSelect={setSelectedTask}
-                          onCompleteClick={setCompletingTask}
-                          onReopenClick={handleReopenTask}
-                          onEditClick={setEditingTask}
-                          onPostponeClick={setPostponingTask}
-                          onDeleteClick={handleDeleteTask}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          ) : (
-            visibleTasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                isSelected={selectedTask?.id === task.id}
-                todayIso={todayIso}
-                onSelect={setSelectedTask}
-                onCompleteClick={setCompletingTask}
-                onReopenClick={handleReopenTask}
-                onEditClick={setEditingTask}
-                onPostponeClick={setPostponingTask}
-                onDeleteClick={handleDeleteTask}
-              />
-            ))
-          )}
+                  ))}
+              </div>
+            ) : (
+              visibleTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  isSelected={selectedTask?.id === task.id}
+                  todayIso={todayIso}
+                  onSelect={setSelectedTask}
+                  onCompleteClick={setCompletingTask}
+                  onReopenClick={handleReopenTask}
+                  onEditClick={setEditingTask}
+                  onPostponeClick={setPostponingTask}
+                  onDeleteClick={handleDeleteTask}
+                />
+              ))
+            )}
+          </div>
         </div>
 
         {/* Right: Contextual Detail Panel */}
@@ -472,6 +490,7 @@ export default function TasksPage() {
             onReopenClick={handleReopenTask}
             onEditClick={setEditingTask}
             onPostponeClick={setPostponingTask}
+            onDeleteClick={handleDeleteTask}
             onPriorityChange={handlePriorityChange}
             onAddComment={handleAddComment}
           />

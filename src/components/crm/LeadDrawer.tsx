@@ -18,14 +18,17 @@ import {
   ExternalLink,
   Edit2,
   Save,
-  Check
+  Check,
+  CheckSquare
 } from 'lucide-react';
 import { FullLeadData, TimelineInteraction, FullGroupData, FullTaskData } from '@/lib/data/mockData';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getTasksForLead, updateUnifiedTaskStatus, createUnifiedTask } from '@/lib/data/taskManager';
 import { saveLeadToStorage, syncLeadToSupabase } from '@/lib/data/leadStorage';
-import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { triggerWhatsAppContact, triggerTelegramContact, triggerPhoneContact } from '@/lib/data/contactWorkflows';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import { ConvertLeadModal } from './ConvertLeadModal';
+import { CompleteTaskModal } from '@/components/tasks/CompleteTaskModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
 import { useToast } from '@/context/ToastContext';
@@ -73,6 +76,7 @@ export function LeadDrawer({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDue, setNewTaskDue] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [completingTask, setCompletingTask] = useState<FullTaskData | null>(null);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
 
@@ -211,11 +215,52 @@ export function LeadDrawer({
     }
   };
 
+  const activeTask = tasks.find((t) => t.status === 'open' || t.status === 'in_progress');
+
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'done' ? 'open' : 'done';
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: nextStatus } : t));
     await updateUnifiedTaskStatus(taskId, nextStatus);
     toast.success(nextStatus === 'done' ? 'Задача выполнена' : 'Задача открыта заново');
+  };
+
+  const handleCompleteTaskFromModal = async (
+    taskId: string,
+    completionResult: string,
+    completedByName: string
+  ) => {
+    try {
+      const updated = await updateUnifiedTaskStatus(taskId, 'done', {
+        completionResult,
+        performedBy: completedByName,
+        userRole: 'admin',
+      });
+      if (updated) {
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      } else {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  status: 'done',
+                  completionResult,
+                  completedByName,
+                  completedAt: new Date().toISOString(),
+                }
+              : t
+          )
+        );
+      }
+      if (lead) {
+        const refreshed = await getTasksForLead(lead.id);
+        setTasks(refreshed);
+      }
+      toast.success('Задача выполнена с фиксацией результата');
+    } catch (err) {
+      console.error('Failed to complete task in LeadDrawer:', err);
+      toast.error('Ошибка при завершении задачи');
+    }
   };
 
   const handleAddTimelineNote = (e: React.FormEvent) => {
@@ -422,10 +467,10 @@ export function LeadDrawer({
                         leadName: lead.name,
                         author: userName || 'Администратор',
                       })}
-                      className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[10px] border border-emerald-200/60 cursor-pointer"
+                      className="p-1 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60 cursor-pointer flex items-center justify-center transition-colors"
                       title="Написать в WhatsApp"
                     >
-                      WA
+                      <WhatsAppIcon className="w-3.5 h-3.5" />
                     </button>
                     {lead.telegram && (
                       <button
@@ -437,19 +482,25 @@ export function LeadDrawer({
                           leadName: lead.name,
                           author: userName || 'Администратор',
                         })}
-                        className="px-2 py-0.5 rounded bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold text-[10px] border border-sky-200/60 cursor-pointer"
+                        className="p-1 rounded bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200/60 cursor-pointer flex items-center justify-center transition-colors"
                         title="Написать в Telegram"
                       >
-                        TG
+                        <TelegramIcon className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <a
-                      href={getTelLink(lead.contact)}
-                      className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors"
+                    <button
+                      type="button"
+                      onClick={() => triggerPhoneContact({
+                        phone: lead.contact,
+                        leadId: lead.id,
+                        leadName: lead.name,
+                        author: userName || 'Администратор',
+                      })}
+                      className="p-1 rounded-md text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer flex items-center justify-center"
                       title="Позвонить"
                     >
                       <Phone className="h-3.5 w-3.5" />
-                    </a>
+                    </button>
                   </div>
                 </div>
 
@@ -460,6 +511,52 @@ export function LeadDrawer({
               </div>
             )}
           </div>
+
+          {/* Priority Task Focus Banner (Scenario A) or Next Action (Scenario B) */}
+          {activeTask ? (
+            <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/70 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-purple-900 font-bold text-xs">
+                  <CheckSquare className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Активное поручение (Задача)</span>
+                </div>
+                <span className={cn(
+                  'px-2 py-0.5 rounded text-[10px] font-bold',
+                  activeTask.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-purple-100 text-purple-800'
+                )}>
+                  Срок: {activeTask.dueDateFormatted || activeTask.dueDate || 'Сегодня'}
+                </span>
+              </div>
+              <p className="text-xs font-bold text-slate-900">{activeTask.title}</p>
+              {activeTask.description && (
+                <p className="text-[11px] text-slate-600 leading-snug">{activeTask.description}</p>
+              )}
+              <div className="flex items-center justify-between pt-1 border-t border-purple-200/60 text-[10px] text-slate-500">
+                <span>Ответственный: <strong className="text-purple-800">{activeTask.assignedTo || 'Администратор'}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setCompletingTask(activeTask)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-600 text-white font-bold text-[11px] hover:bg-purple-700 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  Завершить с результатом
+                </button>
+              </div>
+            </div>
+          ) : lead.nextAction ? (
+            <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/70 space-y-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Следующий рекомендуемый шаг</span>
+                </div>
+                {lead.nextActionDate && (
+                  <span className="text-[10px] text-amber-800 font-semibold">{lead.nextActionDate}</span>
+                )}
+              </div>
+              <p className="text-xs text-slate-800 font-medium">{lead.nextAction}</p>
+            </div>
+          ) : null}
 
           {/* Section: Stage Selector */}
           <div className="space-y-2">
@@ -614,16 +711,33 @@ export function LeadDrawer({
                       <input
                         type="checkbox"
                         checked={t.status === 'done'}
-                        onChange={() => handleToggleTask(t.id, t.status)}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 cursor-pointer"
+                        onChange={() => {
+                          if (t.status !== 'done') {
+                            setCompletingTask(t);
+                          } else {
+                            handleToggleTask(t.id, t.status);
+                          }
+                        }}
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 cursor-pointer shrink-0"
                       />
                       <span className={cn('truncate', t.status === 'done' ? 'line-through text-slate-400' : 'font-medium text-slate-800')}>
                         {t.title}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-400 shrink-0 ml-2">
-                      {t.dueDateFormatted || t.dueDate}
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <span className="text-[10px] text-slate-400">
+                        {t.dueDateFormatted || t.dueDate}
+                      </span>
+                      {t.status !== 'done' && (
+                        <button
+                          type="button"
+                          onClick={() => setCompletingTask(t)}
+                          className="text-[10px] font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-1.5 py-0.5 rounded border border-purple-200 cursor-pointer transition-colors"
+                        >
+                          Завершить
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -757,6 +871,14 @@ export function LeadDrawer({
           syncLeadToSupabase(updatedLead);
           onUpdateLead?.(updatedLead);
         }}
+      />
+
+      {/* Complete Task Modal with Outcome Presets & Lead Enrichment */}
+      <CompleteTaskModal
+        isOpen={!!completingTask}
+        task={completingTask}
+        onClose={() => setCompletingTask(null)}
+        onComplete={handleCompleteTaskFromModal}
       />
     </>
   );

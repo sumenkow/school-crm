@@ -21,6 +21,7 @@ import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/d
 import { useToast } from '@/context/ToastContext';
 import { usePermissions } from '@/context/RoleContext';
 import { cn } from '@/lib/utils';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 import { createClient } from '@/lib/supabase/client';
 
 export interface MobileAttendanceItem {
@@ -267,9 +268,9 @@ export function LessonBottomSheet({
                 href="https://t.me"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 font-bold text-xs"
+                className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 font-bold text-xs"
               >
-                <MessageCircle className="w-4 h-4 text-blue-600" />
+                <TelegramIcon className="w-4 h-4 text-sky-600" />
                 <span>Чат группы</span>
               </a>
             )}

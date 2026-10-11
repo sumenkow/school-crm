@@ -17,6 +17,7 @@ import { getParentFinancialSummary } from '@/lib/data/balanceHelper';
 import { getEurRubRate } from '@/lib/data/currencyHelper';
 import { useRole } from '@/context/RoleContext';
 import { formatPhone, getTelLink, getWhatsAppLink, normalizePhone } from '@/lib/utils';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import {
   ArrowLeft,
   Phone,
@@ -1203,14 +1204,14 @@ export default function ParentDetailsPage() {
                   <a href={getTelLink(parent.phone)} className="hover:text-blue-600 font-medium">{formatPhone(parent.phone)}</a>
                 </div>
                 {parent.telegram && (
-                  <div className="flex items-center gap-1.5 text-blue-600 font-medium">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1.5 text-sky-600 font-medium">
+                    <TelegramIcon className="h-3.5 w-3.5" />
                     <span>{parent.telegram}</span>
                   </div>
                 )}
                 {parent.whatsapp && (
                   <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                    <WhatsAppIcon className="h-3.5 w-3.5" />
                     <span>{parent.whatsapp}</span>
                   </div>
                 )}
@@ -2315,9 +2316,9 @@ export default function ParentDetailsPage() {
                     onChange={(e) => setEditForm({ ...editForm, preferredChannel: e.target.value })}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-blue-500 focus:outline-hidden"
                   >
-                    <option value="Telegram">✈️ Telegram</option>
-                    <option value="WhatsApp">💬 WhatsApp</option>
-                    <option value="Email">📧 Email</option>
+                    <option value="Telegram">Telegram</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Email">Email</option>
                   </select>
                 </div>
               </div>

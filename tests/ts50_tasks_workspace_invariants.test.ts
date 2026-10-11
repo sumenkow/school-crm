@@ -61,7 +61,12 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
     }
   }
 
-  const BASE_TODAY = '2026-10-08';
+  const BASE_TODAY = getTodayIso();
+  const pastDate1 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const pastDate2 = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10);
+  const futureDate = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const weekInFuture = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const farFuture = new Date(Date.now() + 20 * 86400000).toISOString().slice(0, 10);
 
   const makeSampleTask = (overrides: Partial<FullTaskData> = {}): FullTaskData => ({
     id: 'task_inv_' + Math.random().toString(36).slice(2, 9),
@@ -99,14 +104,14 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
 
   await test('[T1.02] Deterministic baseline calculation across active, overdue, today, and completed tasks', () => {
     const tasks: FullTaskData[] = [
-      makeSampleTask({ id: 't_ov_1', status: 'open', dueDate: '2026-10-01' }), // overdue
-      makeSampleTask({ id: 't_ov_2', status: 'in_progress', dueDate: '2026-10-05' }), // overdue
+      makeSampleTask({ id: 't_ov_1', status: 'open', dueDate: pastDate1 }), // overdue
+      makeSampleTask({ id: 't_ov_2', status: 'in_progress', dueDate: pastDate2 }), // overdue
       makeSampleTask({ id: 't_td_1', status: 'open', dueDate: BASE_TODAY }), // today
       makeSampleTask({ id: 't_td_2', status: 'in_progress', dueDate: BASE_TODAY }), // today
-      makeSampleTask({ id: 't_fut_1', status: 'open', dueDate: '2026-10-15' }), // future active
-      makeSampleTask({ id: 't_done_1', status: 'done', dueDate: '2026-10-01' }), // completed (had past deadline)
+      makeSampleTask({ id: 't_fut_1', status: 'open', dueDate: futureDate }), // future active
+      makeSampleTask({ id: 't_done_1', status: 'done', dueDate: pastDate1 }), // completed (had past deadline)
       makeSampleTask({ id: 't_done_2', status: 'done', dueDate: BASE_TODAY }), // completed (had today deadline)
-      makeSampleTask({ id: 't_canc_1', status: 'cancelled', dueDate: '2026-10-01' }), // cancelled
+      makeSampleTask({ id: 't_canc_1', status: 'cancelled', dueDate: pastDate1 }), // cancelled
     ];
 
     const kpis = calculateTasksKpis(tasks, BASE_TODAY);
@@ -157,16 +162,16 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
   await test('[T1.05] Date format resilience: supports ISO dates, timestamps with time component, and text indicators', () => {
     const tasks: FullTaskData[] = [
       // ISO date only
-      makeSampleTask({ id: 'iso_date', status: 'open', dueDate: '2026-10-08' }),
+      makeSampleTask({ id: 'iso_date', status: 'open', dueDate: BASE_TODAY }),
       // Full ISO timestamp on today (with time)
-      makeSampleTask({ id: 'iso_today_ts', status: 'open', dueDate: '2026-10-08T14:30:00.000Z' }),
+      makeSampleTask({ id: 'iso_today_ts', status: 'open', dueDate: `${BASE_TODAY}T14:30:00.000Z` }),
       // Past ISO timestamp
-      makeSampleTask({ id: 'iso_past_ts', status: 'open', dueDate: '2026-10-07T23:59:59.000Z' }),
+      makeSampleTask({ id: 'iso_past_ts', status: 'open', dueDate: `${pastDate1}T23:59:59.000Z` }),
       // Future ISO timestamp
-      makeSampleTask({ id: 'iso_future_ts', status: 'open', dueDate: '2026-10-09T00:00:01.000Z' }),
+      makeSampleTask({ id: 'iso_future_ts', status: 'open', dueDate: `${futureDate}T00:00:01.000Z` }),
       // Russian text indicator in dueDateFormatted
       makeSampleTask({ id: 'txt_today', status: 'open', dueDate: '', dueDateFormatted: 'сегодня в 15:00' }),
-      makeSampleTask({ id: 'txt_overdue', status: 'open', dueDate: '2026-10-15', dueDateFormatted: 'Просрочено на 1 день' }),
+      makeSampleTask({ id: 'txt_overdue', status: 'open', dueDate: futureDate, dueDateFormatted: 'Просрочено на 1 день' }),
     ];
 
     const kpis = calculateTasksKpis(tasks, BASE_TODAY);
@@ -176,7 +181,7 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
   });
 
   await test('[T1.06] KPI reactivity simulation under task completion and cancellation', () => {
-    const taskA = makeSampleTask({ id: 'react_a', status: 'open', dueDate: '2026-10-05' }); // overdue
+    const taskA = makeSampleTask({ id: 'react_a', status: 'open', dueDate: pastDate1 }); // overdue
     const taskB = makeSampleTask({ id: 'react_b', status: 'open', dueDate: BASE_TODAY }); // today
 
     const before = calculateTasksKpis([taskA, taskB], BASE_TODAY);
@@ -327,12 +332,12 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
 
   await test('[T2.08] Due date filter isolates today, overdue, and 7-day week window (excluding completed tasks)', () => {
     const tasks = [
-      makeSampleTask({ id: 'd_ov_open', status: 'open', dueDate: '2026-10-01' }),
-      makeSampleTask({ id: 'd_ov_done', status: 'done', dueDate: '2026-10-01' }), // must be excluded
+      makeSampleTask({ id: 'd_ov_open', status: 'open', dueDate: pastDate1 }),
+      makeSampleTask({ id: 'd_ov_done', status: 'done', dueDate: pastDate1 }), // must be excluded
       makeSampleTask({ id: 'd_td_open', status: 'open', dueDate: BASE_TODAY }),
       makeSampleTask({ id: 'd_td_done', status: 'done', dueDate: BASE_TODAY }), // must be excluded
-      makeSampleTask({ id: 'd_wk_open', status: 'open', dueDate: '2026-10-12' }),
-      makeSampleTask({ id: 'd_far_open', status: 'open', dueDate: '2026-10-25' }),
+      makeSampleTask({ id: 'd_wk_open', status: 'open', dueDate: weekInFuture }),
+      makeSampleTask({ id: 'd_far_open', status: 'open', dueDate: farFuture }),
     ];
 
     const overdueOnly = filterTasksByCriteria(tasks, { dueDate: 'overdue' }, BASE_TODAY);
@@ -383,7 +388,7 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
 
     const wrongTab = makeSampleTask({ ...target, id: 'w_tab', assignedToUserId: 'usr_other' });
     const wrongPrio = makeSampleTask({ ...target, id: 'w_prio', priority: 'low' });
-    const wrongDate = makeSampleTask({ ...target, id: 'w_date', dueDate: '2026-10-20' });
+    const wrongDate = makeSampleTask({ ...target, id: 'w_date', dueDate: farFuture });
     const wrongQuery = makeSampleTask({ ...target, id: 'w_q', title: 'Обычный звонок' });
 
     const criteria: TaskFilterCriteria = {
@@ -711,10 +716,10 @@ export async function runSuite30(): Promise<{ passed: number; failed: number }> 
 
   await test('[T5.06] Sorting modes: priority, date_asc, and created_desc are non-mutating', () => {
     const tasks = [
-      makeSampleTask({ id: 's_done', status: 'done', priority: 'high', dueDate: '2026-10-01' }),
-      makeSampleTask({ id: 's_low', status: 'open', priority: 'low', dueDate: '2026-10-15' }),
-      makeSampleTask({ id: 's_high', status: 'open', priority: 'high', dueDate: '2026-10-15' }),
-      makeSampleTask({ id: 's_overdue_med', status: 'open', priority: 'medium', dueDate: '2026-10-05', isOverdue: true }),
+      makeSampleTask({ id: 's_done', status: 'done', priority: 'high', dueDate: pastDate1 }),
+      makeSampleTask({ id: 's_low', status: 'open', priority: 'low', dueDate: futureDate }),
+      makeSampleTask({ id: 's_high', status: 'open', priority: 'high', dueDate: futureDate }),
+      makeSampleTask({ id: 's_overdue_med', status: 'open', priority: 'medium', dueDate: pastDate2, isOverdue: true }),
     ];
 
     const inputCopy = [...tasks];

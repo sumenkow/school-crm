@@ -73,6 +73,7 @@ const getOwnerNav = (): NavSection[] => [
     id: 'students',
     sectionKey: 'nav.section.students',
     section: 'Ученики',
+    defaultOpen: true,
     items: [
       { key: 'nav.students', label: 'Ученики', href: '/students', icon: <Users size={20} /> },
       { key: 'nav.parents', label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
@@ -132,6 +133,7 @@ const getAdminNav = (): NavSection[] => [
     id: 'students',
     sectionKey: 'nav.section.students',
     section: 'Ученики',
+    defaultOpen: true,
     items: [
       { key: 'nav.students', label: 'Ученики', href: '/students', icon: <Users size={20} /> },
       { key: 'nav.parents', label: 'Родители', href: '/parents', icon: <GraduationCap size={20} /> },
@@ -256,20 +258,20 @@ const NavAccordionGroup = ({ section, collapsed, pathname, onCloseMobile, t }: a
                 href={item.href}
                 onClick={onCloseMobile}
                 title={collapsed ? label : undefined}
-                className={"flex items-center relative transition-all duration-150 rounded-full cursor-pointer " + 
-                  (collapsed ? "justify-center mx-auto" : "gap-3 px-4")
+                className={"flex items-center relative transition-all duration-150 rounded-2xl cursor-pointer " + 
+                  (collapsed ? "justify-center mx-auto" : "gap-3 px-3.5")
                 }
                 style={{
                   height: collapsed ? '44px' : '40px',
                   width: collapsed ? '44px' : '100%',
-                  backgroundColor: active ? 'var(--md-secondary-container, #e2e8f0)' : 'transparent',
-                  color: active ? 'var(--md-on-secondary-container, #0f172a)' : 'var(--md-on-surface-variant, #64748b)',
+                  backgroundColor: active ? '#eff6ff' : 'transparent',
+                  color: active ? '#2563eb' : '#475569',
                   fontWeight: active ? 600 : 400,
                   fontSize: '14px',
                   textDecoration: 'none',
                 }}
               >
-                <span style={{ flexShrink: 0, opacity: active ? 1 : 0.75 }}>
+                <span style={{ flexShrink: 0, opacity: active ? 1 : 0.75, color: active ? '#2563eb' : '#64748b' }}>
                   {item.icon}
                 </span>
                 {!collapsed && (

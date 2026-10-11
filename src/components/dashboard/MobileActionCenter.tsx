@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { FullLeadData, FullPaymentData, FullLessonData } from '@/lib/data/mockData';
 import { triggerWhatsAppContact } from '@/lib/data/contactWorkflows';
+import { WhatsAppIcon } from '@/components/common/MessengerIcons';
 import { getSchoolSettings } from '@/lib/data/schoolSettingsStorage';
 
 interface MobileActionCenterProps {
@@ -251,9 +252,10 @@ export function MobileActionCenter({
                       router.push(`/crm/leads/${task.leadId}`);
                     }
                   }}
-                  className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-all shadow-2xs"
+                  className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white font-medium px-3 py-1.5 rounded-lg shrink-0 active:scale-95 transition-all shadow-2xs inline-flex items-center gap-1.5"
                 >
-                  WhatsApp
+                  <WhatsAppIcon className="w-3.5 h-3.5 fill-white" />
+                  <span>WhatsApp</span>
                 </button>
               )}
 

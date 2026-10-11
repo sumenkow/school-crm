@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext';
 import { UpcomingPaymentItem } from '@/lib/data/upcomingPaymentsHelper';
 import { notifyAdminOnUpcomingPayment } from '@/lib/telegram/botNotifier';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 
 interface UpcomingPaymentAlertProps {
   item: UpcomingPaymentItem | null;
@@ -100,9 +101,9 @@ export function UpcomingPaymentAlert({ item, onPaymentRecorded, className = '' }
               )}`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-2xs"
             >
-              <MessageSquare size={13} />
+              <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-600" />
               WhatsApp
             </a>
           )}
@@ -110,11 +111,11 @@ export function UpcomingPaymentAlert({ item, onPaymentRecorded, className = '' }
           <button
             onClick={handleSendTelegram}
             disabled={sendingTg}
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
             title="Отправить напоминание администратору в Telegram"
           >
-            <Send size={13} className="text-blue-600" />
-            {sendingTg ? '...' : 'В TG'}
+            <TelegramIcon className="w-3.5 h-3.5 text-sky-500" />
+            {sendingTg ? '...' : 'Telegram'}
           </button>
 
           <button

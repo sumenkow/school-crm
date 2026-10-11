@@ -20,6 +20,7 @@ import {
   ChevronUp,
   X,
 } from 'lucide-react';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 import {
   FullLessonData,
   TimelineInteraction,
@@ -1183,7 +1184,7 @@ export function ScheduleLessonModal({
                 className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer h-3.5 w-3.5"
               />
               <span className="flex items-center gap-1.5">
-                <Send className="w-3.5 h-3.5 text-sky-500" />
+                <TelegramIcon className="w-3.5 h-3.5 text-sky-500 fill-current" />
                 Отправить уведомление ученикам и родителям в Telegram
               </span>
             </label>

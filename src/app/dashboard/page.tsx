@@ -44,6 +44,7 @@ import {
 import { useRole, usePermissions } from '@/context/RoleContext';
 import { useToast } from '@/context/ToastContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { WhatsAppIcon } from '@/components/common/MessengerIcons';
 import { DailyReportModal } from '@/components/dashboard/DailyReportModal';
 import { ExecutiveTaskReportModal } from '@/components/dashboard/ExecutiveTaskReportModal';
 import { UpcomingPaymentsBlock } from '@/components/dashboard/UpcomingPaymentsBlock';
@@ -377,9 +378,10 @@ function SmartActionHub() {
                   target="_blank"
                   rel="noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="flex-1 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 text-center py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-[10px] transition-colors"
                 >
-                  WhatsApp
+                  <WhatsAppIcon className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
                 </a>
               )}
               {task.phone && (

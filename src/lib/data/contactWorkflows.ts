@@ -133,3 +133,53 @@ export function triggerTelegramContact(params: ContactWorkflowParams): void {
 
   saveInteractionToStorage(interaction);
 }
+
+/**
+ * Initiates phone call (via tel: link) and logs an "Outgoing Call" event to the timeline.
+ */
+export function triggerPhoneContact(params: ContactWorkflowParams): void {
+  const rawPhone = params.phone || '';
+  const cleanPhone = rawPhone.replace(/\D/g, '');
+
+  if (!cleanPhone) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('crm-toast', {
+          detail: { type: 'error', message: 'У контакта не указан номер телефона' },
+        })
+      );
+    }
+    return;
+  }
+
+  if (typeof window !== 'undefined') {
+    window.location.href = `tel:${cleanPhone}`;
+  }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU');
+  const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const displayName = params.clientName || params.leadName;
+
+  const interaction: TimelineInteraction = {
+    id: `int_call_${Date.now()}`,
+    leadId: params.leadId,
+    studentId: params.studentId,
+    parentId: params.parentId,
+    studentName: displayName,
+    parentName: params.parentId ? displayName : undefined,
+    occurredAt: `${dateStr}, ${timeStr}`,
+    createdAt: now.toISOString(),
+    channel: 'phone',
+    type: 'follow_up',
+    author: params.author || 'Менеджер CRM',
+    content: `📞 Исходящий звонок (${displayName || rawPhone}).`,
+    result: 'Вызов инициирован',
+    targetType: params.parentId ? 'parent' : params.studentId ? 'student' : undefined,
+    targetName: displayName,
+    targetRole: params.targetRole || (params.parentId ? 'Родитель' : 'Клиент'),
+  };
+
+  saveInteractionToStorage(interaction);
+}
+

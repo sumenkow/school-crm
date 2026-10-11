@@ -21,18 +21,18 @@ export function TasksKpiCards({ kpis, activeFilter, onFilterClick }: TasksKpiCar
         type="button"
         onClick={() => onFilterClick?.('all')}
         className={cn(
-          'rounded-2xl border bg-white p-3.5 shadow-2xs flex items-center gap-3.5 text-left transition-all cursor-pointer',
+          'rounded-xl border bg-white p-3 shadow-2xs flex items-center gap-3 text-left transition-all cursor-pointer',
           activeFilter === 'all'
-            ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-xs'
-            : 'border-slate-200/80 hover:border-slate-300 hover:shadow-xs'
+            ? 'border-blue-500 ring-1 ring-blue-500/30 bg-blue-50/15'
+            : 'border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/50'
         )}
       >
-        <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-          <ListTodo className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <ListTodo className="w-4.5 h-4.5" />
         </div>
-        <div>
-          <p className="text-2xl font-bold text-slate-900 leading-none tabular-nums">{kpis.total}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">всего задач</p>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-slate-900 leading-none tabular-nums">{kpis.total}</p>
+          <p className="text-xs text-slate-500 font-medium mt-1 truncate">всего задач</p>
         </div>
       </button>
 
@@ -41,18 +41,20 @@ export function TasksKpiCards({ kpis, activeFilter, onFilterClick }: TasksKpiCar
         type="button"
         onClick={() => onFilterClick?.('overdue')}
         className={cn(
-          'rounded-2xl border bg-white p-3.5 shadow-2xs flex items-center gap-3.5 text-left transition-all cursor-pointer',
+          'rounded-xl border bg-white p-3 shadow-2xs flex items-center gap-3 text-left transition-all cursor-pointer',
           activeFilter === 'overdue'
-            ? 'border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/20 shadow-xs'
-            : 'border-slate-200/80 hover:border-rose-200 hover:shadow-xs'
+            ? 'border-rose-500 ring-1 ring-rose-500/30 bg-rose-50/15'
+            : 'border-slate-200/80 hover:border-rose-200 hover:bg-rose-50/10'
         )}
       >
-        <div className="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-          <AlertCircle className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <AlertCircle className="w-4.5 h-4.5" />
         </div>
-        <div>
-          <p className="text-2xl font-bold text-slate-900 leading-none tabular-nums">{kpis.overdue}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">просрочено</p>
+        <div className="min-w-0">
+          <p className={cn("text-xl font-bold leading-none tabular-nums", kpis.overdue > 0 ? "text-rose-600" : "text-slate-900")}>
+            {kpis.overdue}
+          </p>
+          <p className="text-xs text-slate-500 font-medium mt-1 truncate">просрочено</p>
         </div>
       </button>
 
@@ -61,18 +63,18 @@ export function TasksKpiCards({ kpis, activeFilter, onFilterClick }: TasksKpiCar
         type="button"
         onClick={() => onFilterClick?.('today')}
         className={cn(
-          'rounded-2xl border bg-white p-3.5 shadow-2xs flex items-center gap-3.5 text-left transition-all cursor-pointer',
+          'rounded-xl border bg-white p-3 shadow-2xs flex items-center gap-3 text-left transition-all cursor-pointer',
           activeFilter === 'today'
-            ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20 shadow-xs'
-            : 'border-slate-200/80 hover:border-amber-200 hover:shadow-xs'
+            ? 'border-amber-500 ring-1 ring-amber-500/30 bg-amber-50/15'
+            : 'border-slate-200/80 hover:border-amber-200 hover:bg-amber-50/10'
         )}
       >
-        <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-          <Clock className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+          <Clock className="w-4.5 h-4.5" />
         </div>
-        <div>
-          <p className="text-2xl font-bold text-slate-900 leading-none tabular-nums">{kpis.today}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">срок сегодня</p>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-slate-900 leading-none tabular-nums">{kpis.today}</p>
+          <p className="text-xs text-slate-500 font-medium mt-1 truncate">срок сегодня</p>
         </div>
       </button>
 
@@ -81,18 +83,18 @@ export function TasksKpiCards({ kpis, activeFilter, onFilterClick }: TasksKpiCar
         type="button"
         onClick={() => onFilterClick?.('completed')}
         className={cn(
-          'rounded-2xl border bg-white p-3.5 shadow-2xs flex items-center gap-3.5 text-left transition-all cursor-pointer',
+          'rounded-xl border bg-white p-3 shadow-2xs flex items-center gap-3 text-left transition-all cursor-pointer',
           activeFilter === 'completed'
-            ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 shadow-xs'
-            : 'border-slate-200/80 hover:border-emerald-200 hover:shadow-xs'
+            ? 'border-emerald-500 ring-1 ring-emerald-500/30 bg-emerald-50/15'
+            : 'border-slate-200/80 hover:border-emerald-200 hover:bg-emerald-50/10'
         )}
       >
-        <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <CheckCircle2 className="w-4.5 h-4.5" />
         </div>
-        <div>
-          <p className="text-2xl font-bold text-slate-900 leading-none tabular-nums">{kpis.completed}</p>
-          <p className="text-xs text-slate-500 font-medium mt-1">выполнено</p>
+        <div className="min-w-0">
+          <p className="text-xl font-bold text-slate-900 leading-none tabular-nums">{kpis.completed}</p>
+          <p className="text-xs text-slate-500 font-medium mt-1 truncate">выполнено</p>
         </div>
       </button>
     </div>

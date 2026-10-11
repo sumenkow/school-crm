@@ -33,6 +33,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 
@@ -674,9 +675,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                               href={`https://wa.me/${cleanPhone}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200 transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200 transition-colors shadow-2xs"
                             >
-                              <MessageSquare className="w-3 h-3" />
+                              <WhatsAppIcon className="w-3.5 h-3.5" />
                               WhatsApp
                             </a>
                           )}
@@ -817,9 +818,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                               href={`https://wa.me/${cleanPhone}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200 transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 text-[11px] font-semibold rounded-lg border border-emerald-200 transition-colors shadow-2xs"
                             >
-                              <MessageSquare className="w-3 h-3" />
+                              <WhatsAppIcon className="w-3.5 h-3.5" />
                               Напомнить
                             </a>
                           )}
@@ -854,9 +855,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                               href={`https://t.me/${telegramHandle}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-sky-50 text-sky-700 text-[11px] font-semibold rounded-lg border border-sky-200 transition-colors shadow-2xs"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-sky-50 text-sky-700 text-[11px] font-semibold rounded-lg border border-sky-200 transition-colors shadow-2xs"
                             >
-                              <Send className="w-3 h-3" />
+                              <TelegramIcon className="w-3.5 h-3.5" />
                               Открыть чат
                             </a>
                           )}
@@ -985,9 +986,9 @@ export function AdminDashboardView({ onOpenReport }: AdminDashboardViewProps) {
                                 href={`https://wa.me/${cleanPhone}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-md border border-emerald-200 transition-colors"
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-md border border-emerald-200 transition-colors"
                               >
-                                <MessageSquare className="w-3 h-3" />
+                                <WhatsAppIcon className="w-3 h-3" />
                                 WhatsApp
                               </a>
                             )}

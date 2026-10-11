@@ -42,9 +42,11 @@ import { useRole } from '@/context/RoleContext';
 import { savePaymentToStorage } from '@/lib/data/paymentStorage';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import { getStoredGroups } from '@/lib/data/groupStorage';
 import { CreateStudentModal, NewStudentData, CreateStudentInitialData } from '@/components/students/CreateStudentModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { CompleteTaskModal } from '@/components/tasks/CompleteTaskModal';
 import { UpcomingPaymentAlert } from '@/components/common/UpcomingPaymentAlert';
 import { getUpcomingPaymentForLead } from '@/lib/data/upcomingPaymentsHelper';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
@@ -94,6 +96,11 @@ export default function LeadDetailsPage() {
 
   const [leadTasks, setLeadTasks] = useState<FullTaskData[]>([]);
   const [isTelegramConnectOpen, setIsTelegramConnectOpen] = useState(false);
+  const [completingTask, setCompletingTask] = useState<FullTaskData | null>(null);
+
+  const activeTask = useMemo(() => {
+    return leadTasks.find((t) => t.status === 'open' || t.status === 'in_progress');
+  }, [leadTasks]);
 
   // Sync tasks and timeline when updated anywhere in the CRM
   const loadTasksAndTimeline = useCallback(async () => {
@@ -143,6 +150,42 @@ export default function LeadDetailsPage() {
       toast.success(newStatus === 'done' ? 'Задача выполнена!' : 'Задача открыта заново');
     } catch (err) {
       console.error('Failed to update task:', err);
+    }
+  };
+
+  const handleCompleteTaskFromModal = async (
+    taskId: string,
+    completionResult: string,
+    completedByName: string
+  ) => {
+    try {
+      const updated = await updateUnifiedTaskStatus(taskId, 'done', {
+        completionResult,
+        performedBy: completedByName,
+        userRole: 'admin',
+      });
+      if (updated) {
+        setLeadTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      } else {
+        setLeadTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  status: 'done',
+                  completionResult,
+                  completedByName,
+                  completedAt: new Date().toISOString(),
+                }
+              : t
+          )
+        );
+      }
+      await loadTasksAndTimeline();
+      toast.success('Задача выполнена с фиксацией результата в истории');
+    } catch (err) {
+      console.error('Failed to complete task:', err);
+      toast.error('Ошибка при завершении задачи');
     }
   };
 
@@ -970,9 +1013,10 @@ export default function LeadDetailsPage() {
                     leadName: lead.name,
                     author: userName || 'Администратор',
                   })}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer text-xs"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 hover:bg-emerald-100 transition-colors cursor-pointer text-xs"
                 >
-                  WhatsApp
+                  <WhatsAppIcon className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
                 </button>
                 {lead.telegram && (
                   <button
@@ -984,9 +1028,9 @@ export default function LeadDetailsPage() {
                       leadName: lead.name,
                       author: userName || 'Администратор',
                     })}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 font-bold border border-sky-200 hover:bg-sky-100 transition-colors cursor-pointer text-xs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 text-sky-700 font-bold border border-sky-200 hover:bg-sky-100 transition-colors cursor-pointer text-xs"
                   >
-                    <MessageSquare className="h-3 w-3" />
+                    <TelegramIcon className="w-3.5 h-3.5" />
                     <span>{lead.telegram}</span>
                   </button>
                 )}
@@ -1163,13 +1207,58 @@ export default function LeadDetailsPage() {
           </div>
         </div>
 
-        {/* Urgent Next Action Alert Box */}
-        {lead.nextAction && (
+        {/* Priority Task Obligation (Scenario A) or Computed Next Action (Scenario B) */}
+        {activeTask ? (
+          <div className="mt-4 rounded-xl bg-purple-50/80 p-4 border border-purple-200 text-xs text-purple-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold flex items-center gap-1.5 text-purple-900">
+                  <CheckSquare className="h-4 w-4 text-purple-600" />
+                  Активное поручение (Задача):
+                </span>
+                <span className={cn(
+                  'px-2 py-0.5 rounded text-[10px] font-bold',
+                  activeTask.priority === 'high' ? 'bg-rose-100 text-rose-800' : 'bg-purple-200 text-purple-900'
+                )}>
+                  Срок: {activeTask.dueDateFormatted || activeTask.dueDate || 'Сегодня'}
+                </span>
+                {activeTask.assignedTo && (
+                  <span className="text-[11px] text-purple-700 bg-white/80 px-2 py-0.5 rounded border border-purple-200 font-medium">
+                    Ответственный: <strong>{activeTask.assignedTo}</strong>
+                  </span>
+                )}
+              </div>
+              <p className="text-sm font-bold text-slate-900">{activeTask.title}</p>
+              {activeTask.description && (
+                <p className="text-xs text-slate-600 leading-relaxed">{activeTask.description}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setCompletingTask(activeTask)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 font-bold text-white shadow-xs hover:bg-purple-700 transition-colors cursor-pointer"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Завершить с результатом
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreateTaskModalOpen(true)}
+                className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 font-semibold text-purple-900 border border-purple-200 shadow-2xs hover:bg-purple-50 transition-colors cursor-pointer"
+                title="Поставить дополнительную задачу"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Еще задача
+              </button>
+            </div>
+          </div>
+        ) : lead.nextAction ? (
           <div className="mt-4 rounded-xl bg-amber-50 p-4 border border-amber-200/70 text-xs text-amber-900 flex items-start justify-between gap-3">
             <div>
               <span className="font-bold flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-amber-600" />
-                Следующее запланированное действие:
+                Следующее запланированное действие (Action):
               </span>
               <p className="mt-1 text-slate-800 font-medium">{lead.nextAction}</p>
               {lead.nextActionDate && (
@@ -1181,13 +1270,13 @@ export default function LeadDetailsPage() {
             <button
               type="button"
               onClick={() => setIsCreateTaskModalOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-bold text-amber-900 border border-amber-300 shadow-xs hover:bg-amber-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-bold text-amber-900 border border-amber-300 shadow-xs hover:bg-amber-50 cursor-pointer"
             >
               <CheckSquare className="h-3 w-3" />
               Создать задачу
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* UPCOMING PAYMENT DEADLINE ALERT (Раздел 2 ТЗ) */}
         {getUpcomingPaymentForLead(lead.id) && (
@@ -1426,7 +1515,13 @@ export default function LeadDetailsPage() {
                     <input
                       type="checkbox"
                       checked={isDone}
-                      onChange={() => handleToggleLeadTask(t.id)}
+                      onChange={() => {
+                        if (!isDone) {
+                          setCompletingTask(t);
+                        } else {
+                          handleToggleLeadTask(t.id);
+                        }
+                      }}
                       className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
                     />
                     <div>
@@ -1451,15 +1546,34 @@ export default function LeadDetailsPage() {
                       {t.description && (
                         <p className="text-[11px] text-slate-600 mt-1">{t.description}</p>
                       )}
+                      {t.completionResult && (
+                        <div className="mt-1.5 text-[11px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60 inline-flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <span>Итог: <strong>{t.completionResult}</strong></span>
+                          {t.completedByName && <span className="text-slate-500">({t.completedByName})</span>}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <span className={cn(
-                    'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
-                    isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  )}>
-                    {isDone ? 'Выполнено' : 'В работе'}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isDone && (
+                      <button
+                        type="button"
+                        onClick={() => setCompletingTask(t)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-2 py-1 rounded-lg border border-purple-200 transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        Завершить
+                      </button>
+                    )}
+                    <span className={cn(
+                      'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
+                      isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    )}>
+                      {isDone ? 'Выполнено' : 'В работе'}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -2240,6 +2354,14 @@ export default function LeadDetailsPage() {
           setLead(updatedLead);
           syncLeadNameCascade(lead.id, { telegram: handle });
         }}
+      />
+
+      {/* Complete Task Modal with Outcome Presets & Lead Enrichment */}
+      <CompleteTaskModal
+        isOpen={!!completingTask}
+        task={completingTask}
+        onClose={() => setCompletingTask(null)}
+        onComplete={handleCompleteTaskFromModal}
       />
     </div>
   );

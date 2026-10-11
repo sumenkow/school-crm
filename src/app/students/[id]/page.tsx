@@ -19,6 +19,7 @@ import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { LessonModal } from '@/components/calendar/LessonModal';
 import { TelegramConnectModal } from '@/components/telegram/TelegramConnectModal';
 import { TelegramChatBox } from '@/components/telegram/TelegramChatBox';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import {
   ArrowLeft,
   Calendar,
@@ -1664,8 +1665,8 @@ export default function StudentDetailsPage() {
                   </span>
                 )}
                 {student.telegram && (
-                  <span className="flex items-center gap-1 text-blue-600">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                  <span className="flex items-center gap-1 text-sky-600">
+                    <TelegramIcon className="h-3.5 w-3.5" />
                     {student.telegram}
                   </span>
                 )}
@@ -2054,13 +2055,13 @@ export default function StudentDetailsPage() {
                         </div>
                         {parent.telegram && (
                           <div className="flex items-center gap-2">
-                            <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
-                            <span className="font-medium text-blue-600">{parent.telegram}</span>
+                            <TelegramIcon className="h-3.5 w-3.5 text-sky-500" />
+                            <span className="font-medium text-sky-600">{parent.telegram}</span>
                           </div>
                         )}
                         {parent.whatsapp && (
                           <div className="flex items-center gap-2">
-                            <MessageSquare className="h-3.5 w-3.5 text-emerald-500" />
+                            <WhatsAppIcon className="h-3.5 w-3.5 text-emerald-500" />
                             <span className="font-medium text-emerald-600">{parent.whatsapp}</span>
                           </div>
                         )}
@@ -3813,7 +3814,7 @@ export default function StudentDetailsPage() {
                     rel="noreferrer"
                     className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
                   >
-                    <MessageSquare className="h-3.5 w-3.5" />
+                    <WhatsAppIcon className="h-3.5 w-3.5 fill-white" />
                     WhatsApp
                   </a>
                 )}

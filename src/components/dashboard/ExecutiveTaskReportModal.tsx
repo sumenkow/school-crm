@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
 import { sendTelegramNotification } from '@/lib/telegram/botNotifier';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 
 import {
   getEurRubRate,
@@ -370,7 +371,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                 disabled={sendingTg}
                 className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-purple-500/20 hover:bg-purple-700 transition-all disabled:opacity-50"
               >
-                <Send className="h-4 w-4" />
+                <TelegramIcon className="h-4 w-4 fill-white" />
                 {sendingTg ? 'Отправка...' : 'Отправить в Telegram руководителю'}
               </button>
             </div>

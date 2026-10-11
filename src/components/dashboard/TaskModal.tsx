@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, MessageCircle, Calendar, User, CheckCircle2, Clock, Send, AlertCircle } from 'lucide-react';
+import { WhatsAppIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { DatePicker } from '@/components/common/DatePicker';
@@ -161,7 +162,7 @@ export function TaskModal({ isOpen, taskData, onClose, onComplete }: TaskModalPr
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-emerald-600 font-bold hover:underline"
               >
-                <MessageCircle size={14} /> WhatsApp ({taskData.phone || '+7 (999) 123-45-67'})
+                <WhatsAppIcon className="w-3.5 h-3.5 fill-current" /> WhatsApp ({taskData.phone || '+7 (999) 123-45-67'})
               </a>
             </div>
           </div>

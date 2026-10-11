@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CockpitActionItem, sanitizePhoneForWhatsApp, sanitizeTelegramUsername } from '../lib/cockpitPriorityEngine';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 
 interface CockpitSlideOverDrawerProps {
   item: CockpitActionItem | null;
@@ -304,10 +305,10 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => handleLogCommunication('whatsapp')}
-                className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
                 title="Написать в WhatsApp"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
+                <WhatsAppIcon className="w-3.5 h-3.5 fill-white" />
                 WhatsApp
               </a>
             )}
@@ -318,10 +319,10 @@ export const CockpitSlideOverDrawer: React.FC<CockpitSlideOverDrawerProps> = ({
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => handleLogCommunication('telegram')}
-                className="inline-flex items-center gap-1 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg transition-colors shadow-xs"
                 title="Написать в Telegram"
               >
-                <Send className="w-3.5 h-3.5" />
+                <TelegramIcon className="w-3.5 h-3.5 fill-white" />
                 Telegram
               </a>
             )}

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { formatPhone, getTelLink } from '@/lib/utils';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 
 export default function TeacherDetailsPage() {
   const params = useParams();
@@ -214,8 +215,8 @@ export default function TeacherDetailsPage() {
                   </div>
                 )}
                 {teacher.telegram && (
-                  <div className="flex items-center gap-1.5 text-blue-600 font-medium">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                  <div className="flex items-center gap-1.5 text-sky-600 font-medium">
+                    <TelegramIcon className="h-3.5 w-3.5" />
                     <span>{teacher.telegram}</span>
                   </div>
                 )}

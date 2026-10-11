@@ -49,6 +49,7 @@ import { getStoredGroups } from '@/lib/data/groupStorage';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { saveInteractionToStorage } from '@/lib/data/timelineStorage';
 import { useToast } from '@/context/ToastContext';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 import { useRole, usePermissions } from '@/context/RoleContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { getStudentLessonPaymentStatus, getTeacherAdmissionBadge } from '@/lib/data/lessonPaymentStatusHelper';
@@ -1452,11 +1453,11 @@ export function LessonModal({
                       className="p-2.5 bg-slate-50/70 hover:bg-blue-50/50 rounded-2xl border border-slate-100 hover:border-blue-200 flex items-center justify-between gap-2.5 transition-all cursor-pointer shadow-2xs group"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                          <Send className="w-4 h-4" />
+                        <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
+                          <TelegramIcon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 truncate">
+                          <div className="text-xs font-bold text-slate-800 group-hover:text-sky-600 truncate">
                             Напомнить о занятии (Telegram)
                           </div>
                           <div className="text-[11px] text-slate-400 truncate">
@@ -1464,13 +1465,13 @@ export function LessonModal({
                           </div>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600 shrink-0" />
                     </div>
                   ) : (
                     <div className="p-2.5 bg-slate-50/30 rounded-2xl border border-slate-100/60 flex items-center justify-between gap-2.5 opacity-50 cursor-not-allowed">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                          <Send className="w-4 h-4" />
+                          <TelegramIcon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-500 truncate">
@@ -2078,7 +2079,7 @@ export function LessonModal({
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center shrink-0">
-                <Send className="w-5 h-5" />
+                <TelegramIcon className="w-5 h-5 fill-current" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">Напомнить о занятии?</h3>

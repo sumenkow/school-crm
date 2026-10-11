@@ -23,6 +23,7 @@ import {
 import { EuropeanInvoiceData } from '@/lib/data/invoiceStorage';
 import { FullPaymentData, FullSubscriptionData } from '@/lib/data/mockData';
 import { triggerWhatsAppContact, triggerTelegramContact } from '@/lib/data/contactWorkflows';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 
 export interface DebtorDetailData {
   familyKey: string;
@@ -485,7 +486,7 @@ export function FinanceDetailDrawer({
               }
               className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition-colors cursor-pointer"
             >
-              <MessageSquare className="h-3.5 w-3.5" />
+              <WhatsAppIcon className="h-3.5 w-3.5 fill-white" />
               <span>Написать в WhatsApp</span>
             </button>
 
@@ -499,9 +500,9 @@ export function FinanceDetailDrawer({
                   targetRole: 'Родитель',
                 })
               }
-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-500 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-blue-600 transition-colors cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-500 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-sky-600 transition-colors cursor-pointer"
             >
-              <MessageSquare className="h-3.5 w-3.5" />
+              <TelegramIcon className="h-3.5 w-3.5 fill-white" />
               <span>Написать в Telegram</span>
             </button>
 

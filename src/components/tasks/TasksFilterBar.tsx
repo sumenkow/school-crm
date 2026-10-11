@@ -58,17 +58,17 @@ export function TasksFilterBar({
               type="button"
               onClick={() => onTabChange(tab.key)}
               className={cn(
-                'shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer',
+                'shrink-0 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer',
                 isActive
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80'
               )}
             >
               <span>{tab.label}</span>
               <span
                 className={cn(
-                  'rounded-full px-1.5 py-0.2 text-[11px] font-bold tabular-nums',
-                  isActive ? 'bg-blue-500 text-white' : 'text-slate-400'
+                  'rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums leading-none',
+                  isActive ? 'bg-blue-500/80 text-white' : 'bg-slate-100 text-slate-600'
                 )}
               >
                 {tab.count}
@@ -79,7 +79,7 @@ export function TasksFilterBar({
       </div>
 
       {/* Right Controls: Single-line consolidated bar */}
-      <div className="flex items-center gap-2.5 flex-1 max-w-2xl justify-end">
+      <div className="flex items-center gap-2 flex-1 max-w-2xl justify-end">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
@@ -88,7 +88,7 @@ export function TasksFilterBar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Поиск по задачам..."
-            className="h-8.5 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-blue-400 transition-colors"
+            className="h-8.5 w-full rounded-xl border border-slate-200/80 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
           />
         </div>
 
@@ -96,7 +96,7 @@ export function TasksFilterBar({
         <select
           value={priorityFilter}
           onChange={(e) => onPriorityChange(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-          className="h-8.5 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-400 cursor-pointer"
+          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
         >
           <option value="all">Приоритет: Все</option>
           <option value="high">Высокий</option>
@@ -108,7 +108,7 @@ export function TasksFilterBar({
         <select
           value={dueDateFilter}
           onChange={(e) => onDueDateChange(e.target.value as 'all' | 'today' | 'overdue' | 'week')}
-          className="h-8.5 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-400 cursor-pointer"
+          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
         >
           <option value="all">Срок: Все</option>
           <option value="today">Сегодня</option>
@@ -120,7 +120,7 @@ export function TasksFilterBar({
         <select
           value={sortMode}
           onChange={(e) => onSortChange(e.target.value as TaskSortMode)}
-          className="h-8.5 rounded-xl border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:border-blue-400 cursor-pointer"
+          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
         >
           <option value="priority">⇅ Сначала важные</option>
           <option value="date_asc">По сроку ↑</option>
@@ -128,7 +128,7 @@ export function TasksFilterBar({
         </select>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center rounded-xl border border-slate-200 bg-white p-0.5 shadow-2xs">
+        <div className="flex items-center rounded-xl border border-slate-200/80 bg-white p-0.5 shadow-2xs">
           <button
             type="button"
             onClick={() => onViewModeChange('list')}

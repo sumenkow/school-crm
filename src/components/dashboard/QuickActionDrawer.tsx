@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, MessageCircle, Calendar, CreditCard, Phone, Ban, FileBox, CheckCircle, Copy } from 'lucide-react';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
 import { savePaymentToStorage, settleOverduePayments } from '@/lib/data/paymentStorage';
 import { saveLeadToStorage } from '@/lib/data/leadStorage';
@@ -265,7 +266,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
                 }}
                 className="w-full bg-sky-50 text-sky-700 rounded-xl py-3 font-medium hover:bg-sky-100 transition-colors flex items-center justify-center gap-2"
               >
-                <MessageCircle size={18} /> Написать в Telegram
+                <TelegramIcon className="w-4 h-4" /> Написать в Telegram
               </button>
             </div>
           </div>

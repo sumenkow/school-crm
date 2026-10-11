@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, Phone, MessageSquare, Mail, Calendar, GraduationCap, ChevronRight, RefreshCw, UserCheck } from 'lucide-react';
 import { INITIAL_TEACHERS, FullTeacherData } from '@/lib/data/mockData';
 import { formatPhone } from '@/lib/utils';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 
 export default function TeachersPage() {
   const router = useRouter();
@@ -140,8 +141,8 @@ export default function TeachersPage() {
                   )}
                   {t.telegram && (
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                      <span className="text-blue-600 font-medium">{t.telegram}</span>
+                      <TelegramIcon className="h-3.5 w-3.5 text-sky-500 flex-shrink-0" />
+                      <span className="text-sky-600 font-medium">{t.telegram}</span>
                     </div>
                   )}
                 </div>

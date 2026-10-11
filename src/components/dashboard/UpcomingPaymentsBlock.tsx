@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useRole } from '@/context/RoleContext';
+import { WhatsAppIcon, TelegramIcon } from '@/components/common/MessengerIcons';
 import { getUpcomingPayments, UpcomingPaymentItem } from '@/lib/data/upcomingPaymentsHelper';
 import { notifyAdminOnUpcomingPayment, sendUpcomingPaymentsDigestToTelegram } from '@/lib/telegram/botNotifier';
 import { RecordPaymentModal } from '@/components/finance/RecordPaymentModal';
@@ -242,20 +243,20 @@ export function UpcomingPaymentsBlock({ viewMode = 'admin', limit = 5 }: Upcomin
                         )}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-lg bg-emerald-50 p-1.5 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        className="rounded-lg bg-emerald-50 p-1.5 text-emerald-700 hover:bg-emerald-100 transition-colors flex items-center justify-center"
                         title="Написать в WhatsApp"
                       >
-                        <MessageSquare size={13} />
+                        <WhatsAppIcon className="w-3.5 h-3.5" />
                       </a>
                     )}
 
                     <button
                       onClick={() => handleSendSingleTelegram(item)}
                       disabled={sendingItemId === item.id}
-                      className="rounded-lg bg-blue-50 p-1.5 text-blue-700 hover:bg-blue-100 transition-colors"
+                      className="rounded-lg bg-sky-50 p-1.5 text-sky-700 hover:bg-sky-100 transition-colors flex items-center justify-center cursor-pointer"
                       title="Отправить напоминание администратору в Telegram"
                     >
-                      <Send size={13} />
+                      <TelegramIcon className="w-3.5 h-3.5" />
                     </button>
 
                     <button

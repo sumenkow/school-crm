@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Calendar, Send, Clock, BookOpen } from 'lucide-react';
+import { TelegramIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
 import { getStoredLessons } from '@/lib/data/lessonStorage';
 
@@ -148,7 +149,7 @@ export function TeacherModal({ isOpen, teacherData, onClose }: TeacherModalProps
             onClick={handleTelegramClick}
             className="flex-1 bg-sky-50 text-sky-700 hover:bg-sky-100 rounded-xl py-2.5 px-3 text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Send size={14} /> Написать в Telegram
+            <TelegramIcon className="w-3.5 h-3.5 fill-current" /> Написать в Telegram
           </button>
           
           <button 
