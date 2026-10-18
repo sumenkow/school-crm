@@ -64,6 +64,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [parentFullName, setParentFullName] = useState('');
   const [contact, setContact] = useState('+');
   const [telegram, setTelegram] = useState('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Child / Student data
   const [studentFullName, setStudentFullName] = useState('');
@@ -76,6 +77,11 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [comment, setComment] = useState('');
   const [source, setSource] = useState(SOURCE_OPTIONS[0]);
   const [assignedTo, setAssignedTo] = useState(() => userName || 'Администратор');
+
+  const isAdult = clientType === 'adult_student';
+  const effectiveName = isAdult ? studentFullName.trim() : (parentFullName.trim() || studentFullName.trim());
+  const nameError = !effectiveName ? 'Пожалуйста, укажите имя' : null;
+  const contactError = ((!contact || contact.trim() === '+') && !telegram.trim()) ? 'Укажите контактный телефон или Telegram' : null;
 
   useEffect(() => {
     setMounted(true);
@@ -142,18 +148,18 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const isAdult = clientType === 'adult_student';
-    const effectiveName = isAdult ? studentFullName.trim() : (parentFullName.trim() || studentFullName.trim());
-    const effectiveStudentName = studentFullName.trim() || parentFullName.trim();
+    setTouched({ name: true, contact: true });
 
-    if (!effectiveName) {
-      toast.error('Пожалуйста, укажите имя клиента или учащегося');
+    if (nameError) {
+      toast.error(nameError);
       return;
     }
-    if ((!contact || contact.trim() === '+') && !telegram.trim()) {
-      toast.error('Укажите контактный телефон или Telegram для связи');
+    if (contactError) {
+      toast.error(contactError);
       return;
     }
+
+    const effectiveStudentName = studentFullName.trim() || parentFullName.trim();
 
     const { lastName: parentLastName, firstName: parentFirstName, middleName: parentMiddleName } = splitFullName(parentFullName);
     const { lastName: studentLastName, firstName: studentFirstName, middleName: studentMiddleName } = splitFullName(studentFullName);
@@ -248,8 +254,6 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
     onClose();
   };
 
-  const isAdult = clientType === 'adult_student';
-
   return createPortal(
     <div
       role="dialog"
@@ -327,13 +331,21 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
             {/* Name input */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
-                {isAdult ? 'ФИО студента' : 'Имя клиента / родителя'} <span className="text-rose-500">*</span>
+              <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between mb-1">
+                <span>
+                  {isAdult ? 'ФИО студента' : 'Имя клиента / родителя'} <span className="text-rose-500">*</span>
+                </span>
+                {touched.name && nameError && (
+                  <span className="text-[10px] text-rose-500 font-medium animate-in fade-in duration-150">
+                    {nameError}
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 required
                 value={isAdult ? studentFullName : parentFullName}
+                onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
                 onChange={(e) => {
                   if (isAdult) {
                     setStudentFullName(e.target.value);
@@ -343,41 +355,67 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                   }
                 }}
                 placeholder={isAdult ? 'Например: Алексей Смирнов' : 'Например: Анна Смирнова'}
-                className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
+                aria-invalid={touched.name && !!nameError}
+                className={cn(
+                  'w-full h-[36px] rounded-xl border px-3 text-sm font-medium focus:outline-none focus:ring-2 bg-white placeholder:text-slate-400 transition-colors',
+                  touched.name && nameError
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                    : 'border-slate-200 focus:border-blue-400 focus:ring-blue-500/20'
+                )}
               />
             </div>
 
             {/* Phone + Telegram */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
-                  <Phone className="h-3 w-3 text-slate-400" />
-                  Телефон <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={contact}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
-                  }}
-                  placeholder="+7 (999) 000-00-00"
-                  className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
-                />
+            <div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
+                    <Phone className="h-3 w-3 text-slate-400" />
+                    Телефон <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={contact}
+                    onBlur={() => setTouched((prev) => ({ ...prev, contact: true }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setContact(val.startsWith('+') ? val : '+' + val.replace(/^\+*/, ''));
+                    }}
+                    placeholder="+7 (999) 000-00-00"
+                    aria-invalid={touched.contact && !!contactError}
+                    className={cn(
+                      'w-full h-[36px] rounded-xl border px-3 text-sm font-medium focus:outline-none focus:ring-2 bg-white placeholder:text-slate-400 transition-colors',
+                      touched.contact && contactError
+                        ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-blue-400 focus:ring-blue-500/20'
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
+                    <span className="text-slate-400 font-bold text-xs leading-none">@</span>
+                    Telegram / Никнейм
+                  </label>
+                  <input
+                    type="text"
+                    value={telegram}
+                    onBlur={() => setTouched((prev) => ({ ...prev, contact: true }))}
+                    onChange={(e) => setTelegram(e.target.value)}
+                    placeholder="@username"
+                    className={cn(
+                      'w-full h-[36px] rounded-xl border px-3 text-sm font-medium focus:outline-none focus:ring-2 bg-white placeholder:text-slate-400 transition-colors',
+                      touched.contact && contactError
+                        ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-blue-400 focus:ring-blue-500/20'
+                    )}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mb-1">
-                  <span className="text-slate-400 font-bold text-xs leading-none">@</span>
-                  Telegram / Никнейм
-                </label>
-                <input
-                  type="text"
-                  value={telegram}
-                  onChange={(e) => setTelegram(e.target.value)}
-                  placeholder="@username"
-                  className="w-full h-[36px] rounded-xl border border-slate-200 px-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 bg-white placeholder:text-slate-400"
-                />
-              </div>
+              {touched.contact && contactError && (
+                <p className="text-[10px] text-rose-500 font-medium mt-1 animate-in fade-in duration-150">
+                  {contactError}
+                </p>
+              )}
             </div>
           </div>
 
