@@ -21,6 +21,8 @@ import { getStoredLessons, saveLessonToStorage } from '@/lib/data/lessonStorage'
 import { getStoredTeachers } from '@/lib/data/teacherStorage';
 import { useLanguage } from '@/context/LanguageContext';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
+import { checkThreeWayCollision, CandidateLesson } from '@/lib/data/collisionHelper';
 import { ScheduleLessonModal } from '@/components/calendar/ScheduleLessonModal';
 import { CreateGroupModal } from '@/components/groups/CreateGroupModal';
 import { saveGroupToStorage } from '@/lib/data/groupStorage';
@@ -129,6 +131,8 @@ export default function CalendarPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const toast = useToast();
+  const { role, userName } = useRole();
+  const isTeacher = role === 'teacher';
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all');
   const [now, setNow] = useState<Date>(() => new Date());
@@ -315,6 +319,21 @@ export default function CalendarPage() {
     const targetLesson = lessons.find((l) => l.id === lessonId);
     if (!targetLesson) return;
 
+    // RBAC Guard: teachers can only reschedule their own lessons
+    if (isTeacher) {
+      const myNameLower = (userName || '').toLowerCase().trim();
+      const teacherNameLower = (targetLesson.teacherName || '').toLowerCase().trim();
+      const matchesName =
+        myNameLower &&
+        teacherNameLower &&
+        (teacherNameLower.includes(myNameLower) || myNameLower.includes(teacherNameLower));
+      if (!matchesName) {
+        toast.error('Доступ ограничен: преподаватель может переносить только свои занятия');
+        setDraggedLessonId(null);
+        return;
+      }
+    }
+
     // Terminal states cannot be rescheduled
     if (targetLesson.status === 'completed' || targetLesson.status === 'cancelled') {
       toast.error('Нельзя переносить завершенные или отмененные занятия');
@@ -345,26 +364,24 @@ export default function CalendarPage() {
     const rawDow = targetDateObj.getDay();
     const targetDayOfWeek = rawDow === 0 ? 6 : rawDow - 1;
 
-    // Check conflict (teacher or group occupied)
-    const hasConflict = lessons.some((other) => {
-      if (other.id === targetLesson.id) return false;
-      if (other.status === 'cancelled') return false;
-      const otherDate = other.date || '';
-      if (otherDate !== targetDateStr) return false;
+    // Strict 3-Way Collision Check & School Operating Hours Validation
+    const candidate: CandidateLesson = {
+      id: targetLesson.id,
+      groupId: targetLesson.groupId,
+      teacherId: targetLesson.teacherId,
+      date: targetDateStr,
+      startTime: targetStartTime,
+      endTime: targetEndTime,
+      room: targetLesson.room || 'Онлайн (Zoom)',
+    };
 
-      const oStart = parseTimeToMinutes(other.startTime);
-      const oEnd = parseTimeToMinutes(other.endTime || '20:15');
-      const isOverlap = targetStartMin < oEnd && targetEndMin > oStart;
-      if (!isOverlap) return false;
-
-      return (
-        (other.teacherId && other.teacherId === targetLesson.teacherId) ||
-        (other.groupId && other.groupId === targetLesson.groupId)
-      );
+    const collisionResult = checkThreeWayCollision(lessons, candidate, {
+      startHour: calendarStartHour,
+      endHour: calendarEndHour,
     });
 
-    if (hasConflict) {
-      toast.error(`Перенос заблокирован: коллизия расписания! Преподаватель или группа уже заняты в это время.`);
+    if (collisionResult.hasCollision) {
+      toast.error(`Перенос заблокирован: ${collisionResult.reason}`);
       setDraggedLessonId(null);
       return;
     }
@@ -569,32 +586,54 @@ export default function CalendarPage() {
     );
   }, [sanitizedLessons, viewMode, daysOfWeek, selectedDayIndex, viewYear, viewMonth]);
 
-  const teacherColorMap: Record<string, string> = {
-    t1: 'bg-rose-500',
-    t2: 'bg-amber-500',
-    t3: 'bg-emerald-500',
-    t4: 'bg-indigo-500',
-  };
+  const weekLessonsCount = useMemo(() => {
+    const weekDates = new Set(daysOfWeek.map((d) => d.fullDate));
+    return filteredLessons.filter(
+      (l) => (l.date && weekDates.has(l.date)) || (!l.date && l.dayOfWeek >= 0 && l.dayOfWeek <= 6)
+    ).length;
+  }, [filteredLessons, daysOfWeek]);
 
   const teachersList = useMemo(() => {
-    return teachers.map((teacher, idx) => {
-      const initials = teacher.name
-        .trim()
-        .split(' ')
-        .slice(0, 2)
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase() || 'ПР';
+    // 1. Filter out placeholder names like "Преподаватель", "Преподаватель не назначен", or empty
+    const validTeachers = teachers.filter((t) => {
+      const name = (t.name || '').trim();
+      return (
+        name.length > 0 &&
+        name.toLowerCase() !== 'преподаватель' &&
+        name.toLowerCase() !== 'преподаватель не назначен'
+      );
+    });
 
-      const bg = teacherColorMap[teacher.id] || (idx % 4 === 0 ? 'bg-rose-500' : idx % 4 === 1 ? 'bg-amber-500' : idx % 4 === 2 ? 'bg-emerald-500' : 'bg-indigo-500');
+    // 2. Deduplicate by clean teacher name
+    const seenNames = new Set<string>();
+    const uniqueTeachers: FullTeacherData[] = [];
+    for (const t of validTeachers) {
+      const cleanName = t.name.trim().toLowerCase();
+      if (!seenNames.has(cleanName)) {
+        seenNames.add(cleanName);
+        uniqueTeachers.push(t);
+      }
+    }
 
-      const count = currentRangeLessons.filter((l) => l.teacherId === teacher.id || l.teacherName === teacher.name).length;
+    return uniqueTeachers.map((teacher) => {
+      const parts = teacher.name.trim().split(/\s+/);
+      const initials =
+        parts
+          .slice(0, 2)
+          .map((n) => n[0])
+          .join('')
+          .toUpperCase() || 'ПР';
+
+      const count = currentRangeLessons.filter(
+        (l) =>
+          l.teacherId === teacher.id ||
+          l.teacherName?.toLowerCase() === teacher.name.toLowerCase()
+      ).length;
 
       return {
         id: teacher.id,
         name: teacher.name,
         initials,
-        bg,
         count,
       };
     });
@@ -648,14 +687,6 @@ export default function CalendarPage() {
               <Clock className="h-3.5 w-3.5 text-blue-600" />
               <span>Сетка: {String(calendarStartHour).padStart(2, '0')}:00 – {String(calendarEndHour).padStart(2, '0')}:00</span>
             </Link>
-            <button
-              type="button"
-              onClick={() => setIsCreateGroupModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-blue-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Создать группу</span>
-            </button>
             <button
               type="button"
               onClick={() => handleOpenScheduleForDate()}
@@ -771,11 +802,18 @@ export default function CalendarPage() {
                   className={cn(
                     'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer whitespace-nowrap shrink-0',
                     isSelected
-                      ? 'border-blue-600 bg-blue-50 text-blue-900 font-semibold ring-2 ring-blue-100 shadow-2xs'
+                      ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-semibold ring-2 ring-blue-100 shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  <span className={cn('flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white shrink-0 shadow-2xs', teacher.bg)}>
+                  <span
+                    className={cn(
+                      'flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold shrink-0 transition-colors',
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-blue-50/90 text-blue-700 border border-blue-100/70'
+                    )}
+                  >
                     {teacher.initials}
                   </span>
                   <span>{labelText}</span>
@@ -857,6 +895,19 @@ export default function CalendarPage() {
 
               {/* 7 Days Canvas Grid */}
               <div className="relative grid flex-1 grid-cols-7 divide-x divide-slate-200 bg-white min-w-[650px] lg:min-w-0">
+                {weekLessonsCount === 0 && (
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none p-6 text-center select-none">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50/80 text-blue-600 border border-blue-100 mb-3 shadow-2xs">
+                      <CalendarIcon className="h-6 w-6 stroke-[1.75]" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800">
+                      На эту неделю нет запланированных уроков
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                      Кликните на любой слот времени в сетке или нажмите «Добавить занятие», чтобы назначить онлайн-урок
+                    </p>
+                  </div>
+                )}
                 {daysOfWeek.map((day) => {
                   const dayLessons = filteredLessons.filter(
                     (l) => l.date === day.fullDate || (!l.date && l.dayOfWeek === day.dayIndex)
@@ -926,8 +977,15 @@ export default function CalendarPage() {
                             (lesson.isTrial ? lesson.students?.length : 0) ||
                             0;
                           const isTrial = lesson.isTrial || trialCount > 0;
-                          const isSelected = selectedLessonForDrawer?.id === lesson.id || selectedLessonForDesktop?.id === lesson.id;
-                          const isDraggable = lesson.status === 'scheduled';
+                          const isSelected =
+                            selectedLessonForDrawer?.id === lesson.id ||
+                            selectedLessonForDesktop?.id === lesson.id;
+                          const isTeacherOwnLesson =
+                            !isTeacher ||
+                            (Boolean(userName) &&
+                              ((lesson.teacherName || '').toLowerCase().includes(userName.toLowerCase()) ||
+                                userName.toLowerCase().includes((lesson.teacherName || '').toLowerCase())));
+                          const isDraggable = lesson.status === 'scheduled' && isTeacherOwnLesson;
                           const isDraggingThis = draggedLessonId === lesson.id;
 
                           let cardClasses =

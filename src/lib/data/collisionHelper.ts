@@ -1,4 +1,5 @@
 import { FullLessonData } from '@/types';
+import { getSchoolSettings } from './schoolSettingsStorage';
 
 export interface CandidateLesson {
   id?: string;
@@ -81,20 +82,25 @@ export function isTimeOverlapping(
 }
 
 /**
- * Strictly verifies whether a lesson or time slot is within school operating hours (09:00–21:00).
+ * Strictly verifies whether a lesson or time slot is within school operating hours
+ * dynamically established by the school owner (or fallback defaults 09:00–21:00).
  * Supports flexible invocations:
- * - isWithinSchoolHours(candidate: CandidateLesson)
+ * - isWithinSchoolHours(candidate: CandidateLesson, undefined, startHour?, endHour?)
  * - isWithinSchoolHours(startTime: string, durationMinutes: number, startHour?: number, endHour?: number)
  * - isWithinSchoolHours(startTime: string, endTime: string, startHour?: number, endHour?: number)
  */
 export function isWithinSchoolHours(
   timeStrOrCandidate: string | CandidateLesson,
   durationOrEndTime?: number | string,
-  startHour: number = 9,
-  endHour: number = 21
+  startHour?: number,
+  endHour?: number
 ): boolean {
-  const schoolOpenMin = startHour * 60; // 09:00 = 540
-  const schoolCloseMin = endHour * 60; // 21:00 = 1260
+  const settings = getSchoolSettings();
+  const effectiveStartHour = startHour ?? settings.calendarStartHour ?? 9;
+  const effectiveEndHour = endHour ?? settings.calendarEndHour ?? 21;
+
+  const schoolOpenMin = effectiveStartHour * 60;
+  const schoolCloseMin = effectiveEndHour * 60;
 
   if (typeof timeStrOrCandidate === 'object' && timeStrOrCandidate !== null) {
     const candidate = timeStrOrCandidate;
@@ -255,15 +261,21 @@ export function hasRoomCollision(
 
 /**
  * Suggests up to `count` (default 3) non-colliding time slots for candidate on candidate.date
- * strictly within school operating hours (09:00 – 21:00).
+ * strictly within school operating hours configured by owner.
  */
 export function suggestAlternativeSlots(
   existingLessons: FullLessonData[],
   candidate: CandidateLesson,
-  count: number = 3
+  count: number = 3,
+  startHour?: number,
+  endHour?: number
 ): AvailableSlot[] {
-  const schoolOpenMin = 9 * 60; // 09:00 = 540
-  const schoolCloseMin = 21 * 60; // 21:00 = 1260
+  const settings = getSchoolSettings();
+  const effectiveStartHour = startHour ?? settings.calendarStartHour ?? 9;
+  const effectiveEndHour = endHour ?? settings.calendarEndHour ?? 21;
+
+  const schoolOpenMin = effectiveStartHour * 60;
+  const schoolCloseMin = effectiveEndHour * 60;
 
   const reqStartMin = timeToMinutes(candidate.startTime) || 540;
   let durationMinutes = timeToMinutes(candidate.endTime) - timeToMinutes(candidate.startTime);
@@ -375,25 +387,30 @@ export function suggestAlternativeSlots(
 /**
  * Comprehensive 3-Way Collision Detection Engine
  * Validates:
- * 1. School operating hours (09:00 – 21:00)
+ * 1. School operating hours (dynamically configured by owner)
  * 2. Teacher schedule collision
  * 3. Group schedule collision
  * 4. Student schedule collision
- * 5. Physical room collision (if applicable)
+ * 5. Physical room collision (if applicable, ignored for Online/Zoom)
  * Returns CollisionResult with conflicts and nearest free slot suggestions.
  */
 export function checkThreeWayCollision(
   existingLessons: FullLessonData[],
-  candidate: CandidateLesson
+  candidate: CandidateLesson,
+  options?: { startHour?: number; endHour?: number }
 ): CollisionResult {
   const conflicts: ConflictDetail[] = [];
 
-  // Guard 1: School Operating Hours (09:00 - 21:00)
-  const isHoursOk = isWithinSchoolHours(candidate);
+  const settings = getSchoolSettings();
+  const effectiveStartHour = options?.startHour ?? settings.calendarStartHour ?? 9;
+  const effectiveEndHour = options?.endHour ?? settings.calendarEndHour ?? 21;
+
+  // Guard 1: School Operating Hours (dynamically configured by owner)
+  const isHoursOk = isWithinSchoolHours(candidate, undefined, effectiveStartHour, effectiveEndHour);
   if (!isHoursOk) {
     conflicts.push({
       type: 'hours',
-      message: 'Время занятия выходит за рамки рабочих часов школы (09:00 – 21:00)',
+      message: `Время занятия выходит за рамки рабочих часов школы (${String(effectiveStartHour).padStart(2, '0')}:00 – ${String(effectiveEndHour).padStart(2, '0')}:00)`,
     });
   }
 
@@ -486,7 +503,7 @@ export function checkThreeWayCollision(
   }
 
   const hasConflict = conflicts.length > 0;
-  const nearestSlots = hasConflict ? suggestAlternativeSlots(existingLessons, candidate, 3) : [];
+  const nearestSlots = hasConflict ? suggestAlternativeSlots(existingLessons, candidate, 3, effectiveStartHour, effectiveEndHour) : [];
 
   return {
     hasConflict,
