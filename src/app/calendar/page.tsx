@@ -925,7 +925,7 @@ export default function CalendarPage() {
                     >
                       {/* Background Horizontal Guide Lines (interactive slot clicks & DND targets) */}
                       <div
-                        className="absolute inset-x-0 top-0"
+                        className="relative w-full z-0 select-none"
                         style={{ height: `${calendarHours.length * HOUR_HEIGHT}px` }}
                       >
                         {calendarHours.map((hour) => {
@@ -934,15 +934,25 @@ export default function CalendarPage() {
                             <div
                               key={hour}
                               style={{ height: `${HOUR_HEIGHT}px` }}
-                              onClick={() => handleOpenScheduleForDate(day.fullDate, slotTime)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenScheduleForDate(day.fullDate, slotTime);
+                              }}
                               onDragOver={(e) => {
                                 e.preventDefault();
                                 e.dataTransfer.dropEffect = 'move';
                               }}
                               onDrop={(e) => handleDropLessonOnSlot(e, day.fullDate, slotTime)}
-                              title={`Добавить занятие на ${day.date}, ${slotTime} (или перетащите сюда запланированное занятие)`}
-                              className="border-b border-slate-100 w-full hover:bg-blue-50/20 transition-colors cursor-pointer"
-                            />
+                              title={`Нажмите, чтобы создать занятие на ${day.date}, ${slotTime} (или перетащите сюда урок)`}
+                              className="group border-b border-slate-100 w-full hover:bg-blue-50/30 transition-colors cursor-pointer relative"
+                            >
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end pr-2 pt-1 pointer-events-none">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 bg-white/95 border border-blue-200 rounded px-1.5 py-0.5 shadow-2xs">
+                                  <Plus className="h-2.5 w-2.5" />
+                                  <span>{slotTime}</span>
+                                </span>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -964,7 +974,7 @@ export default function CalendarPage() {
 
                       {/* 4. Lesson Cards Container */}
                       <div
-                        className="relative w-full"
+                        className="absolute inset-x-0 top-0 pointer-events-none z-10"
                         style={{ height: `${calendarHours.length * HOUR_HEIGHT}px` }}
                       >
                         {positionedLessons.map((item) => {
@@ -1015,7 +1025,10 @@ export default function CalendarPage() {
                                 setDraggedLessonId(lesson.id);
                               }}
                               onDragEnd={() => setDraggedLessonId(null)}
-                              onClick={() => handleLessonClick(lesson)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLessonClick(lesson);
+                              }}
                               style={{
                                 top: `${item.top}px`,
                                 height: `${item.height}px`,
@@ -1023,7 +1036,7 @@ export default function CalendarPage() {
                                 width: item.width,
                               }}
                               className={cn(
-                                'absolute p-2 rounded-lg border flex flex-col justify-between transition-all hover:shadow-md cursor-pointer select-none overflow-hidden z-10',
+                                'absolute p-2 rounded-lg border flex flex-col justify-between transition-all hover:shadow-md cursor-pointer select-none overflow-hidden z-10 pointer-events-auto',
                                 isDraggable && 'cursor-grab active:cursor-grabbing',
                                 isDraggingThis && 'opacity-40 scale-95 border-dashed border-blue-400',
                                 isSelected && 'ring-2 ring-blue-500 shadow-md ring-offset-1 z-30 scale-[1.01]',
