@@ -79,12 +79,7 @@ export function WeeklySummaryStrip({
   }
 
   return (
-    <div
-      className="bg-white rounded-xl px-4 py-1.5 border border-slate-200/80 shadow-2xs flex items-center justify-between text-xs min-h-[36px]"
-      style={{
-        boxShadow: '0 1px 2px 0 rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-      }}
-    >
+    <div className="bg-white rounded-xl px-4 py-1.5 border border-slate-200/80 shadow-2xs flex items-center justify-between text-xs min-h-[36px]">
       <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
         <span className="font-bold text-slate-800 shrink-0">С этой недели</span>
         <div className="flex items-center gap-3 sm:gap-5 flex-wrap">

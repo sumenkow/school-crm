@@ -70,12 +70,7 @@ export function TodayScheduleWidget({
   }
 
   return (
-    <div
-      className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full"
-      style={{
-        boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-      }}
-    >
+    <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-full">
       <div>
         <div className="flex items-center justify-between pb-2 border-b border-slate-50 mb-1.5">
           <div className="flex items-center gap-2">

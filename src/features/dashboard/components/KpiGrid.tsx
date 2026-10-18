@@ -172,9 +172,6 @@ export function KpiGrid({
       <div
         onClick={() => router.push('/finance')}
         className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
-        style={{
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -230,9 +227,6 @@ export function KpiGrid({
       <div
         onClick={() => router.push('/students')}
         className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
-        style={{
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -276,9 +270,6 @@ export function KpiGrid({
       <div
         onClick={() => router.push('/crm')}
         className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
-        style={{
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -322,9 +313,6 @@ export function KpiGrid({
       <div
         onClick={() => router.push('/students')}
         className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
-        style={{
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -373,9 +361,6 @@ export function KpiGrid({
       <div
         onClick={() => router.push('/finance?tab=debts')}
         className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
-        style={{
-          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
-        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">

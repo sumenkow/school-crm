@@ -127,8 +127,9 @@ html, body, #root, #__next {
 body {
   background-color: var(--md-background);
   color: var(--md-on-background);
-  font-family: var(--font-manrope), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   letter-spacing: -0.011em;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'tnum';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -572,7 +573,7 @@ body {
 .surface-premium {
   background-color: #FFFFFF;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
   border-radius: 1rem;
 }
 
@@ -581,25 +582,24 @@ body {
 }
 .surface-premium-hover:hover {
   border-color: rgba(15, 23, 42, 0.14);
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
   transform: translateY(-1px);
 }
 
 .btn-primary-tactile {
-  background: linear-gradient(180deg, #1976D2 0%, #1565C0 100%);
+  background-color: #1565C0;
   border: 1px solid #0D47A1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(21, 101, 192, 0.2);
+  box-shadow: 0 1px 2px 0 rgba(21, 101, 192, 0.2);
   color: #FFFFFF;
   transition: all 0.15s ease;
 }
 .btn-primary-tactile:hover {
-  background: linear-gradient(180deg, #1E88E5 0%, #1565C0 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 3px 6px rgba(21, 101, 192, 0.3);
+  background-color: #1251A0;
+  box-shadow: 0 2px 4px 0 rgba(21, 101, 192, 0.25);
   transform: translateY(-0.5px);
 }
 .btn-primary-tactile:active {
-  background: #1565C0;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  background-color: #0D47A1;
   transform: translateY(0.5px);
 }
 
