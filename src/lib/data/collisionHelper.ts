@@ -544,12 +544,15 @@ export function getTeacherDayScheduleSlots(
   teacherId: string,
   date: string,
   durationMinutes: number = 60,
-  startHour: number = 10,
-  endHour: number = 21
+  startHour?: number,
+  endHour?: number
 ): TeacherTimeSlot[] {
   const slots: TeacherTimeSlot[] = [];
-  const startMin = Math.max(9 * 60, startHour * 60);
-  const endMin = Math.min(21 * 60, endHour * 60);
+  const settings = getSchoolSettings();
+  const effectiveStartHour = startHour ?? settings.calendarStartHour ?? 9;
+  const effectiveEndHour = endHour ?? settings.calendarEndHour ?? 21;
+  const startMin = effectiveStartHour * 60;
+  const endMin = effectiveEndHour * 60;
 
   // Active lessons for this teacher on this date
   const teacherLessonsOnDate = existingLessons.filter((l) => {

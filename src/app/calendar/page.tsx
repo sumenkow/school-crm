@@ -1,19 +1,15 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Filter,
   Users,
   Video,
   Clock,
-  MapPin,
-  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { INITIAL_LESSONS, INITIAL_TEACHERS, FullLessonData, FullTeacherData, LessonTimelineEvent } from '@/lib/data/mockData';
@@ -128,7 +124,6 @@ function layoutDayLessons(
 }
 
 export default function CalendarPage() {
-  const router = useRouter();
   const { t } = useLanguage();
   const toast = useToast();
   const { role, userName } = useRole();
@@ -165,7 +160,6 @@ export default function CalendarPage() {
 
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(new Date()));
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(() => getTodayDayIndex());
-  const [selectedMonthDate, setSelectedMonthDate] = useState<string>(() => getTodayDateStr());
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [selectedDateForSchedule, setSelectedDateForSchedule] = useState<string>(() => getTodayDateStr());
@@ -189,13 +183,13 @@ export default function CalendarPage() {
   const [schoolSettings, setSchoolSettings] = useState<SchoolProfileData>(() => getSchoolSettings());
 
   useEffect(() => {
-    setSchoolSettings(getSchoolSettings());
     fetchSchoolSettingsFromCloud().then((cloudData) => {
       if (cloudData) setSchoolSettings(cloudData);
     });
 
-    const handleSettingsSync = (e: any) => {
-      setSchoolSettings(e?.detail || getSchoolSettings());
+    const handleSettingsSync = (e: Event) => {
+      const customEvent = e as CustomEvent<SchoolProfileData>;
+      setSchoolSettings(customEvent?.detail || getSchoolSettings());
     };
 
     window.addEventListener('crm-school-settings-changed', handleSettingsSync);
@@ -243,9 +237,10 @@ export default function CalendarPage() {
               );
             } else if (payload.eventType === 'INSERT') {
               setLessons((prev) => {
+                const insertedLesson = payload.new as FullLessonData;
                 // Guard: don't add if already in local state (prevents double-add with modal callback)
-                if (prev.some((l) => l.id === (payload.new as any).id)) return prev;
-                return [payload.new as any, ...prev];
+                if (prev.some((l) => l.id === insertedLesson.id)) return prev;
+                return [insertedLesson, ...prev];
               });
             } else if (payload.eventType === 'DELETE') {
               setLessons((prev) => prev.filter((l) => l.id === payload.old.id));
@@ -274,32 +269,10 @@ export default function CalendarPage() {
     }
   }, []);
 
-  const handleUpdateAttendance = (
-    lessonId: string,
-    studentId: string,
-    status: 'present' | 'absent' | 'excused' | 'rescheduled' | 'cancelled' | 'not_marked'
-  ) => {
-    setLessons((prev) =>
-      prev.map((l) => {
-        if (l.id === lessonId) {
-          const updatedStudents = (l.students || []).map((s) => {
-            if (s.id === studentId) {
-              return { ...s, attendance: status };
-            }
-            return s;
-          });
-          return { ...l, students: updatedStudents };
-        }
-        return l;
-      })
-    );
-  };
-
   const handleGoToToday = () => {
     const today = new Date();
     setCurrentWeekStart(getMonday(today));
     setSelectedDayIndex(getTodayDayIndex());
-    setSelectedMonthDate(getTodayDateStr());
   };
 
   const handleLessonClick = (lesson: FullLessonData) => {
@@ -307,157 +280,173 @@ export default function CalendarPage() {
     setIsDrawerOpen(true);
   };
 
-  const handleDropLessonOnSlot = async (
-    e: React.DragEvent,
-    targetDateStr: string,
-    targetStartTime: string
-  ) => {
-    e.preventDefault();
-    const lessonId = e.dataTransfer.getData('text/plain') || draggedLessonId;
-    if (!lessonId) return;
+  const handleDropLessonOnSlot = useCallback(
+    async (
+      e: React.DragEvent,
+      targetDateStr: string,
+      targetStartTime: string
+    ) => {
+      e.preventDefault();
+      const lessonId = e.dataTransfer.getData('text/plain') || draggedLessonId;
+      if (!lessonId) return;
 
-    const targetLesson = lessons.find((l) => l.id === lessonId);
-    if (!targetLesson) return;
+      const targetLesson = lessons.find((l) => l.id === lessonId);
+      if (!targetLesson) return;
 
-    // RBAC Guard: teachers can only reschedule their own lessons
-    if (isTeacher) {
-      const myNameLower = (userName || '').toLowerCase().trim();
-      const teacherNameLower = (targetLesson.teacherName || '').toLowerCase().trim();
-      const matchesName =
-        myNameLower &&
-        teacherNameLower &&
-        (teacherNameLower.includes(myNameLower) || myNameLower.includes(teacherNameLower));
-      if (!matchesName) {
-        toast.error('Доступ ограничен: преподаватель может переносить только свои занятия');
+      // RBAC Guard: teachers can only reschedule their own lessons
+      if (isTeacher) {
+        const myNameLower = (userName || '').toLowerCase().trim();
+        const teacherNameLower = (targetLesson.teacherName || '').toLowerCase().trim();
+        const matchesName =
+          myNameLower &&
+          teacherNameLower &&
+          (teacherNameLower.includes(myNameLower) || myNameLower.includes(teacherNameLower));
+        if (!matchesName) {
+          toast.error('Доступ ограничен: преподаватель может переносить только свои занятия');
+          setDraggedLessonId(null);
+          return;
+        }
+      }
+
+      // Terminal states cannot be rescheduled
+      if (targetLesson.status === 'completed' || targetLesson.status === 'cancelled') {
+        toast.error('Нельзя переносить завершенные или отмененные занятия');
         setDraggedLessonId(null);
         return;
       }
-    }
 
-    // Terminal states cannot be rescheduled
-    if (targetLesson.status === 'completed' || targetLesson.status === 'cancelled') {
-      toast.error('Нельзя переносить завершенные или отмененные занятия');
+      // Calculate duration in minutes
+      const startMin = parseTimeToMinutes(targetLesson.startTime || '18:45');
+      const endMin = parseTimeToMinutes(targetLesson.endTime || '20:15');
+      const durationMin = Math.max(30, endMin - startMin || 90);
+
+      const [tH, tM] = targetStartTime.split(':').map(Number);
+      const targetStartMin = tH * 60 + tM;
+      const targetEndMin = targetStartMin + durationMin;
+      const endH = Math.floor(targetEndMin / 60) % 24;
+      const endM = targetEndMin % 60;
+      const targetEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+
+      // If dropped on the exact same date and time, do nothing
+      if (targetLesson.date === targetDateStr && targetLesson.startTime === targetStartTime) {
+        setDraggedLessonId(null);
+        return;
+      }
+
+      // Compute target day of week
+      const targetDateObj = new Date(targetDateStr);
+      const rawDow = targetDateObj.getDay();
+      const targetDayOfWeek = rawDow === 0 ? 6 : rawDow - 1;
+
+      // Strict 3-Way Collision Check & School Operating Hours Validation
+      const candidate: CandidateLesson = {
+        id: targetLesson.id,
+        groupId: targetLesson.groupId,
+        teacherId: targetLesson.teacherId,
+        date: targetDateStr,
+        startTime: targetStartTime,
+        endTime: targetEndTime,
+        room: targetLesson.room || 'Онлайн (Zoom)',
+        studentId: targetLesson.studentId,
+        studentName: targetLesson.studentName,
+        students: targetLesson.students,
+        isIndividual: targetLesson.isIndividual,
+      };
+
+      const collisionResult = checkThreeWayCollision(lessons, candidate, {
+        startHour: calendarStartHour,
+        endHour: calendarEndHour,
+      });
+
+      if (collisionResult.hasCollision) {
+        toast.error(`Перенос заблокирован: ${collisionResult.reason}`);
+        setDraggedLessonId(null);
+        return;
+      }
+
+      const nowTimestamp = new Date();
+      const timestampStr = `${nowTimestamp.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${nowTimestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+      const newTimelineEvents: LessonTimelineEvent[] = [
+        ...(targetLesson.timelineEvents || []),
+        {
+          id: `ev_${nowTimestamp.getTime()}_resched_dnd`,
+          timestamp: timestampStr,
+          author: 'Администратор',
+          role: 'Администратор',
+          type: 'rescheduled',
+          comment: `Перенос занятия (Drag & Drop) на ${targetDateStr} (${targetStartTime}–${targetEndTime})`,
+        },
+      ];
+
+      const updatedLesson: FullLessonData = {
+        ...targetLesson,
+        date: targetDateStr,
+        dayOfWeek: targetDayOfWeek,
+        startTime: targetStartTime,
+        endTime: targetEndTime,
+        status: 'scheduled',
+        timelineEvents: newTimelineEvents,
+      };
+
+      saveLessonToStorage(updatedLesson);
+
+      setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
+      if (selectedLessonForDesktop?.id === updatedLesson.id) {
+        setSelectedLessonForDesktop(updatedLesson);
+      }
+
+      try {
+        const supabase = createClient();
+        await supabase
+          .from('lessons')
+          .update({
+            date: targetDateStr,
+            day_of_week: targetDayOfWeek,
+            start_time: targetStartTime,
+            end_time: targetEndTime,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', updatedLesson.id);
+      } catch (err) {
+        console.warn('Supabase realtime drag update notice:', err);
+      }
+
+      window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
       setDraggedLessonId(null);
-      return;
-    }
 
-    // Calculate duration in minutes
-    const startMin = parseTimeToMinutes(targetLesson.startTime || '18:45');
-    const endMin = parseTimeToMinutes(targetLesson.endTime || '20:15');
-    const durationMin = Math.max(30, endMin - startMin || 90);
+      const lessonDisplayName =
+        targetLesson.groupName?.split('(')[0]?.trim() ||
+        targetLesson.studentName ||
+        'Занятие';
 
-    const [tH, tM] = targetStartTime.split(':').map(Number);
-    const targetStartMin = tH * 60 + tM;
-    const targetEndMin = targetStartMin + durationMin;
-    const endH = Math.floor(targetEndMin / 60) % 24;
-    const endM = targetEndMin % 60;
-    const targetEndTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-
-    // If dropped on the exact same date and time, do nothing
-    if (targetLesson.date === targetDateStr && targetLesson.startTime === targetStartTime) {
-      setDraggedLessonId(null);
-      return;
-    }
-
-    // Compute target day of week
-    const targetDateObj = new Date(targetDateStr);
-    const rawDow = targetDateObj.getDay();
-    const targetDayOfWeek = rawDow === 0 ? 6 : rawDow - 1;
-
-    // Strict 3-Way Collision Check & School Operating Hours Validation
-    const candidate: CandidateLesson = {
-      id: targetLesson.id,
-      groupId: targetLesson.groupId,
-      teacherId: targetLesson.teacherId,
-      date: targetDateStr,
-      startTime: targetStartTime,
-      endTime: targetEndTime,
-      room: targetLesson.room || 'Онлайн (Zoom)',
-    };
-
-    const collisionResult = checkThreeWayCollision(lessons, candidate, {
-      startHour: calendarStartHour,
-      endHour: calendarEndHour,
-    });
-
-    if (collisionResult.hasCollision) {
-      toast.error(`Перенос заблокирован: ${collisionResult.reason}`);
-      setDraggedLessonId(null);
-      return;
-    }
-
-    const now = new Date();
-    const timestampStr = `${now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-
-    const newTimelineEvents: LessonTimelineEvent[] = [
-      ...(targetLesson.timelineEvents || []),
-      {
-        id: `ev_${Date.now()}_resched_dnd`,
-        timestamp: timestampStr,
-        author: 'Администратор',
-        role: 'Администратор',
-        type: 'rescheduled',
-        comment: `Перенос занятия (Drag & Drop) на ${targetDateStr} (${targetStartTime}–${targetEndTime})`,
-      },
-    ];
-
-    const updatedLesson: FullLessonData = {
-      ...targetLesson,
-      date: targetDateStr,
-      dayOfWeek: targetDayOfWeek,
-      startTime: targetStartTime,
-      endTime: targetEndTime,
-      status: 'scheduled',
-      timelineEvents: newTimelineEvents,
-    };
-
-    saveLessonToStorage(updatedLesson);
-
-    setLessons((prev) => prev.map((l) => (l.id === updatedLesson.id ? updatedLesson : l)));
-    if (selectedLessonForDesktop?.id === updatedLesson.id) {
-      setSelectedLessonForDesktop(updatedLesson);
-    }
-
-    try {
-      const supabase = createClient();
-      await supabase
-        .from('lessons')
-        .update({
-          date: targetDateStr,
-          day_of_week: targetDayOfWeek,
-          start_time: targetStartTime,
-          end_time: targetEndTime,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', updatedLesson.id);
-    } catch (err) {
-      console.warn('Supabase realtime drag update notice:', err);
-    }
-
-    window.dispatchEvent(new CustomEvent('crm-lessons-changed', { detail: updatedLesson }));
-    setDraggedLessonId(null);
-
-    toast.success(`Занятие «${targetLesson.groupName.split('(')[0].trim()}» перенесено на ${targetDateStr}, ${targetStartTime}–${targetEndTime}`);
-  };
+      toast.success(`Занятие «${lessonDisplayName}» перенесено на ${targetDateStr}, ${targetStartTime}–${targetEndTime}`);
+    },
+    [lessons, isTeacher, userName, draggedLessonId, calendarStartHour, calendarEndHour, selectedLessonForDesktop, toast]
+  );
 
   const todayStr = getTodayDateStr();
 
-  const daysOfWeek = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
-    const d = new Date(currentWeekStart);
-    d.setDate(currentWeekStart.getDate() + offset);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
-    const fullDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const dayKeys = ['days.mon', 'days.tue', 'days.wed', 'days.thu', 'days.fri', 'days.sat', 'days.sun'];
-    return {
-      name: t(dayKeys[offset], dayNames[offset]),
-      date,
-      fullDate,
-      dayIndex: offset,
-      isToday: fullDate === todayStr,
-    };
-  });
+  const daysOfWeek = useMemo(
+    () =>
+      [0, 1, 2, 3, 4, 5, 6].map((offset) => {
+        const d = new Date(currentWeekStart);
+        d.setDate(currentWeekStart.getDate() + offset);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const date = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}`;
+        const fullDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+        const dayKeys = ['days.mon', 'days.tue', 'days.wed', 'days.thu', 'days.fri', 'days.sat', 'days.sun'];
+        return {
+          name: t(dayKeys[offset], dayNames[offset]),
+          date,
+          fullDate,
+          dayIndex: offset,
+          isToday: fullDate === todayStr,
+        };
+      }),
+    [currentWeekStart, todayStr, t]
+  );
 
   const weekEnd = new Date(currentWeekStart);
   weekEnd.setDate(currentWeekStart.getDate() + 6);
@@ -566,6 +555,8 @@ export default function CalendarPage() {
 
   // Lessons currently visible in the active range (week/day/month) for dynamic teacher badge counts
   const currentRangeLessons = useMemo(() => {
+    const year = currentWeekStart.getFullYear();
+    const month = currentWeekStart.getMonth();
     if (viewMode === 'day') {
       const selectedDay = daysOfWeek[selectedDayIndex] || daysOfWeek[0];
       return sanitizedLessons.filter(
@@ -576,7 +567,7 @@ export default function CalendarPage() {
       return sanitizedLessons.filter((l) => {
         if (!l.date) return true;
         const d = new Date(l.date);
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
+        return d.getFullYear() === year && d.getMonth() === month;
       });
     }
     // Week mode
@@ -584,7 +575,7 @@ export default function CalendarPage() {
     return sanitizedLessons.filter(
       (l) => weekDates.has(l.date) || (!l.date && l.dayOfWeek >= 0 && l.dayOfWeek <= 6)
     );
-  }, [sanitizedLessons, viewMode, daysOfWeek, selectedDayIndex, viewYear, viewMonth]);
+  }, [sanitizedLessons, viewMode, daysOfWeek, selectedDayIndex, currentWeekStart]);
 
   const weekLessonsCount = useMemo(() => {
     const weekDates = new Set(daysOfWeek.map((d) => d.fullDate));
@@ -981,7 +972,7 @@ export default function CalendarPage() {
                           const { lesson } = item;
                           const trialCount =
                             lesson.students?.filter(
-                              (s) => (s as any).isTrial || s.name?.includes('Пробное')
+                              (s) => Boolean((s as { isTrial?: boolean }).isTrial) || s.name?.includes('Пробное')
                             ).length ||
                             lesson.trialStudentsCount ||
                             (lesson.isTrial ? lesson.students?.length : 0) ||
@@ -1232,7 +1223,7 @@ export default function CalendarPage() {
                               </a>
                             )}
                             {(() => {
-                              const trialCount = lesson.students?.filter((s) => (s as any).isTrial || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
+                              const trialCount = lesson.students?.filter((s) => Boolean((s as { isTrial?: boolean }).isTrial) || s.name?.includes('Пробное')).length || lesson.trialStudentsCount || (lesson.isTrial ? lesson.students?.length : 0) || 0;
                               if (trialCount > 0) {
                                 return (
                                   <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-900 border border-purple-200">

@@ -31,6 +31,7 @@ import { runSuite29 } from './ts49_collision_guard_invariants.test';
 import { runSuite30 } from './ts50_tasks_workspace_invariants.test';
 import { runSuite31 } from './ts51_interactive_remediation_invariants.test';
 import { runSuite32 } from './ts52_audit_and_impeccable_remediation.test';
+import { runSuite33 } from './ts53_calendar_dynamic_hours_and_collision_invariants.test';
 
 async function main() {
   console.log('===============================================================');
@@ -44,11 +45,12 @@ async function main() {
   console.log('   Tasks Workspace Invariants & SSOT Engine (Suite 30)');
   console.log('   Interactive Remediation Invariants & SSOT Post-Audit (Suite 31)');
   console.log('   Audit & Impeccable Remediation Invariants (Suite 32)');
+  console.log('   Calendar Dynamic Hours & Collision Invariants (Suite 33)');
   console.log('===============================================================');
 
   const startTime = Date.now();
   let passedSuites = 0;
-  const totalSuites = 32;
+  const totalSuites = 33;
 
   try {
     // Suite 1: TS-01 through TS-05
@@ -217,6 +219,10 @@ async function main() {
 
     // Suite 32: Audit & Impeccable Remediation Invariants (TS-52)
     await runSuite32();
+    passedSuites++;
+
+    // Suite 33: Calendar Dynamic Hours, 100% Online Bypass & Collision Invariants (TS-53)
+    await runSuite33();
     passedSuites++;
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
