@@ -136,14 +136,14 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
             onClick={onClose}
             title="Закрыть (Esc)"
             className={cn(
-              'p-1.5 rounded-xl transition-all cursor-pointer flex-shrink-0 flex items-center justify-center',
+              'p-1.5 rounded-lg transition-colors cursor-pointer flex-shrink-0 flex items-center justify-center',
               headerBg.includes('text-slate') || headerBg.includes('bg-white')
-                ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200 border border-slate-200/80 shadow-2xs'
-                : 'text-white/80 hover:text-white hover:bg-white/15 active:bg-white/25'
+                ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 active:bg-slate-200'
+                : 'text-white/70 hover:text-white hover:bg-white/15 active:bg-white/25'
             )}
             aria-label="Закрыть"
           >
-            <X className="w-5 h-5 stroke-[2]" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
