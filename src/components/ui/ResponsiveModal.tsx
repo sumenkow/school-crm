@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface ResponsiveModalProps {
   isOpen: boolean;
@@ -117,15 +118,32 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
         <div className={`flex-shrink-0 px-4 md:px-6 py-3.5 ${headerBg} flex items-center justify-between pt-[max(12px,env(safe-area-inset-top))] md:pt-3.5`}>
           <div className="min-w-0 pr-3">
             <h2 id="responsive-modal-title" className="text-base md:text-lg font-bold truncate leading-tight">{title}</h2>
-            {subtitle && <p className="text-xs text-blue-100 truncate mt-0.5">{subtitle}</p>}
+            {subtitle && (
+              <p
+                className={cn(
+                  'text-xs truncate mt-0.5 font-medium',
+                  headerBg.includes('text-slate') || headerBg.includes('bg-white')
+                    ? 'text-slate-500'
+                    : 'text-blue-100'
+                )}
+              >
+                {subtitle}
+              </p>
+            )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors cursor-pointer"
+            title="Закрыть (Esc)"
+            className={cn(
+              'p-1.5 rounded-xl transition-all cursor-pointer flex-shrink-0 flex items-center justify-center',
+              headerBg.includes('text-slate') || headerBg.includes('bg-white')
+                ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200 border border-slate-200/80 shadow-2xs'
+                : 'text-white/80 hover:text-white hover:bg-white/15 active:bg-white/25'
+            )}
             aria-label="Закрыть"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 stroke-[2]" />
           </button>
         </div>
 

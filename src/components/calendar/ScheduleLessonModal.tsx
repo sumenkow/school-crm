@@ -790,7 +790,7 @@ export function ScheduleLessonModal({
               )}
             >
               <Users className="w-3.5 h-3.5 text-blue-600" />
-              <span>👥 Групповое занятие</span>
+              <span>Групповое занятие</span>
             </button>
             <button
               type="button"
@@ -807,7 +807,7 @@ export function ScheduleLessonModal({
               )}
             >
               <User className="w-3.5 h-3.5 text-purple-600" />
-              <span>👤 Индивидуальное занятие</span>
+              <span>Индивидуальное занятие</span>
             </button>
           </div>
 
@@ -1214,9 +1214,9 @@ export function ScheduleLessonModal({
               />
               <label
                 htmlFor="has_trial"
-                className="text-xs font-medium text-slate-700 cursor-pointer flex items-center gap-1"
+                className="text-xs font-medium text-slate-700 cursor-pointer flex items-center gap-1.5"
               >
-                <span>🎯</span>
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
                 <span>Отметить как пробное занятие</span>
               </label>
             </div>
