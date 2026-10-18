@@ -128,31 +128,31 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
       {/* 4 Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Всего обращений</span>
             <MessageSquare className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{totalComms}</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{totalComms}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Входящий поток в смену</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>В рамках регламента (≤15м)</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">
+          <div className="text-2xl font-semibold text-emerald-600 mt-1 tabular-nums">
             {onTimeComms} ({onTimePercent}%)
           </div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Цель: не менее 80%</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>С задержкой SLA (&gt;15м)</span>
             <AlertCircle className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">
+          <div className="text-2xl font-semibold text-rose-600 mt-1 tabular-nums">
             {overdueComms} ({overduePercent}%)
           </div>
           <div className="text-[10.5px] text-slate-400 mt-1">
@@ -161,11 +161,11 @@ export function CommunicationsReport({ data, filters }: CommunicationsReportProp
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Среднее время ответа</span>
-            <Clock className="h-4 w-4 text-purple-600" />
+            <Clock className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">
             {avgSlaMinutes > 0 ? `${avgSlaMinutes} мин` : '—'}
           </div>
           <div className="text-[10.5px] text-emerald-600 font-medium mt-1">Регламент школы: 15 минут</div>

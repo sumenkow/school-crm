@@ -89,12 +89,11 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
   // Avatar gradient helper
   const getAvatarGradient = (idx: number) => {
     const gradients = [
-      'from-blue-500 to-indigo-600',
-      'from-indigo-500 to-purple-600',
-      'from-teal-500 to-emerald-600',
-      'from-amber-500 to-orange-600',
-      'from-purple-500 to-pink-600',
-      'from-sky-500 to-blue-600',
+      'from-blue-600 to-indigo-700',
+      'from-teal-600 to-emerald-700',
+      'from-slate-600 to-slate-800',
+      'from-amber-600 to-orange-700',
+      'from-sky-600 to-blue-700',
     ];
     return gradients[idx % gradients.length];
   };
@@ -204,7 +203,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
             {/* Bottom row: Value + subtext */}
             <div className="flex items-baseline justify-between gap-1">
               <div className="flex items-baseline gap-1">
-                <span className="text-xl font-black text-slate-900 tracking-tight font-feature-settings-cv">
+                <span className="text-xl font-semibold text-slate-900 tracking-tight font-feature-settings-cv tabular-nums">
                   {kpi.value}
                 </span>
               </div>
@@ -400,7 +399,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
 
                 {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <span className="text-lg font-black text-slate-900 leading-none">
+                  <span className="text-lg font-semibold text-slate-900 leading-none tabular-nums">
                     {distribution.totalTeachers}
                   </span>
                   <span className="text-[8.5px] font-medium text-slate-400 mt-0.5 leading-tight">
@@ -650,7 +649,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
 
                 {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                  <span className="text-base font-black text-slate-900 leading-none">
+                  <span className="text-base font-semibold text-slate-900 leading-none tabular-nums">
                     {stability.completionRate}
                   </span>
                   <span className="text-[8px] font-medium text-slate-400 mt-0.5 leading-tight">
@@ -669,15 +668,15 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="font-semibold text-slate-800 text-[10.5px]">
+                        <span className="font-medium text-slate-800 text-[10.5px]">
                           {item.label}
                         </span>
                       </div>
-                      <span className="font-bold text-slate-900 text-[11px] shrink-0 pl-1">
+                      <span className="font-semibold text-slate-900 text-[11px] shrink-0 pl-1 tabular-nums">
                         {item.sharePercent.toString().replace('.', ',')}%
                       </span>
                     </div>
-                    <p className="text-[9.5px] text-slate-400 pl-3.5">
+                    <p className="text-[9.5px] text-slate-400 pl-3.5 tabular-nums">
                       {item.count} занятий
                     </p>
                   </div>
@@ -686,7 +685,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
             </div>
           </div>
 
-          <div className="border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-medium">
+          <div className="border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-medium tabular-nums">
             Всего запланировано: {stability.totalLessons} занятий
           </div>
         </div>
@@ -699,7 +698,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
                 <BarChart3 className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-slate-900 tracking-tight">
+                <h3 className="text-xs font-semibold text-slate-900 tracking-tight">
                   Изменение состава преподавателей
                 </h3>
                 <p className="text-[10px] text-slate-400">
@@ -715,7 +714,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
                   key={tile.id}
                   className="rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 flex flex-col justify-between"
                 >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
                     {tile.id === 'new' && <Users className="h-3 w-3 text-blue-500" />}
                     {tile.id === 'left' && <UserMinus className="h-3 w-3 text-rose-500" />}
                     {tile.id === 'load_changed' && <Sliders className="h-3 w-3 text-indigo-500" />}
@@ -726,7 +725,7 @@ export function TeachersAnalyticsSection({ filters }: TeachersAnalyticsSectionPr
                   <div className="mt-1 flex items-baseline justify-between">
                     <span
                       className={cn(
-                        'text-lg font-black tracking-tight',
+                        'text-lg font-semibold tracking-tight tabular-nums',
                         tile.type === 'positive' && 'text-emerald-600',
                         tile.type === 'negative' && 'text-rose-600',
                         tile.type === 'neutral' && 'text-blue-600'

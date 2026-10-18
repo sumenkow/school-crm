@@ -154,38 +154,38 @@ export function TasksSlaReport({ data, filters }: TasksSlaReportProps) {
       {/* 4 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Всего задач в периоде</span>
             <CheckSquare className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">199</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">199</div>
           <div className="text-[10.5px] text-slate-400 mt-1">План закрытия: 90%+</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Выполнено вовремя</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">182 (91.3%)</div>
+          <div className="text-2xl font-semibold text-emerald-600 mt-1 tabular-nums">182 (91.3%)</div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">↑ +4.2 п.п. к прошлому месяцу</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Просроченные задачи</span>
             <AlertTriangle className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">9 (4.5%)</div>
+          <div className="text-2xl font-semibold text-rose-600 mt-1 tabular-nums">9 (4.5%)</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Допустимый порог: &lt;5%</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Среднее время ответа (SLA)</span>
-            <Clock className="h-4 w-4 text-purple-600" />
+            <Clock className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">8.4 мин</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">8.4 мин</div>
           <div className="text-[10.5px] text-emerald-600 font-medium mt-1">В рамках нормы (≤ 15 мин)</div>
         </div>
       </div>

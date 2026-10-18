@@ -54,11 +54,11 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
   // Avatar gradient helper
   const getAvatarGradient = (idx: number) => {
     const gradients = [
-      'from-purple-500 to-indigo-600',
-      'from-emerald-500 to-teal-600',
-      'from-teal-500 to-cyan-600',
-      'from-amber-500 to-orange-600',
-      'from-blue-500 to-sky-600',
+      'from-blue-600 to-indigo-700',
+      'from-emerald-600 to-teal-700',
+      'from-slate-600 to-slate-800',
+      'from-amber-600 to-orange-700',
+      'from-sky-600 to-blue-700',
     ];
     return gradients[idx % gradients.length];
   };
@@ -183,19 +183,19 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
           <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
                   Интегральный KPI
                 </span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                  <span className="text-2xl font-semibold text-slate-900 tracking-tight tabular-nums">
                     {heroKpis.integralKpi.score}
                   </span>
-                  <span className="text-sm font-semibold text-slate-400">
+                  <span className="text-sm font-medium text-slate-400 tabular-nums">
                     / {heroKpis.integralKpi.maxScore}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-bold">
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-medium tabular-nums">
                 <TrendingUp className="h-3 w-3" />
                 <span>{heroKpis.integralKpi.change}</span>
               </div>
@@ -209,23 +209,23 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
           <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
                   Выполнение задач
                 </span>
                 <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                  <span className="text-2xl font-semibold text-slate-900 tracking-tight tabular-nums">
                     {heroKpis.taskCompletion.percent}%
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-bold">
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-medium tabular-nums">
                 <TrendingUp className="h-3 w-3" />
                 <span>{heroKpis.taskCompletion.change}</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-500 font-normal mt-2 leading-relaxed">
-              <span className="font-semibold text-slate-700">{heroKpis.taskCompletion.completed}</span> из{' '}
-              <span className="font-semibold text-slate-700">{heroKpis.taskCompletion.total}</span> вовремя
+              <span className="font-medium text-slate-700">{heroKpis.taskCompletion.completed}</span> из{' '}
+              <span className="font-medium text-slate-700">{heroKpis.taskCompletion.total}</span> вовремя
             </p>
           </div>
 
@@ -233,23 +233,23 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
           <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
                   Оплаты и счета
                 </span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                  <span className="text-2xl font-semibold text-slate-900 tracking-tight tabular-nums">
                     {heroKpis.collectedPayments.amountFormatted}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-bold">
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-medium tabular-nums">
                 <TrendingUp className="h-3 w-3" />
                 <span>{heroKpis.collectedPayments.change}</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-500 font-normal mt-2 leading-relaxed">
-              <span className="font-semibold text-slate-700">{heroKpis.collectedPayments.paidCount}</span> из{' '}
-              <span className="font-semibold text-slate-700">{heroKpis.collectedPayments.totalInvoices}</span> счетов оплачено ({heroKpis.collectedPayments.conversionPercent}%)
+              <span className="font-medium text-slate-700">{heroKpis.collectedPayments.paidCount}</span> из{' '}
+              <span className="font-medium text-slate-700">{heroKpis.collectedPayments.totalInvoices}</span> счетов оплачено ({heroKpis.collectedPayments.conversionPercent}%)
             </p>
           </div>
 
@@ -257,21 +257,21 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
           <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider block">
                   Скорость первого контакта
                 </span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-black text-slate-900 tracking-tight">
+                  <span className="text-2xl font-semibold text-slate-900 tracking-tight tabular-nums">
                     {heroKpis.contactSla.minutes} мин
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-bold">
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-2 py-0.5 rounded-full text-[10.5px] font-medium tabular-nums">
                 <span>{heroKpis.contactSla.change}</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-500 font-normal mt-2 leading-relaxed">
-              Цель: до {heroKpis.contactSla.targetMinutes} мин • CSAT: <span className="font-semibold text-slate-700">{heroKpis.contactSla.csat}/5</span>
+              Цель: до {heroKpis.contactSla.targetMinutes} мин • CSAT: <span className="font-medium text-slate-700">{heroKpis.contactSla.csat}/5</span>
             </p>
           </div>
         </div>
@@ -395,7 +395,7 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
                 ))}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-base font-black text-slate-900 leading-none">
+                <span className="text-base font-semibold text-slate-900 leading-none tabular-nums">
                   {taskStatusDonut.total}
                 </span>
                 <span className="text-[8px] font-medium text-slate-400 mt-0.5 leading-tight">
@@ -506,7 +506,7 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
                 ))}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-base font-black text-slate-900 leading-none">
+                <span className="text-base font-semibold text-slate-900 leading-none tabular-nums">
                   {paymentStatusDonut.total}
                 </span>
                 <span className="text-[8px] font-medium text-slate-400 mt-0.5 leading-tight">
@@ -545,7 +545,7 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
         {/* Card 4: Продления абонементов */}
         <div className="bg-white rounded-xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 tracking-tight">
+            <h3 className="text-xs font-semibold text-slate-900 tracking-tight">
               Продления абонементов
             </h3>
             <span className="text-[10px] text-slate-400 font-medium">
@@ -574,7 +574,7 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
                 ))}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                <span className="text-base font-black text-slate-900 leading-none">
+                <span className="text-base font-semibold text-slate-900 leading-none tabular-nums">
                   {renewalStatusDonut.total}
                 </span>
                 <span className="text-[8px] font-medium text-slate-400 mt-0.5 leading-tight">
@@ -725,8 +725,8 @@ export function AdminEfficiencyReport({ data, filters }: AdminEfficiencyReportPr
                       y={pt.y - 8}
                       textAnchor="middle"
                       className={cn(
-                        'text-[9.5px] font-bold fill-slate-800 transition-opacity',
-                        isHovered ? 'opacity-100 font-extrabold fill-blue-600' : 'opacity-80'
+                        'text-[9.5px] font-medium fill-slate-800 transition-opacity',
+                        isHovered ? 'opacity-100 font-semibold fill-blue-600' : 'opacity-80'
                       )}
                     >
                       {pt.val}%

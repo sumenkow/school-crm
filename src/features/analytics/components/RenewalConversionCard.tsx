@@ -95,10 +95,10 @@ export function RenewalConversionCard({ data }: RenewalConversionCardProps) {
       {/* 2. Big KPI Metric & Delta */}
       <div className="flex items-baseline justify-between pt-0.5 min-w-0">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight leading-none shrink-0">
+          <span className="text-xl lg:text-2xl font-semibold text-slate-900 tracking-tight leading-none shrink-0 tabular-nums">
             {data.currentRate}%
           </span>
-          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 leading-none shrink-0 whitespace-nowrap">
+          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 leading-none shrink-0 whitespace-nowrap tabular-nums">
             ↑ {data.change}
           </span>
         </div>

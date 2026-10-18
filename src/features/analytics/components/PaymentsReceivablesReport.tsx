@@ -111,40 +111,40 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
       {/* 4 Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Собрано оплат (EUR)</span>
             <Euro className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{totalCollectedEur.toLocaleString('ru-RU')} €</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{totalCollectedEur.toLocaleString('ru-RU')} €</div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">
             {paymentConversion}% счетов оплачено ({paidInvoices.length} из {invoicesList.length})
           </div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Дебиторская задолженность</span>
             <AlertTriangle className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">{overdueAmountEur.toLocaleString('ru-RU')} €</div>
+          <div className="text-2xl font-semibold text-rose-600 mt-1 tabular-nums">{overdueAmountEur.toLocaleString('ru-RU')} €</div>
           <div className="text-[10.5px] text-slate-400 mt-1">{overdueInvoices.length} просроченных счетов</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Конверсия оплат вовремя</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">93.3%</div>
+          <div className="text-2xl font-semibold text-emerald-600 mt-1 tabular-nums">93.3%</div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Целевой норматив школы: ≥ 90%</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Средний цикл сбора</span>
-            <Clock className="h-4 w-4 text-purple-600" />
+            <Clock className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">2.1 дня</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">2.1 дня</div>
           <div className="text-[10.5px] text-slate-400 mt-1">От выставления до поступления средств</div>
         </div>
       </div>
@@ -231,7 +231,7 @@ export function PaymentsReceivablesReport({ data, filters }: PaymentsReceivables
                     <td className="py-2.5 px-2 text-slate-600 font-medium">
                       {inv.groupName}
                     </td>
-                    <td className="py-2.5 px-2 text-right font-black text-slate-900">
+                    <td className="py-2.5 px-2 text-right font-medium text-slate-900 tabular-nums">
                       {inv.amountFormatted}
                     </td>
                     <td className="py-2.5 px-2 text-center text-slate-500 text-[10.5px]">

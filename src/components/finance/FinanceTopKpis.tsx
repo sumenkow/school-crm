@@ -43,13 +43,13 @@ export function FinanceTopKpis({
             <span className="text-[11px] font-medium text-slate-500 block truncate">
               Общая выручка
             </span>
-            <div className="text-xl font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">
+            <div className="text-xl font-semibold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums">
               {Math.round(revenueEur).toLocaleString('ru-RU')} €
             </div>
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-          <span className={`font-bold ${(revenueGrowthPct ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+          <span className={`font-semibold ${(revenueGrowthPct ?? 0) >= 0 ? 'text-emerald-700' : 'text-rose-600'} tabular-nums`}>
             {(revenueGrowthPct ?? 0) >= 0 ? `↑ +${revenueGrowthPct ?? 0}%` : `↓ ${revenueGrowthPct}%`} к сентябрю
           </span>
           <span className="text-slate-400 font-medium">
@@ -71,14 +71,14 @@ export function FinanceTopKpis({
             <span className="text-[11px] font-medium text-slate-500 block truncate">
               Ожидаемые поступления
             </span>
-            <div className="text-xl font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">
+            <div className="text-xl font-semibold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums">
               {Math.round(expectedEur).toLocaleString('ru-RU')} €
             </div>
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
           <span className="text-slate-500 font-medium">К оплате</span>
-          <span className="text-slate-400 font-medium">
+          <span className="text-slate-400 font-medium tabular-nums">
             {expectedCount} {expectedCount === 1 ? 'счет' : expectedCount < 5 ? 'счета' : 'счетов'}
           </span>
         </div>
@@ -94,17 +94,17 @@ export function FinanceTopKpis({
             <AlertCircle className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <span className="text-[11px] font-bold text-rose-800 block truncate">
+            <span className="text-[11px] font-medium text-rose-800 block truncate">
               Общий долг
             </span>
-            <div className="text-xl font-extrabold text-rose-700 tracking-tight leading-tight mt-0.5">
+            <div className="text-xl font-semibold text-rose-700 tracking-tight leading-tight mt-0.5 tabular-nums">
               {Math.round(debtEur).toLocaleString('ru-RU')} €
             </div>
           </div>
         </div>
         <div className="mt-3 pt-2.5 border-t border-rose-100 flex items-center justify-between text-[11px]">
-          <span className="text-rose-700 font-bold">Просрочено</span>
-          <span className="text-rose-600 font-semibold">
+          <span className="text-rose-700 font-semibold">Просрочено</span>
+          <span className="text-rose-600 font-medium tabular-nums">
             {debtorsCount} {debtorsCount === 1 ? 'должник' : debtorsCount < 5 ? 'должника' : 'должников'}
           </span>
         </div>
@@ -123,7 +123,7 @@ export function FinanceTopKpis({
             <span className="text-[11px] font-medium text-slate-500 block truncate">
               Баланс учеников
             </span>
-            <div className="text-xl font-extrabold text-slate-900 tracking-tight leading-tight mt-0.5">
+            <div className="text-xl font-semibold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums">
               {Math.round(depositBalanceEur).toLocaleString('ru-RU')} €
             </div>
           </div>

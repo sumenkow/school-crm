@@ -169,11 +169,11 @@ export function QuickFinanceWidget({
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-slate-500 font-medium text-[11px]">Цель: {goalFormatted}</span>
-              <span className="font-bold text-purple-600 text-[11px]">{goalProgressPercent}%</span>
+              <span className="font-semibold text-blue-600 text-[11px] tabular-nums">{goalProgressPercent}%</span>
             </div>
             <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500"
                 style={{ width: `${Math.min(goalProgressPercent, 100)}%` }}
               />
             </div>

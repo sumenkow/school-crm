@@ -59,7 +59,7 @@ export function RevenueLossesCard({
       {/* 2. Main Total Loss Number & Info link */}
       <div className="mt-1 flex items-baseline justify-between h-[18px] shrink-0">
         <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="text-sm lg:text-base font-extrabold text-slate-900 tracking-tight font-mono">
+          <span className="text-sm lg:text-base font-semibold text-slate-900 tracking-tight font-mono tabular-nums">
             ≈ {totalLossEur.toLocaleString('ru-RU')} €
           </span>
         </div>

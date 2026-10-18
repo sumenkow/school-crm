@@ -168,10 +168,10 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
 
             {/* Bottom row: Large value + previous period value */}
             <div className="flex items-baseline justify-between gap-1">
-              <span className="text-xl font-black text-slate-900 tracking-tight font-feature-settings-cv">
+              <span className="text-xl font-semibold text-slate-900 tracking-tight font-feature-settings-cv tabular-nums">
                 {kpi.value}
               </span>
-              <span className="text-[10px] text-slate-400 font-medium truncate">
+              <span className="text-[10px] text-slate-400 font-medium truncate tabular-nums">
                 {kpi.previousValue}
               </span>
             </div>
@@ -510,10 +510,10 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
                 </svg>
                 {/* Center text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-sm font-black text-slate-900 leading-none">
+                  <span className="text-sm font-semibold text-slate-900 leading-none tabular-nums">
                     {stability.totalGroups}
                   </span>
-                  <span className="text-[8.5px] font-bold text-slate-400 uppercase mt-0.5">
+                  <span className="text-[8.5px] font-medium text-slate-400 uppercase mt-0.5">
                     группы
                   </span>
                 </div>
@@ -524,7 +524,7 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
                 {stability.items.map((item) => (
                   <div key={item.id} className="space-y-0.5">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-800">
                         <span
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: item.color }}
@@ -532,10 +532,10 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
                         {item.label}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-slate-900 tabular-nums">
+                        <span className="font-semibold text-slate-900 tabular-nums">
                           {item.count}
                         </span>
-                        <span className="text-[10px] text-slate-400 tabular-nums font-semibold">
+                        <span className="text-[10px] text-slate-400 tabular-nums font-medium">
                           {item.sharePercent}%
                         </span>
                       </div>
@@ -574,49 +574,49 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
             {/* 4 Mini Indicators */}
             <div className="grid grid-cols-4 gap-1.5 pt-2 pb-2">
               <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-1.5 text-center">
-                <span className="text-[8.5px] font-semibold text-slate-400 block uppercase">
+                <span className="text-[8.5px] font-medium text-slate-500 block uppercase">
                   Новые
                 </span>
-                <span className="text-xs font-black text-emerald-600 block mt-0.5">
+                <span className="text-xs font-semibold text-emerald-600 block mt-0.5 tabular-nums">
                   +{flows.newStudentsCount}
                 </span>
-                <span className="text-[8.5px] font-bold text-emerald-600 block">
+                <span className="text-[8.5px] font-medium text-emerald-600 block tabular-nums">
                   {flows.newStudentsDelta}
                 </span>
               </div>
 
               <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-1.5 text-center">
-                <span className="text-[8.5px] font-semibold text-rose-600 block uppercase">
+                <span className="text-[8.5px] font-medium text-rose-600 block uppercase">
                   Выбыли
                 </span>
-                <span className="text-xs font-black text-rose-600 block mt-0.5">
+                <span className="text-xs font-semibold text-rose-600 block mt-0.5 tabular-nums">
                   -{flows.churnStudentsCount}
                 </span>
-                <span className="text-[8.5px] font-bold text-rose-600 block">
+                <span className="text-[8.5px] font-medium text-rose-600 block tabular-nums">
                   {flows.churnStudentsDelta}
                 </span>
               </div>
 
               <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-1.5 text-center">
-                <span className="text-[8.5px] font-semibold text-blue-600 block uppercase">
+                <span className="text-[8.5px] font-medium text-blue-600 block uppercase">
                   Переводы
                 </span>
-                <span className="text-xs font-black text-blue-600 block mt-0.5">
+                <span className="text-xs font-semibold text-blue-600 block mt-0.5 tabular-nums">
                   {flows.transferredCount}
                 </span>
-                <span className="text-[8.5px] font-bold text-blue-600 block">
+                <span className="text-[8.5px] font-medium text-blue-600 block tabular-nums">
                   {flows.transferredDelta}
                 </span>
               </div>
 
               <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-1.5 text-center">
-                <span className="text-[8.5px] font-semibold text-emerald-700 block uppercase">
+                <span className="text-[8.5px] font-medium text-emerald-700 block uppercase">
                   Чистое
                 </span>
-                <span className="text-xs font-black text-emerald-700 block mt-0.5">
+                <span className="text-xs font-semibold text-emerald-700 block mt-0.5 tabular-nums">
                   +{flows.netChangeCount}
                 </span>
-                <span className="text-[8.5px] font-bold text-emerald-700 block">
+                <span className="text-[8.5px] font-medium text-emerald-700 block tabular-nums">
                   {flows.netChangeDelta}
                 </span>
               </div>
@@ -715,7 +715,7 @@ export function GroupsAnalyticsSection({ filters }: GroupsAnalyticsSectionProps)
                     />
                   </div>
 
-                  <span className="font-black text-slate-900 text-right w-9 shrink-0 tabular-nums">
+                  <span className="font-semibold text-slate-900 text-right w-9 shrink-0 tabular-nums">
                     {d.ratePercent}%
                   </span>
                 </div>

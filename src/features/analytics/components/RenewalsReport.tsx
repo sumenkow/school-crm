@@ -125,38 +125,38 @@ export function RenewalsReport({ data, filters }: RenewalsReportProps) {
       {/* 4 Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Конверсия продления</span>
             <RefreshCw className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">{conversionRate}%</div>
+          <div className="text-2xl font-semibold text-emerald-600 mt-1 tabular-nums">{conversionRate}%</div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">Целевой план: 85%</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Продлены вовремя</span>
             <CheckCircle2 className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{renewedCount}</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{renewedCount}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Из {totalRenewals} завершающихся абонементов</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>В согласовании / Просрочка</span>
             <AlertTriangle className="h-4 w-4 text-amber-600" />
           </div>
-          <div className="text-2xl font-black text-amber-600 mt-1">{pendingCount}</div>
+          <div className="text-2xl font-semibold text-amber-600 mt-1 tabular-nums">{pendingCount}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Требуется повторный контакт</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Уход / Не продлили</span>
             <Users className="h-4 w-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-black text-rose-600 mt-1">{churnCount}</div>
+          <div className="text-2xl font-semibold text-rose-600 mt-1 tabular-nums">{churnCount}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Причина: отток студентов</div>
         </div>
       </div>

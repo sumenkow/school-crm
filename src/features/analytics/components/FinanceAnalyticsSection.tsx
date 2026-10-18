@@ -168,10 +168,10 @@ export function FinanceAnalyticsSection({ filters }: FinanceAnalyticsSectionProp
 
             {/* Bottom row: Large figure + previous period value */}
             <div className="flex items-baseline justify-between gap-1">
-              <span className="text-xl font-black text-slate-900 tracking-tight font-feature-settings-cv">
+              <span className="text-xl font-semibold text-slate-900 tracking-tight font-feature-settings-cv tabular-nums">
                 {kpi.value}
               </span>
-              <span className="text-[10px] text-slate-400 font-medium truncate">
+              <span className="text-[10px] text-slate-400 font-medium truncate tabular-nums">
                 {kpi.previousValue}
               </span>
             </div>
@@ -609,10 +609,10 @@ export function FinanceAnalyticsSection({ filters }: FinanceAnalyticsSectionProp
                 </svg>
                 {/* Center text in donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-[10px] font-black text-slate-900 leading-none">
+                  <span className="text-[10px] font-semibold text-slate-900 leading-none tabular-nums">
                     € 32.5k
                   </span>
-                  <span className="text-[8px] font-semibold text-slate-400 uppercase mt-0.5">
+                  <span className="text-[8px] font-medium text-slate-400 uppercase mt-0.5">
                     Всего
                   </span>
                 </div>
@@ -694,14 +694,14 @@ export function FinanceAnalyticsSection({ filters }: FinanceAnalyticsSectionProp
               {/* Right: Potential Loss Banner (5 cols) */}
               <div className="sm:col-span-5 rounded-xl border border-rose-200/80 bg-rose-50/70 p-3.5 flex flex-col justify-between h-full min-h-[170px]">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-rose-700">
                     Потенциально недополучено
                   </span>
                   <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-rose-900 tracking-tight">
+                    <span className="text-2xl font-semibold text-rose-900 tracking-tight tabular-nums">
                       {lossAnalysis.potentialLossFormatted}
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 tabular-nums">
                       {lossAnalysis.potentialLossDelta}
                     </span>
                   </div>
@@ -730,7 +730,7 @@ export function FinanceAnalyticsSection({ filters }: FinanceAnalyticsSectionProp
           <div>
             {/* Header */}
             <div className="border-b border-slate-100 pb-2.5">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+              <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
                 Долги и просрочки
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
@@ -741,37 +741,37 @@ export function FinanceAnalyticsSection({ filters }: FinanceAnalyticsSectionProp
             {/* 3 Mini-KPI Strip */}
             <div className="grid grid-cols-3 gap-2 pt-2.5 pb-2">
               <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-center">
-                <span className="text-[9.5px] font-semibold text-slate-400 block uppercase">
+                <span className="text-[9.5px] font-medium text-slate-500 block uppercase">
                   Общий долг
                 </span>
-                <span className="text-xs font-black text-slate-900 block mt-0.5">
+                <span className="text-xs font-semibold text-slate-900 block mt-0.5 tabular-nums">
                   {debtsSummary.totalDebtFormatted}
                 </span>
-                <span className="text-[9px] font-bold text-rose-600 block">
+                <span className="text-[9px] font-medium text-rose-600 block tabular-nums">
                   {debtsSummary.totalDebtDelta}
                 </span>
               </div>
 
               <div className="rounded-lg border border-rose-100 bg-rose-50/40 p-2 text-center">
-                <span className="text-[9.5px] font-semibold text-rose-600 block uppercase">
+                <span className="text-[9.5px] font-medium text-rose-600 block uppercase">
                   В просрочке
                 </span>
-                <span className="text-xs font-black text-rose-700 block mt-0.5">
+                <span className="text-xs font-semibold text-rose-700 block mt-0.5 tabular-nums">
                   {debtsSummary.overdueDebtFormatted}
                 </span>
-                <span className="text-[9px] font-bold text-rose-600 block">
+                <span className="text-[9px] font-medium text-rose-600 block tabular-nums">
                   {debtsSummary.overdueDebtDelta}
                 </span>
               </div>
 
               <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-center">
-                <span className="text-[9.5px] font-semibold text-slate-400 block uppercase">
+                <span className="text-[9.5px] font-medium text-slate-500 block uppercase">
                   Учеников с долгом
                 </span>
-                <span className="text-xs font-black text-slate-900 block mt-0.5">
+                <span className="text-xs font-semibold text-slate-900 block mt-0.5 tabular-nums">
                   {debtsSummary.debtorsCount}
                 </span>
-                <span className="text-[9px] font-bold text-rose-600 block">
+                <span className="text-[9px] font-medium text-rose-600 block tabular-nums">
                   {debtsSummary.debtorsCountDelta}
                 </span>
               </div>

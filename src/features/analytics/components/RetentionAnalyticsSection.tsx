@@ -179,10 +179,10 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                 <span className="text-[10.5px] font-medium text-slate-500 truncate block leading-tight">
                   {kpi.label}
                 </span>
-                <span className="text-[19px] lg:text-[21px] font-black text-slate-900 tracking-tight leading-none mt-0.5 block">
+                <span className="text-[19px] lg:text-[21px] font-semibold text-slate-900 tracking-tight leading-none mt-0.5 block tabular-nums">
                   {kpi.value}
                 </span>
-                <span className="text-[9.5px] text-slate-400 block leading-tight mt-0.5">
+                <span className="text-[9.5px] text-slate-400 block leading-tight mt-0.5 tabular-nums">
                   Было: {kpi.previousValue}
                 </span>
               </div>
@@ -326,11 +326,11 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
           {/* Anomaly Warning Bar at bottom */}
           <div className="mt-2 rounded-xl border border-rose-200/90 bg-rose-50/70 p-2 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 min-w-0 pr-2">
-              <div className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center font-black text-[11px] shrink-0">
+              <div className="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center font-semibold text-[11px] shrink-0">
                 !
               </div>
               <div className="min-w-0">
-                <span className="font-bold text-slate-900 block truncate text-[11px]">
+                <span className="font-semibold text-slate-900 block truncate text-[11px]">
                   {cohortAnomaly?.title || 'Июльская когорта теряет учеников быстрее нормы'}
                 </span>
                 <span className="text-[10px] text-slate-500 block truncate">
@@ -557,14 +557,14 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                       Всего ушло учеников
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xl font-extrabold text-slate-900">
+                      <span className="text-xl font-semibold text-slate-900 tabular-nums">
                         {displayChurnAnalysis.totalChurnCount}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      <span className="px-1.5 py-0.5 rounded-full text-[9.5px] font-medium bg-rose-50 text-rose-700 border border-rose-200 tabular-nums">
                         ↑ {displayChurnAnalysis.summaryDelta}
                       </span>
                     </div>
-                    <span className="text-[9.5px] text-slate-400 block mt-0.5">
+                    <span className="text-[9.5px] text-slate-400 block mt-0.5 tabular-nums">
                       Было: {displayChurnAnalysis.prevTotal}
                     </span>
                   </div>
@@ -574,13 +574,13 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                       Основная причина
                     </div>
-                    <span className="text-[11.5px] font-bold text-slate-900 leading-tight block truncate">
+                    <span className="text-[11.5px] font-semibold text-slate-900 leading-tight block truncate">
                       {displayChurnAnalysis.topReasonTitle}
                     </span>
                     <span className="text-[10.5px] text-slate-600 block">
-                      <strong className="text-rose-600 font-bold">{displayChurnAnalysis.topReasonPercent}%</strong> всех уходов
+                      <strong className="text-rose-600 font-semibold">{displayChurnAnalysis.topReasonPercent}%</strong> всех уходов
                     </span>
-                    <span className="text-[9.5px] text-rose-600 font-medium block">
+                    <span className="text-[9.5px] text-rose-600 font-medium block tabular-nums">
                       ↑ {displayChurnAnalysis.topReasonDelta}
                     </span>
                   </div>
@@ -589,7 +589,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                     <button
                       type="button"
                       onClick={() => setIsChurnedModalOpen(true)}
-                      className="text-[10.5px] font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer block text-left"
+                      className="text-[10.5px] font-medium text-blue-600 hover:text-blue-700 hover:underline cursor-pointer block text-left"
                     >
                       Посмотреть ушедших учеников →
                     </button>
@@ -616,7 +616,7 @@ export function RetentionAnalyticsSection({ filters }: RetentionAnalyticsSection
                       Всего ушло учеников
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xl font-black text-slate-900">
+                      <span className="text-xl font-semibold text-slate-900 tabular-nums">
                         {displayChurnAnalysis.totalChurnCount}
                       </span>
                     </div>

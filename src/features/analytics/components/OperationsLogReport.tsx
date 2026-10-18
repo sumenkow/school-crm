@@ -115,20 +115,20 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
       {/* 4 Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Всего операций в смене</span>
             <History className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{operationsLog.length}</div>
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{operationsLog.length}</div>
           <div className="text-[10.5px] text-slate-400 mt-1">Все действия фиксируются в аудите</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Финансовые транзакции</span>
             <CreditCard className="h-4 w-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">
+          <div className="text-2xl font-semibold text-emerald-600 mt-1 tabular-nums">
             {data.heroKpis?.collectedPayments?.paidCount ?? 0} счетов
           </div>
           <div className="text-[10.5px] text-emerald-700 font-medium mt-1">
@@ -137,22 +137,22 @@ export function OperationsLogReport({ data, filters }: OperationsLogReportProps)
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Обработано лидов</span>
-            <MessageSquare className="h-4 w-4 text-purple-600" />
+            <MessageSquare className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-black text-purple-600 mt-1">
+          <div className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">
             {data.recentCommunications?.length ?? 0} диалогов
           </div>
           <div className="text-[10.5px] text-slate-400 mt-1">Интеграция с каналами связи</div>
         </div>
 
         <div className="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] font-semibold">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] font-medium">
             <span>Закрыто задач</span>
             <CheckSquare className="h-4 w-4 text-teal-600" />
           </div>
-          <div className="text-2xl font-black text-teal-600 mt-1">
+          <div className="text-2xl font-semibold text-teal-600 mt-1 tabular-nums">
             {data.heroKpis?.taskCompletion?.completed ?? 0} задач
           </div>
           <div className="text-[10.5px] text-teal-700 font-medium mt-1">
