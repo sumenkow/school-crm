@@ -96,28 +96,28 @@ export function TodayScheduleWidget({
           <div className="h-9 bg-emerald-50/90 border border-emerald-100/60 px-1 rounded-xl flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-1 leading-none">
               <BookOpen className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-              <span className="font-bold text-[11px] text-emerald-950 leading-none">{stats.total}</span>
+              <span className="font-bold text-[11px] text-emerald-950 tabular-nums leading-none">{stats.total}</span>
             </div>
             <span className="text-[9px] text-emerald-700 font-medium leading-none mt-0.5">занятий</span>
           </div>
-          <div className="h-9 bg-purple-50/90 border border-purple-100/60 px-1 rounded-xl flex flex-col items-center justify-center text-center">
+          <div className="h-9 bg-sky-50/90 border border-sky-100/60 px-1 rounded-xl flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-1 leading-none">
-              <UserCheck className="w-2.5 h-2.5 text-purple-600 shrink-0" />
-              <span className="font-bold text-[11px] text-purple-950 leading-none">{stats.trials}</span>
+              <UserCheck className="w-2.5 h-2.5 text-sky-600 shrink-0" />
+              <span className="font-bold text-[11px] text-sky-950 tabular-nums leading-none">{stats.trials}</span>
             </div>
-            <span className="text-[9px] text-purple-700 font-medium leading-none mt-0.5">пробных</span>
+            <span className="text-[9px] text-sky-700 font-medium leading-none mt-0.5">пробных</span>
           </div>
           <div className="h-9 bg-amber-50/90 border border-amber-100/60 px-1 rounded-xl flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-1 leading-none">
               <CreditCard className="w-2.5 h-2.5 text-amber-600 shrink-0" />
-              <span className="font-bold text-[11px] text-amber-950 leading-none">{stats.expectedPayments}</span>
+              <span className="font-bold text-[11px] text-amber-950 tabular-nums leading-none">{stats.expectedPayments}</span>
             </div>
             <span className="text-[9px] text-amber-700 font-medium leading-none mt-0.5 truncate max-w-full">ожид. оплата</span>
           </div>
           <div className="h-9 bg-blue-50/90 border border-blue-100/60 px-1 rounded-xl flex flex-col items-center justify-center text-center">
             <div className="flex items-center gap-1 leading-none">
               <CheckSquare className="w-2.5 h-2.5 text-blue-600 shrink-0" />
-              <span className="font-bold text-[11px] text-blue-950 leading-none">{stats.tasks}</span>
+              <span className="font-bold text-[11px] text-blue-950 tabular-nums leading-none">{stats.tasks}</span>
             </div>
             <span className="text-[9px] text-blue-700 font-medium leading-none mt-0.5">задачи</span>
           </div>
@@ -151,7 +151,7 @@ export function TodayScheduleWidget({
               const teacher = event.teacherName || 'Преподаватель не назначен';
               const format = isOnline ? 'Онлайн' : 'Офлайн';
 
-              const iconColor = idx === 0 ? 'bg-emerald-100 text-emerald-700' : idx === 1 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
+              const iconColor = idx === 0 ? 'bg-emerald-100 text-emerald-700' : idx === 1 ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700';
 
               return (
                 <div

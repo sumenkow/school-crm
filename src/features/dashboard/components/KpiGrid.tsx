@@ -178,13 +178,13 @@ export function KpiGrid({
             <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100/60">
               <CreditCard className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Выручка за месяц</span>
+            <span className="text-[11px] font-medium text-slate-500 truncate">Выручка за месяц</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 tracking-tight headline-tight">
+          <span className="text-xl font-bold text-slate-900 tracking-tight tabular-nums headline-tight">
             {financeData.paidEur.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </span>
           {/* Real Sparkline SVG */}
@@ -233,13 +233,13 @@ export function KpiGrid({
             <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/60">
               <UserPlus className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Новые ученики</span>
+            <span className="text-[11px] font-medium text-slate-500 truncate">Новые ученики</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 headline-tight">{studentsData.newMonth}</span>
+          <span className="text-xl font-bold text-slate-900 tabular-nums headline-tight">{studentsData.newMonth}</span>
           {/* Real weekly bar chart */}
           <div className="flex items-end gap-1 h-5 shrink-0">
             {studentsData.weekBars.map((val, idx) => {
@@ -276,13 +276,13 @@ export function KpiGrid({
             <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 border border-sky-100/60">
               <Filter className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Конверсия лидов</span>
+            <span className="text-[11px] font-medium text-slate-500 truncate">Конверсия лидов</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 headline-tight">{leadsData.conversion}%</span>
+          <span className="text-xl font-bold text-slate-900 tabular-nums headline-tight">{leadsData.conversion}%</span>
           {/* Real Stage Distribution Bars */}
           <div className="flex items-end gap-1 h-5 shrink-0">
             {leadsData.stageBars.map((val, idx) => {
@@ -319,13 +319,13 @@ export function KpiGrid({
             <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100/60">
               <RefreshCw className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Продления</span>
+            <span className="text-[11px] font-medium text-slate-500 truncate">Продления</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 headline-tight">{renewalsData.ratePercent}%</span>
+          <span className="text-xl font-bold text-slate-900 tabular-nums headline-tight">{renewalsData.ratePercent}%</span>
           {/* Donut Mini SVG */}
           <div className="w-6 h-6 shrink-0 relative flex items-center justify-center">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
@@ -367,13 +367,13 @@ export function KpiGrid({
             <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100/60">
               <Calendar className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Задолженность</span>
+            <span className="text-[11px] font-medium text-slate-500 truncate">Задолженность</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 transition-colors shrink-0" />
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 headline-tight">
+          <span className="text-xl font-bold text-slate-900 tabular-nums headline-tight">
             {debtData.totalDebt.toLocaleString('ru-RU')} €
           </span>
           {/* Mini Status Indicator */}

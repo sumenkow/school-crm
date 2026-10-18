@@ -126,7 +126,7 @@ export function GroupOccupancyWidget({
                 className="transition-all duration-500"
               />
             </svg>
-            <span className="absolute text-xs sm:text-sm font-bold text-slate-900">{averageOccupancy}%</span>
+            <span className="absolute text-xs sm:text-sm font-bold text-slate-900 tabular-nums">{averageOccupancy}%</span>
           </div>
         </div>
 
@@ -144,11 +144,11 @@ export function GroupOccupancyWidget({
         {/* Разделитель и крупные счетчики справа */}
         <div className="col-span-5 flex items-center justify-around border-l border-slate-100 pl-2">
           <div className="text-center">
-            <span className="text-lg sm:text-xl font-bold text-slate-900 block leading-none">{activeGroupsCount}</span>
+            <span className="text-lg sm:text-xl font-bold text-slate-900 block leading-none tabular-nums">{activeGroupsCount}</span>
             <span className="text-[10px] text-slate-400 font-medium mt-1 block leading-tight">активных<br/>групп</span>
           </div>
           <div className="text-center">
-            <span className="text-lg sm:text-xl font-bold text-slate-900 block leading-none">{recruitingGroupsCount}</span>
+            <span className="text-lg sm:text-xl font-bold text-slate-900 block leading-none tabular-nums">{recruitingGroupsCount}</span>
             <span className="text-[10px] text-slate-400 font-medium mt-1 block leading-tight">в наборе</span>
           </div>
         </div>
@@ -170,25 +170,25 @@ export function GroupOccupancyWidget({
               <div
                 key={group.id}
                 onClick={() => onFillGroup(group.id)}
-                className="flex items-center justify-between gap-2 text-xs py-1 hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors cursor-pointer group"
+                className="flex items-center justify-between gap-1.5 sm:gap-2 text-xs py-1 hover:bg-slate-50/60 rounded-lg px-1 -mx-1 transition-colors cursor-pointer group"
               >
                 {/* 1. Компактная иконка + Название на всю свободную ширину */}
-                <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
-                  <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 pr-1">
+                  <div className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/60">
                     <Users className="w-3.5 h-3.5" />
                   </div>
-                  <span className="font-semibold text-slate-800 truncate text-xs group-hover:text-blue-600 transition-colors" title={group.name}>
+                  <span className="font-medium text-slate-800 truncate text-xs group-hover:text-blue-600 transition-colors" title={group.name}>
                     {group.name}
                   </span>
                 </div>
 
                 {/* 2. Количество мест (1/8) */}
-                <span className="font-semibold text-slate-600 shrink-0 text-xs w-7 text-right">
+                <span className="font-semibold text-slate-600 shrink-0 text-xs tabular-nums">
                   {group.enrolled}/{group.capacity}
                 </span>
 
-                {/* 3. Компактный монолитный прогресс-бар без точек (w-14 = 56px) */}
-                <div className="w-14 bg-slate-100 h-2 rounded-full overflow-hidden shrink-0">
+                {/* 3. Компактный прогресс-бар */}
+                <div className="w-10 bg-slate-100 h-1.5 rounded-full overflow-hidden shrink-0">
                   <div
                     className="bg-blue-500 h-full rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -202,7 +202,7 @@ export function GroupOccupancyWidget({
                     e.stopPropagation();
                     onFillGroup(group.id);
                   }}
-                  className="text-[11px] font-medium text-blue-600 bg-blue-50/70 hover:bg-blue-100 border border-blue-200/60 px-2 py-0.5 rounded-lg shrink-0 transition-colors cursor-pointer"
+                  className="text-[11px] font-medium text-blue-600 bg-blue-50/70 hover:bg-blue-100 border border-blue-200/60 px-1.5 py-0.5 rounded-md shrink-0 transition-colors cursor-pointer"
                 >
                   Заполнить
                 </button>

@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 export interface AttentionItem {
   id: string;
   type: 'debt' | 'trial' | 'package' | 'lead' | 'group';
-  iconType: 'rose' | 'purple' | 'amber' | 'blue';
+  iconType: 'rose' | 'indigo' | 'amber' | 'blue';
   title: string;
   subtitle: string;
   timeLabel: string;
@@ -80,7 +80,7 @@ export function AttentionFeed({
       items.push({
         id: `att_trial_${trialLead.id}`,
         type: 'trial',
-        iconType: 'purple',
+        iconType: 'indigo',
         title: 'Пробное без назначения',
         subtitle: `${trialLead.name} · без даты пробного`,
         timeLabel: 'Вчера, 14:20',
@@ -153,7 +153,7 @@ export function AttentionFeed({
       items.push({
         id: `att_grp_${lowGroup.id}`,
         type: 'group',
-        iconType: 'purple',
+        iconType: 'indigo',
         title: 'Группа недозаполнена',
         subtitle: `${lowGroup.name} · ${enrolled}/${capacity} мест`,
         timeLabel: '30 сент.',
@@ -176,12 +176,12 @@ export function AttentionFeed({
       {/* Шапка */}
       <div className="flex items-center justify-between pb-2.5 border-b border-slate-50">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100/60">
             <AlertCircle className="w-3.5 h-3.5" />
           </div>
           <h3 className="font-bold text-slate-900 text-xs">Требует вашего внимания</h3>
         </div>
-        <span className="bg-rose-50 text-rose-600 font-bold text-[11px] px-2 py-0.5 rounded-full">
+        <span className="bg-rose-50 text-rose-700 font-semibold text-[11px] px-2 py-0.5 rounded-full border border-rose-200/60">
           {attentionItems.length} ситуаций
         </span>
       </div>
@@ -190,10 +190,10 @@ export function AttentionFeed({
       <div className="divide-y divide-slate-50 my-auto">
         {attentionItems.slice(0, 3).map((item) => {
           const iconBgClass = {
-            rose: 'bg-rose-50 text-rose-500',
-            purple: 'bg-purple-50 text-purple-600',
-            amber: 'bg-amber-50 text-amber-600',
-            blue: 'bg-blue-50 text-blue-600',
+            rose: 'bg-rose-50 text-rose-600 border border-rose-100/60',
+            indigo: 'bg-indigo-50 text-indigo-600 border border-indigo-100/60',
+            amber: 'bg-amber-50 text-amber-600 border border-amber-100/60',
+            blue: 'bg-blue-50 text-blue-600 border border-blue-100/60',
           }[item.iconType];
 
           const IconComponent = item.type === 'debt' ? AlertCircle
@@ -219,7 +219,7 @@ export function AttentionFeed({
             >
               {/* Иконка + Текст */}
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', iconBgClass)}>
+                <div className={cn('w-7 h-7 rounded-xl flex items-center justify-center shrink-0', iconBgClass)}>
                   <IconComponent className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -241,7 +241,7 @@ export function AttentionFeed({
               <button
                 type="button"
                 onClick={handleAction}
-                className="w-[82px] h-7 flex items-center justify-center text-[11px] font-semibold text-blue-600 bg-blue-50/70 hover:bg-blue-100 border border-blue-200/80 rounded-lg shrink-0 transition-colors cursor-pointer"
+                className="px-2.5 h-6 min-w-[76px] flex items-center justify-center text-[11px] font-medium text-slate-700 bg-slate-50 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-slate-200/80 rounded-lg shrink-0 transition-all cursor-pointer"
               >
                 {item.actionLabel}
               </button>

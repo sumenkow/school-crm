@@ -32,10 +32,10 @@ export function FunnelWidget({
 
     const stages = [
       { id: 'new', label: 'Новые', count: countNew, color: 'bg-blue-600', dotColor: 'bg-blue-600' },
-      { id: 'contacted', label: 'В работе', count: countContacted, color: 'bg-sky-400', dotColor: 'bg-sky-400' },
-      { id: 'trial_scheduled', label: 'Пробное назначено', count: countTrialScheduled, color: 'bg-purple-400', dotColor: 'bg-purple-400' },
-      { id: 'trial_held', label: 'Пробное проведено', count: countTrialHeld, color: 'bg-pink-400', dotColor: 'bg-pink-400' },
-      { id: 'thinking', label: 'Думают / Счёт', count: countThinking, color: 'bg-orange-400', dotColor: 'bg-orange-400' },
+      { id: 'contacted', label: 'В работе', count: countContacted, color: 'bg-blue-500', dotColor: 'bg-blue-500' },
+      { id: 'trial_scheduled', label: 'Пробное назначено', count: countTrialScheduled, color: 'bg-indigo-500', dotColor: 'bg-indigo-500' },
+      { id: 'trial_held', label: 'Пробное проведено', count: countTrialHeld, color: 'bg-sky-500', dotColor: 'bg-sky-500' },
+      { id: 'thinking', label: 'Думают / Счёт', count: countThinking, color: 'bg-slate-400', dotColor: 'bg-slate-400' },
       { id: 'paid', label: 'Оплачено', count: countPaid, color: 'bg-emerald-500', dotColor: 'bg-emerald-500' },
     ];
 
@@ -92,10 +92,10 @@ export function FunnelWidget({
                 className="flex items-center gap-1.5 sm:gap-2 text-xs cursor-pointer group py-0.5"
               >
                 <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', stage.dotColor || 'bg-blue-500')} />
-                <span className="text-slate-600 font-medium text-[11px] w-24 shrink-0 truncate group-hover:text-blue-600 transition-colors">
+                <span className="text-slate-600 font-medium text-[11px] w-[130px] shrink-0 truncate group-hover:text-blue-600 transition-colors">
                   {stage.label}
                 </span>
-                <span className="font-bold text-slate-900 w-4 text-right shrink-0 text-xs">
+                <span className="font-bold text-slate-900 w-5 text-right shrink-0 text-xs tabular-nums">
                   {stage.count}
                 </span>
                 <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
@@ -113,7 +113,7 @@ export function FunnelWidget({
         <div className="flex items-center justify-between px-1 py-1 border-t border-slate-50 mt-1">
           <span className="text-[11px] text-slate-500">Конверсия</span>
           <div className="flex items-baseline gap-1">
-            <span className="font-bold text-slate-900 text-xs">{stagesData.conversionRate}%</span>
+            <span className="font-bold text-slate-900 text-xs tabular-nums">{stagesData.conversionRate}%</span>
             <span className="text-[10px] text-slate-400">от новых до оплат</span>
           </div>
         </div>

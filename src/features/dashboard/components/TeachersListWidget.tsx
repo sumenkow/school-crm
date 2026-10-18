@@ -111,15 +111,8 @@ export function TeachersListWidget({
       if (!subject) subject = 'Преподаватель';
 
       // Format Russian grammar for groups & students
-      const groupsStr = effectiveGroupsCount === 1 ? '1 активная группа'
-        : [2, 3, 4].includes(effectiveGroupsCount % 10) && ![12, 13, 14].includes(effectiveGroupsCount % 100)
-        ? `${effectiveGroupsCount} активных группы`
-        : `${effectiveGroupsCount} активных групп`;
-
-      const studentsStr = effectiveStudentsCount === 1 ? '1 ученик'
-        : [2, 3, 4].includes(effectiveStudentsCount % 10) && ![12, 13, 14].includes(effectiveStudentsCount % 100)
-        ? `${effectiveStudentsCount} ученика`
-        : `${effectiveStudentsCount} учеников`;
+      const groupsStr = `${effectiveGroupsCount} гр.`;
+      const studentsStr = `${effectiveStudentsCount} уч.`;
 
       return {
         id: teacher.id,
@@ -180,7 +173,7 @@ export function TeachersListWidget({
               className="py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50/60 rounded-xl px-1.5 -mx-1.5 transition-colors gap-2 group"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="w-7 h-7 rounded-xl bg-slate-100 text-slate-700 font-bold text-[11px] flex items-center justify-center shrink-0 border border-slate-200/60">
+                <div className="w-8 h-8 rounded-xl bg-blue-50/80 text-blue-700 font-semibold text-[11px] flex items-center justify-center shrink-0 border border-blue-100/70">
                   {teacher.initials}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -193,8 +186,8 @@ export function TeachersListWidget({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-slate-700 w-9 text-right">{teacher.workload}%</span>
-                <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full text-center w-28 shrink-0 truncate', teacher.workloadStatusClass)}>
+                <span className="text-xs font-bold text-slate-700 tabular-nums w-8 text-right">{teacher.workload}%</span>
+                <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-md text-center shrink-0', teacher.workloadStatusClass)}>
                   {teacher.workloadStatus}
                 </span>
               </div>
