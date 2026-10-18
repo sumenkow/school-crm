@@ -87,8 +87,8 @@ export function TasksFilterBar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Поиск по задачам..."
-            className="h-8.5 w-full rounded-xl border border-slate-200/80 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
+            placeholder="Поиск по задачам…"
+            className="h-9 sm:h-8.5 w-full rounded-xl border border-slate-200/80 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 shadow-2xs focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20 transition-all"
           />
         </div>
 
@@ -96,7 +96,7 @@ export function TasksFilterBar({
         <select
           value={priorityFilter}
           onChange={(e) => onPriorityChange(e.target.value as 'all' | 'high' | 'medium' | 'low')}
-          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
+          className="h-9 sm:h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20 cursor-pointer transition-all"
         >
           <option value="all">Приоритет: Все</option>
           <option value="high">Высокий</option>
@@ -108,7 +108,7 @@ export function TasksFilterBar({
         <select
           value={dueDateFilter}
           onChange={(e) => onDueDateChange(e.target.value as 'all' | 'today' | 'overdue' | 'week')}
-          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
+          className="h-9 sm:h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20 cursor-pointer transition-all"
         >
           <option value="all">Срок: Все</option>
           <option value="today">Сегодня</option>
@@ -120,7 +120,7 @@ export function TasksFilterBar({
         <select
           value={sortMode}
           onChange={(e) => onSortChange(e.target.value as TaskSortMode)}
-          className="h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:border-blue-500 cursor-pointer transition-all"
+          className="h-9 sm:h-8.5 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-2xs focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500/20 cursor-pointer transition-all"
         >
           <option value="priority">⇅ Сначала важные</option>
           <option value="date_asc">По сроку ↑</option>

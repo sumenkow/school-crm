@@ -16,6 +16,10 @@ const roboto = Roboto({
 export const metadata: Metadata = {
   title: "YouEurope School CRM — Система управления школой",
   description: "Единая платформа управления образовательной школой, CRM, посещаемость и финансы",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
