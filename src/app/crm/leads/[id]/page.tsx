@@ -982,12 +982,12 @@ export default function LeadDetailsPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-100 font-bold text-purple-700 text-2xl shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-100 font-bold text-blue-700 text-2xl shadow-sm">
               {lead.name[0]}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-700">
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-700">
                   {lead.directionOrCourse}
                 </span>
                 <span className="text-xs text-slate-400">•</span>
@@ -1725,11 +1725,11 @@ export default function LeadDetailsPage() {
               return (
                 <div
                   key={int.id}
-                  className="rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 via-purple-50/40 to-indigo-50/90 p-3.5 text-xs shadow-2xs"
+                  className="rounded-xl border border-blue-200/80 bg-blue-50/70 p-3.5 text-xs shadow-2xs"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-2xs shrink-0">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white shadow-2xs shrink-0">
                         <ArrowRight className="h-3.5 w-3.5" />
                       </div>
                       <div>

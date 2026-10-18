@@ -52,7 +52,7 @@ export function AuditEventsTable({
   if (isLoading && events.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
-        <div className="inline-block animate-spin text-indigo-600 mb-3">
+        <div className="inline-block animate-spin text-blue-600 mb-3">
           <Shield className="w-8 h-8" />
         </div>
         <p className="text-sm font-semibold text-slate-700">Загрузка журнала действий...</p>
@@ -164,7 +164,7 @@ export function AuditEventsTable({
                         <span className="font-semibold text-slate-900 truncate">
                           {event.entity_name_snapshot || event.entity_id}
                         </span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono shrink-0">
+                        <span className="text-[10px] px-1 py-0.2 rounded bg-blue-50 text-blue-700 font-mono shrink-0">
                           {event.entity_type}
                         </span>
                       </div>
@@ -207,11 +207,13 @@ export function AuditEventsTable({
                   {/* DETAILS CTA */}
                   <td className="py-3 px-3.5 text-right">
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onSelectEvent(event);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg text-xs font-semibold transition-colors"
+                      aria-label={`Подробнее о событии ${event.action}`}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-semibold transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>Подробнее</span>
@@ -238,16 +240,20 @@ export function AuditEventsTable({
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || isLoading}
+            aria-label="Предыдущая страница"
             className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 shadow-2xs"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
             <span>Назад</span>
           </button>
           <button
+            type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || isLoading}
+            aria-label="Следующая страница"
             className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 shadow-2xs"
           >
             <span>Вперед</span>

@@ -609,7 +609,7 @@ export default function SendHomeworkModal({
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 border-l-4 border-l-blue-600 rounded-xl p-3.5 space-y-2">
+                  <div className="border border-blue-200/80 bg-blue-50/50 rounded-xl p-3.5 space-y-2">
                     <div className="font-bold text-blue-900">{t('homework.emailHomework', '📝 Задание на дом:')}</div>
                     <p className="text-slate-800 whitespace-pre-line leading-relaxed font-medium">
                       {homework || '—'}
@@ -622,9 +622,9 @@ export default function SendHomeworkModal({
                   </div>
 
                   {teacherComment && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 space-y-1">
-                      <div className="font-bold text-purple-900">{t('homework.emailTeacherRec', '💡 Рекомендация преподавателя:')}</div>
-                      <p className="text-purple-950">{teacherComment}</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1">
+                      <div className="font-bold text-slate-900">{t('homework.emailTeacherRec', '💡 Рекомендация преподавателя:')}</div>
+                      <p className="text-slate-700">{teacherComment}</p>
                     </div>
                   )}
                 </div>

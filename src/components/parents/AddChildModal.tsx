@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { INITIAL_STUDENTS, FullStudentData } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
+import { getStoredGroups } from '@/lib/data/groupStorage';
 import { useToast } from '@/context/ToastContext';
 
 export interface AddedChildData {
@@ -55,44 +56,6 @@ interface AddChildModalProps {
   existingChildrenIds?: string[];
 }
 
-const COURSES_CONFIG = [
-  {
-    name: 'Английский язык',
-    defaultPrice: '80 €',
-    groups: [
-      { name: 'English B1 Teens', teacher: 'Мария Иванова' },
-      { name: 'Kids English A1', teacher: 'Мария Иванова' },
-      { name: 'English Starter 7-9 лет', teacher: 'Мария Иванова' },
-    ],
-  },
-  {
-    name: 'Робототехника и IT',
-    defaultPrice: '90 €',
-    groups: [
-      { name: 'Robotics Junior', teacher: 'Денис Смирнов' },
-      { name: 'Arduino Pro 10-14 лет', teacher: 'Денис Смирнов' },
-      { name: 'Scratch Coding 8-11 лет', teacher: 'Денис Смирнов' },
-    ],
-  },
-  {
-    name: 'Олимпиадная математика',
-    defaultPrice: '70 €',
-    groups: [
-      { name: 'Kids Math Safari', teacher: 'Ольга Соколова' },
-      { name: 'Math Olympiad 5-7 класс', teacher: 'Ольга Соколова' },
-      { name: 'Логика и комбинаторика', teacher: 'Ольга Соколова' },
-    ],
-  },
-  {
-    name: 'Скорочтение и память',
-    defaultPrice: '60 €',
-    groups: [
-      { name: 'Скорочтение Junior 6-8 лет', teacher: 'Ольга Соколова' },
-      { name: 'Развитие памяти и внимания', teacher: 'Ольга Соколова' },
-    ],
-  },
-];
-
 export function AddChildModal({
   isOpen,
   onClose,
@@ -115,11 +78,14 @@ export function AddChildModal({
   const [age, setAge] = useState('');
   const [grade, setGrade] = useState('');
   const [gender, setGender] = useState<'male' | 'female'>('male');
-  const [course, setCourse] = useState('Английский язык');
+  const [course, setCourse] = useState('');
   const [level, setLevel] = useState('Начинающий (с нуля)');
-  const [group, setGroup] = useState('English B1 Teens');
-  const [teacher, setTeacher] = useState('Мария Иванова');
+  const [group, setGroup] = useState('');
+  const [teacher, setTeacher] = useState('');
   const [status, setStatus] = useState<'active' | 'trial' | 'lead'>('active');
+
+  // Groups loaded dynamically
+  const [availableGroups, setAvailableGroups] = useState<any[]>([]);
 
   // Subscription & Finance
   const [subscriptionType, setSubscriptionType] = useState('Стандартный (8 уроков/мес)');
@@ -140,8 +106,33 @@ export function AddChildModal({
   useEffect(() => {
     if (isOpen) {
       setAllStudents(typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS);
+      const grps = typeof window !== 'undefined' ? getStoredGroups() : [];
+      setAvailableGroups(grps);
+      if (grps.length > 0) {
+        setCourse(grps[0].courseName || 'Английский язык');
+        setGroup(grps[0].name || '');
+        setTeacher(grps[0].teacherName || '');
+      } else {
+        setCourse('Английский язык');
+        setGroup('');
+        setTeacher('');
+      }
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   const availableExistingStudents = useMemo(
     () => allStudents.filter((s) => !existingChildrenIds.includes(s.id)),
@@ -159,28 +150,37 @@ export function AddChildModal({
   }, [availableExistingStudents, selectedExistingStudentId]);
   const [linkRelationshipType, setLinkRelationshipType] = useState('Мама');
 
+  const availableCourses = useMemo(() => {
+    const list = Array.from(new Set(availableGroups.map((g) => g.courseName).filter(Boolean)));
+    return list.length > 0 ? list : ['Английский язык', 'Робототехника и IT', 'Олимпиадная математика', 'Скорочтение и память'];
+  }, [availableGroups]);
+
+  const filteredGroups = useMemo(() => {
+    return availableGroups.filter((g) => !course || g.courseName === course);
+  }, [availableGroups, course]);
+
   if (!isOpen) return null;
 
   // Handle course change to auto-update groups and default price
   const handleCourseChange = (newCourse: string) => {
     setCourse(newCourse);
-    const foundCourse = COURSES_CONFIG.find((c) => c.name === newCourse);
-    if (foundCourse) {
-      setPrice(foundCourse.defaultPrice);
-      if (foundCourse.groups.length > 0) {
-        setGroup(foundCourse.groups[0].name);
-        setTeacher(foundCourse.groups[0].teacher);
-      }
+    const matching = availableGroups.filter((g) => g.courseName === newCourse);
+    if (matching.length > 0) {
+      setGroup(matching[0].name);
+      setTeacher(matching[0].teacherName || '');
+    } else {
+      setGroup('');
+      setTeacher('');
     }
   };
 
   // Handle group change to auto-update teacher
   const handleGroupChange = (newGroup: string) => {
     setGroup(newGroup);
-    const currentCourseConfig = COURSES_CONFIG.find((c) => c.name === course);
-    const foundGroup = currentCourseConfig?.groups.find((g) => g.name === newGroup);
+    const foundGroup = availableGroups.find((g) => g.name === newGroup);
     if (foundGroup) {
-      setTeacher(foundGroup.teacher);
+      setTeacher(foundGroup.teacherName || '');
+      if (foundGroup.courseName) setCourse(foundGroup.courseName);
     }
   };
 
@@ -206,7 +206,7 @@ export function AddChildModal({
       course,
       teacher,
       status,
-      attendance: '100%',
+      attendance: '—',
       phone: childPhone.trim() || undefined,
       telegram: childTelegram.trim() || undefined,
       relationshipType,
@@ -231,13 +231,13 @@ export function AddChildModal({
       name: `${existing.firstName} ${existing.lastName}`,
       firstName: existing.firstName,
       lastName: existing.lastName,
-      age: existing.birthDate ? `${new Date().getFullYear() - new Date(existing.birthDate).getFullYear()} лет` : '12 лет',
+      age: existing.birthDate ? `${new Date().getFullYear() - new Date(existing.birthDate).getFullYear()} лет` : 'Возраст не указан',
       birthDate: existing.birthDate,
       group: existing.groups?.[0]?.name || 'Без группы',
       course: existing.groups?.[0]?.courseName || 'Курс не назначен',
       teacher: existing.groups?.[0]?.teacherName || 'Преподаватель не назначен',
       status: existing.status === 'active' ? 'active' : 'trial',
-      attendance: existing.attendanceStats?.attendanceRate || '100%',
+      attendance: existing.attendanceStats?.attendanceRate || '—',
       relationshipType: linkRelationshipType,
       subscriptionType: 'Стандартный (8 уроков/мес)',
       price: existing.finance?.activeSubscription?.price || '80 €',
@@ -251,7 +251,15 @@ export function AddChildModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-child-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-6 overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-6 py-4">
@@ -260,7 +268,7 @@ export function AddChildModal({
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Добавить ребенка в семью</h2>
+              <h2 id="add-child-modal-title" className="text-base font-bold text-slate-900">Добавить ребенка в семью</h2>
               <p className="text-xs text-slate-500">
                 Привязка к представителю: <strong className="text-slate-800">{parentName}</strong>
                 {parentPhone ? ` (${parentPhone})` : ''}
@@ -270,6 +278,7 @@ export function AddChildModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Закрыть"
             className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
           >
             <X className="h-5 w-5" />
@@ -445,7 +454,7 @@ export function AddChildModal({
               {/* SECTION 2: Учебная программа и группа */}
               <div className="space-y-3">
                 <div className="flex items-center gap-1.5 text-slate-900 font-bold border-b border-slate-100 pb-2">
-                  <BookOpen className="h-4 w-4 text-indigo-600" />
+                  <BookOpen className="h-4 w-4 text-blue-600" />
                   <span>2. Учебная программа и распределение в группу</span>
                 </div>
 
@@ -459,9 +468,9 @@ export function AddChildModal({
                       onChange={(e) => handleCourseChange(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
                     >
-                      {COURSES_CONFIG.map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
+                      {availableCourses.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
                         </option>
                       ))}
                     </select>
@@ -493,9 +502,9 @@ export function AddChildModal({
                       onChange={(e) => handleGroupChange(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
                     >
-                      {COURSES_CONFIG.find((c) => c.name === course)?.groups.map((g) => (
-                        <option key={g.name} value={g.name}>
-                          {g.name} ({g.teacher})
+                      {filteredGroups.map((g) => (
+                        <option key={g.id || g.name} value={g.name}>
+                          {g.name} {g.teacherName ? `(${g.teacherName})` : ''}
                         </option>
                       ))}
                       <option value="Без группы / Индивидуально">Без группы / Индивидуально</option>
@@ -610,7 +619,7 @@ export function AddChildModal({
                     </label>
                     <input
                       type="tel"
-                      placeholder="+7 (999) 000-00-00"
+                      placeholder="+..."
                       value={childPhone}
                       onChange={(e) => setChildPhone(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"

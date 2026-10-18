@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, MessageCircle, Calendar, CreditCard, Phone, Ban, FileBox, CheckCircle, Copy } from 'lucide-react';
 import { TelegramIcon } from '@/components/common/MessengerIcons';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
+import { getStoredTeachers } from '@/lib/data/teacherStorage';
 import { savePaymentToStorage, settleOverduePayments } from '@/lib/data/paymentStorage';
 import { saveLeadToStorage } from '@/lib/data/leadStorage';
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
@@ -23,10 +25,32 @@ interface QuickActionDrawerProps {
 
 export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDrawerProps) {
   const toast = useToast();
+  const { userName } = useRole();
+  const [teachers, setTeachers] = useState<{ id: string; name: string; role?: string }[]>([]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (state.isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+      if (typeof window !== 'undefined') {
+        const stored = getStoredTeachers();
+        setTeachers(stored.map((t) => ({ id: t.id, name: t.name, role: t.role })));
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [state.isOpen, onClose]);
 
   if (!state.isOpen) return null;
 
   const data = state.initialData || {};
+  const debtAmount = typeof data.amount === 'number' ? data.amount : (parseFloat(data.amount) || 0);
+  const debtAmountFormatted = data.amountFormatted || (debtAmount > 0 ? `${debtAmount} €` : (data.amount ? `${data.amount} €` : '—'));
 
   const handleAction = (actionName: string) => {
     // 1. Supabase persistence based on action type
@@ -35,28 +59,28 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
         id: `pay_${Date.now()}`,
         studentId: state.entityId || '1',
         studentName: data.name || 'Ученик',
-        courseName: 'Английский язык',
-        groupName: 'Основная группа',
-        amount: 150,
-        amountFormatted: '150 €',
+        courseName: data.course || data.courseName || 'Основной курс',
+        groupName: data.group || data.groupName || 'Основная группа',
+        amount: debtAmount,
+        amountFormatted: debtAmountFormatted !== '—' ? debtAmountFormatted : `${debtAmount} €`,
         paymentDate: new Date().toLocaleDateString('ru-RU'),
         periodLabel: 'Оплата задолженности',
         status: 'paid',
         paymentMethod: 'card',
         currency: 'EUR',
         paymentType: 'subscription',
-        recordedBy: 'Администратор',
+        recordedBy: userName || 'Администратор',
       });
-      settleOverduePayments(state.entityId || '1', 150);
+      settleOverduePayments(state.entityId || '1', debtAmount);
     } else if (state.type === 'trial') {
       saveLeadToStorage({
         id: state.entityId || `lead_${Date.now()}`,
         name: data.name || 'Лид',
-        contact: data.phone || '+123456789',
+        contact: data.phone || data.contact || '',
         status: 'trial_scheduled',
-        directionOrCourse: 'Английский',
-        source: 'Сайт',
-        assignedTo: 'Анастасия (Админ)',
+        directionOrCourse: data.course || data.directionOrCourse || 'Основной курс',
+        source: data.source || 'Сайт',
+        assignedTo: userName || 'Администратор',
         createdAt: new Date().toISOString(),
         interactions: [],
       });
@@ -65,7 +89,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
         id: state.entityId || `task_${Date.now()}`,
         title: `Отток: ${data.name || ''}`,
         taskType: 'Retention',
-        assignedTo: 'Анастасия (Админ)',
+        assignedTo: userName || 'Администратор',
         dueDate: new Date().toISOString().slice(0, 10),
         dueDateFormatted: new Date().toLocaleDateString('ru-RU'),
         status: 'done',
@@ -97,7 +121,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
             <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 flex items-center justify-between">
               <div>
                 <p className="text-xs text-rose-600 font-semibold uppercase tracking-wider mb-1">Сумма к оплате</p>
-                <p className="text-2xl font-black text-rose-700">150 €</p>
+                <p className="text-2xl font-black text-rose-700">{debtAmountFormatted}</p>
               </div>
               <CreditCard className="w-8 h-8 text-rose-300" />
             </div>
@@ -143,8 +167,15 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
               <div>
                 <label className="text-sm font-semibold text-slate-700 block mb-1.5">Преподаватель</label>
                 <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-50">
-                  <option>Мария Иванова (Английский)</option>
-                  <option>Дмитрий Соколов (Робототехника)</option>
+                  {teachers.length > 0 ? (
+                    teachers.map((t) => (
+                      <option key={t.id} value={t.name}>
+                        {t.name}{t.role ? ` (${t.role})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Преподаватель по назначению</option>
+                  )}
                 </select>
               </div>
               
@@ -193,7 +224,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <button 
                 onClick={() => handleAction('Звонок родителю')}
-                className="w-full bg-indigo-50 text-indigo-700 rounded-xl py-3 font-medium hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-blue-50 text-blue-700 rounded-xl py-3 font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
               >
                 <Phone size={18} /> Позвонить родителю
               </button>
@@ -278,7 +309,11 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
   };
 
   return (
-    <>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="quick-action-drawer-title"
+    >
       <div 
         className="fixed inset-0 z-[100] bg-slate-900/20 backdrop-blur-[2px] transition-opacity"
         onClick={onClose}
@@ -288,7 +323,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
         style={{ transform: state.isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         <div className="flex items-center justify-between p-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-800">
+          <h2 id="quick-action-drawer-title" className="text-base font-bold text-slate-800">
             {state.type === 'debt' ? 'Работа с долгом' :
              state.type === 'trial' ? 'Назначение пробного' :
              state.type === 'churn' ? 'Работа с оттоком' :
@@ -296,6 +331,7 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
           </h2>
           <button 
             onClick={onClose}
+            aria-label="Закрыть"
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
           >
             <X size={20} />
@@ -306,6 +342,6 @@ export function QuickActionDrawer({ state, onClose, onSuccess }: QuickActionDraw
           {renderContent()}
         </div>
       </div>
-    </>
+    </div>
   );
 }

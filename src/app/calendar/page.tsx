@@ -931,19 +931,19 @@ export default function CalendarPage() {
                           const isDraggingThis = draggedLessonId === lesson.id;
 
                           let cardClasses =
-                            'bg-blue-50/80 border-l-4 border-l-blue-500 border-blue-100 text-blue-900 hover:border-blue-300';
+                            'bg-blue-50/80 border border-blue-200 text-blue-900 hover:border-blue-300';
                           if (lesson.status === 'cancelled') {
                             cardClasses =
-                              'bg-slate-50 border-l-4 border-l-slate-400 opacity-60 text-slate-600 border-slate-200';
+                              'bg-slate-50 border border-slate-200 opacity-60 text-slate-600';
                           } else if (lesson.status === 'completed') {
                             cardClasses =
-                              'bg-emerald-50/80 border-l-4 border-l-emerald-500 border-emerald-100 text-emerald-900 hover:border-emerald-300';
+                              'bg-emerald-50/80 border border-emerald-200 text-emerald-900 hover:border-emerald-300';
                           } else if (lesson.status === 'pending') {
                             cardClasses =
-                              'bg-amber-50/90 border-l-4 border-l-amber-500 border-amber-300 text-amber-900 hover:border-amber-400';
+                              'bg-amber-50/90 border border-amber-300 text-amber-900 hover:border-amber-400';
                           } else if (lesson.status === 'rescheduled' || isTrial) {
                             cardClasses =
-                              'bg-amber-50/80 border-l-4 border-l-amber-500 border-amber-100 text-amber-900 hover:border-amber-300';
+                              'bg-amber-50/80 border border-amber-200 text-amber-900 hover:border-amber-300';
                           }
 
                           return (

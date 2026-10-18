@@ -277,12 +277,12 @@ export default function AnalyticsPage() {
       const studentsCount = uniqueStudentIds.size;
       const avgPerStudent = studentsCount > 0 ? Math.round(revNum / studentsCount) : 0;
 
-      const colors = ['bg-blue-600', 'bg-indigo-600', 'bg-teal-600', 'bg-purple-600'];
+      const colors = ['bg-blue-600', 'bg-sky-600', 'bg-teal-600', 'bg-slate-600'];
       const avatarColors = [
-        'from-blue-500 to-indigo-600',
-        'from-indigo-500 to-purple-600',
+        'from-blue-600 to-sky-700',
+        'from-sky-500 to-blue-600',
         'from-teal-500 to-emerald-600',
-        'from-purple-500 to-pink-600',
+        'from-slate-600 to-slate-700',
       ];
 
       return {

@@ -42,7 +42,7 @@ export function RoleSummaryCards({ roleCounts, onSelectRole }: RoleSummaryCardsP
                 </div>
                 <div className="flex items-center gap-1.5">
                   {def.isSystem && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                       <Lock className="h-2.5 w-2.5" />
                       Системная
                     </span>
@@ -53,7 +53,7 @@ export function RoleSummaryCards({ roleCounts, onSelectRole }: RoleSummaryCardsP
                 </div>
               </div>
 
-              <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                 {def.label}
               </h3>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-3">
@@ -65,7 +65,7 @@ export function RoleSummaryCards({ roleCounts, onSelectRole }: RoleSummaryCardsP
               <button
                 type="button"
                 onClick={() => onSelectRole?.(id)}
-                className="w-full flex items-center justify-between text-xs font-semibold text-indigo-600 hover:text-indigo-700 group-hover:translate-x-0.5 transition-all"
+                className="w-full flex items-center justify-between text-xs font-semibold text-blue-600 hover:text-blue-700 group-hover:translate-x-0.5 transition-all"
               >
                 <span>{id === 'owner' ? 'Подробнее о роли' : 'Настроить права'}</span>
                 <ChevronRight className="h-4 w-4" />

@@ -345,7 +345,7 @@ export default function SchoolProfilePage() {
         <div className="flex items-center gap-2 min-w-max pb-px">
           <button
             onClick={() => setActiveTab('general')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-none transition-all border-b-2 -mb-px ${
               activeTab === 'general'
                 ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
@@ -357,7 +357,7 @@ export default function SchoolProfilePage() {
 
           <button
             onClick={() => setActiveTab('contacts')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-none transition-all border-b-2 -mb-px ${
               activeTab === 'contacts'
                 ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
@@ -369,7 +369,7 @@ export default function SchoolProfilePage() {
 
           <button
             onClick={() => setActiveTab('hours')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-none transition-all border-b-2 -mb-px ${
               activeTab === 'hours'
                 ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
@@ -381,7 +381,7 @@ export default function SchoolProfilePage() {
 
           <button
             onClick={() => setActiveTab('banking')}
-            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-none transition-all border-b-2 -mb-px ${
               activeTab === 'banking'
                 ? 'border-blue-600 text-blue-600 bg-blue-50/50'
                 : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'

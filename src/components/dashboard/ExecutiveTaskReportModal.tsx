@@ -123,7 +123,13 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
         loadReport(meta.rate);
       }
     }).catch(() => {});
-  }, [isOpen]);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleSyncLiveRate = async () => {
     try {
@@ -188,18 +194,23 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl border border-purple-100">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="exec-report-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl border border-slate-200">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-purple-100 bg-gradient-to-r from-purple-50 via-indigo-50/40 to-white p-6">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 p-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-500/20">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
               <Shield className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-slate-900">Закрытый аудит руководителя</h2>
-                <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                <h2 id="exec-report-modal-title" className="text-lg font-black text-slate-900">Закрытый аудит руководителя</h2>
+                <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200">
                   Только Owner / Dev
                 </span>
               </div>
@@ -209,7 +220,9 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Закрыть"
             className="rounded-xl p-2 text-slate-400 hover:bg-white hover:text-slate-600 transition-colors shadow-2xs"
           >
             <X className="h-5 w-5" />
@@ -218,16 +231,16 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
 
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12 text-slate-400 gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-purple-600" />
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
             <p className="text-xs font-medium">Формирование управленческого аудита...</p>
           </div>
         ) : report ? (
           <div className="p-6 space-y-6">
             {/* Currency Bar (Base: EUR) */}
-            <div className="rounded-xl border border-purple-200 bg-gradient-to-r from-purple-50 via-indigo-50/50 to-purple-50 p-3 flex items-center justify-between gap-2.5 text-xs">
+            <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-3 flex items-center justify-between gap-2.5 text-xs">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-purple-950">💱 Валюта отчета: EUR (€)</span>
-                <span className="text-[11px] text-purple-800 bg-purple-100/80 px-2.5 py-0.5 rounded-full font-bold">
+                <span className="font-extrabold text-slate-900">Валюта отчета: EUR (€)</span>
+                <span className="text-[11px] text-blue-800 bg-blue-100/80 px-2.5 py-0.5 rounded-full font-bold">
                   Единый стандарт учета школы
                 </span>
               </div>
@@ -313,7 +326,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
             <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
               <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-purple-600" />
+                  <Users className="h-4 w-4 text-blue-600" />
                   Исполнительская дисциплина команды
                 </h4>
                 <span className="text-[11px] text-slate-400">Рейтинг своевременности</span>
@@ -369,7 +382,7 @@ export function ExecutiveTaskReportModal({ isOpen, onClose }: ExecutiveTaskRepor
                 type="button"
                 onClick={handleSendTelegram}
                 disabled={sendingTg}
-                className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-purple-500/20 hover:bg-purple-700 transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all disabled:opacity-50"
               >
                 <TelegramIcon className="h-4 w-4 fill-white" />
                 {sendingTg ? 'Отправка...' : 'Отправить в Telegram руководителю'}

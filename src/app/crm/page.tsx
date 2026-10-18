@@ -1336,12 +1336,12 @@ interface LeadCardProps {
 }
 
 function getCourseBorderClass(course?: string) {
-  if (!course) return 'border-l-4 border-l-blue-500';
+  if (!course) return 'border border-blue-200';
   const c = course.toLowerCase();
-  if (c.includes('англ') || c.includes('english')) return 'border-l-4 border-l-purple-500';
-  if (c.includes('робот') || c.includes('robot')) return 'border-l-4 border-l-amber-500';
-  if (c.includes('матем') || c.includes('math')) return 'border-l-4 border-l-emerald-500';
-  return 'border-l-4 border-l-blue-500';
+  if (c.includes('англ') || c.includes('english')) return 'border border-blue-200';
+  if (c.includes('робот') || c.includes('robot')) return 'border border-amber-200';
+  if (c.includes('матем') || c.includes('math')) return 'border border-emerald-200';
+  return 'border border-blue-200';
 }
 
 function LeadCard({

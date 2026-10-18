@@ -287,10 +287,10 @@ export function hydrateStudentGroups(student: FullStudentData): FullStudentData 
             id: grp.id,
             name: cleanGrpName,
             courseName: grp.courseName || cleanGrpName,
-            teacherName: grp.teacherName || 'Мария Иванова',
+            teacherName: grp.teacherName || 'Преподаватель не назначен',
             schedule: grp.schedule || 'Пн, Чт • 18:45–20:15',
             status: (grp.status as any) || 'active',
-            joinedAt: '01.09.2026',
+            joinedAt: student.createdAt ? new Date(student.createdAt).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU'),
           });
           seenIds.add(grpId);
           if (normGrpName) seenNames.add(normGrpName);

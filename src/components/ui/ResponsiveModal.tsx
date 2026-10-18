@@ -19,7 +19,7 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
   onClose,
   title,
   subtitle,
-  headerBg = 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white',
+  headerBg = 'bg-[#1565C0] text-white',
   children,
   footer,
 }) => {
@@ -30,30 +30,45 @@ export const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
   }, []);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => {
+      window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex flex-col md:items-center md:justify-center md:p-4 bg-slate-900/40 md:backdrop-blur-sm overflow-hidden">
+    <div
+      className="fixed inset-0 z-[100] flex flex-col md:items-center md:justify-center md:p-4 bg-slate-900/40 md:backdrop-blur-sm overflow-hidden"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       {/* КАРКАС:
           - Мобильный: w-full h-full bg-white flex flex-col overflow-hidden
           - Десктоп: max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl border border-slate-100
       */}
-      <div className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-2xl bg-white md:rounded-2xl md:shadow-2xl md:border md:border-slate-100 flex flex-col overflow-hidden animate-in fade-in-50 md:zoom-in-95 duration-200">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="responsive-modal-title"
+        className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-2xl bg-white md:rounded-2xl md:shadow-2xl md:border md:border-slate-100 flex flex-col overflow-hidden animate-in fade-in-50 md:zoom-in-95 duration-200"
+      >
         
-        {/* ШАПКА: компактный градиент */}
+        {/* ШАПКА: компактный заголовок */}
         <div className={`flex-shrink-0 px-4 md:px-6 py-3.5 ${headerBg} flex items-center justify-between pt-[max(12px,env(safe-area-inset-top))] md:pt-3.5`}>
           <div className="min-w-0 pr-3">
-            <h2 className="text-base md:text-lg font-bold truncate leading-tight">{title}</h2>
+            <h2 id="responsive-modal-title" className="text-base md:text-lg font-bold truncate leading-tight">{title}</h2>
             {subtitle && <p className="text-xs text-blue-100 truncate mt-0.5">{subtitle}</p>}
           </div>
           <button

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, CheckSquare, Calendar, Clock, User, Check, Users, Bot, Bell } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, CheckSquare, Calendar, Clock, User, Check, Users, Bot, Bell, AlertOctagon, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FullTaskData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
+import { FullTaskData, FullLeadData, FullStudentData, INITIAL_STUDENTS, INITIAL_LEADS } from '@/lib/data/mockData';
 import { getStoredStudents } from '@/lib/data/studentStorage';
 import { getStoredLeads } from '@/lib/data/leadStorage';
 import { createUnifiedTask } from '@/lib/data/taskManager';
@@ -55,7 +55,7 @@ export function CreateTaskModal({
   const { role, userName } = useRole();
   const [title, setTitle] = useState('');
   const [taskType, setTaskType] = useState<FullTaskData['taskType']>('Retention');
-  const [assignedTo, setAssignedTo] = useState(() => userName || 'Елена Менеджер');
+  const [assignedTo, setAssignedTo] = useState(() => userName || 'Администратор');
   const [priority, setPriority] = useState<FullTaskData['priority']>('medium');
 
   const [dueDate, setDueDate] = useState(() => {
@@ -89,12 +89,50 @@ export function CreateTaskModal({
 
   const toast = useToast();
 
-  const allLeads = React.useMemo(() => {
-    return typeof window !== 'undefined' ? getStoredLeads() : INITIAL_LEADS;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const [allLeads, setAllLeads] = useState<FullLeadData[]>(() =>
+    typeof window !== 'undefined' ? getStoredLeads() : INITIAL_LEADS
+  );
+  const [allStudents, setAllStudents] = useState<FullStudentData[]>(() =>
+    typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS
+  );
+
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined') {
+      setAllLeads(getStoredLeads());
+      setAllStudents(getStoredStudents());
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleLeadsChange = () => {
+      if (typeof window !== 'undefined') setAllLeads(getStoredLeads());
+    };
+    const handleStudentsChange = () => {
+      if (typeof window !== 'undefined') setAllStudents(getStoredStudents());
+    };
+    window.addEventListener('crm-leads-changed', handleLeadsChange);
+    window.addEventListener('crm-students-changed', handleStudentsChange);
+    return () => {
+      window.removeEventListener('crm-leads-changed', handleLeadsChange);
+      window.removeEventListener('crm-students-changed', handleStudentsChange);
+    };
   }, []);
 
-  const contactTelegram = React.useMemo(() => {
-    const allStudents = typeof window !== 'undefined' ? getStoredStudents() : INITIAL_STUDENTS;
+  const contactTelegram = useMemo(() => {
     if (studentScope) {
       const st = allStudents.find((s) => s.id === studentScope.id);
       return st?.telegram || (st as any)?.telegramChatId || '';
@@ -197,27 +235,41 @@ export function CreateTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-task-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl border border-slate-200">
         <div className="flex items-center justify-between border-b border-slate-100 p-5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
               <CheckSquare className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Новая задача</h2>
+              <h2 id="create-task-modal-title" className="text-base font-bold text-slate-900">Новая задача</h2>
               <p className="text-xs text-slate-500">Поручение команде с привязкой к клиенту</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-slate-700">Что нужно сделать? *</label>
+            <label htmlFor="task-title" className="text-xs font-medium text-slate-700">Что нужно сделать? *</label>
             <input
+              id="task-title"
               type="text"
               required
               value={title}
@@ -229,51 +281,55 @@ export function CreateTaskModal({
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-slate-700 block mb-1">Приоритет задачи</label>
+              <span className="text-xs font-medium text-slate-700 block mb-1">Приоритет задачи</span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setPriority('high')}
                   className={cn(
-                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    'flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
                     priority === 'high'
                       ? 'bg-rose-100 text-rose-800 border-rose-300 ring-2 ring-rose-400/20'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   )}
                 >
-                  🚨 Срочно (Высокий)
+                  <AlertOctagon className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                  <span>Срочно (Высокий)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPriority('medium')}
                   className={cn(
-                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    'flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
                     priority === 'medium'
                       ? 'bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400/20'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   )}
                 >
-                  ⚡ Средний
+                  <Zap className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span>Средний</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPriority('low')}
                   className={cn(
-                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
+                    'flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer text-center',
                     priority === 'low'
                       ? 'bg-slate-200 text-slate-800 border-slate-300 ring-2 ring-slate-400/20'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   )}
                 >
-                  ☕ Низкий
+                  <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <span>Низкий</span>
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-700">Тип задачи</label>
+                <label htmlFor="task-type" className="text-xs font-medium text-slate-700">Тип задачи</label>
                 <select
+                  id="task-type"
                   value={taskType}
                   onChange={(e) => setTaskType(e.target.value as FullTaskData['taskType'])}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-hidden bg-white"
@@ -286,16 +342,17 @@ export function CreateTaskModal({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-700">Ответственный сотрудник</label>
+                <label htmlFor="task-assigned-to" className="text-xs font-medium text-slate-700">Ответственный сотрудник</label>
                 <select
+                  id="task-assigned-to"
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-hidden bg-white"
                 >
-                  <option value="Елена Менеджер">Елена Менеджер</option>
-                  <option value="Александр Руководитель">Александр Руководитель</option>
-                  <option value="Мария Иванова">Мария Иванова (Преподаватель)</option>
-                  {userName && !['Елена Менеджер', 'Александр Руководитель', 'Мария Иванова'].includes(userName) && (
+                  <option value="Администратор">Администратор</option>
+                  <option value="Руководитель школы">Руководитель школы</option>
+                  <option value="Преподаватель">Преподаватель</option>
+                  {userName && !['Администратор', 'Руководитель школы', 'Преподаватель'].includes(userName) && (
                     <option value={userName}>{userName} (Я)</option>
                   )}
                 </select>
@@ -311,8 +368,9 @@ export function CreateTaskModal({
                 required
               />
               <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">Время</label>
+                <label htmlFor="task-due-time" className="text-xs font-medium text-slate-700 block mb-1">Время</label>
                 <input
+                  id="task-due-time"
                   type="time"
                   value={dueTime}
                   onChange={(e) => setDueTime(e.target.value)}
@@ -439,34 +497,43 @@ export function CreateTaskModal({
               </div>
 
               {relatedEntity === 'student' && (
-                <select
-                  value={selectedEntityId}
-                  onChange={(e) => setSelectedEntityId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-                >
-                  {INITIAL_STUDENTS.map((s) => (
-                    <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.groups[0]?.name || 'Ученик'})</option>
-                  ))}
-                </select>
+                <div>
+                  <label htmlFor="task-related-student" className="sr-only">Выбрать ученика</label>
+                  <select
+                    id="task-related-student"
+                    value={selectedEntityId}
+                    onChange={(e) => setSelectedEntityId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                  >
+                    {allStudents.map((s) => (
+                      <option key={s.id} value={s.id}>{s.firstName} {s.lastName} ({s.groups[0]?.name || 'Ученик'})</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               {relatedEntity === 'lead' && (
-                <select
-                  value={selectedEntityId}
-                  onChange={(e) => setSelectedEntityId(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
-                >
-                  {allLeads.map((l) => (
-                    <option key={l.id} value={l.id}>{l.name} — {l.directionOrCourse}</option>
-                  ))}
-                </select>
+                <div>
+                  <label htmlFor="task-related-lead" className="sr-only">Выбрать лида</label>
+                  <select
+                    id="task-related-lead"
+                    value={selectedEntityId}
+                    onChange={(e) => setSelectedEntityId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:outline-none"
+                  >
+                    {allLeads.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name} — {l.directionOrCourse}</option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium text-slate-700">Подробное описание</label>
+            <label htmlFor="task-description" className="text-xs font-medium text-slate-700">Подробное описание</label>
             <textarea
+              id="task-description"
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -483,8 +550,9 @@ export function CreateTaskModal({
             </div>
 
             <div className="space-y-2 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
+              <label htmlFor="task-notify-admin" className="flex items-center gap-2 cursor-pointer select-none text-slate-700 font-medium">
                 <input
+                  id="task-notify-admin"
                   type="checkbox"
                   checked={notifyAdminInTelegram}
                   onChange={(e) => setNotifyAdminInTelegram(e.target.checked)}
@@ -494,12 +562,14 @@ export function CreateTaskModal({
               </label>
 
               <label
+                htmlFor="task-notify-contact"
                 className={cn(
                   'flex items-center gap-2 select-none font-medium',
                   contactTelegram ? 'cursor-pointer text-slate-700' : 'cursor-not-allowed text-slate-400'
                 )}
               >
                 <input
+                  id="task-notify-contact"
                   type="checkbox"
                   disabled={!contactTelegram}
                   checked={notifyContactInTelegram && Boolean(contactTelegram)}

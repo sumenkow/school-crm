@@ -7,6 +7,7 @@ import { FullLeadData, INITIAL_LEADS, splitFullName } from '@/lib/data/mockData'
 import { saveTaskToStorage } from '@/lib/data/taskStorage';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/context/ToastContext';
+import { useRole } from '@/context/RoleContext';
 
 interface CreateLeadModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ const SOURCE_OPTIONS = [
 ];
 
 export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalProps) {
+  const { userName } = useRole();
   const [mounted, setMounted] = useState(false);
   const [courses, setCourses] = useState<CourseChip[]>(FALLBACK_COURSES);
 
@@ -73,11 +75,27 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
   const [directionOrCourse, setDirectionOrCourse] = useState(FALLBACK_COURSES[0].name);
   const [comment, setComment] = useState('');
   const [source, setSource] = useState(SOURCE_OPTIONS[0]);
-  const [assignedTo, setAssignedTo] = useState('Елена Менеджер');
+  const [assignedTo, setAssignedTo] = useState(() => userName || 'Администратор');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
 
   // Load courses from API
   useEffect(() => {
@@ -217,7 +235,7 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
         dueDateFormatted: `Сегодня в ${timeFormatted} (+2ч)`,
         status: 'open',
         priority: 'high',
-        assignedTo: assignedTo || 'Елена Менеджер',
+        assignedTo: assignedTo || userName || 'Администратор',
         description: `Связаться по новой заявке (${directionOrCourse}). Телефон: ${contact}${telegram ? ' / ' + telegram : ''}. Примечание: ${comment || '—'}`,
         isOverdue: false,
       });
@@ -234,6 +252,9 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-lead-modal-title"
       className="fixed inset-0 z-[120] flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -250,15 +271,15 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
               <UserPlus className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900 leading-tight">Новый лид / Заявка</h2>
+              <h2 id="create-lead-modal-title" className="text-sm font-bold text-slate-900 leading-tight">Новый лид / Заявка</h2>
               <p className="text-[10px] text-slate-500">Быстрая фиксация обращения, подбор курса и авто-задача</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             aria-label="Закрыть"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -521,10 +542,12 @@ export function CreateLeadModal({ isOpen, onClose, onCreated }: CreateLeadModalP
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}
+                  aria-label="Ответственный"
                   className="w-full h-[34px] rounded-xl border border-slate-200 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="Елена Менеджер">Елена Менеджер</option>
-                  <option value="Алексей Администратор">Алексей Администратор</option>
+                  {Array.from(new Set([userName || 'Администратор', 'Администратор', 'Менеджер по набору'])).filter(Boolean).map((person) => (
+                    <option key={person} value={person}>{person}</option>
+                  ))}
                 </select>
               </div>
             </div>

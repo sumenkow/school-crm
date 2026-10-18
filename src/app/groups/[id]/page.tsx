@@ -387,7 +387,7 @@ export default function GroupDetailsPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-600 font-bold text-white text-2xl shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 font-bold text-white text-2xl shadow-sm">
               <GraduationCap className="h-8 w-8" />
             </div>
             <div>

@@ -9,7 +9,7 @@ export interface MobileModalWrapperProps {
   onClose: () => void;
   title: string;
   subtitle?: string;
-  headerBg?: string; // e.g., 'bg-linear-to-r from-blue-600 to-indigo-700 text-white' or 'bg-white text-slate-900'
+  headerBg?: string; // e.g., 'bg-[#1565C0] text-white' or 'bg-white text-slate-900'
   children: React.ReactNode;
   footer: React.ReactNode;
 }
@@ -30,24 +30,34 @@ export const MobileModalWrapper: React.FC<MobileModalWrapperProps> = ({
   }, []);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
     if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
     return () => {
+      window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex flex-col bg-white h-[100dvh] w-full overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="mobile-modal-title"
+      className="fixed inset-0 z-[120] flex flex-col bg-white h-[100dvh] w-full overflow-hidden"
+    >
       {/* 1. Safe Fixed Header */}
       <div className={`flex-shrink-0 px-4 py-3 flex items-center justify-between border-b border-slate-100 ${headerBg} pt-[max(12px,env(safe-area-inset-top))]`}>
         <div className="min-w-0 pr-3">
-          <h2 className="text-base font-bold truncate leading-tight">{title}</h2>
+          <h2 id="mobile-modal-title" className="text-base font-bold truncate leading-tight">{title}</h2>
           {subtitle && <p className="text-xs opacity-80 truncate mt-0.5">{subtitle}</p>}
         </div>
         <button

@@ -362,9 +362,9 @@ function TeamCockpitContent() {
             type="button"
             onClick={() => handleTabChange('staff')}
             className={cn(
-              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              'px-4 py-2.5 text-xs font-semibold rounded-none transition-colors border-b-2 -mb-px',
               activeTab === 'staff'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
+                ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             )}
           >
@@ -375,9 +375,9 @@ function TeamCockpitContent() {
             type="button"
             onClick={() => handleTabChange('roles')}
             className={cn(
-              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              'px-4 py-2.5 text-xs font-semibold rounded-none transition-colors border-b-2 -mb-px',
               activeTab === 'roles'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
+                ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             )}
           >
@@ -388,9 +388,9 @@ function TeamCockpitContent() {
             type="button"
             onClick={() => handleTabChange('security')}
             className={cn(
-              'px-4 py-2.5 text-xs font-semibold rounded-t-lg transition-colors border-b-2',
+              'px-4 py-2.5 text-xs font-semibold rounded-none transition-colors border-b-2 -mb-px',
               activeTab === 'security'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
+                ? 'border-blue-600 text-blue-600 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
             )}
           >

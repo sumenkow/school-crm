@@ -1033,7 +1033,7 @@ export default function TelegramIntegrationsPage() {
                     disabled={isSendingTest}
                     className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-blue-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                   >
-                    <Send className={`h-3.5 w-3.5 ${isSendingTest ? 'animate-bounce' : ''}`} />
+                    <Send className={`h-3.5 w-3.5 ${isSendingTest ? 'animate-pulse' : ''}`} />
                     {isSendingTest ? 'Отправка в Telegram...' : 'Отправить тестовое сообщение'}
                   </button>
 

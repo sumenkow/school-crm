@@ -1165,7 +1165,7 @@ export function generateLessonsForGroupSchedule(params: GenerateGroupLessonsPara
           groupName: params.groupName,
           courseName: params.courseName,
           teacherId: params.teacherId || 't1',
-          teacherName: params.teacherName || 'Мария Иванова',
+          teacherName: params.teacherName || 'Преподаватель не назначен',
           date: dateISO,
           dateFormatted,
           dayOfWeek: crmDay,

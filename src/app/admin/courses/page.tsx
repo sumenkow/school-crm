@@ -620,17 +620,17 @@ export default function AdminCoursesPage() {
                           )}
                         </td>
 
-                        {/* 9. Статус (🟢 Активен / 🔴 Неактивен) */}
+                        {/* 9. Статус (Активен / Неактивен) */}
                         <td className="py-3.5 px-3 whitespace-nowrap">
                           {direction.status === 'active' ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                              🟢 Активен
+                              Активен
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                              🔴 Неактивен
+                              Неактивен
                             </span>
                           )}
                         </td>
@@ -757,11 +757,11 @@ export default function AdminCoursesPage() {
                     <div className="flex items-center gap-1.5">
                       {direction.status === 'active' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                          🟢 Активен
+                          Активен
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700">
-                          🔴 Неактивен
+                          Неактивен
                         </span>
                       )}
                     </div>
@@ -769,7 +769,7 @@ export default function AdminCoursesPage() {
 
                   {/* Title & Description */}
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
                       {direction.name}
                     </h3>
                     {direction.description && (

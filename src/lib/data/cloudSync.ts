@@ -120,7 +120,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
           teacherName: grp.teacher_name || 'Преподаватель',
           schedule: grp.schedule_rule?.text || grp.schedule_rule || 'По расписанию',
           status: grp.status || 'active',
-          joinedAt: en.joined_at || '01.09.2026',
+          joinedAt: en.joined_at || (s.created_at ? new Date(s.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU')),
         };
       });
 
@@ -129,12 +129,34 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
         .filter((p: any) => p.student_id === s.id)
         .map((p: any) => ({
           id: p.id,
-          date: p.payment_date ? new Date(p.payment_date).toLocaleDateString('ru-RU') : '01.09.2026',
+          date: p.payment_date ? new Date(p.payment_date).toLocaleDateString('ru-RU') : (s.created_at ? new Date(s.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU')),
           amount: `${(Number(p.amount) || 0).toLocaleString('ru-RU')} €`,
           period: p.period_label || 'Оплата курса',
           method: p.payment_method === 'card' ? 'Банковская карта' : p.payment_method === 'cash' ? 'Наличные' : 'Банковский перевод',
           status: (p.status || 'paid') as 'paid' | 'expected' | 'overdue',
         }));
+
+      // Dynamically compute attendance stats for student
+      const studentAtt = (attendance || []).filter((a: any) => a.student_id === s.id);
+      const totalLessons = studentAtt.length;
+      const presentCount = studentAtt.filter((a: any) => a.status === 'present').length;
+      const absentCount = studentAtt.filter((a: any) => a.status === 'absent').length;
+      const rescheduledCount = studentAtt.filter((a: any) => a.status === 'rescheduled').length;
+      const attendanceRate = totalLessons > 0 ? `${Math.round((presentCount / totalLessons) * 100)}%` : '—';
+      const history = studentAtt.map((a: any) => {
+        const les = (lessons || []).find((l: any) => l.id === a.lesson_id);
+        const grp = les ? (groups || []).find((g: any) => g.id === les.group_id) : undefined;
+        const tch = les ? (teachers || []).find((t: any) => t.id === les.teacher_id) : undefined;
+        return {
+          date: les?.lesson_date ? new Date(les.lesson_date).toLocaleDateString('ru-RU') : '',
+          groupName: grp?.name || 'Группа',
+          topic: les?.topic || les?.title || 'Урок',
+          status: (a.status || 'present') as any,
+          notes: a.notes || undefined,
+          teacherName: tch ? `${tch.first_name || ''} ${tch.last_name || ''}`.trim() : (grp?.teacher_name || undefined),
+          time: les?.start_time ? les.start_time.slice(0, 5) : undefined,
+        };
+      });
 
       return normalizeStudent({
         id: s.id,
@@ -151,17 +173,17 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
         parents: studentParentsList,
         groups: studentGroupList,
         attendanceStats: {
-          totalLessons: 16,
-          presentCount: 15,
-          absentCount: 1,
-          rescheduledCount: 0,
-          attendanceRate: '94%',
-          history: [],
+          totalLessons,
+          presentCount,
+          absentCount,
+          rescheduledCount,
+          attendanceRate,
+          history,
         },
         finance: {
           deposit: {
-            balance: 120,
-            balanceFormatted: '120 €',
+            balance: 0,
+            balanceFormatted: '0 €',
             currency: 'EUR',
             pricePerLesson: 12,
             pricePerLessonFormatted: '12 €',
@@ -218,7 +240,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       directionOrCourse: l.direction_or_course,
       level: l.level,
       source: l.source || 'Прямая заявка',
-      assignedTo: 'Елена Менеджер',
+      assignedTo: l.assigned_to_name || l.assigned_to || '',
       status: l.status || 'new',
       trialDate: l.trial_date,
       offerAmount: l.offer_amount,
@@ -306,13 +328,15 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       const grpEnrollments = (enrollments || []).filter((en: any) => en.group_id === g.id && en.status !== 'dropped');
       const grpStudents = grpEnrollments.map((en: any) => {
         const st = (students || []).find((s: any) => s.id === en.student_id);
+        const stAtt = (attendance || []).filter((a: any) => a.student_id === en.student_id);
+        const stRate = stAtt.length > 0 ? `${Math.round((stAtt.filter((a: any) => a.status === 'present').length / stAtt.length) * 100)}%` : '—';
         return {
           id: en.student_id,
           name: st ? `${st.first_name} ${st.last_name}` : 'Ученик',
           status: 'active' as const,
-          attendanceRate: '100%',
+          attendanceRate: stRate,
           parentPhone: st?.phone || '',
-          joinedAt: en.joined_at || '01.09.2026',
+          joinedAt: en.joined_at || (st?.created_at ? new Date(st.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU')),
         };
       });
 
@@ -322,12 +346,12 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
         courseId: g.course_id || 'c1',
         courseName: g.course_name || 'Основной курс',
         teacherId: g.teacher_id || 't1',
-        teacherName: g.teacher_name || 'Мария Иванова',
+        teacherName: g.teacher_name || '',
         schedule: g.schedule_rule?.text || g.schedule_rule || 'Пн, Чт • 18:45–20:15',
         room: g.room || 'Онлайн (Zoom)',
         capacity: g.capacity || 8,
         status: (g.status as any) || 'active',
-        startDate: g.start_date || '01.09.2026',
+        startDate: g.start_date || (g.created_at ? new Date(g.created_at).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU')),
         students: grpStudents,
         recentLessons: [],
       };
@@ -425,7 +449,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
         leadId: i.lead_id,
         occurredAt: isoTime
           ? `${new Date(isoTime).toLocaleDateString('ru-RU')}, ${new Date(isoTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-          : '01.09.2026, 12:00',
+          : `${new Date().toLocaleDateString('ru-RU')}, ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
         createdAt: isoTime || new Date().toISOString(),
         channel: (i.channel as any) || 'other',
         type: (i.type as any) || 'follow_up',
@@ -470,7 +494,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       const tch = (teachers || []).find((t: any) => t.id === ls.teacher_id);
       const teacherName = tch
         ? `${tch.first_name || ''} ${tch.last_name || ''}`.trim()
-        : grp?.teacher_name || 'Мария Иванова';
+        : grp?.teacher_name || '';
 
       // Find attendance records for this lesson
       const lessonAtt = (attendance || []).filter((a: any) => a.lesson_id === ls.id);
@@ -514,7 +538,7 @@ export async function hydrateAllDataFromCloud(): Promise<boolean> {
       return {
         id: ls.id,
         groupId: ls.group_id || undefined,
-        groupName: grp?.name || 'English B1 Teens',
+        groupName: grp?.name || 'Группа',
         courseId: grp?.course_id || 'c1',
         courseName: grp?.course_name || 'Английский язык',
         teacherId: ls.teacher_id || 't1',

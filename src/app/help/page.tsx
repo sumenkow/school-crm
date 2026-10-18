@@ -300,13 +300,13 @@ export default function HelpCenterPage() {
 
               {/* VISUAL ILLUSTRATION MOCKUPS */}
               {sec.visualType === 'funnel' && (
-                <div className="rounded-2xl border border-purple-200 bg-gradient-to-r from-purple-50/50 to-indigo-50/50 p-5 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-purple-950">
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-5 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-blue-950">
                     <span className="flex items-center gap-1.5">
-                      <Layers className="h-4 w-4 text-purple-600" />
+                      <Layers className="h-4 w-4 text-blue-600" />
                       Иллюстрация процесса: Жизненный цикл сделки в CRM
                     </span>
-                    <span className="text-[10px] text-purple-700 bg-white px-2 py-0.5 rounded-full border border-purple-200">
+                    <span className="text-[10px] text-blue-700 bg-white px-2 py-0.5 rounded-full border border-blue-200">
                       Конверсия ~35.7%
                     </span>
                   </div>

@@ -273,7 +273,7 @@ export default function DatabaseBackupPage() {
               className="w-full md-btn md-btn-filled flex items-center justify-center gap-2 text-sm font-semibold"
               style={{ height: '46px' }}
             >
-              <Download size={18} className={downloading ? 'animate-bounce' : ''} />
+              <Download size={18} className={downloading ? 'animate-pulse' : ''} />
               {downloading ? 'Формирование файла...' : 'Скачать резервную копию (Excel)'}
             </button>
           </div>

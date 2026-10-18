@@ -221,7 +221,7 @@ function buildEmailHtml(payload: NotificationPayload, recipient: RecipientData):
         Обращаем ваше внимание, что занятие группы <strong>${groupName}</strong> для ученика <strong>${recipient.studentName}</strong> перенесено.
       </p>
 
-      <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-left: 5px solid #d97706; border-radius: 10px; padding: 18px; margin-bottom: 20px;">
+      <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
         <table width="100%" border="0" cellspacing="0" cellpadding="4">
           <tr>
             <td width="35%" style="font-size: 13px; color: #92400e; font-weight: 600;">Прежнее время:</td>
@@ -319,7 +319,7 @@ function buildEmailHtml(payload: NotificationPayload, recipient: RecipientData):
     subject = `📚 Домашнее задание: ${groupName} (${lessonDate})`;
     title = '📚 Домашнее задание к следующему уроку';
     badgeText = 'Домашнее задание';
-    bannerColor = 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)';
+    bannerColor = 'linear-gradient(135deg, #1565C0 0%, #1e40af 100%)';
 
     mainContentHtml = `
       <p style="margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #0f172a;">${parentGreeting}</p>
@@ -327,11 +327,11 @@ function buildEmailHtml(payload: NotificationPayload, recipient: RecipientData):
         Направляем домашнее задание для ученика <strong>${recipient.studentName}</strong> по группе <strong>${groupName}</strong>.
       </p>
 
-      <div style="background-color: #eef2ff; border: 1px solid #c7d2fe; border-left: 5px solid #4f46e5; border-radius: 10px; padding: 18px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #3730a3; margin-bottom: 8px;">
+      <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #1e40af; margin-bottom: 8px;">
           📖 Текст домашнего задания:
         </div>
-        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1e1b4b; white-space: pre-line; font-weight: 500;">
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-line; font-weight: 500;">
           ${homework || 'Выполнить задания по пройденной теме.'}
         </p>
         ${deadline ? `

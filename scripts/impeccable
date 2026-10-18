@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+if command -v impeccable >/dev/null 2>&1; then
+  exec impeccable "$@"
+elif [ -f "$HOME/.impeccable/bin/0.1.15/impeccable" ]; then
+  exec "$HOME/.impeccable/bin/0.1.15/impeccable" "$@"
+else
+  FOUND=$(find "$HOME/.impeccable/bin" -type f -name impeccable 2>/dev/null | head -n 1)
+  if [ -n "$FOUND" ]; then
+    exec "$FOUND" "$@"
+  fi
+  echo "impeccable not found" >&2
+  exit 1
+fi

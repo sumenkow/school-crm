@@ -120,7 +120,7 @@ function generateHomeworkEmailHtml(params: {
               </table>
 
               <!-- Homework Highlight Box -->
-              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
                 <div style="font-size: 14px; font-weight: 700; color: #1e3a8a; margin-bottom: 10px;">
                   📝 Задание на дом:
                 </div>
