@@ -376,8 +376,6 @@ export function ScheduleLessonModal({
       .slice(0, 10);
   }, [allStudents, studentSearchQuery]);
 
-  if (!isOpen) return null;
-
   const handleGroupChange = (newGroupId: string) => {
     setGroupId(newGroupId);
     applyGroupDefaults(newGroupId);
@@ -761,6 +759,8 @@ export function ScheduleLessonModal({
       </button>
     </div>
   );
+
+  if (!isOpen) return null;
 
   return (
     <>

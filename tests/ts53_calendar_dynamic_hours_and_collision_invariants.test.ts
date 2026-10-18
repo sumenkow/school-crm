@@ -915,6 +915,22 @@ export async function runSuite33(): Promise<{ passed: number; failed: number }> 
     );
   });
 
+  await test('[T5.06] ScheduleLessonModal React Rules of Hooks: no conditional returns before hooks', () => {
+    const modalPath = path.join(rootDir, 'src/components/calendar/ScheduleLessonModal.tsx');
+    const content = fs.readFileSync(modalPath, 'utf8');
+    const earlyReturnMatch = content.match(/if\s*\(!isOpen\)\s*return\s*null;/);
+    assert.ok(earlyReturnMatch, 'ScheduleLessonModal should have early return for !isOpen');
+
+    const returnIndex = content.indexOf(earlyReturnMatch[0]);
+    const afterReturn = content.slice(returnIndex);
+    const hookAfterReturn = afterReturn.match(/\buse(State|Effect|Memo|Callback|Ref|Context|Id)\b/);
+    assert.strictEqual(
+      hookAfterReturn,
+      null,
+      `No React hooks may appear after "if (!isOpen) return null;". Found: ${hookAfterReturn?.[0]}`
+    );
+  });
+
   // Summary
   console.log('\n===============================================================');
   console.log(`   ✅ ALL SUITE 33 (TS-53) CALENDAR INVARIANTS PASSED (${passed} passed)`);
