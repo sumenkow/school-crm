@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { RoleProvider } from "@/context/RoleContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { AppShell } from "@/components/layout/AppShell";
 
-const roboto = Roboto({
-  variable: "--font-roboto",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin", "cyrillic"],
-  weight: ["300", "400", "500", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -41,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${roboto.variable}`}>
+    <html lang="ru" className={`${manrope.variable}`}>
       <body className="flex flex-col" style={{ backgroundColor: 'var(--md-background)', color: 'var(--md-on-background)' }}>
         <RoleProvider>
           <LanguageProvider>

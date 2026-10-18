@@ -68,7 +68,7 @@ export function HeaderGreeting({
           <button
             type="button"
             onClick={onOpenCreateLead}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-2xs transition-colors cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold btn-primary-tactile rounded-lg shadow-2xs transition-all cursor-pointer"
           >
             <span>+ Новый лид</span>
           </button>
@@ -78,7 +78,7 @@ export function HeaderGreeting({
           <button
             type="button"
             onClick={onOpenReport}
-            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200/90 rounded-lg hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200/90 rounded-lg hover:bg-slate-50 hover:border-slate-300 shadow-2xs transition-colors cursor-pointer"
             title="Отчет по итогам дня"
           >
             <span>Итоги дня</span>
@@ -89,7 +89,7 @@ export function HeaderGreeting({
           <button
             type="button"
             onClick={onOpenExecutiveReport}
-            className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 shadow-2xs transition-colors cursor-pointer"
+            className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50/80 border border-blue-200/80 rounded-lg hover:bg-blue-100 shadow-2xs transition-colors cursor-pointer"
             title="Управленческий отчет"
           >
             <span>Отчет руководителя</span>

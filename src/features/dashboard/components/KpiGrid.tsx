@@ -171,11 +171,14 @@ export function KpiGrid({
       {/* 1. Выручка за месяц */}
       <div
         onClick={() => router.push('/finance')}
-        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100/60">
               <CreditCard className="w-3.5 h-3.5" />
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Выручка за месяц</span>
@@ -184,7 +187,7 @@ export function KpiGrid({
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900 tracking-tight">
+          <span className="text-xl font-bold text-slate-900 tracking-tight headline-tight">
             {financeData.paidEur.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </span>
           {/* Real Sparkline SVG */}
@@ -204,16 +207,16 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80">
           {financeData.deltaPercent !== null ? (
             <span className={cn(
               'inline-flex items-center gap-0.5 text-[11px] font-medium px-2 py-0.5 rounded-full',
-              financeData.deltaPercent > 0 ? 'text-emerald-600 bg-emerald-50' : financeData.deltaPercent < 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-600 bg-slate-100'
+              financeData.deltaPercent > 0 ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/60' : financeData.deltaPercent < 0 ? 'text-rose-700 bg-rose-50 border border-rose-200/60' : 'text-slate-600 bg-slate-100'
             )}>
               {financeData.deltaPercent > 0 ? `↑ +${financeData.deltaPercent}%` : financeData.deltaPercent < 0 ? `↓ ${Math.abs(financeData.deltaPercent)}%` : '0%'}
             </span>
           ) : (
-            <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full">
+            <span className="inline-flex items-center text-[11px] font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200/50">
               текущий месяц
             </span>
           )}
@@ -226,11 +229,14 @@ export function KpiGrid({
       {/* 2. Новые ученики */}
       <div
         onClick={() => router.push('/students')}
-        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/60">
               <UserPlus className="w-3.5 h-3.5" />
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Новые ученики</span>
@@ -239,7 +245,7 @@ export function KpiGrid({
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900">{studentsData.newMonth}</span>
+          <span className="text-xl font-bold text-slate-900 headline-tight">{studentsData.newMonth}</span>
           {/* Real weekly bar chart */}
           <div className="flex items-end gap-1 h-5 shrink-0">
             {studentsData.weekBars.map((val, idx) => {
@@ -258,8 +264,8 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
             +{studentsData.newWeek} за нед.
           </span>
           <span className="text-[11px] text-slate-400">{studentsData.totalActive} в базе</span>
@@ -269,11 +275,14 @@ export function KpiGrid({
       {/* 3. Конверсия лидов */}
       <div
         onClick={() => router.push('/crm')}
-        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0 border border-sky-100/60">
               <Filter className="w-3.5 h-3.5" />
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Конверсия лидов</span>
@@ -282,7 +291,7 @@ export function KpiGrid({
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900">{leadsData.conversion}%</span>
+          <span className="text-xl font-bold text-slate-900 headline-tight">{leadsData.conversion}%</span>
           {/* Real Stage Distribution Bars */}
           <div className="flex items-end gap-1 h-5 shrink-0">
             {leadsData.stageBars.map((val, idx) => {
@@ -292,7 +301,7 @@ export function KpiGrid({
                   key={idx}
                   className={cn(
                     'w-1.5 rounded-t-sm',
-                    idx === 4 ? 'bg-indigo-600' : 'bg-indigo-200'
+                    idx === 4 ? 'bg-sky-600' : 'bg-sky-200'
                   )}
                   style={{ height: `${barHeight}px` }}
                 />
@@ -301,8 +310,8 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50 gap-1">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full shrink-0">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80 gap-1">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-700 bg-sky-50 border border-sky-200/60 px-2 py-0.5 rounded-full shrink-0">
             {leadsData.total} → {leadsData.paid}
           </span>
           <span className="text-[11px] text-slate-400 truncate">от новых к оплате</span>
@@ -312,11 +321,14 @@ export function KpiGrid({
       {/* 4. Продления */}
       <div
         onClick={() => router.push('/students')}
-        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 border border-teal-100/60">
               <RefreshCw className="w-3.5 h-3.5" />
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Продления</span>
@@ -325,7 +337,7 @@ export function KpiGrid({
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900">{renewalsData.ratePercent}%</span>
+          <span className="text-xl font-bold text-slate-900 headline-tight">{renewalsData.ratePercent}%</span>
           {/* Donut Mini SVG */}
           <div className="w-6 h-6 shrink-0 relative flex items-center justify-center">
             <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
@@ -349,8 +361,8 @@ export function KpiGrid({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-teal-700 bg-teal-50 border border-teal-200/60 px-2 py-0.5 rounded-full">
             {renewalsData.ratePercent}%
           </span>
           <span className="text-[11px] text-slate-400">{renewalsData.renewedCount} из {renewalsData.totalCount}</span>
@@ -360,11 +372,14 @@ export function KpiGrid({
       {/* 5. Дебиторская задолженность */}
       <div
         onClick={() => router.push('/finance?tab=debts')}
-        className="bg-white rounded-2xl p-3.5 border border-slate-100 shadow-sm flex flex-col justify-between h-[115px] cursor-pointer hover:shadow-md transition-all group"
+        className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-2xs flex flex-col justify-between h-[118px] cursor-pointer hover:shadow-md hover:border-slate-300 transition-all duration-200 group relative"
+        style={{
+          boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100/60">
               <Calendar className="w-3.5 h-3.5" />
             </div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 truncate">Задолженность</span>
@@ -373,17 +388,17 @@ export function KpiGrid({
         </div>
 
         <div className="flex items-baseline justify-between my-0.5">
-          <span className="text-xl font-bold text-slate-900">
+          <span className="text-xl font-bold text-slate-900 headline-tight">
             {debtData.totalDebt.toLocaleString('ru-RU')} €
           </span>
           {/* Mini Status Indicator */}
-          <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+          <div className="w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center shrink-0 border border-rose-100/60">
             <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1.5 border-t border-slate-50">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/80">
+          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200/60 px-2 py-0.5 rounded-full">
             {debtData.overdueCount > 0 ? `! ${debtData.overdueCount} счетов` : '0 долгов'}
           </span>
           <span className="text-[11px] text-slate-400">просрочено</span>
