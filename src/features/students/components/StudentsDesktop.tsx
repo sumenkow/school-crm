@@ -270,19 +270,19 @@ export function StudentsDesktop({
     <div className="hidden md:block w-full overflow-x-auto bg-white rounded-2xl border border-slate-100 shadow-xs">
       <table className="w-full table-fixed border-collapse text-left text-xs">
         <colgroup>
-          <col className="w-[36px]" />   {/* Чекбокс 36px */}
-          <col className="w-[210px]" />  {/* Ученик 210px */}
-          <col className="w-[175px]" />  {/* Представитель 175px (1-2 символа до значков) */}
-          <col className="w-[180px]" />  {/* Обучение 180px */}
-          <col className="w-[135px]" />  {/* Ближайшее занятие 135px (без ...) */}
-          <col className="w-[118px]" />  {/* Посещаемость 118px (расширен под заголовок) */}
+          <col className="w-[36px]" />
+          <col className="w-[210px]" />
+          <col className="w-[175px]" />
+          <col className="w-[180px]" />
+          <col className="w-[135px]" />
+          <col className="w-[118px]" />
           {canViewStudentFinancialAmounts ? (
-            <col className="w-[70px]" />   /* Баланс 70px (смещен вправо к статусу) */
+            <col className="w-[70px]" />
           ) : (
-            <col className="w-[140px]" />  /* Статус оплаты 140px */
+            <col className="w-[140px]" />
           )}
-          <col className="w-[90px]" />   {/* Статус 90px */}
-          <col className="w-[36px]" />   {/* Действия ··· 36px */}
+          <col className="w-[90px]" />
+          <col className="w-[36px]" />
         </colgroup>
 
         {/* Шапка таблицы */}

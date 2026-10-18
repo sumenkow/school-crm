@@ -38,6 +38,12 @@ export default function TasksPage() {
   // Primary data state
   const [tasks, setTasks] = useState<FullTaskData[]>([]);
   const [selectedTask, setSelectedTask] = useState<FullTaskData | null>(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
+  const handleSelectTask = useCallback((task: FullTaskData) => {
+    setSelectedTask(task);
+    setIsMobileDetailOpen(true);
+  }, []);
 
   // Filter & Navigation state
   const [activeTab, setActiveTab] = useState<DirectionalTab>('all');
@@ -449,7 +455,7 @@ export default function TasksPage() {
                             task={task}
                             isSelected={selectedTask?.id === task.id}
                             todayIso={todayIso}
-                            onSelect={setSelectedTask}
+                            onSelect={handleSelectTask}
                             onCompleteClick={setCompletingTask}
                             onReopenClick={handleReopenTask}
                             onEditClick={setEditingTask}
@@ -468,7 +474,7 @@ export default function TasksPage() {
                   task={task}
                   isSelected={selectedTask?.id === task.id}
                   todayIso={todayIso}
-                  onSelect={setSelectedTask}
+                  onSelect={handleSelectTask}
                   onCompleteClick={setCompletingTask}
                   onReopenClick={handleReopenTask}
                   onEditClick={setEditingTask}
@@ -480,22 +486,64 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Right: Contextual Detail Panel */}
+        {/* Right: Contextual Detail Panel (Desktop only side-by-side) */}
         {selectedTask && (
-          <TaskDetailPanel
-            task={selectedTask}
-            todayIso={todayIso}
-            onClose={() => setSelectedTask(null)}
-            onCompleteClick={setCompletingTask}
-            onReopenClick={handleReopenTask}
-            onEditClick={setEditingTask}
-            onPostponeClick={setPostponingTask}
-            onDeleteClick={handleDeleteTask}
-            onPriorityChange={handlePriorityChange}
-            onAddComment={handleAddComment}
-          />
+          <div className="hidden lg:flex shrink-0 h-full">
+            <TaskDetailPanel
+              task={selectedTask}
+              todayIso={todayIso}
+              onClose={() => setSelectedTask(null)}
+              onCompleteClick={setCompletingTask}
+              onReopenClick={handleReopenTask}
+              onEditClick={setEditingTask}
+              onPostponeClick={setPostponingTask}
+              onDeleteClick={handleDeleteTask}
+              onPriorityChange={handlePriorityChange}
+              onAddComment={handleAddComment}
+            />
+          </div>
         )}
       </div>
+
+      {/* Mobile Drawer (BottomSheet) */}
+      {isMobileDetailOpen && selectedTask && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileDetailOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 w-full max-h-[85vh] bg-white rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
+            <TaskDetailPanel
+              task={selectedTask}
+              todayIso={todayIso}
+              onClose={() => setIsMobileDetailOpen(false)}
+              onCompleteClick={(t) => {
+                setCompletingTask(t);
+                setIsMobileDetailOpen(false);
+              }}
+              onReopenClick={(t) => {
+                handleReopenTask(t);
+                setIsMobileDetailOpen(false);
+              }}
+              onEditClick={(t) => {
+                setEditingTask(t);
+                setIsMobileDetailOpen(false);
+              }}
+              onPostponeClick={(t) => {
+                setPostponingTask(t);
+                setIsMobileDetailOpen(false);
+              }}
+              onDeleteClick={(t) => {
+                handleDeleteTask(t);
+                setIsMobileDetailOpen(false);
+              }}
+              onPriorityChange={handlePriorityChange}
+              onAddComment={handleAddComment}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── 5. Context Modals ── */}
       <CreateTaskModal

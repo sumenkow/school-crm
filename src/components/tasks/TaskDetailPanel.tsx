@@ -151,7 +151,7 @@ export function TaskDetailPanel({
   const initials = getInitials(task.assignedTo);
 
   return (
-    <div className="w-[370px] xl:w-[380px] shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col h-full overflow-hidden animate-in slide-in-from-right-4 duration-200">
+    <div className="w-full lg:w-[370px] xl:w-[380px] shrink-0 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col h-full overflow-hidden animate-in slide-in-from-right-4 duration-200">
       {/* ── 1. Header: Status Pill + Date + Close ── */}
       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
         <div className="flex items-center gap-2">
